@@ -1,11 +1,10 @@
-import { useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { Building2, CalendarDays, Clock3, MapPin, Pencil, UserRound, Wrench, X } from 'lucide-react';
+import { Building2, CalendarDays, Clock3, MapPin, Pencil, UserRound, Wrench } from 'lucide-react';
 import type { FleetCurrentState } from '../../fleet/domain';
 import { isBasculanteWithoutPlate } from '../../fleet/domain';
 import { formatBrazilianDateTime } from '../../fleet/time';
 import FleetStatusBadge from './FleetStatusBadge';
-import { BOTAO_PRIMARIO, FOCO } from '../cadastros/estilos';
+import { BOTAO_PRIMARIO } from '../cadastros/estilos';
+import { Modal } from '../../shared/ui';
 
 interface Props {
   state?: FleetCurrentState;
@@ -26,33 +25,23 @@ const eventLabels: Record<string, string> = {
   IMPORTED: 'Registro importado',
 };
 
+/**
+ * Detalhes de um lançamento do dia. Usa o Modal padrão (A11 da auditoria de
+ * 21/10/2026): o foco fica preso dentro, Esc e clique fora fecham e o corpo
+ * da página para de rolar; no celular abre como folha inferior.
+ */
 export default function FleetDetailDrawer({ state, onClose, onEdit }: Props) {
-  useEffect(() => {
-    if (!state) return undefined;
-    const handler = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handler);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', handler);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [onClose, state]);
   if (!state) return null;
-  return createPortal(
-    <div data-app-portal className="fixed inset-0 z-[90] bg-slate-900/20" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
-      <aside role="dialog" aria-modal="true" aria-labelledby="fleet-detail-title" className="fixed inset-y-0 right-0 flex w-full max-w-xl flex-col overflow-hidden bg-[#f7f8f6] shadow-2xl">
-        <header className="flex shrink-0 items-start justify-between border-b border-slate-200 bg-white px-5 py-4 text-slate-800 sm:px-6">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#176b4d]">Lançamento do dia</p>
-            <h2 id="fleet-detail-title" className="mt-0.5 font-mono text-3xl font-bold tracking-tight text-slate-950">{state.equipment.prefix}</h2>
-            <p className="mt-0.5 text-sm text-slate-500">{state.equipment.equipmentName}</p>
-          </div>
-          <button type="button" onClick={onClose} className={`grid size-11 place-items-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-emerald-400 hover:text-[#176b4d] ${FOCO}`} aria-label="Fechar detalhes"><X className="size-5" aria-hidden="true"/></button>
-        </header>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+  return (
+    <Modal
+      open
+      size="lg"
+      title={`Lançamento do dia: ${state.equipment.prefix}`}
+      description={state.equipment.equipmentName}
+      onClose={onClose}
+      footer={<button type="button" onClick={() => onEdit(state)} className={`${BOTAO_PRIMARIO} min-h-12 w-full`}><Pencil className="size-4" aria-hidden="true"/>Editar lançamento</button>}
+    >
+        <div>
           <section className="rounded-2xl border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-4"><span className="text-sm font-semibold text-slate-500">Situação agora</span><FleetStatusBadge status={state.operationalStatus}/></div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -63,7 +52,7 @@ export default function FleetDetailDrawer({ state, onClose, onEdit }: Props) {
             </div>
           </section>
           <section className="mt-5">
-            <div className="flex items-center justify-between"><h3 className="text-xs font-bold uppercase tracking-[0.12em] text-slate-700">Movimentações</h3><span className="text-xs font-bold text-slate-400">{state.events.length} evento(s)</span></div>
+            <div className="flex items-center justify-between"><h3 className="text-xs font-bold uppercase tracking-[0.12em] text-slate-700">Movimentações</h3><span className="text-xs font-bold text-[#5b6870]">{state.events.length} evento(s)</span></div>
             <div className="mt-3 space-y-0">
               {[...state.events].reverse().map((event, index) => (
                 <article key={event.id} className="relative flex gap-3 pb-5">
@@ -86,9 +75,6 @@ export default function FleetDetailDrawer({ state, onClose, onEdit }: Props) {
           </section>
           {state.reviewMessages.length > 0 && <section className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3"><h3 className="text-xs font-bold uppercase tracking-[0.12em] text-amber-800">O que conferir</h3><ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-amber-900">{state.reviewMessages.map(message=><li key={message}>{message}</li>)}</ul></section>}
         </div>
-        <footer className="shrink-0 border-t border-slate-200 bg-white p-4 sm:p-5"><button type="button" onClick={()=>onEdit(state)} className={`${BOTAO_PRIMARIO} min-h-12 w-full`}><Pencil className="size-4" aria-hidden="true"/>Editar lançamento</button></footer>
-      </aside>
-    </div>,
-    document.body,
+    </Modal>
   );
 }
