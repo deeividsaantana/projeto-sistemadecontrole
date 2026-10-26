@@ -13,6 +13,7 @@ import { cleanImportValue, getImportValue, normalizeImportText } from '../../uti
 import { normalizeComparable } from '../../utils/canonicalIdentity';
 import { buildImportPreview } from '../preview';
 import type { MovimentoMaterial } from '../../types';
+import { movementTypeFromSheet } from '../materialImportApplication';
 
 // "lançamentos RENEA" também é lançamento de movimento; "resumo geral" é
 // agregado e fica deferred de propósito, igual ao adaptador de recebimentos.
@@ -164,8 +165,10 @@ export const materialsAdapter: SpreadsheetImportAdapter<NormalizedMaterialMoveme
     // um material novo com unidade inventada.
     const badUnit = Boolean(value.unidade && /^\d|^[A-Z]{3}-?\d/.test(value.unidade));
     if (badUnit) messages.push(`Unidade "${value.unidade}" não reconhecida.`);
-    const operationalKey = badUnit ? undefined : buildOperationalKey(value);
-    if (!operationalKey) messages.push('Chave operacional incompleta (data + destino + quantidade): linha fica em conferência.');
+    const tipoDesconhecido = !movementTypeFromSheet(value.tipoMovimento);
+    if (tipoDesconhecido) messages.push(`Movimento "${value.tipoMovimento}" não reconhecido: diga se é entrada, saída, transferência ou ajuste.`);
+    const operationalKey = badUnit || tipoDesconhecido ? undefined : buildOperationalKey(value);
+    if (!operationalKey && !tipoDesconhecido) messages.push('Chave operacional incompleta (data + destino + quantidade): linha fica em conferência.');
     return [{
       lineage: buildRowLineage({
         sourceFile: context.sourceFile,

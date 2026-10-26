@@ -93,3 +93,12 @@ const [botaFora] = materialsAdapter.parse({
 assert.equal(botaFora.value.tipoMovimento, 'Transferência');
 assert.equal(botaFora.value.origem, 'CS RAMO 600/700');
 assert.equal(botaFora.value.destino, 'LARA');
+
+// M17: tipo de movimento desconhecido vai para conferência, não vira entrada.
+const [consumo] = materialsAdapter.parse({
+  ...context,
+  rows: [{ Data: '05/01/2026', Movimento: 'Consumo', Origem: 'Estoque', Destino: 'Ramo 900', Quantidade: 12, Unidade: 'M3' }],
+});
+assert.equal(consumo.lineage.validationStatus, 'review');
+assert.equal(consumo.operationalKey, undefined);
+assert.match(consumo.lineage.validationMessages.join(' '), /Movimento "Consumo" não reconhecido/);

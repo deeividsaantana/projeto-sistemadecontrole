@@ -17,14 +17,19 @@ type Movement = {
 
 /**
  * "Saída", "SAIDA", "saída de material": a planilha escreve do jeito dela.
- * Comparar com 'saida' cru fazia toda saída virar entrada.
+ * Comparar com 'saida' cru fazia toda saída virar entrada. Aba sem coluna de
+ * movimento (agregado descarregado na obra) é entrada; um tipo que não dá para
+ * reconhecer ("Consumo", "Aplicação") volta undefined e vai para conferência,
+ * em vez de somar no estoque (M17).
  */
-export const movementTypeFromSheet = (value: string | null | undefined): MovimentoMaterial['tipo'] => {
-  const text = normalizeComparable(value);
+export const movementTypeFromSheet = (value: string | null | undefined): MovimentoMaterial['tipo'] | undefined => {
+  const text = normalizeComparable(value).trim();
+  if (!text) return 'Entrada';
   if (text.startsWith('said')) return 'Saída';
   if (text.startsWith('transf')) return 'Transferência';
   if (text.startsWith('ajust')) return 'Ajuste';
-  return 'Entrada';
+  if (text.startsWith('entr') || text.startsWith('receb')) return 'Entrada';
+  return undefined;
 };
 
 const pieceLabel = (meters: number) => `${meters.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m`;
@@ -75,7 +80,8 @@ export const buildMaterialImportApplication = (
     const receipt = 'quantidadeRecebida' in value;
     const description = receipt ? receiptMaterialDescription(value) : value.material;
     const quantity = receipt ? value.quantidadeRecebida : value.quantidade;
-    if (!description || !value.data || quantity === null || !value.unidade || !item.row.operationalKey) { skipped.review++; return; }
+    const tipo = receipt ? 'Entrada' : movementTypeFromSheet(value.tipoMovimento);
+    if (!description || !value.data || quantity === null || !value.unidade || !item.row.operationalKey || !tipo) { skipped.review++; return; }
     // "LIXO" em tonelada (Lara) e "LIXO" em viagem (São Bento) não somam: com
     // unidade diferente do material já existente, o nome leva a unidade.
     const sameName = [...currentMaterials, ...materials].find(entry => normalizeComparable(entry.descricao) === normalizeComparable(description));
@@ -110,7 +116,7 @@ export const buildMaterialImportApplication = (
       ...(value.valorUnitario != null ? { valorUnitario: value.valorUnitario } : {}),
       ...(value.valorTotal != null ? { valorTotal: value.valorTotal } : {}),
     };
-    movements.push({ id, data: value.data, tipo: receipt ? 'Entrada' : movementTypeFromSheet(value.tipoMovimento), ...trip,
+    movements.push({ id, data: value.data, tipo, ...trip,
       ...(branch ? { etapaServicoId: branch.id, etapaServicoNome: branch.nome } : {}),
       ...(receipt && value.solicitacaoCompra ? { solicitacaoCompra: value.solicitacaoCompra } : {}),
       materialId: material.id, materialDescricao: material.descricao, quantidade: quantity, unidade: value.unidade, quantidadeNota: receipt ? value.quantidadeNota ?? undefined : undefined, notaFiscal: value.notaFiscal || undefined, destino: receipt ? value.localAplicacao || undefined : value.destino || undefined, origem: receipt ? undefined : value.origem || undefined, responsavel: responsible, criadoEm: preview.generatedAt, observacao: `Importado de ${preview.sourceFile} · ${item.row.lineage.sourceSheet} · linha ${item.row.lineage.sourceRow}` });

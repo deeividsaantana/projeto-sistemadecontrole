@@ -129,6 +129,12 @@ test('planilha de movimentação: saída escrita de qualquer jeito continua saí
   assert.equal(movementTypeFromSheet('Transferência'), 'Transferência');
   assert.equal(movementTypeFromSheet('AJUSTE'), 'Ajuste');
   assert.equal(movementTypeFromSheet('Entrada'), 'Entrada');
+  assert.equal(movementTypeFromSheet('Recebimento'), 'Entrada');
+  assert.equal(movementTypeFromSheet(''), 'Entrada', 'aba de agregado sem coluna de movimento é entrada');
+  assert.equal(movementTypeFromSheet(null), 'Entrada');
+  // M17: consumo não pode somar no estoque; vai para conferência.
+  assert.equal(movementTypeFromSheet('Consumo'), undefined);
+  assert.equal(movementTypeFromSheet('Aplicação'), undefined);
 });
 
 test('tubo de concreto tem um nome só, qualquer que seja a especificação da nota', () => {
