@@ -15,6 +15,7 @@ const NO_MOLDE = {
   'src/components/CombustivelOperacionalTab.tsx': 'combustivel-tab',
   'src/components/ControleEquipamentosDiarioTab.tsx': 'controle-equipamentos-tab',
   'src/components/ControlePresencaTab.tsx': 'presenca-tab',
+  'src/components/TicketsJazidaTab.tsx': 'tickets-jazida-tab',
 } as const;
 
 test('a TelaCheia desconta a barra do topo e o recuo, e só a área de dados rola', () => {
@@ -33,7 +34,7 @@ test('nenhuma aba tem teto de largura: todas usam 100%', () => {
   }
 });
 
-test('Combustível, Frotas e Presença nascem cheias, sem botão de tela cheia', () => {
+test('Combustível, Frotas, Presença e Viagens da jazida nascem cheias, sem botão de tela cheia', () => {
   for (const [arquivo, id] of Object.entries(NO_MOLDE)) {
     const fonte = ler(arquivo);
     assert.match(fonte, new RegExp(`<TelaCheia[^>]*id="${id}"`), arquivo);

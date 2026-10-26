@@ -22,9 +22,7 @@ type Regra = 'pageHeader' | 'gsap' | 'movimentoReduzido' | 'corForaDaPaleta';
 // branco); #718087 e #f26a2e ficam para fundo, borda e ícone decorativo.
 const PALETA = new Set(['#176b4d', '#f26a2e', '#718087', '#f7f8f6', '#5b6870', '#c2410c']);
 
-const PENDENCIAS: Record<string, readonly Regra[]> = {
-  TicketsJazidaTab: ['pageHeader', 'gsap', 'movimentoReduzido', 'corForaDaPaleta'],
-};
+const PENDENCIAS: Record<string, readonly Regra[]> = {};
 
 const components = new URL('../src/components/', import.meta.url);
 const telas = ['Dashboard', ...readdirSync(components)
