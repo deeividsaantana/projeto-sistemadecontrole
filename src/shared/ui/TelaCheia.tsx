@@ -86,7 +86,9 @@ export function TelaCheia({
         aria-labelledby={idAbaAtiva}
         aria-label={idAbaAtiva ? undefined : longa ? rotuloDados ?? `Conteúdo de ${rotulo}` : undefined}
         tabIndex={longa ? 0 : undefined}
-        className={cn('renea-tela-cheia__dados flex min-h-0 min-w-0 flex-1 flex-col', longa && 'renea-tela-cheia__dados--longa gap-4', classeDados)}
+        // `relative`: o texto só para leitor de tela (sr-only, absoluto) fica
+        // preso à área que rola; sem isso ele vazava e fazia a página rolar.
+        className={cn('renea-tela-cheia__dados relative flex min-h-0 min-w-0 flex-1 flex-col', longa && 'renea-tela-cheia__dados--longa gap-4', classeDados)}
       >
         <DentroDaTelaCheia.Provider value>{children}</DentroDaTelaCheia.Provider>
       </div>

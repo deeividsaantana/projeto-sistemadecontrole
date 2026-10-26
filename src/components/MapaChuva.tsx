@@ -4,7 +4,7 @@
  * lançado no diário — não guarda número próprio, para não existirem duas
  * verdades sobre o mesmo dia.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { CloudRain, Download, Umbrella } from 'lucide-react';
 import type { DiarioObra } from '../types';
 import {
@@ -31,7 +31,9 @@ const CORES_FAIXA: Record<FaixaChuva, { fundo: string; texto: string; borda: str
   'muito-forte': { fundo: '#1d4ed8', texto: '#ffffff', borda: '#1e40af' },
 };
 
-const DIAS_SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+const DIAS_SEMANA = [
+  ['D', 'Domingo'], ['S', 'Segunda'], ['T', 'Terça'], ['Q', 'Quarta'], ['Q', 'Quinta'], ['S', 'Sexta'], ['S', 'Sábado'],
+] as const;
 const hoje = new Date();
 
 export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps) {
@@ -49,6 +51,27 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
   // O primeiro dia do mês nem sempre cai no domingo: o calendário precisa da
   // folga inicial para o dia 10 ficar embaixo da quarta certa.
   const folgaInicial = new Date(ano, mes - 1, 1).getDay();
+  // Semanas completas (folga no começo e no fim) para a grade ter linhas de
+  // verdade: o leitor de tela anda por semana e por dia da semana (M7).
+  const semanas = useMemo(() => {
+    const casas = [...Array<null>(folgaInicial).fill(null), ...dados.dias];
+    while (casas.length % 7) casas.push(null);
+    return Array.from({ length: casas.length / 7 }, (_, indice) => casas.slice(indice * 7, indice * 7 + 7));
+  }, [dados.dias, folgaInicial]);
+
+  // Só um dia entra no Tab; as setas andam pelo calendário (padrão de grade).
+  const [diaFocado, setDiaFocado] = useState(1);
+  const focado = Math.min(diaFocado, dados.dias.length);
+  const gradeRef = useRef<HTMLDivElement>(null);
+  const andar = (event: KeyboardEvent<HTMLDivElement>) => {
+    const passo = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 7, ArrowUp: -7 }[event.key];
+    const destino = event.key === 'Home' ? 1 : event.key === 'End' ? dados.dias.length : passo ? focado + passo : 0;
+    if (!destino) return;
+    event.preventDefault();
+    const novo = Math.max(1, Math.min(dados.dias.length, destino));
+    setDiaFocado(novo);
+    gradeRef.current?.querySelector<HTMLElement>(`[data-dia="${novo}"]`)?.focus();
+  };
 
   const exportarPdf = async () => {
     const { generateUniversalPdfReport } = await import('../utils/universalPdfReport');
@@ -110,7 +133,7 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
             <CloudRain className="h-6 w-6 text-blue-700" aria-hidden="true" />
             <div>
               <h2 className="text-lg font-black leading-tight text-[#101a22]">Mapa de chuvas</h2>
-              <p className="text-xs text-[#65716b]">Alimentado pelo pluviômetro lançado no diário do dia.</p>
+              <p className="text-xs text-[#5b6870]">Alimentado pelo pluviômetro lançado no diário do dia.</p>
             </div>
           </div>
 
@@ -134,7 +157,7 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
               onClick={() => void exportarPdf()}
               className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[#e2e8e4] bg-white px-3 text-xs font-bold text-[#14231e] transition hover:border-blue-600 hover:text-blue-700"
             >
-              <Download className="h-4 w-4" /> PDF
+              <Download className="h-4 w-4" aria-hidden="true" /> PDF
             </button>
           </div>
         </div>
@@ -156,38 +179,47 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
       </div>
 
       <div className="px-4 pb-4 sm:px-5 sm:pb-5">
-        <div className="grid grid-cols-7 gap-1.5" role="grid" aria-label={`Mapa de chuvas de ${dados.rotulo}`}>
-          {DIAS_SEMANA.map((letra, indice) => (
-            <span key={`${letra}-${indice}`} className="pb-1 text-center text-xs font-bold uppercase text-slate-400" aria-hidden="true">
-              {letra}
-            </span>
+        <div ref={gradeRef} className="grid grid-cols-7 gap-1.5" role="grid" aria-label={`Mapa de chuvas de ${dados.rotulo}`} onKeyDown={andar}>
+          <div role="row" className="contents">
+            {DIAS_SEMANA.map(([letra, nome]) => (
+              <span key={nome} role="columnheader" aria-label={nome} className="pb-1 text-center text-xs font-bold uppercase text-[#5b6870]">
+                <abbr title={nome} className="no-underline">{letra}</abbr>
+              </span>
+            ))}
+          </div>
+          {semanas.map((semana, linha) => (
+            <div key={linha} role="row" className="contents">
+              {semana.map((dia, coluna) => {
+                if (!dia) return <span key={`folga-${linha}-${coluna}`} role="gridcell" aria-label="Fora do mês" />;
+                const faixa = faixaDaChuva(dia.milimetros);
+                const cor = CORES_FAIXA[faixa];
+                const descricao = dia.milimetros === null
+                  ? `Dia ${dia.dia}: sem diário lançado`
+                  : `Dia ${dia.dia}: ${dia.milimetros.toLocaleString('pt-BR')} mm, ${ROTULO_FAIXA[faixa].toLowerCase()}${dia.impraticavel ? ', impraticável' : ''}`;
+                return (
+                  <div
+                    key={dia.data}
+                    role="gridcell"
+                    data-dia={dia.dia}
+                    tabIndex={dia.dia === focado ? 0 : -1}
+                    onFocus={() => setDiaFocado(dia.dia)}
+                    title={descricao}
+                    aria-label={descricao}
+                    className="mapa-chuva__dia flex min-h-14 flex-col items-center justify-center rounded-lg border p-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)"
+                    style={{ background: cor.fundo, color: cor.texto, borderColor: cor.borda }}
+                  >
+                    <span className="text-xs font-bold leading-none" aria-hidden="true">{dia.dia}</span>
+                    <strong className="mt-0.5 text-sm font-black leading-none tabular-nums" aria-hidden="true">
+                      {dia.milimetros === null ? '—' : dia.milimetros.toLocaleString('pt-BR')}
+                    </strong>
+                    {dia.impraticavel && (
+                      <Umbrella className="mt-0.5 h-3 w-3" aria-hidden="true" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           ))}
-          {Array.from({ length: folgaInicial }, (_, indice) => <span key={`folga-${indice}`} aria-hidden="true" />)}
-          {dados.dias.map(dia => {
-            const faixa = faixaDaChuva(dia.milimetros);
-            const cor = CORES_FAIXA[faixa];
-            const descricao = dia.milimetros === null
-              ? `Dia ${dia.dia}: sem diário lançado`
-              : `Dia ${dia.dia}: ${dia.milimetros.toLocaleString('pt-BR')} mm, ${ROTULO_FAIXA[faixa].toLowerCase()}`;
-            return (
-              <div
-                key={dia.data}
-                role="gridcell"
-                title={descricao}
-                aria-label={descricao}
-                className="mapa-chuva__dia flex min-h-14 flex-col items-center justify-center rounded-lg border p-1"
-                style={{ background: cor.fundo, color: cor.texto, borderColor: cor.borda }}
-              >
-                <span className="text-xs font-bold leading-none">{dia.dia}</span>
-                <strong className="mt-0.5 text-sm font-black leading-none tabular-nums">
-                  {dia.milimetros === null ? '—' : dia.milimetros.toLocaleString('pt-BR')}
-                </strong>
-                {dia.impraticavel && (
-                  <Umbrella className="mt-0.5 h-3 w-3" aria-hidden="true" />
-                )}
-              </div>
-            );
-          })}
         </div>
 
         <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">

@@ -216,5 +216,6 @@ import './edicoesLocais.test';
 import './moldeTelaCheia.test';
 import './jazidaTela.test';
 import './cadastrosEstacasMolde.test';
+import './moldeDemaisTelas.test';
 import './guardaDeMovimento.test';
 import './frotaTabelaPadrao.test';

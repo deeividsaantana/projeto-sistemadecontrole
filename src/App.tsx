@@ -4466,7 +4466,7 @@ export default function App() {
         />}
         {/* Área das abas: o recuo vem de --renea-respiro (index.css), a mesma
             medida que a TelaCheia desconta para caber na altura da tela. */}
-        <div id="main-tab-viewport" tabIndex={-1} className={`flex-1 overflow-x-clip w-full max-w-none print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : `p-[var(--renea-respiro)]${combustivelListaSomente ? ' renea-viewport--solta' : ''}`}`}>
+        <div id="main-tab-viewport" tabIndex={-1} className={`flex-1 overflow-x-clip w-full max-w-none p-[var(--renea-respiro)] print:p-0 print:m-0${combustivelListaSomente ? ' renea-viewport--solta' : ''}`}>
           <Suspense fallback={<ScreenLoadingFallback />}>
             <RouteMotion key={activeTab}>
             {activeTab === 'dashboard' && (

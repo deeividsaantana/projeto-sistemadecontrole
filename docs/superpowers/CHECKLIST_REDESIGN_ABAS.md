@@ -145,4 +145,5 @@ botões soltos fazendo papel de aba.
 | Controle de Frotas | Feito (21/10/2026) |
 | Presença | Feito (21/10/2026) |
 | Materiais, Estacas, Cadastros | Fase 2: trocar o menu lateral interno por abas agrupadas |
+| Painel, Meu dia, Diário de Obra, Previsto x Executado, Relatórios, Administração, Manutenção | Feito (fase 2, tópico "demais") |
 | Demais abas | Fase 2, uma por vez |

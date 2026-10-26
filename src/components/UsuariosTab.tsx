@@ -10,6 +10,7 @@ import {
   type ManagedUser,
   type ManagedUserRole,
 } from '../services/masterDataApi';
+import { TelaCheia } from '../shared/ui/TelaCheia';
 
 const roles: Array<{ value: ManagedUserRole; label: string; faz: string }> = [
   { value: 'admin', label: 'Administrador', faz: 'Pode tudo, inclusive excluir e cuidar dos usuários.' },
@@ -155,18 +156,12 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
     gsap.fromTo(raiz.querySelectorAll('[data-usuarios-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out', clearProps: 'transform,opacity' });
   }, { scope: escopo });
 
-  return (
-    <section ref={escopo} className="space-y-5">
-      {!embutido && (
-        <div data-usuarios-reveal>
-          <PageHeader eyebrow="Administração" title="Usuários e permissões" description="Crie acessos e ajuste perfil e status de cada usuário da equipe." />
-        </div>
-      )}
-
+  const conteudo = (
+    <>
       <div data-usuarios-reveal className="grid items-start gap-5 xl:grid-cols-[420px_1fr]">
         <form onSubmit={createUser} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
           <div className="flex items-center gap-2">
-            <Plus className="h-5 w-5 text-emerald-700" />
+            <Plus className="h-5 w-5 text-emerald-700" aria-hidden="true" />
             <h2 className="font-bold text-slate-900">Novo usuário</h2>
           </div>
           <label className="space-y-1.5">
@@ -201,7 +196,7 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
           <header className="flex items-center justify-between gap-3">
             <div>
               <h2 className="font-bold text-slate-900">Acessos cadastrados</h2>
-              <p className="text-xs text-slate-500">Perfis aplicados no controle de acesso do sistema</p>
+              <p className="text-xs text-slate-600">Perfis aplicados no controle de acesso do sistema</p>
             </div>
             <IconButton
               icon={RefreshCw}
@@ -244,6 +239,16 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
         onConfirm={() => { if (pendente) void updateUser(pendente.user, pendente.changes); }}
         onCancel={() => setPendente(null)}
       />
-    </section>
+    </>
+  );
+
+  // Dentro da Administração a aba que hospeda é a página; sozinha, a tela usa
+  // o mesmo molde das outras abas.
+  if (embutido) return <section ref={escopo} className="space-y-5">{conteudo}</section>;
+  return (
+    <TelaCheia ref={escopo} id="usuarios-tab" rotulo="Usuários e permissões" longa
+      cabecalho={<div data-usuarios-reveal><PageHeader eyebrow="Administração" title="Usuários e permissões" /></div>}>
+      {conteudo}
+    </TelaCheia>
   );
 }

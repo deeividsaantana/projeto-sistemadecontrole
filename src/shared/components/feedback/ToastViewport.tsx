@@ -6,22 +6,27 @@ interface ToastViewportProps {
 }
 
 const getToastColorClass = (type: AppNotification['type']) => {
-  if (type === 'success') return 'border-emerald-500/20 bg-white text-emerald-700';
-  if (type === 'warning') return 'border-amber-500/20 bg-white text-amber-700';
-  if (type === 'error') return 'border-rose-500/20 bg-white text-rose-700';
-  return 'border-blue-500/20 bg-white text-blue-700';
+  if (type === 'success') return 'border-emerald-500/30 bg-white';
+  if (type === 'warning') return 'border-amber-500/30 bg-white';
+  if (type === 'error') return 'border-rose-500/30 bg-white';
+  return 'border-blue-500/30 bg-white';
 };
 
 const ToastIcon = ({ type }: { type: AppNotification['type'] }) => {
-  if (type === 'success') return <CheckCircle2 className="w-5 h-5 text-emerald-700" />;
-  if (type === 'warning') return <AlertTriangle className="w-5 h-5 text-amber-700" />;
-  if (type === 'error') return <XCircle className="w-5 h-5 text-rose-700" />;
-  return <Info className="w-5 h-5 text-blue-700" />;
+  if (type === 'success') return <CheckCircle2 className="w-5 h-5 text-emerald-700" aria-hidden="true" />;
+  if (type === 'warning') return <AlertTriangle className="w-5 h-5 text-amber-700" aria-hidden="true" />;
+  if (type === 'error') return <XCircle className="w-5 h-5 text-rose-700" aria-hidden="true" />;
+  return <Info className="w-5 h-5 text-blue-700" aria-hidden="true" />;
 };
 
+/**
+ * Avisos rápidos no canto. Letra legível (auditoria de 21/10/2026): título
+ * sem caixa alta espremida, hora em cinza de 4,5:1 (antes ficava a 1,5:1 com
+ * opacidade) e sem o jargão "Tempo Real". O leitor de tela anuncia cada aviso.
+ */
 export function ToastViewport({ toasts }: ToastViewportProps) {
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-3 w-full max-w-sm pointer-events-none select-none">
+    <div role="status" aria-live="polite" className="fixed top-4 right-4 z-50 flex flex-col gap-3 w-[calc(100%-2rem)] max-w-sm pointer-events-none select-none">
         {toasts.map(toast => (
           <div
             key={toast.id}
@@ -32,14 +37,11 @@ export function ToastViewport({ toasts }: ToastViewportProps) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-black uppercase tracking-wider block truncate text-slate-700">{toast.title}</span>
-                <span className="text-xs font-mono opacity-50 shrink-0 text-slate-400">{toast.timestamp}</span>
+                <span className="text-sm font-bold block text-slate-900">{toast.title}</span>
+                <span className="text-xs tabular-nums shrink-0 text-[#5b6870]">{toast.timestamp}</span>
               </div>
-              <p className="text-xs text-slate-700 leading-relaxed mt-1">{toast.message}</p>
-              <div className="flex items-center gap-1.5 mt-2">
-                <span className="text-xs px-1.5 py-0.5 bg-emerald-500/10 text-emerald-700 rounded-md font-mono uppercase font-black">{toast.source}</span>
-                <span className="text-xs text-slate-500">Tempo Real</span>
-              </div>
+              <p className="text-sm text-slate-700 leading-relaxed mt-1">{toast.message}</p>
+              {toast.source && <p className="mt-1.5 text-xs font-semibold text-emerald-800">{toast.source}</p>}
             </div>
           </div>
         ))}

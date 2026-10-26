@@ -138,7 +138,7 @@ export default function HistoricoAcoes({ logs }: HistoricoAcoesProps) {
         </label>
         <label className="flex items-end gap-2 text-xs font-bold text-slate-600">
           <span className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3">
-            <input type="checkbox" checked={somenteSensiveis} onChange={event => { setSomenteSensiveis(event.target.checked); }} />
+            <input type="checkbox" className="size-6 shrink-0 accent-[#176b4d]" checked={somenteSensiveis} onChange={event => { setSomenteSensiveis(event.target.checked); }} />
             Só ações sensíveis
           </span>
         </label>

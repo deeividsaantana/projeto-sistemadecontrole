@@ -106,7 +106,7 @@ export function FrentesDoDia({ dia, responsavel, frentes, servicos, registros, p
           <article key={grupo.nome} data-previsto-reveal className={`${CARTAO} overflow-hidden`}>
             <header className="flex flex-wrap items-start gap-3 border-b border-slate-100 bg-[#f7f8f6] px-4 py-3">
               <div className="min-w-0 flex-1 basis-40">
-                <h3 className="break-words text-base font-bold text-slate-900">{grupo.nome}</h3>
+                <h2 className="break-words text-base font-bold text-slate-900">{grupo.nome}</h2>
                 <p className="text-sm text-slate-600">
                   {[grupo.frente?.servico, grupo.frente?.responsavel && `Resp.: ${grupo.frente.responsavel}`, grupo.frente?.situacao].filter(Boolean).join(' · ') || 'Frente sem cadastro'}
                 </p>
