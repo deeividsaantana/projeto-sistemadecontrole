@@ -41,19 +41,19 @@ export function CartaoEquipamento({ cartao, onAbrir }: { cartao: CartaoFrota; on
         <strong className="font-mono text-[13px] font-bold leading-tight tracking-tight text-slate-900">{cartao.prefixo}</strong>
         <span className="line-clamp-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{cartao.modelo}</span>
         <span className="mt-1 flex items-center gap-1 font-mono text-xs text-slate-500">
-          <Gauge className="size-2.5 text-slate-400" aria-hidden="true" />
+          <Gauge className="size-3 text-slate-400" aria-hidden="true" />
           {cartao.horimetro ? `${numero(cartao.horimetro)} h` : 'sem horímetro'}
         </span>
         <span className="mt-1 flex min-w-0 items-center gap-1">
           {cartao.operador ? (
             <>
-              <span className="grid size-4 shrink-0 place-items-center rounded-full bg-[#176b4d] text-xs font-bold text-white" aria-hidden="true">{iniciais(cartao.operador)}</span>
+              <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[#176b4d] text-xs font-bold text-white" aria-hidden="true">{iniciais(cartao.operador)}</span>
               <span className="truncate text-xs font-bold uppercase text-slate-700">{cartao.operador.split(' ')[0]}</span>
             </>
           ) : (
             <>
-              <span className="grid size-4 shrink-0 place-items-center rounded-full border border-dashed border-[#f26a2e] text-xs font-bold text-[#c2410c]" aria-hidden="true">?</span>
-              <span className="truncate text-xs font-medium italic text-slate-400">sem operador</span>
+              <span className="grid size-5 shrink-0 place-items-center rounded-full border border-dashed border-[#f26a2e] text-xs font-bold text-[#c2410c]" aria-hidden="true">?</span>
+              <span className="truncate text-xs font-medium italic text-slate-500">sem operador</span>
             </>
           )}
         </span>
