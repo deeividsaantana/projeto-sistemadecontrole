@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ClipboardCheck, Pencil, Plus, Save, Trash2, Truck } from 'lucide-react';
-import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CARTAO, FOCO } from '../cadastros/estilos';
+import { CheckCircle2, ClipboardCheck, Pencil, Plus, Save, Trash2 } from 'lucide-react';
+import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO } from '../cadastros/estilos';
 import type { ControleEquipamentoDiario } from '../../types';
 import {
   lerRelacaoEquipamentos,
   reconcileOperationalFleetDay,
   OPERATIONAL_FLEET_REFERENCE_STORAGE_KEY,
   type OperationalFleetReferenceGroup,
+  type OperationalFleetReferenceItem,
   type OperationalFleetReferenceStatus,
 } from '../../fleet/operationalFleetReference';
+import { TabelaPadrao, type ColunaTabela } from '../../shared/ui/TabelaPadrao';
+import { useEntradaDeLista } from '../../shared/hooks/useEntradaDeLista';
+import { AvisoRecolhivel, ResumoConferencia, SituacaoConferencia, type FiltroConferencia } from './ConferenciaDoDia';
 
 interface Props {
   records: ControleEquipamentoDiario[];
@@ -19,57 +23,51 @@ interface Props {
   onLancar?: (preset: { prefixo?: string; codigoFuncionario?: string }) => void;
 }
 
-type VisibilityFilter = 'pending' | 'all' | 'informed';
-
 const GROUPS: readonly OperationalFleetReferenceGroup[] = ['Basculantes', 'Apoio'];
 
-const formatDate = (date: string): string => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
-  return new Date(`${date}T12:00:00`).toLocaleDateString('pt-BR');
-};
-
-const statusTone = (item: OperationalFleetReferenceStatus): string => {
-  if (!item.informed) return 'border-amber-200 bg-amber-50';
-  if (item.operationalStatus === 'Em manutenção' || item.operationalStatus === 'Aguardando manutenção') return 'border-rose-200 bg-rose-50';
-  return 'border-emerald-200 bg-emerald-50/70';
-};
-
-const statusTextTone = (item: OperationalFleetReferenceStatus): string => {
+const tomDaSituacao = (item: OperationalFleetReferenceStatus): string => {
   if (!item.informed) return 'text-amber-700';
   if (item.operationalStatus === 'Em manutenção' || item.operationalStatus === 'Aguardando manutenção') return 'text-rose-700';
   return 'text-emerald-700';
 };
 
-/**
- * Quem ainda falta vira botão: um toque abre o lançamento já com o prefixo,
- * sem precisar procurar o equipamento de novo.
- */
-const FleetChip = ({ item, onLancar }: { item: OperationalFleetReferenceStatus; onLancar?: Props['onLancar'] }) => {
-  const lancavel = !item.informed && Boolean(onLancar);
-  const Raiz = lancavel ? 'button' : 'div';
-  return (
-  <li className="min-w-0">
-  <Raiz {...(lancavel ? { type: 'button' as const, onClick: () => onLancar?.({ prefixo: item.prefix }), 'aria-label': `Lançar ${item.prefix}` } : {})} className={`flex min-h-14 w-full min-w-0 flex-col items-start justify-between gap-1 rounded-xl border px-3 py-2 text-left sm:flex-row sm:items-center sm:gap-3 ${statusTone(item)} ${lancavel ? `transition duration-200 hover:border-[#176b4d] hover:shadow-[0_6px_16px_-10px_rgba(15,40,31,0.45)] active:scale-[0.98] ${FOCO}` : ''}`}>
-    <div className="w-full min-w-0 sm:w-auto">
-      <strong className="block font-mono text-sm font-bold text-slate-950">{item.prefix}</strong>
-      <span className="block truncate text-xs font-semibold uppercase tracking-wide text-slate-500">{item.equipmentType}</span>
-    </div>
-    <span className={`inline-flex shrink-0 items-center gap-1 text-left text-xs sm:text-right font-bold uppercase ${statusTextTone(item)}`}>
-      {item.informed ? <CheckCircle2 size={15}/> : <AlertTriangle size={15}/>}
-      <span>{item.informed ? item.operationalStatus || 'Informado' : 'A confirmar'}{item.departureTime ? <small className="block text-xs font-semibold">{item.departureTime}</small> : null}</span>
-    </span>
-  </Raiz>
-  </li>
-  );
-};
+const COLUNAS: readonly ColunaTabela<OperationalFleetReferenceStatus>[] = [
+  { chave: 'prefix', titulo: 'Prefixo', valorOrdenacao: item => item.prefix, render: item => <span className="font-mono font-bold text-slate-950">{item.prefix}</span> },
+  { chave: 'group', titulo: 'Grupo', valorOrdenacao: item => item.group, render: item => item.group },
+  { chave: 'type', titulo: 'Tipo', valorOrdenacao: item => item.equipmentType, render: item => item.equipmentType },
+  {
+    chave: 'status',
+    titulo: 'Situação',
+    valorOrdenacao: item => (item.informed ? item.operationalStatus || 'Informado' : ''),
+    dica: item => (item.informed ? item.operationalStatus || 'Informado' : 'A confirmar'),
+    render: item => <SituacaoConferencia informado={item.informed} tom={tomDaSituacao(item)} texto={item.informed ? item.operationalStatus || 'Informado' : 'A confirmar'} />,
+  },
+  { chave: 'departure', titulo: 'Saída', valorOrdenacao: item => item.departureTime || '', render: item => <span className="font-mono">{item.departureTime || '—'}</span> },
+];
+
+const COLUNAS_EDITOR = (
+  mudar: (indice: number, parcial: Partial<OperationalFleetReferenceItem>) => void,
+): readonly ColunaTabela<OperationalFleetReferenceItem & { indice: number }>[] => [
+  { chave: 'prefix', titulo: 'Prefixo', render: item => <input aria-label={`Prefixo ${item.indice + 1}`} value={item.prefix} onChange={event => mudar(item.indice, { prefix: event.target.value.toUpperCase() })} className={`${CAMPO} w-28 font-mono`} /> },
+  {
+    chave: 'group',
+    titulo: 'Grupo',
+    render: item => (
+      <select aria-label={`Grupo ${item.indice + 1}`} value={item.group} onChange={event => mudar(item.indice, { group: event.target.value as OperationalFleetReferenceGroup })} className={`${CAMPO} w-auto`}>
+        {GROUPS.map(grupo => <option key={grupo} value={grupo}>{grupo}</option>)}
+      </select>
+    ),
+  },
+  { chave: 'type', titulo: 'Tipo de equipamento', render: item => <input aria-label={`Tipo ${item.indice + 1}`} value={item.equipmentType} onChange={event => mudar(item.indice, { equipmentType: event.target.value })} className={CAMPO} /> },
+];
 
 /**
  * Aba Equipamentos do Controle de Frotas: a relação escolhida à mão (os
- * basculantes e o apoio) conferida contra os lançamentos do dia. Ocupa a tela
- * inteira, então mostra todos de uma vez, em grade que se ajusta à largura.
+ * basculantes e o apoio) conferida contra os lançamentos do dia, na tabela
+ * padrão. Quem falta tem o botão Lançar na própria linha.
  */
 export default function FleetDailyReference({ records, date, onLancar, onRelacaoChange }: Props) {
-  const [visibility, setVisibility] = useState<VisibilityFilter>('pending');
+  const [visibility, setVisibility] = useState<FiltroConferencia>('pending');
   const [editing, setEditing] = useState(false);
   const [reference, setReference] = useState(lerRelacaoEquipamentos);
   useEffect(() => {
@@ -91,74 +89,94 @@ export default function FleetDailyReference({ records, date, onLancar, onRelacao
   const visibleItems = visibility === 'all'
     ? reconciliation.items
     : reconciliation.items.filter(item => visibility === 'informed' ? item.informed : !item.informed);
+  const porGrupo = GROUPS.map(grupo => {
+    const itens = reconciliation.items.filter(item => item.group === grupo);
+    return `${grupo} ${itens.filter(item => item.informed).length}/${itens.length}`;
+  }).join(' · ');
+  const escopo = useEntradaDeLista<HTMLDivElement>([visibility, date]);
+  const mudarItem = (indice: number, parcial: Partial<OperationalFleetReferenceItem>) =>
+    setReference(itens => itens.map((atual, posicao) => (posicao === indice ? { ...atual, ...parcial } : atual)));
+  const linhasEditor = reference.map((item, indice) => ({ ...item, indice }));
 
   return (
-    <section className={`${CARTAO} overflow-hidden`} aria-labelledby="fleet-reference-title">
-      <header className="grid gap-4 border-b border-slate-100 p-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
-        <div className="flex items-start gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-[#176b4d]"><ClipboardCheck className="size-5" aria-hidden="true"/></span>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#176b4d]">Conferência do dia · {formatDate(date)}</p>
-            <h2 id="fleet-reference-title" className="mt-0.5 text-lg font-bold text-slate-950">Relação operacional do dia</h2>
-            <p className="mt-0.5 text-sm text-slate-500">{reference.length} equipamentos esperados. Quem não foi lançado aparece como “A confirmar”.</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-slate-200 bg-[#f7f8f6] text-center sm:grid-cols-4">
-          <div className="px-4 py-2"><span className="block text-xs font-bold uppercase text-slate-500">Esperados</span><strong className="text-xl font-bold tabular-nums text-slate-950">{reconciliation.total}</strong></div>
-          <div className="border-l border-slate-200 px-4 py-2"><span className="block text-xs font-bold uppercase text-emerald-700">Em operação</span><strong className="text-xl font-bold tabular-nums text-emerald-700">{reconciliation.operating}</strong></div>
-          <div className="border-l border-t border-slate-200 px-4 py-2 sm:border-t-0"><span className="block text-xs font-bold uppercase text-rose-700">Manutenção</span><strong className="text-xl font-bold tabular-nums text-rose-700">{reconciliation.maintenance}</strong></div>
-          <div className="border-l border-t border-slate-200 px-4 py-2 sm:border-t-0"><span className="block text-xs font-bold uppercase text-amber-700">A confirmar</span><strong className="text-xl font-bold tabular-nums text-amber-700">{reconciliation.missing}</strong></div>
-        </div>
-      </header>
+    <section className="flex min-h-0 flex-1 flex-col gap-3" aria-labelledby="fleet-reference-title">
+      <ResumoConferencia
+        id="fleet-reference-title"
+        Icone={ClipboardCheck}
+        data={date}
+        titulo="Relação operacional do dia"
+        descricao={<>{reference.length} equipamentos esperados ({porGrupo}). Quem não foi lançado aparece como “A confirmar”.</>}
+        contadores={[
+          { rotulo: 'Esperados', valor: reconciliation.total },
+          { rotulo: 'Em operação', valor: reconciliation.operating, tom: 'text-emerald-700' },
+          { rotulo: 'Manutenção', valor: reconciliation.maintenance, tom: 'text-rose-700' },
+          { rotulo: 'A confirmar', valor: reconciliation.missing, tom: 'text-amber-700' },
+        ]}
+        rotuloProgresso="Preenchimento do dia"
+        progresso={progress}
+        filtro={visibility}
+        onFiltro={setVisibility}
+        rotuloFiltro="Filtrar relação operacional"
+        opcoesFiltro={[
+          ['pending', `A confirmar ${reconciliation.missing}`],
+          ['all', `Todos ${reconciliation.total}`],
+          ['informed', `Informados ${reconciliation.informed}`],
+        ]}
+        acao={<button type="button" onClick={() => setEditing(value => !value)} className={BOTAO_SECUNDARIO}>{editing ? <Save className="size-4" aria-hidden="true" /> : <Pencil className="size-4" aria-hidden="true" />} {editing ? 'Concluir edição' : 'Editar relação'}</button>}
+      />
 
-      <div className="p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="mb-1 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-slate-500"><span>Preenchimento do dia</span><span>{progress}%</span></div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[#176b4d] transition-[width] duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]" style={{ width: `${progress}%` }}/></div>
+      {editing && (
+        <section className="flex shrink-0 flex-col gap-2 rounded-2xl border border-emerald-200 bg-emerald-50/40 p-3 [--tabela-altura-max:18rem]" aria-label="Editor da relação operacional">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-[#176b4d]">Relação esperada</p>
+              <p className="text-sm text-emerald-900">Altere, remova ou inclua equipamentos esperados no dia.</p>
+            </div>
+            <button type="button" onClick={() => setReference(items => [...items, { prefix: `NOVO-${items.length + 1}`, group: 'Basculantes', equipmentType: 'Caminhão Basculante' }])} className={BOTAO_PRIMARIO}><Plus className="size-4" aria-hidden="true" />Adicionar equipamento</button>
           </div>
-          <div className="grid grid-cols-3 gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200" role="group" aria-label="Filtrar relação operacional">
-            {([
-              ['pending', `A confirmar ${reconciliation.missing}`],
-              ['all', `Todos ${reconciliation.total}`],
-              ['informed', `Informados ${reconciliation.informed}`],
-            ] as const).map(([id, label]) => (
-              <button key={id} type="button" aria-pressed={visibility === id} onClick={() => setVisibility(id)} className={`min-h-10 rounded-xl px-3 text-xs font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${visibility === id ? 'bg-white text-[#176b4d] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}>{label}</button>
-            ))}
-          </div>
-          <button type="button" onClick={() => setEditing(value => !value)} className={BOTAO_SECUNDARIO}>{editing ? <Save className="size-4" aria-hidden="true"/> : <Pencil className="size-4" aria-hidden="true"/>} {editing ? 'Concluir edição' : 'Editar relação'}</button>
-        </div>
+          <TabelaPadrao
+            titulo="Relação esperada de equipamentos"
+            linhas={linhasEditor}
+            colunas={COLUNAS_EDITOR(mudarItem)}
+            idDaLinha={item => String(item.indice)}
+            nomeDoItem={{ um: 'equipamento esperado', varios: 'equipamentos esperados' }}
+            semPaginacao
+            tituloAcoes="Tirar"
+            acoes={item => (
+              <button type="button" aria-label={`Excluir ${item.prefix}`} onClick={() => setReference(items => items.filter((_, posicao) => posicao !== item.indice))} className={`grid size-11 place-items-center rounded-lg text-rose-700 hover:bg-rose-50 md:size-9 ${FOCO}`}>
+                <Trash2 className="size-4" aria-hidden="true" />
+              </button>
+            )}
+          />
+        </section>
+      )}
 
-        {editing && <section className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/40 p-3" aria-label="Editor da relação operacional"><div className="mb-2 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-wide text-[#176b4d]">Relação esperada</p><p className="text-xs text-emerald-900">Altere, remova ou inclua equipamentos esperados no dia.</p></div><button type="button" onClick={() => setReference(items => [...items, { prefix: `NOVO-${items.length + 1}`, group: 'Basculantes', equipmentType: 'Caminhão Basculante' }])} className={BOTAO_PRIMARIO}><Plus className="size-4" aria-hidden="true"/>Adicionar equipamento</button></div><div className="max-h-72 overflow-auto rounded-xl border border-emerald-100 bg-white"><table className="w-full min-w-[620px] text-left text-xs"><thead className="sticky top-0 bg-emerald-100 text-xs uppercase tracking-wide text-emerald-900"><tr><th className="px-3 py-2">Prefixo</th><th className="px-3 py-2">Grupo</th><th className="px-3 py-2">Tipo de equipamento</th><th className="px-3 py-2 text-right">Ação</th></tr></thead><tbody className="divide-y divide-emerald-50">{reference.map((item, index) => <tr key={`${item.prefix}-${index}`}><td className="px-3 py-1.5"><input aria-label={`Prefixo ${index + 1}`} value={item.prefix} onChange={event => setReference(items => items.map((current, currentIndex) => currentIndex === index ? { ...current, prefix: event.target.value.toUpperCase() } : current))} className="min-h-10 w-28 rounded-lg border border-slate-200 px-2 font-mono text-sm"/></td><td className="px-3 py-1.5"><select aria-label={`Grupo ${index + 1}`} value={item.group} onChange={event => setReference(items => items.map((current, currentIndex) => currentIndex === index ? { ...current, group: event.target.value as OperationalFleetReferenceGroup } : current))} className="min-h-10 rounded-lg border border-slate-200 px-2 text-sm"><option value="Basculantes">Basculantes</option><option value="Apoio">Apoio</option></select></td><td className="px-3 py-1.5"><input aria-label={`Tipo ${index + 1}`} value={item.equipmentType} onChange={event => setReference(items => items.map((current, currentIndex) => currentIndex === index ? { ...current, equipmentType: event.target.value } : current))} className="min-h-10 w-full rounded-lg border border-slate-200 px-2 text-sm"/></td><td className="px-3 py-1.5 text-right"><button type="button" aria-label={`Excluir ${item.prefix}`} onClick={() => setReference(items => items.filter((_, currentIndex) => currentIndex !== index))} className={`grid size-10 place-items-center rounded-lg text-rose-700 hover:bg-rose-50 ${FOCO}`}><Trash2 className="size-4" aria-hidden="true"/></button></td></tr>)}</tbody></table></div></section>}
+      {onLancar && reconciliation.missing > 0 && visibility !== 'informed' && <p className="shrink-0 text-sm font-semibold text-[#5b6870]">Use “Lançar” na linha de quem está “A confirmar” para lançar direto.</p>}
 
-        {onLancar && reconciliation.missing > 0 && visibility !== 'informed' && <p className="mt-3 text-xs font-semibold text-slate-500">Toque em quem está “A confirmar” para lançar direto.</p>}
-
-        {reconciliation.missing === 0 && visibility === 'pending' ? (
-          <div className="mt-4 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900"><CheckCircle2 className="size-5" aria-hidden="true"/><div><strong className="block text-sm">Relação completa</strong><span className="text-xs">Os {reconciliation.total} equipamentos foram informados nesta data.</span></div></div>
-        ) : (
-          <div className="mt-4 grid gap-4">
-            {GROUPS.map(group => {
-              const groupItems = visibleItems.filter(item => item.group === group);
-              const allGroupItems = reconciliation.items.filter(item => item.group === group);
-              const informed = allGroupItems.filter(item => item.informed).length;
-              if (!groupItems.length) return null;
-              return (
-                <article key={group} className="rounded-[1.25rem] bg-[#f7f8f6] p-1.5 ring-1 ring-slate-200">
-                  <header className="mb-1.5 flex items-center justify-between gap-3 rounded-[0.9rem] bg-white px-3 py-2.5"><div className="flex items-center gap-2"><Truck className="size-4 text-[#176b4d]" aria-hidden="true"/><h3 className="text-sm font-bold uppercase tracking-wide text-slate-950">{group}</h3></div><span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-700">{informed}/{allGroupItems.length}</span></header>
-                  <ul className="grid grid-cols-2 gap-1.5 p-1 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6" data-testid="frota-equipamentos-lista">{groupItems.map(item => <FleetChip key={item.prefix} item={item} onLancar={onLancar}/>)}</ul>
-                </article>
-              );
-            })}
-          </div>
-        )}
-
-        {(reconciliation.unexpectedPrefixes.length > 0 || reconciliation.duplicatePrefixes.length > 0) && (
-          <div className="mt-4 grid gap-2 text-xs sm:grid-cols-2">
-            {reconciliation.unexpectedPrefixes.length > 0 && <details className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sky-800"><summary className={`cursor-pointer font-bold ${FOCO}`}>{reconciliation.unexpectedPrefixes.length} lançado(s) fora da relação</summary><p className="mt-1">{reconciliation.unexpectedPrefixes.join(', ')}</p></details>}
-            {reconciliation.duplicatePrefixes.length > 0 && <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-rose-800"><strong>Prefixos duplicados no dia:</strong> {reconciliation.duplicatePrefixes.join(', ')}</p>}
-          </div>
-        )}
+      <div ref={escopo} className="flex min-h-[16rem] flex-1 flex-col">
+        <TabelaPadrao
+          titulo="Equipamentos esperados no dia"
+          testId="frota-equipamentos-lista"
+          linhas={visibleItems}
+          colunas={COLUNAS}
+          idDaLinha={item => `${item.group}-${item.prefix}`}
+          nomeDoItem={{ um: 'equipamento', varios: 'equipamentos' }}
+          acoes={onLancar ? item => (!item.informed
+            ? <button type="button" onClick={() => onLancar({ prefixo: item.prefix })} aria-label={`Lançar ${item.prefix}`} className={`${BOTAO_PRIMARIO} min-h-11 px-3 md:min-h-8`}><Plus className="size-4" aria-hidden="true" />Lançar</button>
+            : null) : undefined}
+          tituloAcoes="Lançar"
+          vazio={reconciliation.missing === 0 && visibility === 'pending' ? (
+            <div className="m-4 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900"><CheckCircle2 className="size-5" aria-hidden="true" /><div><strong className="block text-sm">Relação completa</strong><span className="text-sm">Os {reconciliation.total} equipamentos foram informados nesta data.</span></div></div>
+          ) : 'Nenhum equipamento nesta lista.'}
+        />
       </div>
+
+      {(reconciliation.unexpectedPrefixes.length > 0 || reconciliation.duplicatePrefixes.length > 0) && (
+        <div className="grid shrink-0 gap-2 sm:grid-cols-2">
+          {reconciliation.unexpectedPrefixes.length > 0 && <AvisoRecolhivel tom="border-sky-200 bg-sky-50 text-sky-800" titulo={`${reconciliation.unexpectedPrefixes.length} lançado(s) fora da relação`}>{reconciliation.unexpectedPrefixes.join(', ')}</AvisoRecolhivel>}
+          {reconciliation.duplicatePrefixes.length > 0 && <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"><strong>Prefixos duplicados no dia:</strong> {reconciliation.duplicatePrefixes.join(', ')}</p>}
+        </div>
+      )}
     </section>
   );
 }

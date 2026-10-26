@@ -64,6 +64,8 @@ import ImportacaoSge from './fleet/ImportacaoSge';
 import { ConfirmDialog, CountUp, Modal, PageHeader } from '../shared/ui';
 import { AbasDaTela, idDaAba, type AbaDaTela } from '../shared/ui/AbasDaTela';
 import { TelaCheia } from '../shared/ui/TelaCheia';
+import { TabelaPadrao, type ColunaTabela } from '../shared/ui/TabelaPadrao';
+import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 import FleetDailyReference from './fleet/FleetDailyReference';
 import FleetDriverReference from './fleet/FleetDriverReference';
 import { repetidosPorDia } from '../fleet/duplicidadeDiaria';
@@ -124,6 +126,65 @@ const ATALHOS: ReadonlyArray<{ teclas: string; oQueFaz: string }> = [
 const dataLonga = (dia: string) => /^\d{4}-\d{2}-\d{2}$/.test(dia)
   ? new Date(`${dia}T12:00:00Z`).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
   : dia;
+
+interface FechamentoDoDia {
+  date: string;
+  total: number;
+  operating: number;
+  maintenance: number;
+  available: number;
+  pending: number;
+  repeated: string[];
+}
+
+const disponibilidadeDo = (dia: FechamentoDoDia) => (dia.total ? Math.round(((dia.operating + dia.available) / dia.total) * 100) : null);
+
+const numeroOuTraco = (valor: number) => (valor ? valor.toLocaleString('pt-BR') : '—');
+
+const COLUNAS_HISTORICO: readonly ColunaTabela<FechamentoDoDia>[] = [
+  {
+    chave: 'date',
+    titulo: 'Dia',
+    larguraMinima: 150,
+    valorOrdenacao: dia => dia.date,
+    render: dia => <span className="font-bold text-slate-900 first-letter:uppercase">{new Date(`${dia.date}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>,
+  },
+  { chave: 'total', titulo: 'Lançadas', alinhamento: 'direita', valorOrdenacao: dia => dia.total, render: dia => dia.total.toLocaleString('pt-BR') },
+  { chave: 'operating', titulo: 'Em operação', alinhamento: 'direita', valorOrdenacao: dia => dia.operating, render: dia => <span className="font-semibold text-[#176b4d]">{numeroOuTraco(dia.operating)}</span> },
+  { chave: 'maintenance', titulo: 'Manutenção', alinhamento: 'direita', valorOrdenacao: dia => dia.maintenance, render: dia => <span className={dia.maintenance ? 'font-semibold text-rose-700' : ''}>{numeroOuTraco(dia.maintenance)}</span> },
+  { chave: 'available', titulo: 'À disposição', alinhamento: 'direita', valorOrdenacao: dia => dia.available, render: dia => numeroOuTraco(dia.available) },
+  { chave: 'pending', titulo: 'A confirmar', alinhamento: 'direita', valorOrdenacao: dia => dia.pending, render: dia => <span className={dia.pending ? 'font-semibold text-[#c2410c]' : ''}>{numeroOuTraco(dia.pending)}</span> },
+  {
+    chave: 'repeated',
+    titulo: 'Repetidos',
+    larguraMinima: 140,
+    valorOrdenacao: dia => dia.repeated.length,
+    dica: dia => (dia.repeated.length ? `Lançados mais de uma vez: ${dia.repeated.join(', ')}` : undefined),
+    render: dia => (dia.repeated.length ? <span className="font-semibold text-rose-700">{dia.repeated.length}: {dia.repeated.join(', ')}</span> : '—'),
+  },
+  {
+    chave: 'availability',
+    titulo: 'Disponível',
+    alinhamento: 'direita',
+    valorOrdenacao: disponibilidadeDo,
+    render: dia => {
+      const valor = disponibilidadeDo(dia);
+      if (valor === null) return '—';
+      return (
+        <span className="inline-flex items-center justify-end gap-2">
+          <span className="block h-1.5 w-14 overflow-hidden rounded-full bg-slate-100" aria-hidden="true"><span className="block h-full rounded-full bg-[#176b4d]" style={{ width: `${valor}%` }} /></span>
+          <span className="font-bold text-slate-900">{valor}%</span>
+        </span>
+      );
+    },
+  },
+];
+
+const COLUNAS_MOTORISTAS: readonly ColunaTabela<Funcionario>[] = [
+  { chave: 'matricula', titulo: 'Matrícula', valorOrdenacao: driver => driver.matricula || '', render: driver => <span className="font-mono font-bold text-slate-700">{driver.matricula || '—'}</span> },
+  { chave: 'nome', titulo: 'Nome', larguraMinima: 200, valorOrdenacao: driver => driver.nome, render: driver => <span className="font-semibold text-slate-950">{driver.nome}</span> },
+  { chave: 'cargo', titulo: 'Função', larguraMinima: 180, valorOrdenacao: driver => driver.cargo, render: driver => driver.cargo || '—' },
+];
 
 const asText = (value: unknown): string => String(value ?? '').trim();
 
@@ -276,16 +337,8 @@ export default function ControleEquipamentosDiarioTab({
       { autoAlpha: 0, y: 10 },
       { autoAlpha: 1, y: 0, duration: 0.32, ease: 'power2.out', clearProps: 'transform,visibility,opacity' },
     );
-    // Nas abas de conferência os cartões entram em cascata curta: dá para ver
-    // que a lista mudou sem a tela piscar.
-    const chips = view.querySelectorAll('[data-testid$="-lista"] > li');
-    if (chips.length) {
-      gsap.fromTo(
-        chips,
-        { autoAlpha: 0, y: 8 },
-        { autoAlpha: 1, y: 0, duration: 0.28, stagger: 0.012, ease: 'power2.out', clearProps: 'transform,visibility,opacity' },
-      );
-    }
+    // As linhas das tabelas entram em cascata curta pelo useEntradaDeLista
+    // de cada subtela.
   }, { scope: pageRef, dependencies: [activeView] });
   const filteredOperationalDrivers = useMemo(() => {
     const query = driverSearch.trim().toLocaleUpperCase('pt-BR');
@@ -316,7 +369,9 @@ export default function ControleEquipamentosDiarioTab({
       .map(([nome, total]) => ({ nome, total }))
       .sort((left, right) => right.total - left.total || left.nome.localeCompare(right.nome, 'pt-BR'));
   }, [registros, filters.date]);
-  const historyByDate = useMemo(() => {
+  const escopoHistorico = useEntradaDeLista<HTMLDivElement>([activeView]);
+  const escopoMotoristas = useEntradaDeLista<HTMLDivElement>([activeView, driverSearch]);
+  const historyByDate = useMemo((): FechamentoDoDia[] => {
     const repetidos = repetidosPorDia(registros);
     const dates = [...new Set(registros.map(record => record.data).filter(Boolean))]
       .sort((left, right) => right.localeCompare(left));
@@ -603,7 +658,7 @@ export default function ControleEquipamentosDiarioTab({
   );
   return (
     <TelaCheia ref={pageRef} id="controle-equipamentos-tab" rotulo="Controle de Frotas" className="text-slate-800"
-      idAbaAtiva={idDaAba('frota', activeView)} idDados="frota-dados" chaveRolagem={activeView} longa={activeView !== 'today'}
+      idAbaAtiva={idDaAba('frota', activeView)} idDados="frota-dados" chaveRolagem={activeView} longa={activeView === 'quadro'}
       cabecalho={<div data-fleet-enter>
         <PageHeader
           eyebrow="Frota"
@@ -690,96 +745,82 @@ export default function ControleEquipamentosDiarioTab({
       {activeView === 'quadro' && quadro && <div data-fleet-view>
         <React.Suspense fallback={<p className="p-8 text-center text-sm text-slate-500">Abrindo o quadro…</p>}>{quadro(filters.date, () => setActiveView('today'))}</React.Suspense>
       </div>}
-      {activeView === 'equipamentos' && <div data-fleet-view>
+      {activeView === 'equipamentos' && <div data-fleet-view className="flex min-h-0 flex-1 flex-col">
         <FleetDailyReference records={registros} date={filters.date} onLancar={openNewRecord} onRelacaoChange={relacaoMudou}/>
       </div>}
-      {activeView === 'operadores' && <div data-fleet-view>
+      {activeView === 'operadores' && <div data-fleet-view className="flex min-h-0 flex-1 flex-col">
         <FleetDriverReference records={registros} date={filters.date} drivers={operationalDrivers} onAddDrivers={onAddOperationalDrivers} onLancar={openNewRecord} onRelacaoChange={relacaoMudou}/>
       </div>}
       {activeView === 'history' && (
-        <section data-fleet-view className={`${CARTAO} overflow-hidden`} aria-labelledby="frota-historico-titulo">
-          <header className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <section data-fleet-view className="flex min-h-0 flex-1 flex-col gap-3" aria-labelledby="frota-historico-titulo">
+          <header className={`${CARTAO} flex shrink-0 flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4`}>
             <div>
               <h2 id="frota-historico-titulo" className="text-lg font-bold text-slate-950">Fechamento por dia</h2>
-              <p className="text-sm text-slate-500">Quantas frotas trabalharam, pararam ou ficaram sem informar em cada dia. Toque no dia para abrir.</p>
+              <p className="text-sm text-[#5b6870]">Quantas frotas trabalharam, pararam ou ficaram sem informar em cada dia. Toque no dia para abrir.</p>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:flex">
               <button type="button" disabled={Boolean(exporting) || !weeklyReport.records.length} onClick={() => void handleWeeklyPdf()} className={BOTAO_SECUNDARIO}><Printer className="size-4" aria-hidden="true"/>{exporting === 'weekly-pdf' ? 'Gerando…' : 'Semana em PDF'}</button>
               <button type="button" disabled={Boolean(exporting) || !weeklyReport.records.length} onClick={() => void handleWeeklyExcel()} className={BOTAO_SECUNDARIO}><FileSpreadsheet className="size-4" aria-hidden="true"/>{exporting === 'weekly-excel' ? 'Gerando…' : 'Semana em Excel'}</button>
             </div>
           </header>
-          <ul className="divide-y divide-slate-100">
-            {historyByDate.map(item => {
-              const disponibilidade = item.total ? Math.round(((item.operating + item.available) / item.total) * 100) : 0;
-              return (
-                <li key={item.date}>
-                  <button type="button" onClick={() => { updateFilter('date', item.date); setActiveView('today'); }} className={`grid w-full gap-2 px-4 py-3 text-left transition hover:bg-emerald-50/40 sm:grid-cols-[11rem_minmax(0,1fr)_7rem] sm:items-center ${FOCO}`}>
-                    <span>
-                      <span className="block font-bold text-slate-900 first-letter:uppercase">{new Date(`${item.date}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
-                      <span className="text-xs text-slate-500">{item.total} frota(s) lançada(s)</span>
-                    </span>
-                    <span className="flex flex-wrap gap-1.5 text-xs font-bold">
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[#176b4d] ring-1 ring-inset ring-emerald-200">{item.operating} operando</span>
-                      {item.maintenance > 0 && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700 ring-1 ring-inset ring-rose-200">{item.maintenance} manutenção</span>}
-                      {item.available > 0 && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-800 ring-1 ring-inset ring-amber-200">{item.available} à disposição</span>}
-                      {item.pending > 0 && <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[#c2410c] ring-1 ring-inset ring-orange-200">{item.pending} a confirmar</span>}
-                      {item.repeated.length > 0 && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700 ring-1 ring-inset ring-rose-200" title={`Lançados mais de uma vez: ${item.repeated.join(', ')}`}>{item.repeated.length} repetido(s): {item.repeated.slice(0, 3).join(', ')}{item.repeated.length > 3 ? '…' : ''}</span>}
-                    </span>
-                    <span className="sm:text-right">
-                      <span className="block text-lg font-bold tabular-nums text-slate-900">{item.total ? `${disponibilidade}%` : '—'}</span>
-                      <span className="block h-1.5 overflow-hidden rounded-full bg-slate-100"><span className="block h-full rounded-full bg-[#176b4d]" style={{ width: `${disponibilidade}%` }} /></span>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          {!historyByDate.length && <p className="p-10 text-center text-sm text-slate-500">Nenhum dia lançado ainda.</p>}
+          <div ref={escopoHistorico} className="flex min-h-[16rem] flex-1 flex-col">
+            <TabelaPadrao
+              titulo="Dias lançados"
+              testId="frota-historico"
+              linhas={historyByDate}
+              colunas={COLUNAS_HISTORICO}
+              idDaLinha={item => item.date}
+              nomeDoItem={{ um: 'dia', varios: 'dias' }}
+              ordenacaoInicial={{ chave: 'date', direcao: 'desc' }}
+              onAbrirLinha={item => { updateFilter('date', item.date); setActiveView('today'); }}
+              vazio="Nenhum dia lançado ainda."
+            />
+          </div>
         </section>
       )}
-      {activeView === 'registry' && <section data-fleet-view className="grid gap-3 xl:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
-        <article data-fleet-lift className={`${CARTAO} p-4`}>
+      {activeView === 'registry' && <section data-fleet-view className="flex min-h-0 flex-1 flex-col gap-3 xl:grid xl:grid-cols-[minmax(260px,0.6fr)_minmax(0,1.4fr)] xl:grid-rows-[minmax(0,1fr)]">
+        <article data-fleet-lift className={`${CARTAO} shrink-0 self-start p-4`}>
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#176b4d]">Frotas cadastradas</p>
           <CountUp value={equipamentos.length} className="mt-1 block text-3xl font-bold tabular-nums text-slate-950" />
-          <p className="mt-1 text-sm text-slate-500">Equipamentos que podem ser escolhidos no lançamento.</p>
+          <p className="mt-1 text-sm text-[#5b6870]">Equipamentos que podem ser escolhidos no lançamento.</p>
           <div className="mt-4 flex flex-wrap gap-1.5">{equipmentTypes.slice(0, 8).map(type => <span key={type} className="rounded-full bg-[#f7f8f6] px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-slate-200">{type}</span>)}</div>
           {onOpenEquipmentRegistration && <button type="button" onClick={onOpenEquipmentRegistration} className={`${BOTAO_SECUNDARIO} mt-4 w-full`}><Plus className="size-4" aria-hidden="true"/>Novo equipamento</button>}
         </article>
-        <article data-fleet-enter className={`${CARTAO} overflow-hidden`}>
-          <header className="border-b border-slate-100 p-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
+          <header className={`${CARTAO} shrink-0 p-3 sm:p-4`}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="text-lg font-bold text-slate-950">Motoristas e operadores <span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 font-mono text-sm text-slate-700">{operationalDrivers.length}</span></h2>
-                <p className="mt-1 text-sm text-slate-500">Lista usada no lançamento da frota.</p>
+                <p className="mt-1 text-sm text-[#5b6870]">Lista usada no lançamento da frota.</p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <label className="relative block sm:w-72">
                   <span className="sr-only">Buscar motorista</span>
                   <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true"/>
-                  <input value={driverSearch} onChange={event => setDriverSearch(event.target.value)} placeholder="Matrícula, nome ou função" className={`${CAMPO} pl-9`}/>
+                  <input type="search" value={driverSearch} onChange={event => setDriverSearch(event.target.value)} placeholder="Matrícula, nome ou função" className={`${CAMPO} pl-9`} data-testid="frota-motoristas-busca"/>
                 </label>
                 <button type="button" onClick={() => setDriverEditor({ id: `motorista-operacional-${Date.now()}`, nome: '', matricula: '', cargo: 'OPERADOR DE CAMINHAO BASCULANTE', empresaId: empresas[0]?.id || '', telefone: '', ativo: true, status: 'ATIVO', area: 'FROTAS OPERACIONAIS', divisao: 'OPERAÇÃO' })} className={BOTAO_PRIMARIO}><Plus className="size-4" aria-hidden="true"/>Novo motorista</button>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-1.5">{Object.entries(driverRoleCounts).sort((a, b) => b[1] - a[1]).map(([role, count]) => <span key={role} className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-900 ring-1 ring-inset ring-emerald-200">{count} · {role}</span>)}</div>
           </header>
-          <ul className="max-h-[430px] divide-y divide-slate-100 overflow-auto">
-            {filteredOperationalDrivers.map(driver => (
-              <li key={driver.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 hover:bg-emerald-50/40">
-                <span className="w-16 shrink-0 font-mono text-sm font-bold text-slate-700">{driver.matricula}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-semibold text-slate-950">{driver.nome}</span>
-                  <span className="block truncate text-xs text-slate-500">{driver.cargo}</span>
-                </span>
-                <span className="flex gap-1">
-                  <button type="button" onClick={() => setDriverEditor(driver)} aria-label={`Editar ${driver.nome}`} className={`grid size-10 place-items-center rounded-xl border border-slate-200 text-slate-600 hover:border-emerald-400 hover:text-[#176b4d] ${FOCO}`}><Pencil className="size-4" aria-hidden="true"/></button>
-                  {onDeleteOperationalDriver && <button type="button" onClick={() => setDriverExclusao(driver)} aria-label={`Excluir ${driver.nome}`} className={`grid size-10 place-items-center rounded-xl border border-slate-200 text-slate-500 hover:border-rose-300 hover:text-rose-700 ${FOCO}`}><Trash2 className="size-4" aria-hidden="true"/></button>}
-                </span>
-              </li>
-            ))}
-          </ul>
-          {!filteredOperationalDrivers.length && <p className="p-8 text-center text-sm text-slate-500">Nenhum motorista encontrado para “{driverSearch}”.</p>}
-        </article>
+          <div ref={escopoMotoristas} className="flex min-h-[16rem] flex-1 flex-col">
+            <TabelaPadrao
+              titulo="Motoristas e operadores"
+              testId="frota-motoristas"
+              linhas={filteredOperationalDrivers}
+              colunas={COLUNAS_MOTORISTAS}
+              idDaLinha={driver => driver.id}
+              nomeDoItem={{ um: 'motorista', varios: 'motoristas' }}
+              ordenacaoInicial={{ chave: 'nome', direcao: 'asc' }}
+              vazio={driverSearch ? `Nenhum motorista encontrado para “${driverSearch}”.` : 'Nenhum motorista cadastrado.'}
+              acoes={driver => <>
+                <button type="button" onClick={() => setDriverEditor(driver)} aria-label={`Editar ${driver.nome}`} title="Editar" className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-600 hover:border-emerald-400 hover:text-[#176b4d] md:size-8 md:min-h-0 md:min-w-0 md:px-0 ${FOCO}`}><Pencil className="size-4" aria-hidden="true"/><span className="md:hidden">Editar</span></button>
+                {onDeleteOperationalDriver && <button type="button" onClick={() => setDriverExclusao(driver)} aria-label={`Excluir ${driver.nome}`} title="Excluir" className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-600 hover:border-rose-300 hover:text-rose-700 md:size-8 md:min-h-0 md:min-w-0 md:px-0 ${FOCO}`}><Trash2 className="size-4" aria-hidden="true"/><span className="md:hidden">Excluir</span></button>}
+              </>}
+            />
+          </div>
+        </div>
       </section>}
       <Modal
         open={Boolean(driverEditor)}

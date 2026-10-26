@@ -215,3 +215,4 @@ import './relatorioDiesel.test';
 import './edicoesLocais.test';
 import './moldeTelaCheia.test';
 import './guardaDeMovimento.test';
+import './frotaTabelaPadrao.test';
