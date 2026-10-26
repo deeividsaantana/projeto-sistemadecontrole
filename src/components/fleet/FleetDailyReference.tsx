@@ -151,7 +151,6 @@ export default function FleetDailyReference({ records, date, onLancar, onRelacao
         </section>
       )}
 
-      {onLancar && reconciliation.missing > 0 && visibility !== 'informed' && <p className="shrink-0 text-sm font-semibold text-[#5b6870]">Use “Lançar” na linha de quem está “A confirmar” para lançar direto.</p>}
 
       <div ref={escopo} className="flex min-h-[16rem] flex-1 flex-col">
         <TabelaPadrao

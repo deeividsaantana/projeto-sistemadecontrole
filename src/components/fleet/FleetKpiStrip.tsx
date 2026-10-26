@@ -42,8 +42,10 @@ export default function FleetKpiStrip({ metrics, status, onPick }: Props) {
         const conteudo = (
           <>
             <span className="flex items-start justify-between gap-2">
-              <span className="min-w-0 text-xs font-bold uppercase leading-tight tracking-[0.04em] text-slate-500 [hyphens:none]">{item.titulo}</span>
-              <span className={`grid size-7 shrink-0 place-items-center rounded-full ${item.tom}`}><item.Icone className="size-3.5" aria-hidden="true" /></span>
+              {/* Rótulo numa linha só: no cartão estreito ele encurta com
+                  reticências em vez de quebrar no meio ("MANUTENÇ/ÃO"). */}
+              <span className="min-w-0 truncate whitespace-nowrap text-xs font-bold uppercase leading-tight tracking-[0.04em] text-slate-500" title={item.titulo}>{item.titulo}</span>
+              <span className={`grid size-6 shrink-0 place-items-center rounded-full max-2xl:hidden ${item.tom}`}><item.Icone className="size-3.5" aria-hidden="true" /></span>
             </span>
             {/* No computador o número e o detalhe dividem a linha: a faixa
                 fica baixa e sobra altura para a tabela na TelaCheia. */}
@@ -51,11 +53,11 @@ export default function FleetKpiStrip({ metrics, status, onPick }: Props) {
               {item.texto !== undefined
                 ? <span className="mt-1 block shrink-0 text-2xl font-bold leading-none tabular-nums text-slate-900">{item.texto}</span>
                 : <CountUp value={item.valor} suffix={item.sufixo} className="mt-1 block shrink-0 text-2xl font-bold leading-none tabular-nums text-slate-900" />}
-              <span className="mt-1 block min-w-0 truncate text-xs text-slate-500" title={item.detalhe}>{item.detalhe}</span>
+              <span className="mt-1 block min-w-0 truncate text-xs text-slate-500 max-sm:sr-only" title={item.detalhe}>{item.detalhe}</span>
             </span>
           </>
         );
-        const classe = `${CARTAO} flex min-w-0 flex-col gap-1 p-3 text-left transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${ativo ? 'border-[#176b4d] ring-2 ring-[#176b4d]/15' : ''}`;
+        const classe = `${CARTAO} flex min-w-0 flex-col gap-0.5 px-3 py-2 text-left transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${ativo ? 'border-[#176b4d] ring-2 ring-[#176b4d]/15' : ''}`;
         return item.status !== undefined ? (
           <button
             key={item.id}
