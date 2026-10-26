@@ -217,3 +217,4 @@ import './moldeTelaCheia.test';
 import './jazidaTela.test';
 import './cadastrosEstacasMolde.test';
 import './guardaDeMovimento.test';
+import './frotaTabelaPadrao.test';
