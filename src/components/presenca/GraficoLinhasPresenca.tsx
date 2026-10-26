@@ -129,9 +129,9 @@ export default function GraficoLinhasPresenca({ pontos }: Props) {
             <caption className="sr-only">Presença por dia</caption>
             <thead className="sticky top-0 bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-3 py-2">Dia</th>
-                {SERIES.map(serie => <th key={serie.chave} className="px-3 py-2 text-right">{serie.nome}</th>)}
-                <th className="px-3 py-2 text-right">Presença</th>
+                <th scope="col" className="px-3 py-2">Dia</th>
+                {SERIES.map(serie => <th key={serie.chave} scope="col" className="px-3 py-2 text-right">{serie.nome}</th>)}
+                <th scope="col" className="px-3 py-2 text-right">Presença</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

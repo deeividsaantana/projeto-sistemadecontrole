@@ -470,6 +470,20 @@ const equipesPainel = [...fx.equipesPresenca,
     ...fx.grupo, id: `painel-extra-${i}`, nome: `Equipe ${nome}`, frenteServico: `Ramo ${(i + 3) * 100}`, token: `painel-extra-${i}`,
   }))];
 
+// Correções já feitas, para a subtela Histórico mostrar a tabela no preview.
+const historicoPresencasPreview = fx.presencasHistorico.slice(0, 4).map((registro, indice) => ({
+  id: `hist-${indice}`,
+  presencaId: registro.id,
+  grupoId: registro.grupoId,
+  funcionarioId: registro.funcionarioId,
+  data: registro.data,
+  editadoPor: indice % 2 ? 'Deivid Santana' : 'Ana Paula (RH)',
+  editadoEm: `${registro.data}T1${indice}:2${indice}:00-03:00`,
+  motivo: ['Atestado entregue no escritório', 'Chegou depois do envio', 'Engano no toque', 'Férias aprovadas'][indice],
+  valorAnterior: 'Ausente',
+  valorNovo: ['Atestado', 'Atraso', 'Presente', 'Férias'][indice],
+}));
+
 // Presença do painel com estado, para inativar, desfazer e reativar no preview.
 function PresencaAdminViva() {
   const [lista, setLista] = React.useState(() => [...fx.presencasHistorico]);
@@ -483,7 +497,7 @@ function PresencaAdminViva() {
       gruposEquipe={equipes}
       presencasLink={somenteAtivos(lista)}
       presencasInativas={lista.filter(item => item.inativoEm)}
-      historicoPresencas={[]}
+      historicoPresencas={historicoPresencasPreview}
       onSaveGrupoEquipe={noop}
       onDeleteGrupoEquipe={id => setEquipes(atual => atual.filter(item => item.id !== id))}
       onUpdatePresencaLink={noop}
@@ -825,7 +839,9 @@ const previewQueryClient = new QueryClient();
 // Os links públicos rodam fora do ERP (PublicLinksApp), sem o
 // #main-tab-viewport e os estilos de formulário dele. A pesquisa também fica
 // fora dele no App.
-const isPublicScreen = key === 'material-link' || key === 'pesquisa';
+// O link de presença também: no app ele tem a página só para ele, com uma
+// <main> só (auditoria de 21/10/2026, M2).
+const isPublicScreen = ['material-link', 'pesquisa', 'presenca', 'presenca-fluxo', 'presenca-enviada'].includes(key);
 
 createRoot(document.getElementById('app-root')!).render(
   <QueryClientProvider client={previewQueryClient}>

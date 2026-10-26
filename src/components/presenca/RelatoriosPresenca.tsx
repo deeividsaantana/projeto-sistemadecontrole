@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { ArrowDownUp, Download, FileSpreadsheet, Search } from 'lucide-react';
+import { Download, FileSpreadsheet, Search } from 'lucide-react';
 import type { Empresa, Funcionario, PresencaApontamento } from '../../types';
 import { PeriodFilter, buildPeriod, type PeriodValue } from '../../shared/ui';
+import { TabelaPadrao, type ColunaTabela } from '../../shared/ui/TabelaPadrao';
 import { normalizeComparable } from '../../utils/canonicalIdentity';
 import {
   pessoasDia,
@@ -24,25 +25,17 @@ import {
 } from '../../utils/excelCorporate';
 import GraficoPizza from '../materiais/GraficoPizza';
 import GraficoLinhasPresenca from './GraficoLinhasPresenca';
-import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, reduzMovimento } from '../cadastros/estilos';
+import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, reduzMovimento } from '../cadastros/estilos';
 
-const POR_PAGINA = 25;
 const dataBr = (iso: string) => iso.split('-').reverse().join('/');
 const pessoas = (valor: number) => `${valor.toLocaleString('pt-BR')} ${valor === 1 ? 'pessoa-dia' : 'pessoas-dia'}`;
 
-type Ordem = 'faltas' | 'taxa' | 'nome' | 'dias';
-const ORDENS: Array<{ id: Ordem; rotulo: string }> = [
-  { id: 'faltas', rotulo: 'Mais faltas' },
-  { id: 'taxa', rotulo: 'Menor presença' },
-  { id: 'dias', rotulo: 'Mais dias' },
-  { id: 'nome', rotulo: 'Nome (A-Z)' },
-];
+// A lista abre com quem mais falta em cima; os títulos da tabela ordenam por
+// nome, dias, faltas ou presença.
+const porFaltas = (linhas: LinhaColaborador[]) => [...linhas].sort((a, b) => b.faltas - a.faltas || (a.taxa ?? 101) - (b.taxa ?? 101));
 
-const ordenar = (linhas: LinhaColaborador[], ordem: Ordem) => [...linhas].sort((a, b) => {
-  if (ordem === 'nome') return a.nome.localeCompare(b.nome, 'pt-BR');
-  if (ordem === 'dias') return b.dias - a.dias || a.nome.localeCompare(b.nome, 'pt-BR');
-  if (ordem === 'taxa') return (a.taxa ?? 101) - (b.taxa ?? 101) || b.faltas - a.faltas;
-  return b.faltas - a.faltas || (a.taxa ?? 101) - (b.taxa ?? 101);
+const numero = (chave: keyof LinhaColaborador & string, titulo: string): ColunaTabela<LinhaColaborador> => ({
+  chave, titulo, alinhamento: 'direita', valorOrdenacao: item => item[chave] as number, render: item => item[chave] as number,
 });
 
 const tomDaTaxa = (taxa: number | null) => {
@@ -78,8 +71,6 @@ export default function RelatoriosPresenca({ registros, funcionarios, empresas, 
   const raiz = useRef<HTMLDivElement>(null);
   const [periodo, setPeriodo] = useState<PeriodValue>(() => buildPeriod('mes'));
   const [busca, setBusca] = useState('');
-  const [ordem, setOrdem] = useState<Ordem>('faltas');
-  const [quantos, setQuantos] = useState(POR_PAGINA);
   const [exportando, setExportando] = useState(false);
 
   const linhas = useMemo(() => pessoasDia(registros, periodo.from, periodo.to), [periodo.from, periodo.to, registros]);
@@ -90,10 +81,48 @@ export default function RelatoriosPresenca({ registros, funcionarios, empresas, 
   const equipes = useMemo(() => relatorioPorEquipe(linhas), [linhas]);
   const colaboradores = useMemo(() => relatorioPorColaborador(linhas, funcionarios), [funcionarios, linhas]);
   const termo = normalizeComparable(busca.trim());
-  const colaboradoresVisiveis = useMemo(() => ordenar(
+  const colaboradoresVisiveis = useMemo(() => porFaltas(
     colaboradores.filter(item => !termo || normalizeComparable(`${item.nome} ${item.matricula} ${item.funcao} ${item.equipe}`).includes(termo)),
-    ordem,
-  ), [colaboradores, ordem, termo]);
+  ), [colaboradores, termo]);
+
+  const colunasPessoas: ColunaTabela<LinhaColaborador>[] = [
+    {
+      chave: 'nome',
+      titulo: 'Colaborador',
+      larguraMinima: 220,
+      valorOrdenacao: item => item.nome,
+      dica: item => [item.nome, item.matricula, item.funcao].filter(Boolean).join(' · '),
+      render: item => (
+        <>
+          <span className="font-semibold text-slate-900">{item.nome}</span>
+          {(item.matricula || item.funcao) && <span className="text-[#5b6870]"> · {[item.matricula, item.funcao].filter(Boolean).join(' · ')}</span>}
+        </>
+      ),
+    },
+    { chave: 'equipe', titulo: 'Equipe', larguraMinima: 160, valorOrdenacao: item => item.equipe, render: item => item.equipe || '—' },
+    numero('dias', 'Dias'),
+    numero('emCampo', 'Em campo'),
+    numero('atrasos', 'Atrasos'),
+    {
+      ...numero('faltas', 'Faltas'),
+      render: item => <span className={item.faltas ? 'font-bold text-rose-700' : undefined}>{item.faltas}</span>,
+    },
+    numero('justificadas', 'Justificadas'),
+    {
+      chave: 'taxa',
+      titulo: 'Presença',
+      alinhamento: 'direita',
+      larguraMinima: 110,
+      valorOrdenacao: item => item.taxa,
+      dica: item => (item.taxa === null ? 'Sem dia esperado no período' : `${item.taxa}% de presença`),
+      render: item => (
+        <span className="inline-flex items-center justify-end gap-2">
+          <span className="hidden h-1.5 w-12 overflow-hidden rounded-full bg-slate-100 xl:block" aria-hidden="true"><span className={`block h-full rounded-full ${barraDaTaxa(item.taxa)}`} style={{ width: `${item.taxa ?? 0}%` }} /></span>
+          <strong className={`tabular-nums ${tomDaTaxa(item.taxa)}`}>{item.taxa === null ? '—' : `${item.taxa}%`}</strong>
+        </span>
+      ),
+    },
+  ];
 
   useGSAP(() => {
     const escopo = raiz.current;
@@ -208,7 +237,7 @@ export default function RelatoriosPresenca({ registros, funcionarios, empresas, 
   return (
     <div ref={raiz} className="space-y-4" data-testid="presenca-relatorios">
       <div data-presenca-reveal className={`${CARTAO} flex flex-wrap items-center justify-between gap-3 p-3`}>
-        <PeriodFilter value={periodo} onChange={valor => { setPeriodo(valor); setQuantos(POR_PAGINA); }} />
+        <PeriodFilter value={periodo} onChange={setPeriodo} />
         <div className="flex gap-2">
           <button type="button" onClick={() => void exportarExcel()} disabled={exportando || !linhas.length} className={BOTAO_PRIMARIO}>
             <FileSpreadsheet className="size-4" aria-hidden="true" /> {exportando ? 'Gerando...' : 'Baixar Excel'}
@@ -286,95 +315,30 @@ export default function RelatoriosPresenca({ registros, funcionarios, empresas, 
         </div>
       </div>
 
-      <article data-presenca-reveal className={`${CARTAO} min-w-0 overflow-hidden`} aria-labelledby="presenca-por-pessoa">
+      <article data-presenca-reveal className={`${CARTAO} flex min-w-0 flex-col overflow-hidden [--tabela-altura-max:32rem]`} aria-labelledby="presenca-por-pessoa">
         <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 p-4">
           <div>
             <h2 id="presenca-por-pessoa" className="text-base font-bold text-slate-900">Presença por pessoa</h2>
-            <p className="text-sm text-slate-500">{colaboradoresVisiveis.length.toLocaleString('pt-BR')} {colaboradoresVisiveis.length === 1 ? 'pessoa' : 'pessoas'} · toque numa linha para ver os registros</p>
+            <p className="text-sm text-[#5b6870]">Quem mais falta aparece primeiro. Toque numa pessoa para ver os registros dela.</p>
           </div>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-            <label className="relative sm:w-64">
-              <span className="sr-only">Buscar pessoa no relatório</span>
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-              <input type="search" value={busca} onChange={evento => { setBusca(evento.target.value); setQuantos(POR_PAGINA); }} placeholder="Nome, matrícula ou função" className={`${CAMPO} pl-9`} />
-            </label>
-            <label className="relative sm:w-48">
-              <span className="sr-only">Ordenar</span>
-              <ArrowDownUp className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-              <select value={ordem} onChange={evento => setOrdem(evento.target.value as Ordem)} className={`${CAMPO} pl-9`}>
-                {ORDENS.map(item => <option key={item.id} value={item.id}>{item.rotulo}</option>)}
-              </select>
-            </label>
-          </div>
+          <label className="relative w-full sm:w-72">
+            <span className="sr-only">Buscar pessoa no relatório</span>
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#5b6870]" aria-hidden="true" />
+            <input type="search" value={busca} onChange={evento => setBusca(evento.target.value)} placeholder="Nome, matrícula ou função" className={`${CAMPO} pl-9`} />
+          </label>
         </div>
-
-        {colaboradoresVisiveis.length === 0 ? (
-          <p className="p-10 text-center text-sm text-slate-500">{linhas.length ? 'Ninguém com esse nome no período.' : 'Nenhum envio de presença neste período.'}</p>
-        ) : (
-          <>
-            {/* Celular: cartões. Computador: tabela. */}
-            <ul className="divide-y divide-slate-100 md:hidden">
-              {colaboradoresVisiveis.slice(0, quantos).map(item => (
-                <li key={item.chave}>
-                  <button type="button" onClick={() => onVerPessoa(item.nome)} className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 ${FOCO}`}>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-slate-900">{item.nome}</p>
-                      <p className="truncate text-xs text-slate-500">{[item.funcao, item.equipe].filter(Boolean).join(' · ')}</p>
-                      <p className="mt-1 text-xs tabular-nums text-slate-600">{item.emCampo} em campo · <span className={item.faltas ? 'font-bold text-rose-700' : ''}>{item.faltas} {item.faltas === 1 ? 'falta' : 'faltas'}</span> · {item.justificadas} justif.</p>
-                    </div>
-                    <strong className={`shrink-0 text-lg font-black tabular-nums ${tomDaTaxa(item.taxa)}`}>{item.taxa === null ? '—' : `${item.taxa}%`}</strong>
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <div className="hidden md:block">
-              <table className="w-full table-fixed text-left text-sm">
-                <caption className="sr-only">Presença por pessoa no período</caption>
-                <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">
-                  <tr>
-                    <th className="w-[30%] px-4 py-2.5">Colaborador</th>
-                    <th className="w-[20%] px-2 py-2.5">Equipe</th>
-                    <th className="px-2 py-2.5 text-right">Dias</th>
-                    <th className="px-2 py-2.5 text-right">Em campo</th>
-                    <th className="px-2 py-2.5 text-right">Atrasos</th>
-                    <th className="px-2 py-2.5 text-right">Faltas</th>
-                    <th className="px-2 py-2.5 text-right">Justif.</th>
-                    <th className="w-[12%] px-4 py-2.5 text-right">Presença</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {colaboradoresVisiveis.slice(0, quantos).map(item => (
-                    <tr key={item.chave} onClick={() => onVerPessoa(item.nome)} className="cursor-pointer transition hover:bg-slate-50">
-                      <td className="px-4 py-2.5">
-                        <button type="button" onClick={evento => { evento.stopPropagation(); onVerPessoa(item.nome); }} className={`block max-w-full truncate text-left font-semibold text-slate-900 hover:text-[#176b4d] ${FOCO}`} title={item.nome}>{item.nome}</button>
-                        <span className="block truncate text-xs text-slate-500">{[item.matricula, item.funcao].filter(Boolean).join(' · ')}</span>
-                      </td>
-                      <td className="truncate px-2 py-2.5 text-slate-600" title={item.equipe}>{item.equipe}</td>
-                      <td className="px-2 py-2.5 text-right tabular-nums text-slate-700">{item.dias}</td>
-                      <td className="px-2 py-2.5 text-right tabular-nums text-slate-700">{item.emCampo}</td>
-                      <td className="px-2 py-2.5 text-right tabular-nums text-slate-700">{item.atrasos}</td>
-                      <td className={`px-2 py-2.5 text-right tabular-nums ${item.faltas ? 'font-bold text-rose-700' : 'text-slate-700'}`}>{item.faltas}</td>
-                      <td className="px-2 py-2.5 text-right tabular-nums text-slate-700">{item.justificadas}</td>
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-center justify-end gap-2">
-                          <span className="hidden h-1.5 w-12 overflow-hidden rounded-full bg-slate-100 xl:block"><span className={`block h-full rounded-full ${barraDaTaxa(item.taxa)}`} style={{ width: `${item.taxa ?? 0}%` }} /></span>
-                          <strong className={`tabular-nums ${tomDaTaxa(item.taxa)}`}>{item.taxa === null ? '—' : `${item.taxa}%`}</strong>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {colaboradoresVisiveis.length > quantos && (
-              <div className="border-t border-slate-100 p-3 text-center">
-                <button type="button" onClick={() => setQuantos(atual => atual + POR_PAGINA)} className={BOTAO_SECUNDARIO}>
-                  Mostrar mais {Math.min(POR_PAGINA, colaboradoresVisiveis.length - quantos)} de {colaboradoresVisiveis.length - quantos}
-                </button>
-              </div>
-            )}
-          </>
-        )}
+        <TabelaPadrao
+          titulo="Presença por pessoa no período"
+          linhas={colaboradoresVisiveis}
+          colunas={colunasPessoas}
+          idDaLinha={item => item.chave}
+          nomeDoItem={{ um: 'pessoa', varios: 'pessoas' }}
+          vazio={linhas.length ? 'Ninguém com esse nome no período.' : 'Nenhum envio de presença neste período.'}
+          onAbrirLinha={item => onVerPessoa(item.nome)}
+          porPaginaInicial={25}
+          className="rounded-none border-0"
+          testId="presenca-por-pessoa"
+        />
       </article>
     </div>
   );

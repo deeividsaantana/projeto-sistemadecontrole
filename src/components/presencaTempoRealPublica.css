@@ -1,6 +1,6 @@
 .presence-public {
   --presence-ink: #18231f;
-  --presence-muted: #69736e;
+  --presence-muted: #5b6870;
   --presence-line: #e2e8e4;
   --presence-surface: #ffffff;
   --presence-canvas: #ffffff;
@@ -1239,7 +1239,9 @@
   background: var(--presence-surface);
 }
 
-.presence-public__daynote label {
+.presence-public__daynote label,
+.presence-public__daynote h2 {
+  margin: 0;
   color: var(--presence-muted);
   font-size: .75rem;
   font-weight: 800;

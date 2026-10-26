@@ -5,7 +5,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { ArrowLeft, Building2, ClipboardCheck, Search, Truck, UserRound, UserCog, Users } from 'lucide-react';
+import { ArrowLeft, ClipboardCheck, Search, Truck, UserRound, UserCog, Users } from 'lucide-react';
 import type {
   ChecklistEquipamento,
   ControleEquipamentoDiario,
@@ -17,7 +17,9 @@ import type {
 } from '../types';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { displayText } from '../utils/displayText';
-import { Badge, Card, EmptyState, Modal, PageHeader, TextInput, isoDay, statusTone } from '../shared/ui';
+import { Card, EmptyState, Modal, PageHeader, TextInput, isoDay, statusTone } from '../shared/ui';
+import { TelaCheia } from '../shared/ui/TelaCheia';
+import { TabelaPadrao, type ColunaTabela } from '../shared/ui/TabelaPadrao';
 import {
   SITUACOES_COLABORADOR,
   aplicarSituacao,
@@ -44,9 +46,8 @@ interface ColaboradoresTabProps {
 
 const SITUACOES = ['Todas', 'ATIVO', 'INATIVO', 'FÉRIAS', 'AFASTADO', 'DESMOBILIZADO'] as const;
 
-// Lista em lotes: 400 cartões de uma vez travavam o celular (auditoria de
-// desempenho de 16/10/2026, G10).
-const LOTE = 50;
+const FOCO = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)';
+const situacaoDe = (item: Funcionario) => item.status || (item.ativo ? 'ATIVO' : 'INATIVO');
 
 const formatarData = (valor?: string) => (valor ? valor.slice(0, 10).split('-').reverse().join('/') : '—');
 
@@ -63,11 +64,10 @@ export default function ColaboradoresTab({
   onAlterarSituacao,
   responsavel = '',
 }: ColaboradoresTabProps) {
-  const escopo = useRef<HTMLDivElement>(null);
+  const escopo = useRef<HTMLElement>(null);
   const [busca, setBusca] = useState('');
   const [situacao, setSituacao] = useState<(typeof SITUACOES)[number]>('Todas');
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
-  const [limite, setLimite] = useState(LOTE);
   // Mudança de situação: sempre com data e motivo, porque é registro de RH.
   const [mudanca, setMudanca] = useState<{ situacao: SituacaoColaborador; data: string; motivo: string } | null>(null);
 
@@ -80,10 +80,27 @@ export default function ColaboradoresTab({
   const lista = useMemo(() => {
     const termo = normalizeComparable(busca).trim();
     return funcionarios
-      .filter(item => situacao === 'Todas' || (item.status || (item.ativo ? 'ATIVO' : 'INATIVO')) === situacao)
+      .filter(item => situacao === 'Todas' || situacaoDe(item) === situacao)
       .filter(item => !termo || normalizeComparable(`${item.nome} ${item.matricula || ''} ${item.cargo} ${item.area || ''} ${item.liderNome || ''}`).includes(termo))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }, [funcionarios, situacao, busca]);
+
+  const nomeEmpresa = useMemo(() => new Map(empresas.map(empresa => [empresa.id, empresa.nome])), [empresas]);
+
+  // A lista é paginada pela TabelaPadrao (50 por página), o que mantém o
+  // celular leve com 400 pessoas (auditoria de desempenho de 16/10/2026, G10).
+  const colunas: ColunaTabela<Funcionario>[] = [
+    { chave: 'nome', titulo: 'Nome', larguraMinima: 220, valorOrdenacao: item => item.nome, render: item => <span className="font-bold text-slate-900">{item.nome}</span> },
+    { chave: 'matricula', titulo: 'Matrícula', larguraMinima: 100, valorOrdenacao: item => item.matricula, render: item => <span className="tabular-nums">{item.matricula || '—'}</span> },
+    { chave: 'cargo', titulo: 'Função', larguraMinima: 140, valorOrdenacao: item => item.cargo, render: item => item.cargo || '—' },
+    {
+      chave: 'situacao', titulo: 'Situação', larguraMinima: 120, valorOrdenacao: situacaoDe, dica: situacaoDe,
+      render: item => <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${statusTone(situacaoDe(item))}`}>{situacaoDe(item)}</span>,
+    },
+    { chave: 'equipe', titulo: 'Equipe', larguraMinima: 150, valorOrdenacao: item => equipePorFuncionario.get(item.id)?.nome, render: item => { const equipe = equipePorFuncionario.get(item.id); return equipe ? displayText(equipe.nome, 'Equipe sem nome') : '—'; } },
+    { chave: 'lider', titulo: 'Encarregado', larguraMinima: 150, valorOrdenacao: item => item.liderNome, render: item => displayText(item.liderNome, '—') },
+    { chave: 'empresa', titulo: 'Empresa', larguraMinima: 150, valorOrdenacao: item => nomeEmpresa.get(item.empresaId), render: item => nomeEmpresa.get(item.empresaId) || 'Sem empresa' },
+  ];
 
   const selecionado = selecionadoId ? funcionarios.find(item => item.id === selecionadoId) : undefined;
 
@@ -126,17 +143,15 @@ export default function ColaboradoresTab({
     ];
 
     return (
-      <div id="colaborador-ficha" ref={escopo} className="min-h-full w-full bg-[#f7f8f6] pb-12">
-        <button
-          type="button"
-          onClick={() => setSelecionadoId(null)}
-          data-colaboradores-reveal
-          className="mb-4 inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" /> Voltar para colaboradores
-        </button>
-
-        <div data-colaboradores-reveal>
+      <TelaCheia ref={escopo} id="colaboradores-tab" rotulo={`Ficha de ${selecionado.nome}`} longa testId="colaborador-ficha"
+        cabecalho={<div data-colaboradores-reveal className="space-y-3">
+          <button
+            type="button"
+            onClick={() => setSelecionadoId(null)}
+            className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700 lg:min-h-10 ${FOCO}`}
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Voltar para colaboradores
+          </button>
           <PageHeader
             eyebrow="Ficha do colaborador"
             title={selecionado.nome}
@@ -152,27 +167,27 @@ export default function ColaboradoresTab({
                       data: isoDay(new Date()),
                       motivo: '',
                     })}
-                    className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700"
+                    className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700 lg:min-h-10 ${FOCO}`}
                   >
-                    <UserCog className="h-4 w-4" /> Alterar situação
+                    <UserCog className="h-4 w-4" aria-hidden="true" /> Alterar situação
                   </button>
                 )}
               </div>
             )}
           />
-        </div>
-
-        <section data-colaboradores-reveal className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+        </div>}
+      >
+        <section data-colaboradores-reveal aria-label="Resumo do colaborador" className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
           {indicadores.map(item => (
             <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-4">
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
               <strong className="mt-1.5 block text-lg font-black leading-tight text-slate-900">{item.valor}</strong>
-              <span className="text-xs text-slate-400">{item.detalhe}</span>
+              <span className="text-xs text-[#5b6870]">{item.detalhe}</span>
             </div>
           ))}
         </section>
 
-        <div data-colaboradores-reveal className="mt-4 grid gap-4 xl:grid-cols-2">
+        <div data-colaboradores-reveal className="grid gap-4 xl:grid-cols-2">
           <Card className="min-w-0" title="Identificação">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
               {[
@@ -188,7 +203,7 @@ export default function ColaboradoresTab({
                 ['Desmobilização', formatarData(selecionado.dataDesmobilizacao)],
               ].map(([rotulo, valor]) => (
                 <div key={rotulo} className="min-w-0">
-                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">{rotulo}</dt>
+                  <dt className="text-xs font-bold uppercase tracking-wide text-[#5b6870]">{rotulo}</dt>
                   <dd className="mt-0.5 break-words font-medium text-slate-800">{valor}</dd>
                 </div>
               ))}
@@ -202,7 +217,7 @@ export default function ColaboradoresTab({
             className="min-w-0"
             title="Presença"
             description={presencas.length ? `${presentes} presente(s) de ${presencas.length}` : undefined}
-            actions={<button type="button" onClick={() => onNavigate('presenca')} className="text-xs font-bold text-emerald-700 hover:text-emerald-800">Ver módulo</button>}
+            actions={<button type="button" onClick={() => onNavigate('presenca')} className="text-xs font-bold text-emerald-800 hover:text-emerald-900 inline-flex min-h-11 items-center lg:min-h-8">Ver módulo</button>}
             flush
           >
             {presencas.length === 0 ? (
@@ -213,7 +228,7 @@ export default function ColaboradoresTab({
                   <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3 text-xs">
                     <span className="min-w-0">
                       <span className="block text-slate-600">{formatarData(item.data)} · {item.horaEnvio}</span>
-                      <span className="block truncate text-xs text-slate-400">{item.grupoNome}{item.frenteServico ? ` · ${item.frenteServico}` : ''}</span>
+                      <span className="block truncate text-xs text-[#5b6870]">{item.grupoNome}{item.frenteServico ? ` · ${item.frenteServico}` : ''}</span>
                     </span>
                     <span className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusTone(item.status)}`}>{item.status}</span>
                   </li>
@@ -226,7 +241,7 @@ export default function ColaboradoresTab({
             className="min-w-0"
             title="Frota operada"
             description={operacoes.length ? `${operacoes.length} dia(s) com lançamento` : undefined}
-            actions={<button type="button" onClick={() => onNavigate('controle-equipamentos')} className="text-xs font-bold text-emerald-700 hover:text-emerald-800">Ver módulo</button>}
+            actions={<button type="button" onClick={() => onNavigate('controle-equipamentos')} className="text-xs font-bold text-emerald-800 hover:text-emerald-900 inline-flex min-h-11 items-center lg:min-h-8">Ver módulo</button>}
             flush
           >
             {operacoes.length === 0 ? (
@@ -237,7 +252,7 @@ export default function ColaboradoresTab({
                   <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3 text-xs">
                     <span className="min-w-0">
                       <strong className="block font-mono text-slate-900">{item.prefixo}</strong>
-                      <span className="block text-xs text-slate-400">{formatarData(item.data)}</span>
+                      <span className="block text-xs text-[#5b6870]">{formatarData(item.data)}</span>
                     </span>
                     <span className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusTone(item.status)}`}>{item.status}</span>
                   </li>
@@ -260,7 +275,7 @@ export default function ColaboradoresTab({
                   <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3 text-xs">
                     <span className="min-w-0">
                       <strong className="block font-mono text-slate-900">Ticket {item.ticketNumero || '—'}</strong>
-                      <span className="block truncate text-xs text-slate-400">{item.prefixo} · {item.tipoMaterial}</span>
+                      <span className="block truncate text-xs text-[#5b6870]">{item.prefixo} · {item.tipoMaterial}</span>
                     </span>
                     <span className="shrink-0 text-slate-600">{formatarData(item.data)}</span>
                   </li>
@@ -342,95 +357,56 @@ export default function ColaboradoresTab({
             </p>
           </div>
         </Modal>
-      </div>
+      </TelaCheia>
     );
   }
 
   return (
-    <div id="colaboradores-tab" ref={escopo} className="min-h-full w-full bg-[#f7f8f6] pb-12">
-      <div data-colaboradores-reveal>
+    <TelaCheia ref={escopo} id="colaboradores-tab" rotulo="Colaboradores"
+      cabecalho={<div data-colaboradores-reveal>
         <PageHeader
           eyebrow="Pessoas"
           title="Colaboradores"
-          description="Efetivo da obra. Abra um colaborador para ver a ficha completa."
-          actions={podeAbrir('cadastros') && <button type="button" onClick={() => onNavigate('cadastros')} className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Cadastrar colaborador</button>}
+          actions={podeAbrir('cadastros') && <button type="button" onClick={() => onNavigate('cadastros')} className={`inline-flex min-h-11 items-center rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white transition hover:opacity-90 lg:min-h-10 ${FOCO}`}>Cadastrar colaborador</button>}
         />
-      </div>
-
-      <div data-colaboradores-reveal className="mt-4 flex flex-col gap-2 sm:flex-row lg:sticky lg:top-0 lg:z-20 lg:-mx-1 lg:bg-[#f7f8f6] lg:px-1 lg:py-2">
+      </div>}
+      faixa={<div data-colaboradores-reveal className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-3 sm:flex-row">
         <label className="relative min-w-0 flex-1">
           <span className="sr-only">Buscar colaborador</span>
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5b6870]" aria-hidden="true" />
           <input
+            type="search"
             value={busca}
-            onChange={event => { setBusca(event.target.value); setLimite(LOTE); }}
+            onChange={event => setBusca(event.target.value)}
             placeholder="Nome, matrícula, função, área ou encarregado"
-            className="min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
+            className={`min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 focus:border-emerald-500 ${FOCO}`}
           />
         </label>
-        <select
-          value={situacao}
-          onChange={event => { setSituacao(event.target.value as (typeof SITUACOES)[number]); setLimite(LOTE); }}
-          aria-label="Situação do colaborador"
-          className="min-h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500"
-        >
-          {SITUACOES.map(item => <option key={item}>{item}</option>)}
-        </select>
+        <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+          Situação
+          <select
+            value={situacao}
+            onChange={event => setSituacao(event.target.value as (typeof SITUACOES)[number])}
+            className={`min-h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 focus:border-emerald-500 ${FOCO}`}
+          >
+            {SITUACOES.map(item => <option key={item}>{item}</option>)}
+          </select>
+        </label>
+      </div>}
+    >
+      <div data-colaboradores-reveal className="flex min-h-0 flex-1 flex-col">
+        <TabelaPadrao
+          titulo="Colaboradores da obra"
+          linhas={lista}
+          colunas={colunas}
+          idDaLinha={item => item.id}
+          nomeDoItem={{ um: 'colaborador', varios: 'colaboradores' }}
+          vazio={<EmptyState icon={UserRound} title="Nenhum colaborador encontrado" description="Ajuste a busca ou cadastre o efetivo." />}
+          onAbrirLinha={item => setSelecionadoId(item.id)}
+          className="flex-1"
+          testId="colaboradores-lista"
+        />
       </div>
-
-      <p className="mt-3 text-xs font-medium text-slate-500">
-        {lista.length > limite ? `Mostrando ${limite} de ${lista.length} colaboradores` : `${lista.length} colaborador(es)`}
-      </p>
-
-      {lista.length === 0 ? (
-        <div data-colaboradores-reveal className="mt-4 rounded-2xl border border-slate-200 bg-white">
-          <EmptyState icon={UserRound} title="Nenhum colaborador encontrado" description="Ajuste a busca ou cadastre o efetivo." />
-        </div>
-      ) : (
-        <>
-          <ul data-colaboradores-reveal className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {lista.slice(0, limite).map(item => {
-              const equipe = equipePorFuncionario.get(item.id);
-              const situacaoItem = item.status || (item.ativo ? 'ATIVO' : 'INATIVO');
-              return (
-                <li key={item.id}>
-                  <button
-                    type="button"
-                    onClick={() => setSelecionadoId(item.id)}
-                    className="group flex w-full flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <strong className="block truncate text-sm font-bold text-slate-900">{item.nome}</strong>
-                        <span className="block truncate text-xs text-slate-500">{item.cargo}</span>
-                      </div>
-                      {item.matricula && <Badge tone="neutral">{item.matricula}</Badge>}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${statusTone(situacaoItem)}`}>{situacaoItem}</span>
-                      {equipe && <Badge tone="info">{displayText(equipe.nome, 'Equipe sem nome')}</Badge>}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-                      <span className="inline-flex items-center gap-1"><UserRound className="h-3 w-3" />{displayText(item.liderNome, 'Sem encarregado')}</span>
-                      <span className="inline-flex items-center gap-1"><Building2 className="h-3 w-3" />{empresas.find(empresa => empresa.id === item.empresaId)?.nome || 'Sem empresa'}</span>
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          {lista.length > limite && (
-            <button
-              type="button"
-              onClick={() => setLimite(atual => atual + LOTE)}
-              data-testid="colaboradores-mostrar-mais"
-              className="mx-auto mt-4 flex min-h-11 items-center rounded-lg border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)"
-            >
-              Mostrar mais {Math.min(LOTE, lista.length - limite)}
-            </button>
-          )}
-        </>
-      )}
-    </div>
+    </TelaCheia>
   );
 }
