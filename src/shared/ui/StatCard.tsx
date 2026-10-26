@@ -68,7 +68,7 @@ export function StatCard({ label, value, icon: Icon, trend, tone = 'neutral', on
       <div className="relative flex items-start justify-between gap-2">
         {/* No celular o rótulo ocupa a largura toda: nomes longos como
             "Disponibilidade" não cabem ao lado do ícone em telas estreitas. */}
-        <p className="min-w-0 text-[11px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">{label}</p>
+        <p className="min-w-0 text-xs font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">{label}</p>
         {Icon && (
           <span className={cn('hidden size-9 shrink-0 place-items-center rounded-full border bg-white sm:grid', iconToneClass[tone])}>
             <Icon size={18} strokeWidth={2.25} />
@@ -82,10 +82,10 @@ export function StatCard({ label, value, icon: Icon, trend, tone = 'neutral', on
           </span>
         )}
         <strong ref={valueRef} className={cn('text-4xl font-black leading-none tracking-[-0.055em] tabular-nums sm:text-[2.75rem]', toneClass[tone])}>{isNumeric ? '0' : value}</strong>
-        {trend && <span className="min-w-0 text-[11px] font-medium text-slate-400">{trend}</span>}
+        {trend && <span className="min-w-0 text-xs font-medium text-slate-400">{trend}</span>}
       </div>
       {onClick && (
-        <span className="relative mt-2 flex items-center gap-1 text-[11px] font-semibold text-slate-400 transition-colors group-hover:text-emerald-700">
+        <span className="relative mt-2 flex items-center gap-1 text-xs font-semibold text-slate-400 transition-colors group-hover:text-emerald-700">
           Ver detalhe <ArrowUpRight size={12} />
         </span>
       )}

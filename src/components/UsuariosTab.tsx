@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { Plus, RefreshCw, UserRound } from 'lucide-react';
-import { Button, ConfirmDialog, EmptyState, IconButton, PageHeader, TextInput } from '../shared/ui';
+import { Button, ConfirmDialog, EmptyState, IconButton, PageHeader, TabelaPadrao, TextInput, type ColunaTabela } from '../shared/ui';
 import {
   createManagedUser,
   loadManagedUsers,
@@ -10,6 +10,7 @@ import {
   type ManagedUser,
   type ManagedUserRole,
 } from '../services/masterDataApi';
+import { TelaCheia } from '../shared/ui/TelaCheia';
 
 const roles: Array<{ value: ManagedUserRole; label: string; faz: string }> = [
   { value: 'admin', label: 'Administrador', faz: 'Pode tudo, inclusive excluir e cuidar dos usuários.' },
@@ -109,7 +110,45 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
   const confirmacao = pendente ? textoDaMudanca(pendente) : null;
 
   const selectClass = 'h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-800 shadow-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/15 disabled:bg-slate-100';
-  const labelClass = 'block text-[11px] font-bold uppercase tracking-wider text-slate-500';
+  const labelClass = 'block text-xs font-bold uppercase tracking-wider text-slate-500';
+
+  const colunas: ColunaTabela<ManagedUser>[] = [
+    {
+      chave: 'usuario',
+      titulo: 'Usuário',
+      larguraMinima: 220,
+      valorOrdenacao: user => user.fullName,
+      dica: user => `${user.fullName} · ${user.email}`,
+      render: user => (
+        <span className="block min-w-0">
+          <strong className="block text-slate-900">{user.fullName}</strong>
+          <span className="block text-xs text-slate-600 break-words">{user.email}</span>
+        </span>
+      ),
+    },
+    {
+      chave: 'perfil',
+      titulo: 'Perfil',
+      valorOrdenacao: user => roles.find(role => role.value === user.role)?.label ?? user.role,
+      render: user => (
+        <select
+          value={user.role}
+          disabled={saving}
+          onChange={event => setPendente({ user, changes: { role: event.target.value as ManagedUserRole } })}
+          className="min-h-11 rounded-lg border border-slate-300 bg-white px-2 text-[13px] font-medium text-slate-800 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/15 disabled:bg-slate-100 md:min-h-8"
+          aria-label={`Perfil de ${user.fullName}`}
+        >
+          {roles.map(role => <option key={role.value} value={role.value}>{role.label}</option>)}
+        </select>
+      ),
+    },
+    {
+      chave: 'status',
+      titulo: 'Status',
+      valorOrdenacao: user => (user.active ? 'Ativo' : 'Inativo'),
+      render: user => <span className={user.active ? 'font-semibold text-emerald-700' : 'text-slate-600'}>{user.active ? 'Ativo' : 'Inativo'}</span>,
+    },
+  ];
 
   useGSAP(() => {
     const raiz = escopo.current;
@@ -117,18 +156,12 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
     gsap.fromTo(raiz.querySelectorAll('[data-usuarios-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out', clearProps: 'transform,opacity' });
   }, { scope: escopo });
 
-  return (
-    <section ref={escopo} className="space-y-5">
-      {!embutido && (
-        <div data-usuarios-reveal>
-          <PageHeader eyebrow="Administração" title="Usuários e permissões" description="Crie acessos e ajuste perfil e status de cada usuário da equipe." />
-        </div>
-      )}
-
-      <div data-usuarios-reveal className="grid gap-5 xl:grid-cols-[420px_1fr]">
+  const conteudo = (
+    <>
+      <div data-usuarios-reveal className="grid items-start gap-5 xl:grid-cols-[420px_1fr]">
         <form onSubmit={createUser} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
           <div className="flex items-center gap-2">
-            <Plus className="h-5 w-5 text-emerald-700" />
+            <Plus className="h-5 w-5 text-emerald-700" aria-hidden="true" />
             <h2 className="font-bold text-slate-900">Novo usuário</h2>
           </div>
           <label className="space-y-1.5">
@@ -159,12 +192,11 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
           {message ? <p role="status" className="text-xs font-semibold text-emerald-700">{message}</p> : null}
           {error ? <p role="alert" className="text-xs font-semibold text-rose-700">{error}</p> : null}
         </form>
-
-        <article className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-          <header className="flex items-center justify-between gap-3 border-b border-slate-200 p-4">
+        <article className="min-w-0 space-y-3">
+          <header className="flex items-center justify-between gap-3">
             <div>
               <h2 className="font-bold text-slate-900">Acessos cadastrados</h2>
-              <p className="text-xs text-slate-500">Perfis aplicados no controle de acesso do sistema</p>
+              <p className="text-xs text-slate-600">Perfis aplicados no controle de acesso do sistema</p>
             </div>
             <IconButton
               icon={RefreshCw}
@@ -174,53 +206,27 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
               className={loading ? '[&>svg]:animate-spin' : undefined}
             />
           </header>
-          {erroLista ? <p role="alert" className="border-b border-rose-100 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700" data-testid="usuarios-erro">{erroLista}</p> : null}
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[620px] text-left text-sm">
-              <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
-                <tr><th className="p-3">Usuário</th><th className="p-3">Perfil</th><th className="p-3">Status</th><th className="p-3">Ações</th></tr>
-              </thead>
-              <tbody>
-                {users.map(user => (
-                  <tr key={user.userId} className="border-t border-slate-100">
-                    <td className="p-3">
-                      <strong className="block text-slate-900">{user.fullName}</strong>
-                      <span className="text-xs text-slate-500">{user.email}</span>
-                    </td>
-                    <td className="p-3">
-                      <select
-                        value={user.role}
-                        disabled={saving}
-                        onChange={event => setPendente({ user, changes: { role: event.target.value as ManagedUserRole } })}
-                        className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-xs font-medium text-slate-800 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/15 disabled:bg-slate-100"
-                        aria-label={`Perfil de ${user.fullName}`}
-                      >
-                        {roles.map(role => <option key={role.value} value={role.value}>{role.label}</option>)}
-                      </select>
-                    </td>
-                    <td className="p-3">
-                      <span className={user.active ? 'font-semibold text-emerald-700' : 'text-slate-500'}>
-                        {user.active ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <Button
-                        size="sm"
-                        variant={user.active ? 'subtle' : 'secondary'}
-                        disabled={saving}
-                        onClick={() => (user.active ? setPendente({ user, changes: { active: false } }) : void updateUser(user, { active: true }))}
-                      >
-                        {user.active ? 'Inativar' : 'Reativar'}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {!loading && users.length === 0
-            ? <EmptyState icon={UserRound} title="Nenhum usuário de equipe registrado nesta organização." />
-            : null}
+          {erroLista ? <p role="alert" className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700" data-testid="usuarios-erro">{erroLista}</p> : null}
+          <TabelaPadrao
+            titulo="Acessos cadastrados"
+            linhas={users}
+            colunas={colunas}
+            idDaLinha={user => user.userId}
+            nomeDoItem={{ um: 'usuário', varios: 'usuários' }}
+            carregando={loading && users.length === 0}
+            classeLinha={user => (user.active ? undefined : 'text-slate-500')}
+            acoes={user => (
+              <Button
+                size="sm"
+                variant={user.active ? 'subtle' : 'secondary'}
+                disabled={saving}
+                onClick={() => (user.active ? setPendente({ user, changes: { active: false } }) : void updateUser(user, { active: true }))}
+              >
+                {user.active ? 'Inativar' : 'Reativar'}
+              </Button>
+            )}
+            vazio={<EmptyState icon={UserRound} title="Nenhum usuário de equipe registrado nesta organização." />}
+          />
         </article>
       </div>
       <ConfirmDialog
@@ -233,6 +239,16 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
         onConfirm={() => { if (pendente) void updateUser(pendente.user, pendente.changes); }}
         onCancel={() => setPendente(null)}
       />
-    </section>
+    </>
+  );
+
+  // Dentro da Administração a aba que hospeda é a página; sozinha, a tela usa
+  // o mesmo molde das outras abas.
+  if (embutido) return <section ref={escopo} className="space-y-5">{conteudo}</section>;
+  return (
+    <TelaCheia ref={escopo} id="usuarios-tab" rotulo="Usuários e permissões" longa
+      cabecalho={<div data-usuarios-reveal><PageHeader eyebrow="Administração" title="Usuários e permissões" /></div>}>
+      {conteudo}
+    </TelaCheia>
   );
 }

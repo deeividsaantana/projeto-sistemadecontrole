@@ -19,6 +19,7 @@ import {
   type SituacaoConsumo,
 } from '../../modules/frota/consumoPorEquipamento';
 import { isoDay } from '../../shared/ui';
+import { TabelaPadrao, type ColunaTabela } from '../../shared/ui/TabelaPadrao';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO, reduzMovimento } from '../cadastros/estilos';
 
 interface Props {
@@ -48,13 +49,30 @@ const SITUACAO: Record<SituacaoConsumo, { rotulo: string; classe: string }> = {
   normal: { rotulo: 'Normal', classe: 'bg-emerald-50 text-emerald-800 ring-emerald-200' },
 };
 
-function Situacao({ linha }: { linha: ConsumoEquipamento }) {
+/** Na tabela o selo quebra em 2 linhas para caber ao lado da ficha a 1366 px. */
+function Situacao({ linha, quebra = false }: { linha: ConsumoEquipamento; quebra?: boolean }) {
   const { rotulo, classe } = SITUACAO[linha.situacao];
   const texto = linha.situacao === 'acima' && linha.desvio !== undefined
     ? `${Math.round(linha.desvio * 100)}% acima`
     : rotulo;
-  return <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-inset ${classe}`}>{texto}</span>;
+  return <span className={`inline-flex ${quebra ? 'rounded-xl leading-tight' : 'whitespace-nowrap rounded-full'} px-2.5 py-1 text-xs font-bold ring-1 ring-inset ${classe}`}>{texto}</span>;
 }
+
+/** A linha inteira abre a ficha, com o mouse ou com Enter (TabelaPadrao). */
+const COLUNAS_CONSUMO: ColunaTabela<ConsumoEquipamento>[] = [
+  {
+    chave: 'maquina', titulo: 'Máquina', larguraMinima: 160,
+    render: linha => <><span className="block font-mono font-black text-slate-950">{linha.prefixo}</span><span className="block truncate text-xs text-[#5b6870]">{linha.nome}</span></>,
+    valorOrdenacao: linha => linha.prefixo,
+    dica: linha => `${linha.prefixo} · ${linha.nome}`,
+  },
+  { chave: 'abastecimentos', titulo: 'Abast.', alinhamento: 'direita', render: linha => linha.abastecimentos, valorOrdenacao: linha => linha.abastecimentos },
+  { chave: 'litros', titulo: 'Litros', alinhamento: 'direita', render: linha => <span className="font-semibold">{litros(linha.litros)}</span>, valorOrdenacao: linha => linha.litros },
+  { chave: 'trabalhou', titulo: 'Trabalhou', alinhamento: 'direita', render: trabalhou, valorOrdenacao: linha => linha.percorrido || null },
+  { chave: 'consumo', titulo: 'Consumo', alinhamento: 'direita', render: linha => <span className="font-bold text-slate-950">{textoConsumo(linha.consumoPeriodo, linha.unidade)}</span>, valorOrdenacao: linha => linha.consumoPeriodo ?? null },
+  { chave: 'habitual', titulo: 'Habitual', alinhamento: 'direita', render: linha => textoConsumo(linha.consumoHabitual, linha.unidade), valorOrdenacao: linha => linha.consumoHabitual ?? null },
+  { chave: 'situacao', titulo: 'Situação', render: linha => <Situacao linha={linha} quebra />, valorOrdenacao: linha => linha.desvio ?? null, dica: linha => SITUACAO[linha.situacao].rotulo },
+];
 
 export default function ConsumoPorMaquina({ abastecimentos, equipamentos, empresas, onErro, onAviso }: Props) {
   const escopo = useRef<HTMLDivElement>(null);
@@ -235,71 +253,32 @@ export default function ConsumoPorMaquina({ abastecimentos, equipamentos, empres
       </div>
 
       <div className="grid gap-2 xl:min-h-0 xl:flex-1 xl:grid-cols-[minmax(0,1fr)_23rem]">
-        <section data-comb-reveal aria-label="Consumo por máquina" className={`${CARTAO} ${maquina ? 'hidden xl:flex' : 'flex'} min-h-0 flex-col overflow-hidden`}>
-          <header className="border-b border-slate-100 px-4 py-3">
-            <h3 className="text-base font-black text-slate-950">Consumo por máquina</h3>
-            <p className="text-sm text-slate-500">Comparado com o que a própria máquina costuma gastar; acima de {Math.round(LIMITE_ACIMA * 100)}% vira alerta. Toque numa máquina para ver os abastecimentos.</p>
+        <section data-comb-reveal aria-labelledby="consumo-titulo" className={`${maquina ? 'hidden xl:flex' : 'flex'} min-h-0 flex-col gap-1.5`}>
+          <header className="px-1">
+            <h2 id="consumo-titulo" className="text-base font-black text-slate-950">Consumo por máquina</h2>
+            <p className="text-sm text-[#5b6870]">Comparado com o que a própria máquina costuma gastar; acima de {Math.round(LIMITE_ACIMA * 100)}% vira alerta. Toque numa máquina para ver os abastecimentos.</p>
           </header>
-          {visiveis.length === 0 ? (
-            <p className="p-8 text-center text-sm text-slate-600">{linhas.length ? 'Nenhuma máquina com esse filtro.' : 'Nenhum abastecimento neste período.'}</p>
-          ) : (
-            <>
-              <ul className="divide-y divide-slate-100 md:hidden xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
-                {visiveis.map(linha => (
-                  <li key={linha.chave}>
-                    <button type="button" onClick={() => setSelecionada(linha.chave)} className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 ${FOCO}`}>
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-mono text-sm font-black text-slate-950">{linha.prefixo}</span>
-                        <span className="block truncate text-sm text-slate-500">{linha.nome}</span>
-                        <span className="mt-1 block text-sm font-semibold tabular-nums text-slate-700">{litros(linha.litros)} · {textoConsumo(linha.consumoPeriodo, linha.unidade)}</span>
-                      </span>
-                      <Situacao linha={linha} />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <div className="hidden overflow-x-auto md:block xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
-                <table className="w-full min-w-[40rem] text-sm 2xl:text-base">
-                  <caption className="sr-only">Consumo de diesel por máquina</caption>
-                  <thead className="sticky top-0 z-10 bg-[#f7f8f6] text-left text-xs font-bold uppercase tracking-wide text-slate-500">
-                    <tr>
-                      <th scope="col" className="px-4 py-2">Máquina</th>
-                      <th scope="col" className="px-2 py-2 text-right">Abast.</th>
-                      <th scope="col" className="px-2 py-2 text-right">Litros</th>
-                      <th scope="col" className="px-2 py-2 text-right">Trabalhou</th>
-                      <th scope="col" className="px-2 py-2 text-right">Consumo</th>
-                      <th scope="col" className="px-2 py-2 text-right">Habitual</th>
-                      <th scope="col" className="px-4 py-2">Situação</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {visiveis.map(linha => (
-                      <tr key={linha.chave} aria-selected={linha.chave === selecionada} onClick={() => setSelecionada(linha.chave)} className={`cursor-pointer transition-colors duration-200 hover:bg-slate-50 ${linha.chave === selecionada ? 'bg-emerald-50/60' : ''}`}>
-                        <td className="px-4 py-2.5">
-                          <button type="button" onClick={() => setSelecionada(linha.chave)} className={`text-left ${FOCO} rounded`}>
-                            <span className="block font-mono font-black text-slate-950">{linha.prefixo}</span>
-                            <span className="block max-w-[14rem] truncate text-xs text-slate-500">{linha.nome}</span>
-                          </button>
-                        </td>
-                        <td className="px-2 py-2.5 text-right tabular-nums">{linha.abastecimentos}</td>
-                        <td className="px-2 py-2.5 text-right font-semibold tabular-nums">{litros(linha.litros)}</td>
-                        <td className="px-2 py-2.5 text-right tabular-nums">{trabalhou(linha)}</td>
-                        <td className="px-2 py-2.5 text-right font-bold tabular-nums text-slate-950">{textoConsumo(linha.consumoPeriodo, linha.unidade)}</td>
-                        <td className="px-2 py-2.5 text-right tabular-nums text-slate-500">{textoConsumo(linha.consumoHabitual, linha.unidade)}</td>
-                        <td className="px-4 py-2.5"><Situacao linha={linha} /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
+          <div className="flex min-h-[18rem] flex-1 flex-col xl:min-h-0">
+            <TabelaPadrao
+              titulo="Consumo de diesel por máquina"
+              linhas={visiveis}
+              colunas={COLUNAS_CONSUMO}
+              idDaLinha={linha => linha.chave}
+              nomeDoItem={{ um: 'máquina', varios: 'máquinas' }}
+              onAbrirLinha={linha => setSelecionada(linha.chave)}
+              linhaAtivaId={selecionada}
+              vazio={linhas.length ? 'Nenhuma máquina com esse filtro.' : 'Nenhum abastecimento neste período.'}
+              testId="consumo-tabela"
+              testIdLinha="consumo-linha"
+              densa
+            />
+          </div>
         </section>
 
         {maquina ? <FichaMaquina maquina={maquina} onVoltar={() => setSelecionada(null)} /> : (
-          <aside aria-label="Consumo por empresa" className={`${CARTAO} hidden min-h-0 flex-col overflow-hidden xl:flex`} data-testid="consumo-empresas">
+          <section aria-label="Consumo por empresa" className={`${CARTAO} hidden min-h-0 flex-col overflow-hidden xl:flex`} data-testid="consumo-empresas">
             <header className="border-b border-slate-100 px-4 py-3">
-              <h3 className="text-base font-black text-slate-950">Por empresa</h3>
+              <h2 className="text-base font-black text-slate-950">Por empresa</h2>
               <p className="text-sm text-slate-500">Litros no período. Toque numa máquina ao lado para ver os detalhes dela.</p>
             </header>
             {porEmpresa.length === 0 ? <p className="p-6 text-center text-sm text-slate-500">Sem abastecimentos no período.</p> : (
@@ -316,7 +295,7 @@ export default function ConsumoPorMaquina({ abastecimentos, equipamentos, empres
                 ))}
               </ol>
             )}
-          </aside>
+          </section>
         )}
       </div>
     </div>
@@ -332,12 +311,12 @@ function FichaMaquina({ maquina, onVoltar }: { maquina: ConsumoEquipamento; onVo
   const yHabitual = maquina.consumoHabitual ? altura - (maquina.consumoHabitual / maior) * altura : null;
 
   return (
-    <aside data-ficha-maquina aria-label={`Ficha de ${maquina.prefixo}`} className={`${CARTAO} flex min-h-0 flex-col overflow-hidden`} data-testid="consumo-ficha">
+    <section data-ficha-maquina aria-label={`Ficha de ${maquina.prefixo}`} className={`${CARTAO} flex min-h-0 flex-col overflow-hidden`} data-testid="consumo-ficha">
       <header className="border-b border-slate-100 px-4 py-3">
         <button type="button" onClick={onVoltar} className={`${BOTAO_SECUNDARIO} mb-2 min-h-10 px-3 xl:hidden`}><ArrowLeft className="size-4" aria-hidden="true" />Voltar à lista</button>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h3 className="font-mono text-lg font-black text-slate-950">{maquina.prefixo}</h3>
+            <h2 className="font-mono text-lg font-black text-slate-950">{maquina.prefixo}</h2>
             <p className="truncate text-sm text-slate-500">{maquina.nome}{maquina.empresa ? ` · ${maquina.empresa}` : ''}</p>
           </div>
           <Situacao linha={maquina} />
@@ -356,7 +335,7 @@ function FichaMaquina({ maquina, onVoltar }: { maquina: ConsumoEquipamento; onVo
         </dl>
       </header>
 
-      <div className="xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+      <div tabIndex={0} role="region" aria-label={`Abastecimentos de ${maquina.prefixo}`} className={`xl:min-h-0 xl:flex-1 xl:overflow-y-auto ${FOCO}`}>
         {comValor.length > 1 && (
           <figure className="px-4 pt-3">
             <figcaption className="mb-1 text-xs font-bold text-slate-500">Consumo a cada abastecimento ({maquina.unidade}){yHabitual !== null ? ', linha tracejada = habitual' : ''}</figcaption>
@@ -390,6 +369,6 @@ function FichaMaquina({ maquina, onVoltar }: { maquina: ConsumoEquipamento; onVo
           ))}
         </ul>
       </div>
-    </aside>
+    </section>
   );
 }

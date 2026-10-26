@@ -134,7 +134,7 @@ export default function CampoEscolha({ opcoes, valor, onEscolher, recentes = [],
                   <span className={`block truncate ${opcao ? 'font-semibold' : 'italic text-slate-500'}`}>{opcao?.nome ?? vazio}</span>
                   {opcao?.apelido && <span className="block truncate text-xs text-slate-500">{opcao.apelido}</span>}
                 </span>
-                {!digitou && opcao && recentes.includes(opcao.id) && <span className="shrink-0 text-xs text-slate-400">recente</span>}
+                {!digitou && opcao && recentes.includes(opcao.id) && <span className="shrink-0 text-xs text-slate-500">recente</span>}
                 {marcada && <Check className="size-4 shrink-0 text-[#176b4d]" aria-hidden="true" />}
               </li>
             );

@@ -169,7 +169,7 @@ export default function FormCravacao({ hoje, controle, obras, responsavel, pedid
     <form data-estacas-reveal onSubmit={event => salvar(event, !editando)} className={`${CARTAO} space-y-4 p-4 sm:p-5`} aria-labelledby="estacas-form-titulo" noValidate>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-[#718087]">{editando ? 'Corrigir cravação' : 'Lançar cravação'}</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-[#5b6870]">{editando ? 'Corrigir cravação' : 'Lançar cravação'}</p>
           <h2 id="estacas-form-titulo" className="text-xl font-bold text-slate-900">{editando ? nomeDaEstaca(editando) : 'Qual estaca foi cravada?'}</h2>
         </div>
         <button type="button" onClick={onCancelar} className={BOTAO_SECUNDARIO}><X className="size-5" aria-hidden="true" /> Fechar</button>

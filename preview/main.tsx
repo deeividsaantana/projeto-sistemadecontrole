@@ -33,6 +33,11 @@ import { PRIMARY_MODULE_IDS, ROLE_ACCESS, SIDEBAR_NAVIGATION_GROUPS, destinoDaAb
 import { PesquisaGlobal } from '../src/app/shell/PesquisaGlobal';
 import * as fx from './fixtures';
 import { RouteMotion } from '../src/shared/ui/RouteMotion';
+import { TelaCheia } from '../src/shared/ui/TelaCheia';
+import { AbasDaTela, idDaAba, type ItemDasAbas } from '../src/shared/ui/AbasDaTela';
+import { PageHeader } from '../src/shared/ui/PageHeader';
+import { PularParaConteudo } from '../src/shared/ui/PularParaConteudo';
+import { instalarGuardaDeMovimento } from '../src/shared/motion/guardaDeMovimento';
 import { apagarDeVez, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from '../src/cloud/exclusoes';
 
 const noop = () => {};
@@ -322,7 +327,6 @@ function MateriaisPreview() {
         return { ok: Boolean(volta), mensagem: volta ? `${volta.nome} voltou para a lista.` : 'Já foi restaurado.' };
       }}
       secaoInicial={(new URLSearchParams(window.location.search).get('secao') || undefined) as SecaoMateriais | undefined}
-      totalViagensJazida={fx.ticketsJazida.length}
       viagensJazida={(
         <TicketsJazidaTab
           tickets={fx.ticketsJazida}
@@ -386,6 +390,38 @@ function PlanejamentoPreview() {
   );
 }
 
+// Molde da TelaCheia com 18 subtelas agrupadas (Materiais, Estacas e
+// Cadastros na fase 2): prova que as abas cabem a 1366 px sem rolagem lateral
+// e que a área de dados ocupa o resto da tela e rola por dentro.
+const SUBTELAS_MOLDE: ReadonlyArray<ItemDasAbas> = [
+  { id: 'lancar', rotulo: 'Lançar' },
+  { grupo: 'painel', rotulo: 'Painel', abas: [{ id: 'resumo', rotulo: 'Visão geral' }, { id: 'graficos', rotulo: 'Gráficos' }, { id: 'relatorios', rotulo: 'Relatórios' }] },
+  { grupo: 'obra', rotulo: 'Na obra', abas: [{ id: 'previsto', rotulo: 'Previsto do mês' }, { id: 'utilizacao', rotulo: 'Uso por ramo' }, { id: 'apontadores', rotulo: 'Apontadores', contador: 3, contadorRotulo: 'envios novos' }, { id: 'botafora', rotulo: 'Bota-fora' }, { id: 'viagens', rotulo: 'Viagens da jazida' }] },
+  { grupo: 'controle', rotulo: 'Controle', abas: [{ id: 'estoque', rotulo: 'Estoque' }, { id: 'movimentos', rotulo: 'Movimentos' }, { id: 'recebimentos', rotulo: 'Recebimentos' }, { id: 'transferencias', rotulo: 'Transferências' }] },
+  { grupo: 'cadastrar', rotulo: 'Cadastrar', abas: [{ id: 'cadastro', rotulo: 'Materiais' }, { id: 'locais', rotulo: 'Ramos e locais' }, { id: 'fornecedores', rotulo: 'Fornecedores' }, { id: 'importacoes', rotulo: 'Importar planilha' }, { id: 'lixeira', rotulo: 'Lixeira' }] },
+];
+
+function MoldePreview() {
+  const [aba, setAba] = React.useState(new URLSearchParams(location.search).get('aba') || 'apontadores');
+  const linhas = Array.from({ length: 60 }, (_, indice) => indice + 1);
+  return (
+    <TelaCheia id="molde-tab" rotulo="Molde" idAbaAtiva={idDaAba('molde', aba)} idDados="molde-dados" chaveRolagem={aba}
+      cabecalho={<PageHeader eyebrow="Suprimentos" title="Materiais"
+        abas={<AbasDaTela id="molde" rotulo="Subtelas de materiais" abas={SUBTELAS_MOLDE} ativa={aba} onTrocar={setAba} idPainel="molde-dados" testId="molde-aba" />}
+        actions={<button type="button" className="inline-flex min-h-10 items-center rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white">Novo lançamento</button>} />}
+      faixa={<div className="rounded-2xl border border-slate-200 bg-white p-2"><input type="search" aria-label="Buscar" placeholder="Buscar material, ramo ou nota" className="w-full rounded-xl border border-slate-200 px-3" /></div>}
+      rodape={<p className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600">60 linhas · Total 1.234 t</p>}>
+      <div className="h-full min-h-0 overflow-auto rounded-2xl border border-slate-200 bg-white">
+        <table className="w-full text-left text-sm">
+          <caption className="sr-only">Linhas de exemplo</caption>
+          <thead className="sticky top-0 bg-white"><tr><th className="px-3 py-2">Linha</th><th className="px-3 py-2">Material</th><th className="px-3 py-2 text-right">Quantidade</th></tr></thead>
+          <tbody>{linhas.map(linha => <tr key={linha} className="border-t border-slate-100"><td className="px-3 py-2">{linha}</td><td className="px-3 py-2">Material de exemplo {linha}</td><td className="px-3 py-2 text-right tabular-nums">{(linha * 12.5).toLocaleString('pt-BR')} t</td></tr>)}</tbody>
+        </table>
+      </div>
+    </TelaCheia>
+  );
+}
+
 function MeuDiaPreview() {
   const hoje = new Date().toISOString().slice(0, 10);
   const ontem = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
@@ -427,10 +463,25 @@ function MeuDiaPreview() {
 }
 
 // Mais de cinco equipes, para o preview mostrar o "Mostrar mais equipes" do painel.
-const equipesPainel = [fx.grupo, ...fx.equipesPresenca,
+// fx.grupo já está em equipesPresenca (g-1); repetir dava chave React duplicada.
+const equipesPainel = [...fx.equipesPresenca,
   ...['Terraplenagem Norte', 'Drenagem', 'Pavimentação', 'Topografia', 'Obras de arte'].map((nome, i) => ({
     ...fx.grupo, id: `painel-extra-${i}`, nome: `Equipe ${nome}`, frenteServico: `Ramo ${(i + 3) * 100}`, token: `painel-extra-${i}`,
   }))];
+
+// Correções já feitas, para a subtela Histórico mostrar a tabela no preview.
+const historicoPresencasPreview = fx.presencasHistorico.slice(0, 4).map((registro, indice) => ({
+  id: `hist-${indice}`,
+  presencaId: registro.id,
+  grupoId: registro.grupoId,
+  funcionarioId: registro.funcionarioId,
+  data: registro.data,
+  editadoPor: indice % 2 ? 'Deivid Santana' : 'Ana Paula (RH)',
+  editadoEm: `${registro.data}T1${indice}:2${indice}:00-03:00`,
+  motivo: ['Atestado entregue no escritório', 'Chegou depois do envio', 'Engano no toque', 'Férias aprovadas'][indice],
+  valorAnterior: 'Ausente',
+  valorNovo: ['Atestado', 'Atraso', 'Presente', 'Férias'][indice],
+}));
 
 // Presença do painel com estado, para inativar, desfazer e reativar no preview.
 function PresencaAdminViva() {
@@ -445,7 +496,7 @@ function PresencaAdminViva() {
       gruposEquipe={equipes}
       presencasLink={somenteAtivos(lista)}
       presencasInativas={lista.filter(item => item.inativoEm)}
-      historicoPresencas={[]}
+      historicoPresencas={historicoPresencasPreview}
       onSaveGrupoEquipe={noop}
       onDeleteGrupoEquipe={id => setEquipes(atual => atual.filter(item => item.id !== id))}
       onUpdatePresencaLink={noop}
@@ -502,6 +553,7 @@ const historicoPreview: HistoryLog[] = [
 ];
 
 const screens: Record<string, React.ReactNode> = {
+  molde: <MoldePreview />,
   'meu-dia': <MeuDiaPreview />,
   sidebar: (
     <div className="erp-shell" style={{ height: '100dvh' }}>
@@ -769,6 +821,9 @@ const screens: Record<string, React.ReactNode> = {
   ),
 };
 
+// Mesma guarda global de movimento reduzido do app (src/main.tsx).
+instalarGuardaDeMovimento();
+
 const key = new URLSearchParams(location.search).get('screen') || 'usuarios';
 // Com ?shell=1 a tela abre dentro do menu lateral e da barra do topo, com as
 // mesmas medidas do App.tsx, para conferir a página inteira em cada largura.
@@ -783,12 +838,15 @@ const previewQueryClient = new QueryClient();
 // Os links públicos rodam fora do ERP (PublicLinksApp), sem o
 // #main-tab-viewport e os estilos de formulário dele. A pesquisa também fica
 // fora dele no App.
-const isPublicScreen = key === 'material-link' || key === 'pesquisa';
+// O link de presença também: no app ele tem a página só para ele, com uma
+// <main> só (auditoria de 21/10/2026, M2).
+const isPublicScreen = ['material-link', 'pesquisa', 'presenca', 'presenca-fluxo', 'presenca-enviada'].includes(key);
 
 createRoot(document.getElementById('app-root')!).render(
   <QueryClientProvider client={previewQueryClient}>
     {isPublicScreen ? (screens[key] ?? null) : comShell ? (
       <div className="erp-shell">
+        <PularParaConteudo />
         <DesktopSidebar activeTab={abaAtiva} groups={previewGroups} onNavigate={noop} />
         <main className="erp-workspace" id="main-workspace">
           <DesktopTopBar
@@ -810,20 +868,17 @@ createRoot(document.getElementById('app-root')!).render(
             onMarkNotificationAsRead={noop}
             onLogout={noop}
           />
-          <div id="main-tab-viewport" className={`flex-1 overflow-x-clip w-full max-w-none ${key === 'painel' ? 'dashboard-viewport' : 'p-3 sm:p-4 lg:p-5'}`}>
+          <div id="main-tab-viewport" tabIndex={-1} className="flex-1 overflow-x-clip w-full max-w-none p-[var(--renea-respiro)]">
             <RouteMotion>{screens[key] ?? <p>Tela desconhecida: {key}</p>}</RouteMotion>
           </div>
         </main>
       </div>
     ) : <div
       id="main-tab-viewport"
-      /* Mesmas medidas do App.tsx: o painel roda sem recuo (dashboard-viewport)
-         e as demais telas dentro do padding responsivo. Com um `padding: 28`
-         fixo o preview inventava 5 px de estouro no painel e escondia o recuo
-         real das outras telas — a verificação de largura não valia nada. */
-      className={key === 'painel'
-        ? 'dashboard-viewport mx-auto w-full'
-        : 'mx-auto w-full max-w-[1440px] p-3.5 sm:p-4 md:p-7 2xl:p-10'}
+      /* Sem a casca, a tela roda dentro do padding responsivo. Com um
+         `padding: 28` fixo o preview inventava estouro e escondia o recuo
+         real das telas — a verificação de largura não valia nada. */
+      className="mx-auto w-full max-w-[1440px] p-3.5 sm:p-4 md:p-7 2xl:p-10"
       style={{ background: '#fff', minHeight: '100vh' }}
     >
       {screens[key] ?? <p>Tela desconhecida: {key}</p>}

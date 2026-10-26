@@ -13,7 +13,7 @@ import {
 } from '../src/utils/cadastrosCategorias';
 
 const tabSource = readFileSync(new URL('../src/components/CadastrosTab.tsx', import.meta.url), 'utf8');
-const tiposSource = readFileSync(new URL('../src/components/cadastros/CadastroTipos.tsx', import.meta.url), 'utf8');
+const abasSource = readFileSync(new URL('../src/components/cadastros/abasCadastros.ts', import.meta.url), 'utf8');
 const estilosSource = readFileSync(new URL('../src/components/cadastros/estilos.ts', import.meta.url), 'utf8');
 
 test('todo tipo de cadastro aparece em exatamente um grupo', () => {
@@ -46,18 +46,22 @@ test('aba Cadastros segue o padrão: cabeçalho, ação principal no topo e GSAP
   assert.match(tabSource, /useGSAP\(/);
   assert.match(tabSource, /prefers-reduced-motion: reduce/);
   assert.match(tabSource, /\[data-cadastros-reveal\]/);
-  // Tipos e filtros vêm antes da lista; a central de planilha mestre saiu da tela
-  assert.ok(tabSource.indexOf('<CadastroTipos') < tabSource.indexOf('label="Filtros de cadastros"'));
-  assert.ok(tabSource.indexOf('label="Filtros de cadastros"') < tabSource.indexOf('id="database-lists-viewport"'));
+  // Tipos (abas no topo) e filtros vêm antes da lista; a central de planilha mestre saiu da tela
+  assert.ok(tabSource.indexOf('label="Filtros de cadastros"') < tabSource.indexOf('<TelaCheia'));
+  assert.ok(tabSource.indexOf('<AbasDaTela id="cadastros"') < tabSource.indexOf('faixa={emLixeira ? cabecalhoDaLixeira : filtrosDaLista}'));
+  assert.ok(tabSource.indexOf('faixa={emLixeira ? cabecalhoDaLixeira : filtrosDaLista}') < tabSource.indexOf('id="database-lists-viewport"'));
   assert.doesNotMatch(tabSource, /MasterDataReviewCenter|Baixar base completa/);
 });
 
-test('seletor de tipos é acessível ao toque e ao teclado', () => {
-  assert.match(tiposSource, /aria-current=\{ativo \? 'true' : undefined\}/);
-  assert.match(tiposSource, /min-h-12/);
-  assert.match(tiposSource, /\$\{FOCO\}/);
-  assert.match(estilosSource, /focus-visible:ring-\[#f26a2e\]\/60/);
-  assert.match(tiposSource, /aria-label="Tipos de cadastro"/);
+test('tipos de cadastro são abas no topo, agrupadas, acessíveis ao toque e ao teclado', () => {
+  // AbasDaTela traz role=tab, aria-selected, setas e 44 px no toque (moldeTelaCheia.test.ts).
+  assert.match(tabSource, /<AbasDaTela id="cadastros" rotulo="Tipos de cadastro"/);
+  assert.match(abasSource, /CADASTRO_GRUPOS\.map/);
+  assert.match(abasSource, /categoriasDoGrupo\(grupo\.id\)/);
+  assert.match(abasSource, /testId: `cadastro-categoria-\$\{categoria\.id\}`/);
+  assert.match(abasSource, /testId: 'cadastro-categoria-lixeira'/);
+  assert.doesNotMatch(tabSource, /CadastroTipos|lg:grid-cols-\[14rem/, 'sem menu lateral interno');
+  assert.match(estilosSource, /focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-\(--renea-focus\)/);
 });
 
 const empresa = (id: string, tipos?: Empresa['tipos']): Empresa => ({ id, nome: id, cnpj: '', telefone: '', responsavel: '', tipos });

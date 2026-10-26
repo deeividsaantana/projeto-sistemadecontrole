@@ -47,7 +47,7 @@ export default function CadastroSgePrevia({ previa, marcado, onMarcar }: Props) 
           { label: 'Para revisar', value: previa.revisao.length, tone: TOM_SITUACAO.alerta },
         ].map(item => (
           <div key={item.label} className={`rounded-xl p-3 ${item.tone}`}>
-            <span className="text-[11px] font-bold uppercase leading-tight">{item.label}</span>
+            <span className="text-xs font-bold uppercase leading-tight">{item.label}</span>
             <strong className="block text-2xl font-bold tabular-nums">{item.value}</strong>
           </div>
         ))}
@@ -59,8 +59,8 @@ export default function CadastroSgePrevia({ previa, marcado, onMarcar }: Props) 
             <li key={item.equipamentoId} className="grid gap-1 px-3 py-2 text-sm sm:grid-cols-[8rem_minmax(0,1.2fr)_minmax(0,1fr)] sm:items-center">
               <span className="font-mono font-bold text-slate-800">
                 {item.prefixo}
-                {item.novo && <span className="ml-1.5 rounded bg-emerald-100 px-1.5 py-0.5 font-sans text-[10px] font-bold uppercase text-emerald-800">Novo</span>}
-                {item.reativar && <span className="ml-1.5 rounded bg-sky-100 px-1.5 py-0.5 font-sans text-[10px] font-bold uppercase text-sky-800">Volta</span>}
+                {item.novo && <span className="ml-1.5 rounded bg-emerald-100 px-1.5 py-0.5 font-sans text-xs font-bold uppercase text-emerald-800">Novo</span>}
+                {item.reativar && <span className="ml-1.5 rounded bg-sky-100 px-1.5 py-0.5 font-sans text-xs font-bold uppercase text-sky-800">Volta</span>}
               </span>
               <span className="min-w-0 text-slate-700">
                 {item.motorista

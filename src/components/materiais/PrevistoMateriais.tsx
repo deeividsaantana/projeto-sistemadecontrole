@@ -200,7 +200,7 @@ export default function PrevistoMateriais({ hoje, materiais, movimentos, etapas,
             <strong className="text-lg font-black tabular-nums text-slate-950">{numero(linha.recebido, 1)}</strong>
             {' '}de {numero(previsto.quantidade, 1)} {previsto.unidade}
           </span>
-          <strong className={`text-2xl font-black tabular-nums ${info.tom === 'alerta' ? 'text-[#f26a2e]' : info.tom === 'ok' ? 'text-[#176b4d]' : 'text-slate-500'}`}>
+          <strong className={`text-2xl font-black tabular-nums ${info.tom === 'alerta' ? 'text-[#c2410c]' : info.tom === 'ok' ? 'text-[#176b4d]' : 'text-slate-500'}`}>
             {Math.round(linha.porcentagem).toLocaleString('pt-BR')}%
           </strong>
         </span>
@@ -305,7 +305,7 @@ export default function PrevistoMateriais({ hoje, materiais, movimentos, etapas,
           ].map(item => (
             <article key={item.rotulo} data-previsto-reveal className={`${CARTAO} p-3 sm:p-4`}>
               <p className="text-xs font-semibold leading-tight text-slate-600 sm:text-sm">{item.rotulo}</p>
-              <strong className={`mt-1 block text-2xl font-black tabular-nums sm:text-3xl ${item.alerta ? 'text-[#f26a2e]' : item.ok ? 'text-[#176b4d]' : 'text-slate-950'}`}>{item.valor.toLocaleString('pt-BR')}</strong>
+              <strong className={`mt-1 block text-2xl font-black tabular-nums sm:text-3xl ${item.alerta ? 'text-[#c2410c]' : item.ok ? 'text-[#176b4d]' : 'text-slate-950'}`}>{item.valor.toLocaleString('pt-BR')}</strong>
               <span className="hidden text-xs text-slate-500 sm:block">{item.detalhe}</span>
             </article>
           ))}

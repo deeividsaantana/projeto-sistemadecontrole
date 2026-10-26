@@ -129,9 +129,9 @@ export default function GraficoLinhasPresenca({ pontos }: Props) {
             <caption className="sr-only">Presença por dia</caption>
             <thead className="sticky top-0 bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-3 py-2">Dia</th>
-                {SERIES.map(serie => <th key={serie.chave} className="px-3 py-2 text-right">{serie.nome}</th>)}
-                <th className="px-3 py-2 text-right">Presença</th>
+                <th scope="col" className="px-3 py-2">Dia</th>
+                {SERIES.map(serie => <th key={serie.chave} scope="col" className="px-3 py-2 text-right">{serie.nome}</th>)}
+                <th scope="col" className="px-3 py-2 text-right">Presença</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -196,7 +196,7 @@ export default function GraficoLinhasPresenca({ pontos }: Props) {
             {pontos.map((item, indice) => comRotulo.has(indice) && (
               <span
                 key={item.iso}
-                className={`absolute whitespace-nowrap text-[11px] tabular-nums text-slate-500 ${indice === 0 ? '' : indice === pontos.length - 1 ? '-translate-x-full' : '-translate-x-1/2'}`}
+                className={`absolute whitespace-nowrap text-xs tabular-nums text-slate-500 ${indice === 0 ? '' : indice === pontos.length - 1 ? '-translate-x-full' : '-translate-x-1/2'}`}
                 style={{ left: `${(xDe(indice) / LARGURA) * 100}%` }}
               >
                 {item.rotulo}

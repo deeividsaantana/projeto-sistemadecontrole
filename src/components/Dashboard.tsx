@@ -10,7 +10,8 @@ import type {
   OrdemServico, PlanejamentoItem, PresencaApontamento, ProdutoLubrificacao,
   RegistroProducao, TicketJazida, TipoCombustivel,
 } from '../types';
-import { PeriodFilter, buildPeriod, type PeriodValue } from '../shared/ui';
+import { PageHeader, PeriodFilter, buildPeriod, type PeriodValue } from '../shared/ui';
+import { TelaCheia } from '../shared/ui/TelaCheia';
 import { buildDashboardGeneralViewModel } from '../utils/dashboardGeneral';
 import { AvailabilityTrend, FleetDonut } from './dashboard/OperationalVisuals';
 import { TeamActivity } from './dashboard/TeamActivity';
@@ -35,9 +36,11 @@ interface DashboardProps {
 
 function ExecutiveCard({ label, value, detail, tone, icon: Icon, onClick }: { label: string; value: string | number; detail: string; tone: 'green' | 'blue' | 'orange' | 'slate'; icon: typeof Activity; onClick?: () => void }) {
   const colors = { green: 'border-emerald-200 bg-emerald-950 text-white', blue: 'border-blue-200 bg-blue-900 text-white', orange: 'border-orange-200 bg-orange-700 text-white', slate: 'border-slate-200 bg-white text-slate-950' };
-  return <button type="button" onClick={onClick} data-dashboard-reveal className={`dashboard-kpi group min-w-0 rounded-2xl border p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 ${colors[tone]}`}>
-    <div className="flex items-start justify-between gap-3"><span className="text-sm font-bold opacity-80">{label}</span><span className="rounded-lg bg-white/15 p-1.5"><Icon className="size-4" /></span></div>
-    <strong className={`mt-2 block font-black leading-tight tabular-nums ${typeof value === 'number' || /\d/.test(value) ? 'text-3xl' : 'text-xl'}`}>{value}</strong><span className="mt-1 block text-xs font-semibold opacity-75">{detail}</span>
+  // No laranja o texto esmaecido cai abaixo de 4,5:1; ali o rótulo fica branco cheio.
+  const suave = tone === 'orange' ? '' : 'opacity-80';
+  return <button type="button" onClick={onClick} data-dashboard-reveal className={`dashboard-kpi group min-w-0 rounded-2xl border p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus) ${colors[tone]}`}>
+    <div className="flex items-start justify-between gap-3"><span className={`text-sm font-bold ${suave}`}>{label}</span><span className="rounded-lg bg-white/15 p-1.5"><Icon className="size-4" /></span></div>
+    <strong className={`mt-2 block font-black leading-tight tabular-nums ${typeof value === 'number' || /\d/.test(value) ? 'text-3xl' : 'text-xl'}`}>{value}</strong><span className={`mt-1 block text-xs font-semibold ${suave}`}>{detail}</span>
   </button>;
 }
 
@@ -45,7 +48,7 @@ export default function Dashboard(props: DashboardProps) {
   // Cada abertura começa no retrato operacional do dia atual.
   const [periodo, setPeriodo] = useState<PeriodValue>(() => buildPeriod('hoje'));
   const [obraId, setObraId] = useState('');
-  const dashboardRef = useRef<HTMLDivElement>(null);
+  const dashboardRef = useRef<HTMLElement>(null);
   const view = useMemo(() => buildDashboardGeneralViewModel({ obraId, from: periodo.from, to: periodo.to }, props),
     [obraId, periodo.from, periodo.to, props.equipamentos, props.controlesEquipamentos, props.producao, props.abastecimentos, props.presencasLink, props.gruposEquipe, props.funcionarios, props.ordensServico]);
   const fieldReports = useMemo(() => fieldReportsFromMovements(props.movimentosMaterial || [], { from: periodo.from, to: periodo.to }), [props.movimentosMaterial, periodo.from, periodo.to]);
@@ -60,19 +63,22 @@ export default function Dashboard(props: DashboardProps) {
     gsap.fromTo(dashboardRef.current.querySelectorAll('[data-dashboard-reveal]'), { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: .72, stagger: .065, ease: 'power3.out', clearProps: 'transform' });
   }, { scope: dashboardRef, dependencies: [obraId, periodo.from, periodo.to] });
 
+  // Molde de página (TelaCheia): o cabeçalho com os filtros fica parado e os
+  // cartões rolam por dentro. O conteúdo do Painel segue o mesmo: ele é a
+  // referência visual das outras abas.
   return (
-    <div ref={dashboardRef} id="dashboard-tab" className="flex min-w-0 flex-col gap-4 p-4 sm:p-5">
-      <h1 className="sr-only">Painel Geral da operação</h1>
-      <div data-testid="period-filter" className="flex flex-wrap items-center gap-3">
-        <label className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600">Obra
-          <select value={obraId} onChange={event => setObraId(event.target.value)} className="max-w-48 bg-transparent py-2 text-sm text-slate-900" aria-label="Filtrar por obra">
-            <option value="">Todas as obras</option>
-            {props.obras.map(obra => <option key={obra.id} value={obra.id}>{obra.nome}</option>)}
-          </select>
-        </label>
-        <PeriodFilter value={periodo} onChange={setPeriodo} />
-      </div>
-
+    <TelaCheia ref={dashboardRef} id="dashboard-tab" rotulo="Painel de Controle" longa rotuloDados="Indicadores da operação"
+      cabecalho={<PageHeader eyebrow="Visão geral" title="Painel de Controle"
+        actions={<div data-testid="period-filter" className="flex flex-wrap items-center gap-3">
+          <label className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600">Obra
+            <select value={obraId} onChange={event => setObraId(event.target.value)} className="max-w-48 bg-transparent py-2 text-sm text-slate-900" aria-label="Filtrar por obra">
+              <option value="">Todas as obras</option>
+              {props.obras.map(obra => <option key={obra.id} value={obra.id}>{obra.nome}</option>)}
+            </select>
+          </label>
+          <PeriodFilter value={periodo} onChange={setPeriodo} />
+        </div>} />}
+    >
       <div className="grid min-w-0 grid-flow-dense gap-4 xl:grid-cols-2" aria-label="Visualização da operação">
         <FleetDonut fleet={view.fleet} onNavigate={() => props.onNavigate('controle-equipamentos')} />
         <AvailabilityTrend measure={view.availability} onNavigate={() => props.onNavigate('controle-equipamentos')} />
@@ -89,6 +95,6 @@ export default function Dashboard(props: DashboardProps) {
       <TeamActivity view={view} onNavigate={props.onNavigate} />
 
       <FieldReports reports={fieldReports} onNavigate={props.onNavigate} />
-    </div>
+    </TelaCheia>
   );
 }

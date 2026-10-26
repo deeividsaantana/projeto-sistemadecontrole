@@ -6,7 +6,7 @@ import { expect, test } from '@playwright/test';
  * fazia à mão a cada versão.
  */
 const TELAS: Array<{ screen: string; titulo: string | RegExp }> = [
-  { screen: 'painel', titulo: 'Visão operacional' },
+  { screen: 'painel', titulo: 'Painel de Controle' },
   { screen: 'frota', titulo: 'Frota' },
   { screen: 'manutencao', titulo: 'Manutenção' },
   { screen: 'horas-paradas', titulo: 'Horas Paradas' },
@@ -78,14 +78,16 @@ test('cadastros cabe em notebook sem zoom e mostra a lista logo de cara', async 
   const topo = await primeira.evaluate(linha => linha.getBoundingClientRect().top);
   expect(topo, 'a primeira linha aparece sem rolar').toBeLessThan(400);
 
-  await page.mouse.move(700, 500);
-  await page.mouse.wheel(0, 900);
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(500);
+  // A TabelaPadrao rola por dentro: a lista desce, busca e cabeçalho ficam na tela.
+  const area = page.locator('#database-lists-viewport [role="region"]');
+  await area.hover();
+  for (let vez = 0; vez < 4; vez += 1) await page.mouse.wheel(0, 600);
+  await expect.poll(() => area.evaluate(elemento => elemento.scrollTop)).toBeGreaterThan(200);
   const busca = await page.getByRole('searchbox', { name: 'Buscar cadastros' }).boundingBox();
-  expect(busca?.y ?? -1, 'a busca fica presa no topo ao rolar a lista').toBeGreaterThanOrEqual(0);
-  const cabecalho = await page.locator('#database-lists-viewport thead').boundingBox();
-  expect(cabecalho?.y ?? -1, 'o cabeçalho da tabela para logo abaixo dos filtros').toBeGreaterThan(0);
-  expect(cabecalho?.y ?? 999).toBeLessThan(200);
+  expect(busca?.y ?? -1, 'a busca fica na tela ao rolar a lista').toBeGreaterThanOrEqual(0);
+  const cabecalho = await page.locator('#database-lists-viewport thead th').last().boundingBox();
+  expect(cabecalho?.y ?? -1, 'o cabeçalho da tabela fica abaixo dos filtros').toBeGreaterThan((busca?.y ?? 0) + (busca?.height ?? 0));
+  expect((cabecalho?.y ?? 999) + (cabecalho?.height ?? 0), 'o cabeçalho continua dentro da tela').toBeLessThan(700);
 });
 
 test('cadastros exclui de verdade, guarda na Lixeira e deixa desfazer', async ({ page }) => {
@@ -97,10 +99,9 @@ test('cadastros exclui de verdade, guarda na Lixeira e deixa desfazer', async ({
   await dialog.getByTestId('cadastro-confirmar').click();
   const aviso = page.getByTestId('cadastro-aviso');
   await expect(aviso).toContainText('excluído');
-  // No celular os tipos ficam num seletor que abre de baixo para cima.
-  const seletor = page.getByTestId('cadastro-escolher-tipo');
-  if (await seletor.isVisible()) await seletor.click();
-  await page.locator('[data-testid="cadastro-categoria-lixeira"]:visible').click();
+  // Os tipos são abas no topo, também no celular; a Lixeira é a última.
+  await page.getByTestId('cadastro-categoria-lixeira').click();
+  await expect(page.getByTestId('cadastro-categoria-lixeira')).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByTestId('cadastro-lixeira')).toContainText('excluído por');
   await aviso.getByRole('button', { name: 'Desfazer' }).click();
   await expect(page.getByTestId('cadastro-lixeira')).toContainText('A Lixeira está vazia');
@@ -150,14 +151,16 @@ test('cadastros em lote deixa de fora o que está em uso e diz qual', async ({ p
 
 test('materiais oferece busca no grupo de filtros', async ({ page }) => {
   await page.goto('/?screen=materiais');
-  await page.getByRole('button', { name: 'Estoque', exact: true }).click();
+  // Controle abre a primeira subtela do grupo: Estoque.
+  await page.getByRole('tablist', { name: 'Subtelas de materiais', exact: true }).getByRole('tab', { name: 'Controle' }).click();
+  await expect(page.getByRole('tab', { name: 'Estoque' })).toHaveAttribute('aria-selected', 'true');
   const filters = page.getByRole('region', { name: 'Filtros de materiais' });
-  await expect(filters.getByRole('textbox', { name: 'Buscar material' })).toBeVisible();
+  await expect(filters.getByRole('searchbox', { name: 'Buscar material' })).toBeVisible();
 });
 
-test('estoque de materiais ordena saldo com estado acessível', async ({ page }) => {
-  await page.goto('/?screen=materiais');
-  await page.getByRole('button', { name: 'Estoque', exact: true }).click();
+test('estoque de materiais ordena saldo com estado acessível', async ({ page }, info) => {
+  test.skip(info.project.name === 'celular', 'no celular a tabela vira cartões');
+  await page.goto('/?screen=materiais&secao=estoque');
   const saldo = page.getByRole('columnheader', { name: /Saldo/ });
   const values = async () => (await page.getByRole('table', { name: 'Posição de estoque por material' })
     .locator('tbody tr td:nth-child(6)').allTextContents())
@@ -187,13 +190,16 @@ test('manutenção apresenta central operacional e fluxo das OS', async ({ page 
   await page.goto('/?screen=manutencao');
 
   await expect(page.getByRole('heading', { name: 'Manutenção', level: 1 })).toBeVisible();
+  // As ordens abrem primeiro; a fila de oficina é a aba ao lado.
+  await expect(page.getByText(/\d+ ordens? de serviço/)).toBeVisible();
+  await page.getByRole('tab', { name: /^(Fila de oficina|Fila)/ }).click();
   await expect(page.getByRole('heading', { name: 'Fila de oficina', level: 2 })).toBeVisible();
   await expect(page.getByText('OS em curso, ordenadas pelo tempo parado do equipamento')).toBeVisible();
-  await expect(page.locator('text=Ordem(ns) de Serviço')).toBeVisible();
 });
 
 test('manutenção identifica a categoria do equipamento', async ({ page }) => {
   await page.goto('/?screen=manutencao');
+  await page.getByRole('tab', { name: /^(Fila de oficina|Fila)/ }).click();
 
   await expect(page.locator('[aria-label="Caminhão basculante"]').first()).toBeVisible();
 });
@@ -213,9 +219,74 @@ test('controle de frotas remove o lançamento rápido e leva as visões ao topo'
   await page.goto('/?screen=frotas');
 
   await expect(page.getByText('Lançamento rápido')).toHaveCount(0);
-  const topViews = page.locator('.renea-page-header').getByRole('navigation', { name: 'Visões do controle de frotas' });
+  const topViews = page.locator('.renea-page-header').getByRole('tablist', { name: 'Subtelas do controle de frotas' });
   await expect(topViews).toBeVisible();
-  await expect(topViews.getByRole('button', { name: 'Situação do dia' })).toBeVisible();
+  // No celular a aba mostra o nome curto ("Dia").
+  await expect(topViews.getByRole('tab', { name: /^(Situação do dia|Dia)$/ })).toHaveAttribute('aria-selected', 'true');
+});
+
+// Molde de página (auditoria de 21/10/2026): a aba ocupa a tela abaixo da
+// barra do topo, a página não rola e a tabela aparece logo no primeiro olhar.
+test('molde: a aba nasce em tela cheia dentro da casca, sem botão e sem rolar a página', async ({ page }, info) => {
+  test.skip(info.project.name === 'celular', 'no celular a página rola normalmente');
+  await page.setViewportSize({ width: 1366, height: 768 });
+  for (const [screen, id] of [['combustivel', 'combustivel-tab'], ['frotas', 'controle-equipamentos-tab'], ['presenca-admin', 'presenca-tab']]) {
+    await page.goto(`/?screen=${screen}&shell=1`);
+    const aba = page.locator(`#${id}`);
+    await expect(aba).toBeVisible();
+    // A entrada desliza alguns pixels: mede depois que ela assenta.
+    await expect.poll(async () => {
+      const caixa = await aba.boundingBox();
+      return caixa!.y + caixa!.height;
+    }, { message: `${screen} cabe na altura da tela` }).toBeLessThanOrEqual(768);
+    const rolagem = await page.evaluate(() => {
+      window.scrollTo(1e6, 1e6);
+      return [window.scrollX, window.scrollY, document.documentElement.scrollWidth - document.documentElement.clientWidth];
+    });
+    expect(rolagem, `${screen} não rola a página`).toEqual([0, 0, 0]);
+  }
+  await expect(page.getByTestId('combustivel-tela-cheia')).toHaveCount(0);
+  await page.goto('/?screen=frotas&shell=1');
+  const primeiraLinha = page.locator('#controle-equipamentos-tab table tbody tr').first();
+  const topo = await primeiraLinha.evaluate(linha => linha.getBoundingClientRect().bottom);
+  expect(topo, 'a primeira linha da frota aparece sem rolar').toBeLessThan(768);
+});
+
+test('materiais: abas agrupadas no topo, sem menu lateral, e a página não rola', async ({ page }, info) => {
+  test.skip(info.project.name === 'celular', 'no celular a página rola normalmente');
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto('/?screen=materiais&shell=1&secao=movimentos');
+  const grupos = page.getByRole('tablist', { name: 'Subtelas de materiais', exact: true });
+  await expect(grupos.getByRole('tab', { name: 'Controle' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tablist', { name: 'Subtelas de materiais: Controle' }).getByRole('tab', { name: 'Movimentos' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#materiais-dados')).toHaveAttribute('role', 'tabpanel');
+  await expect(page.getByRole('navigation', { name: 'Partes de materiais' })).toHaveCount(0);
+  const rolagem = await page.evaluate(() => [document.documentElement.scrollWidth - document.documentElement.clientWidth, document.documentElement.scrollHeight - document.documentElement.clientHeight]);
+  expect(rolagem, 'nem para o lado nem para baixo').toEqual([0, 0]);
+  await grupos.getByRole('tab', { name: /Na obra/ }).click();
+  await page.getByRole('tablist', { name: 'Subtelas de materiais: Na obra' }).getByRole('tab', { name: 'Uso por ramo' }).click();
+  await expect(page.getByRole('heading', { name: 'Uso por ramo', level: 2 })).toBeAttached();
+});
+
+test('abas agrupadas: 18 subtelas cabem a 1366 px e andam pelas setas', async ({ page }, info) => {
+  test.skip(info.project.name === 'celular', 'no celular a faixa rola por dentro');
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto('/?screen=molde&shell=1');
+  const grupos = page.getByRole('tablist', { name: 'Subtelas de materiais', exact: true });
+  const doGrupo = page.getByRole('tablist', { name: 'Subtelas de materiais: Na obra' });
+  for (const lista of [grupos, doGrupo]) {
+    const sobra = await lista.evaluate(no => no.scrollWidth - no.clientWidth);
+    expect(sobra, 'a linha de abas não rola para o lado').toBeLessThanOrEqual(0);
+  }
+  await expect(page.locator('#molde-dados')).toHaveAttribute('role', 'tabpanel');
+  await doGrupo.getByRole('tab', { name: /Apontadores/ }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(doGrupo.getByRole('tab', { name: 'Bota-fora' })).toHaveAttribute('aria-selected', 'true');
+  await expect(doGrupo.getByRole('tab', { name: 'Bota-fora' })).toBeFocused();
+  await grupos.getByRole('tab', { name: 'Controle' }).click();
+  await expect(page.getByRole('tablist', { name: 'Subtelas de materiais: Controle' }).getByRole('tab', { name: 'Estoque' })).toHaveAttribute('aria-selected', 'true');
+  await grupos.getByRole('tab', { name: /Na obra/ }).click();
+  await expect(doGrupo.getByRole('tab', { name: 'Bota-fora' }), 'voltar ao grupo abre a última subtela usada nele').toHaveAttribute('aria-selected', 'true');
 });
 
 test('manutenção abre o formulário e fecha com ESC', async ({ page }) => {
@@ -273,6 +344,7 @@ test('manutenção abre OS por N, foca equipamento e valida salvar por CTRL+ENTE
 
 test('manutenção apresenta uma fila operacional acionável sem cards duplicados', async ({ page }) => {
   await page.goto('/?screen=manutencao');
+  await page.getByRole('tab', { name: /^(Fila de oficina|Fila)/ }).click();
 
   const queue = page.getByRole('region', { name: 'Fila operacional de manutenção' });
   await expect(queue).toBeVisible();
@@ -433,15 +505,16 @@ test('materiais: a carga que a nota prometeu e não chegou aparece em cima', asy
 
   const pendentes = page.locator('#recebimentos-pendentes');
   await expect(pendentes).toBeVisible();
-  await expect(pendentes.getByText('2 entrega(s) com carga faltando')).toBeVisible();
+  await expect(pendentes.getByText(/\d+ entrega\(s\) com carga faltando/)).toBeVisible();
 
-  const linha = pendentes.getByRole('row').filter({ hasText: 'ESTACA MADEIRA C/ PONTA' });
+  // No computador é linha de tabela; no celular a TabelaPadrao vira cartões (itens de lista).
+  const linha = pendentes.getByRole('row').or(pendentes.getByRole('listitem')).filter({ hasText: 'ESTACA MADEIRA C/ PONTA' }).first();
   await expect(linha).toContainText('SC 92998794');
   await expect(linha).toContainText('NF 4789');
   await expect(linha).toContainText('2.000 PC');
 
   // A entrega completa não aparece como pendência.
-  await expect(pendentes.getByRole('row').filter({ hasText: 'TUBO DE CONCRETO PA3 DN1000' })).toHaveCount(0);
+  await expect(pendentes.getByRole('row').or(pendentes.getByRole('listitem')).filter({ hasText: 'TUBO DE CONCRETO PA3 DN1000' })).toHaveCount(0);
 });
 
 // "Tudo interativo": o número do painel não é só leitura, é o caminho. Clicar

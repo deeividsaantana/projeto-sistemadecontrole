@@ -1,9 +1,11 @@
 // Trava de peso do build (CONTRIBUTING.md, seção 4). Roda no fim do
 // `npm run verify`, depois do `vite build`, e reprova quando:
 // - o carregamento inicial (JS de index.html) passa do limite;
-// - uma biblioteca pesada (Excel, PDF, canvas, Storage, cargas de planilha)
+// - uma biblioteca pesada (Excel, PDF, canvas, Storage, cargas de planilha,
+//   ícones das telas ou dos links públicos)
 //   entra no carregamento inicial em vez de carregar só quando a tela pede;
-// - o pedaço de uma aba passa do limite.
+// - o pedaço de uma aba passa do limite;
+// - o pedaço do App (estado e casca, baixado logo depois do login) passa do limite.
 // Os limites ficam pouco acima do tamanho de 2026-09-24. Subir um limite
 // exige justificar no PR; o normal é dividir a tela ou carregar sob demanda.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -12,7 +14,12 @@ import path from 'node:path';
 const KB = 1024;
 const LIMITE_INICIAL = 600 * KB;
 const LIMITE_POR_ABA = 300 * KB;
-const PESADAS_FORA_DO_INICIO = /vendor-(excel|pdf|canvas)|seed-/;
+// App com 309 kB em 2026-10-21, depois de tirar dele o que só a Frota usa e os
+// ícones das telas (vendor-icones). Folga de ~30 kB para as mudanças de tela já
+// em andamento; o caminho para baixar é dividir o estado do App (plano no
+// relatório da auditoria de front, A14), não subir o número.
+const LIMITE_APP = 340 * KB;
+const PESADAS_FORA_DO_INICIO = /vendor-(excel|pdf|canvas)|vendor-icones-(?!base-)|seed-/;
 
 const dist = path.resolve('dist');
 const assets = path.join(dist, 'assets');
@@ -27,6 +34,12 @@ if (totalInicial > LIMITE_INICIAL) {
 }
 for (const arquivo of iniciais) {
   if (PESADAS_FORA_DO_INICIO.test(arquivo)) erros.push(`${arquivo} entrou no carregamento inicial; carregue sob demanda.`);
+}
+const pedacosDoApp = readdirSync(assets).filter(arquivo => /^App-[\w-]+\.js$/.test(arquivo));
+if (!pedacosDoApp.length) erros.push('Pedaço App-*.js não encontrado; ajuste a trava se o App mudou de nome.');
+for (const arquivo of pedacosDoApp) {
+  const bytes = tamanho(path.join('assets', arquivo));
+  if (bytes > LIMITE_APP) erros.push(`${arquivo} com ${Math.round(bytes / KB)} kB (limite do App ${LIMITE_APP / KB} kB).`);
 }
 for (const arquivo of readdirSync(assets)) {
   if (!/^(\w+Tab|Dashboard)-[\w-]+\.js$/.test(arquivo)) continue;

@@ -9,7 +9,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Building2, CalendarDays, CopyX, Download, FileText, Fuel, Gauge, HelpCircle, Truck } from 'lucide-react';
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Building2, CalendarDays, CopyX, Download, FileText, Fuel, HelpCircle, Truck } from 'lucide-react';
 import type { Abastecimento, Comboio, Empresa, Equipamento, TipoCombustivel } from '../../types';
 import { abaDoDia, abasDoHistorico, intervaloDaAba } from '../../modules/frota/historicoCombustivel';
 import { getFuelCompetencePeriodLabel } from '../../modules/frota/fuelReport';
@@ -29,7 +29,8 @@ interface Props {
   comboios: Comboio[];
   /** Dá o nome do combustível no título do PDF (ex.: Diesel S10). */
   combustiveis?: TipoCombustivel[];
-  parteInicial?: ParteRelatorio;
+  /** Resumo ou consumo por máquina: as duas subtelas de Relatórios, abas do topo da aba Combustível. */
+  parte?: ParteRelatorio;
   /** Abre a lista de lançamentos com esse filtro. */
   onAbrirLista: (pedido: Omit<PedidoFiltro, 'chave'>) => void;
   onErro: (mensagem: string) => void;
@@ -60,10 +61,9 @@ const tetoRedondo = (valor: number) => {
   return [1, 2, 2.5, 5, 10].map(passo => passo * base).find(teto => teto >= valor) ?? valor;
 };
 
-export default function RelatorioDiesel({ abastecimentos, equipamentos, empresas, comboios, combustiveis = [], parteInicial = 'resumo', onAbrirLista, onErro, onAviso }: Props) {
+export default function RelatorioDiesel({ abastecimentos, equipamentos, empresas, comboios, combustiveis = [], parte = 'resumo', onAbrirLista, onErro, onAviso }: Props) {
   const escopo = useRef<HTMLDivElement>(null);
   const hoje = isoDay(new Date());
-  const [parte, setParte] = useState<ParteRelatorio>(parteInicial);
   const meses = useMemo(() => abasDoHistorico(abastecimentos, hoje).reverse(), [abastecimentos, hoje]);
   // Abre no mês do diesel; no começo do mês, ainda sem abastecimento, abre nos últimos 30 dias.
   const [periodo, setPeriodo] = useState(() => (abastecimentos.some(item => item.data && abaDoDia(item.data) === abaDoDia(hoje)) ? abaDoDia(hoje) : TRINTA_DIAS));
@@ -195,20 +195,9 @@ export default function RelatorioDiesel({ abastecimentos, equipamentos, empresas
     }
   };
 
-  const partes = [['resumo', 'Resumo', BarChart3], ['consumo', 'Consumo por máquina', Gauge]] as const;
-
   return (
     <div ref={escopo} className="flex min-h-0 flex-1 flex-col gap-2" data-testid="combustivel-relatorios">
-      <div data-comb-reveal className="flex shrink-0 flex-wrap items-center gap-2">
-        <nav aria-label="Parte do relatório" className="grid w-full grid-cols-2 gap-1 sm:w-auto rounded-xl bg-white p-1 ring-1 ring-inset ring-slate-200">
-          {partes.map(([id, rotulo, Icone]) => (
-            <button key={id} type="button" aria-pressed={parte === id} onClick={() => setParte(id)} data-testid={`relatorio-parte-${id}`}
-              className={`inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-sm font-bold transition ${parte === id ? 'bg-[#176b4d] text-white shadow-sm' : 'text-slate-600 hover:bg-[#f7f8f6] hover:text-slate-900'} ${FOCO}`}>
-              <Icone className="size-4 shrink-0" aria-hidden="true" />{id === 'consumo' ? <><span className="sm:hidden">Por máquina</span><span className="hidden sm:inline">{rotulo}</span></> : rotulo}
-            </button>
-          ))}
-        </nav>
-        {parte === 'resumo' && <>
+      {parte === 'resumo' && <div data-comb-reveal className="flex shrink-0 flex-wrap items-center gap-2">
           <div role="group" aria-label="Período" className="flex min-w-0 flex-wrap items-center gap-1">
             {[[SETE_DIAS, '7 dias'], [TRINTA_DIAS, '30 dias'], ...meses.slice(0, 3).map(mes => [mes, mesCurto(mes)])].map(([id, rotulo]) => (
               <button key={id} type="button" aria-pressed={periodo === id} onClick={() => setPeriodo(id)} data-testid={`relatorio-periodo-${id}`}
@@ -240,8 +229,7 @@ export default function RelatorioDiesel({ abastecimentos, equipamentos, empresas
               <Download className="size-4" aria-hidden="true" />{exportando ? 'Gerando…' : 'Excel'}
             </button>
           </span>
-        </>}
-      </div>
+        </div>}
 
       {parte === 'consumo'
         ? <ConsumoPorMaquina abastecimentos={abastecimentos} equipamentos={equipamentos} empresas={empresas} onErro={onErro} onAviso={onAviso} />
@@ -335,7 +323,7 @@ function GraficoPorDia({ relatorio, hoje, onAbrirDia }: { relatorio: ReturnType<
         <p className="text-xs font-semibold text-slate-500">Toque num dia para ver os lançamentos dele</p>
       </header>
       <div className="flex gap-2">
-        <div aria-hidden="true" className="flex h-40 w-10 shrink-0 flex-col justify-between text-right text-[11px] font-semibold tabular-nums text-slate-400 2xl:h-52">
+        <div aria-hidden="true" className="flex h-40 w-10 shrink-0 flex-col justify-between text-right text-xs font-semibold tabular-nums text-slate-400 2xl:h-52">
           <span>{teto.toLocaleString('pt-BR')}</span><span>{(teto / 2).toLocaleString('pt-BR')}</span><span>0</span>
         </div>
         <div className="relative min-w-0 flex-1">
@@ -344,7 +332,7 @@ function GraficoPorDia({ relatorio, hoje, onAbrirDia }: { relatorio: ReturnType<
             <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-slate-100" />
             {relatorio.mediaPorDia > 0 && (
               <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-slate-500" style={{ bottom: altura(relatorio.mediaPorDia) }}>
-                <span className="absolute -top-4 right-0 rounded bg-white/90 px-1 text-[11px] font-bold text-slate-600">média {litrosTexto(relatorio.mediaPorDia)}</span>
+                <span className="absolute -top-4 right-0 rounded bg-white/90 px-1 text-xs font-bold text-slate-600">média {litrosTexto(relatorio.mediaPorDia)}</span>
               </div>
             )}
             <ol className="absolute inset-0 flex items-end gap-[2px]">
@@ -379,7 +367,7 @@ function GraficoPorDia({ relatorio, hoje, onAbrirDia }: { relatorio: ReturnType<
               </div>
             )}
           </div>
-          <ol aria-hidden="true" className="mt-1 flex gap-[2px] text-[11px] font-semibold tabular-nums text-slate-500">
+          <ol aria-hidden="true" className="mt-1 flex gap-[2px] text-xs font-semibold tabular-nums text-slate-500">
             {dias.map((dia, indice) => (
               <li key={dia.dia} className="relative min-w-0 flex-1 text-center">
                 {(indice % passo === 0 || indice === dias.length - 1) ? <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap">{dia.dia.slice(8)}</span> : null}
@@ -416,7 +404,7 @@ function Ranking({ titulo, linhas, total, testid, dica, onAbrir }: { titulo: str
                 <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
                   <span data-barra-ranking className="block h-full rounded-full" style={{ width: `${(linha.litros / maior) * 100}%`, background: VERDE }} />
                 </span>
-                <span className="w-10 shrink-0 text-right text-[11px] font-semibold tabular-nums text-slate-500">{total ? `${Math.round((linha.litros / total) * 100)}%` : ''}</span>
+                <span className="w-10 shrink-0 text-right text-xs font-semibold tabular-nums text-slate-500">{total ? `${Math.round((linha.litros / total) * 100)}%` : ''}</span>
               </span>
             </button>
           </li>

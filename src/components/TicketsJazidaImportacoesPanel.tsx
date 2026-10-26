@@ -16,10 +16,10 @@ interface Props {
 
 const STATUS_LABELS: Record<ImportDisposition, string> = {
   new: 'Novo',
-  'potential-update': 'Possível atualização',
+  'potential-update': 'Pode atualizar um existente',
   unchanged: 'Sem alteração',
-  'duplicate-in-file': 'Duplicado no arquivo',
-  review: 'Conferência',
+  'duplicate-in-file': 'Repetido na planilha',
+  review: 'Falta dado',
   invalid: 'Inválido',
   deferred: 'Adiado',
 };
@@ -79,16 +79,16 @@ export default function TicketsJazidaImportacoesPanel({ tickets, responsavel, on
   } : undefined;
 
   return <div className="mt-3 space-y-3">
-    <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-300 bg-white px-4 text-center text-xs font-bold text-slate-600 hover:border-emerald-500 hover:text-emerald-700">
+    <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-white px-4 text-center text-sm font-bold text-slate-700 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-(--renea-focus) hover:border-emerald-500 hover:text-[#176b4d]">
       <Upload className="h-5 w-5" />
-      {isReading ? 'Lendo planilha...' : 'Selecionar planilha (.xlsx) para prévia'}
-      <input type="file" accept=".xlsx,.xlsm" className="hidden" disabled={isReading} onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void handleFileSelected(file); }} />
+      {isReading ? 'Lendo planilha...' : 'Escolher a planilha (.xlsx) para conferir'}
+      <input type="file" accept=".xlsx,.xlsm" className="sr-only" disabled={isReading} onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void handleFileSelected(file); }} />
     </label>
-    {preview && <p className="flex items-center gap-2 text-xs font-semibold text-slate-600"><FileSpreadsheet className="h-4 w-4 text-emerald-700" /> {fileName} lido · {preview.rows.length} linha(s) classificada(s).</p>}
-    {resultSummary && <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">{resultSummary}</p>}
+    {preview && <p className="flex items-center gap-2 text-sm font-semibold text-slate-700"><FileSpreadsheet className="h-4 w-4 text-emerald-700" aria-hidden="true" /> {fileName} lida · {preview.rows.length} linha(s) conferida(s).</p>}
+    {resultSummary && <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">{resultSummary}</p>}
     <SpreadsheetImportReview
       open={Boolean(preview)}
-      title="Prévia de importação — Viagens (Tickets Jazida)"
+      title="Conferir planilha de viagens antes de gravar"
       fileName={fileName}
       validCount={preview?.counts.new ?? 0}
       columns={[]}
@@ -107,9 +107,9 @@ export default function TicketsJazidaImportacoesPanel({ tickets, responsavel, on
         // aplicar sempre mostra o que foi de fato gravado e o que ficou de
         // fora, mesmo quando os números não batem com a prévia.
         setResultSummary(
-          `Aplicado: ${applied.tickets.length} ticket(s). `
-          + `Fora do lote: ${applied.skipped.duplicate} duplicado(s), ${applied.skipped.review} em conferência (dado incompleto), `
-          + `${applied.skipped.reference} de aba só de referência (sem registro próprio)${applied.skipped.other ? `, ${applied.skipped.other} outro(s)` : ''}.`,
+          `Gravados: ${applied.tickets.length} ticket(s). `
+          + `Ficaram de fora: ${applied.skipped.duplicate} repetido(s), ${applied.skipped.review} com dado faltando, `
+          + `${applied.skipped.reference} de aba só de consulta${applied.skipped.other ? `, ${applied.skipped.other} outro(s)` : ''}.`,
         );
         setPreview(null);
         setDryRunRan(false);

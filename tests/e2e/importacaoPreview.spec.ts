@@ -18,8 +18,7 @@ const buildFixtureWorkbook = async (): Promise<string> => {
 
 test('materiais: prévia de importação mostra lote, abas, status e ação bloqueada', async ({ page }) => {
   const fixturePath = await buildFixtureWorkbook();
-  await page.goto('/?screen=materiais');
-  await page.getByRole('button', { name: 'Importações' }).click();
+  await page.goto('/?screen=materiais&secao=importacoes');
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
 
   await expect(page.getByText('Lote de importação')).toBeVisible();

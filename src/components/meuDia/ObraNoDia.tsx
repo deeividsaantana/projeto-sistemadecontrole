@@ -32,19 +32,19 @@ function Bloco({ titulo, Icone, numeros, alerta, aba, rotuloAba, onIrPara, child
     <section data-meu-dia-reveal className={`${CARTAO} flex flex-col overflow-hidden`} aria-label={titulo}>
       <header className="flex items-center gap-3 border-b border-slate-100 bg-[#f7f8f6] px-4 py-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white text-[#176b4d] ring-1 ring-inset ring-slate-200"><Icone className="size-5" aria-hidden="true" /></span>
-        <h3 className="text-base font-bold text-slate-900">{titulo}</h3>
+        <h2 className="text-base font-bold text-slate-900">{titulo}</h2>
       </header>
       <dl className="grid grid-cols-3 gap-2 px-4 pt-3">
         {numeros.map(item => (
           <div key={item.rotulo} className="flex min-w-0 flex-col justify-between">
             <dt className="break-words text-xs font-semibold leading-tight text-slate-500 hyphens-auto">{item.rotulo}</dt>
-            <dd className={`text-xl font-black tabular-nums ${item.tom === 'alerta' ? 'text-[#f26a2e]' : 'text-slate-900'}`}>{item.valor}</dd>
+            <dd className={`text-xl font-black tabular-nums ${item.tom === 'alerta' ? 'text-[#c2410c]' : 'text-slate-900'}`}>{item.valor}</dd>
           </div>
         ))}
       </dl>
       {alerta && (
         <p className="mx-4 mt-3 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 ring-1 ring-inset ring-amber-200">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#f26a2e]" aria-hidden="true" />
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#c2410c]" aria-hidden="true" />
           {alerta}
         </p>
       )}
@@ -67,7 +67,7 @@ function ListaMateriais({ titulo, linhas }: { titulo: string; linhas: LinhaMater
   if (!linhas.length) return null;
   return (
     <div className="space-y-1">
-      <p className="text-xs font-bold uppercase tracking-wide text-[#718087]">{titulo}</p>
+      <p className="text-xs font-bold uppercase tracking-wide text-[#5b6870]">{titulo}</p>
       <ul className="space-y-1">
         {linhas.slice(0, MOSTRAR).map(linha => (
           <li key={`${linha.material}-${linha.unidade}`} className="flex items-baseline justify-between gap-3">
@@ -109,7 +109,7 @@ export function ObraNoDia({ dia, materiais, movimentos, abastecimentos, controle
           <ListaMateriais titulo="Saiu" linhas={mat.saidas} />
           {mat.avisos.length > 0 && (
             <div className="space-y-1">
-              <p className="text-xs font-bold uppercase tracking-wide text-[#718087]">Estoque</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-[#5b6870]">Estoque</p>
               <ul className="space-y-1">
                 {mat.avisos.slice(0, 3).map(aviso => (
                   <li key={aviso.id} className="flex gap-2">
@@ -171,7 +171,7 @@ export function ObraNoDia({ dia, materiais, movimentos, abastecimentos, controle
             {eq.parados.slice(0, MOSTRAR).map(item => (
               <li key={`${item.prefixo}-${item.status}`} className="flex flex-wrap items-baseline justify-between gap-x-3">
                 <span><strong className="font-bold text-slate-900">{item.prefixo}</strong> · {item.status}</span>
-                <span className={item.motivo ? 'min-w-0 break-words text-slate-600' : 'font-semibold text-[#f26a2e]'}>{item.motivo || 'Sem motivo'}</span>
+                <span className={item.motivo ? 'min-w-0 break-words text-slate-600' : 'font-semibold text-[#c2410c]'}>{item.motivo || 'Sem motivo'}</span>
               </li>
             ))}
           </ul>

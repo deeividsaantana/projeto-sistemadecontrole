@@ -2,8 +2,8 @@
  * Materiais: cadastro, movimentação e estoque. O saldo é sempre a soma dos
  * movimentos — não existe contador guardado para divergir do histórico.
  */
-import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { locaisParaEscolher, rotuloDoLocal } from '../modules/materials/locaisSge';
+import { Suspense, lazy, useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { locaisParaEscolher, nomesSemLocal, rotuloDoLocal } from '../modules/materials/locaisSge';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import { CheckCircle2, Keyboard, Layers, MapPin, PackagePlus, Plus, Search, Undo2, X } from 'lucide-react';
@@ -16,35 +16,38 @@ import { normalizeComparable } from '../utils/canonicalIdentity';
 import { numero } from '../utils/formato';
 import MateriaisImportacoesPanel from './MateriaisImportacoesPanel';
 import MateriaisUtilizacaoPanel from './MateriaisUtilizacaoPanel';
-import MateriaisSecoes, { nomeDaSecao, type SecaoMateriais } from './materiais/MateriaisSecoes';
+import { ORDEM_SECOES, abasDeMateriais, nomeDaSecao, type SecaoMateriais } from './materiais/MateriaisSecoes';
 import MateriaisVisaoGeral from './materiais/MateriaisVisaoGeral';
-import { CartoesMateriais, ListaMovimentos } from './materiais/MateriaisListas';
+import { ListaMovimentos } from './materiais/MateriaisListas';
 import FormLancamento from './materiais/FormLancamento';
 import GradeViagens from './materiais/GradeViagens';
 import LancarMateriais from './materiais/LancarMateriais';
 import FichaMaterial from './materiais/FichaMaterial';
 import LocaisMateriais, { type ExcluirLocal } from './materiais/LocaisMateriais';
-import GraficosMateriais from './materiais/GraficosMateriais';
-import RelatoriosMateriais from './materiais/RelatoriosMateriais';
 import ApontadoresMateriais from './materiais/ApontadoresMateriais';
-import { enviosDoCampo } from '../modules/materials/apontadores';
 import PrevistoMateriais from './materiais/PrevistoMateriais';
 import BotaForaMateriais from './materiais/BotaForaMateriais';
-import { viagensDeBotaFora } from '../modules/materials/botaFora';
 import { SITUACAO_PREVISTO, acompanharMes } from '../modules/materials/previstoMateriais';
-import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO } from './cadastros/estilos';
+import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO, reduzMovimento } from './cadastros/estilos';
 import './materiais/Materiais.css';
-import { CLASSES_MATERIAL, classeDoMaterial, type ClasseMaterial } from '../modules/materials/classesMateriais';
+import type { ClasseMaterial } from '../modules/materials/classesMateriais';
 import {
   ConfirmDialog,
-  DataTable,
   FilterBar,
+  LoadingState,
   Modal,
   PageHeader,
+  TabelaPadrao,
   isoDay,
-  type DataTableColumn,
+  type ColunaTabela,
 } from '../shared/ui';
+import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
+import { TelaCheia } from '../shared/ui/TelaCheia';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
+
+// Gráficos e Relatórios só baixam quando a seção é aberta (M10).
+const GraficosMateriais = lazy(() => import('./materiais/GraficosMateriais'));
+const RelatoriosMateriais = lazy(() => import('./materiais/RelatoriosMateriais'));
 
 interface MateriaisTabProps {
   materiais: Material[];
@@ -67,7 +70,6 @@ interface MateriaisTabProps {
   onSavePrevistos: (previstos: PrevistoMaterial[], descricao: string) => void;
   /** Tickets da jazida, montados pelo App; sem permissão a parte Viagens da jazida não aparece. */
   viagensJazida?: ReactNode;
-  totalViagensJazida?: number;
   /** Parte que abre ao entrar, por exemplo quando alguém vem de um aviso de ticket. */
   secaoInicial?: SecaoMateriais;
 }
@@ -82,23 +84,17 @@ const FILTROS_TIPO: ReadonlyArray<{ id: FiltroTipo; nome: string }> = [
   { id: 'desfeitos', nome: 'Desfeitos' },
 ];
 
-// Números do teclado levam direto a cada parte, na ordem do menu.
-const ORDEM_SECOES: readonly SecaoMateriais[] = ['lancar', 'resumo', 'graficos', 'relatorios', 'previsto', 'utilizacao', 'apontadores', 'botafora', 'viagens', 'estoque', 'movimentos', 'cadastro', 'locais', 'importacoes'];
-
 const ATALHOS: ReadonlyArray<{ teclas: string; oQueFaz: string; editar?: boolean }> = [
   { teclas: 'N', oQueFaz: 'Novo lançamento', editar: true },
   { teclas: 'V', oQueFaz: 'Várias viagens de uma vez', editar: true },
   { teclas: 'M', oQueFaz: 'Novo material', editar: true },
   { teclas: '/', oQueFaz: 'Buscar movimento' },
-  { teclas: '1 a 9 e 0', oQueFaz: 'Ir para cada parte do menu' },
+  { teclas: '1 a 9 e 0', oQueFaz: 'Ir para cada aba, da esquerda para a direita' },
   { teclas: 'Shift+Enter', oQueFaz: 'Na janela de lançamento: salvar e lançar outro', editar: true },
   { teclas: 'Enter', oQueFaz: 'Na grade de viagens: descer para a linha de baixo', editar: true },
   { teclas: '?', oQueFaz: 'Mostrar esta lista' },
 ];
 
-const Tecla = ({ children }: { children: string }) => (
-  <kbd className="hidden rounded border border-current/30 px-1.5 text-xs font-semibold opacity-70 lg:inline">{children}</kbd>
-);
 const UNIDADES = ['m³', 't', 'kg', 'un', 'm', 'm²', 'L', 'sc'];
 
 
@@ -121,7 +117,6 @@ export default function MateriaisTab({
   previstos,
   onSavePrevistos,
   viagensJazida,
-  totalViagensJazida = 0,
   secaoInicial,
 }: MateriaisTabProps) {
   const hoje = isoDay(new Date());
@@ -159,7 +154,7 @@ export default function MateriaisTab({
     () => acompanharMes({ mes: hoje.slice(0, 7), hoje, previstos, movimentos, etapas, materiais }).linhas,
     [etapas, hoje, materiais, movimentos, previstos],
   );
-  const viagensBotaFora = useMemo(() => viagensDeBotaFora(movimentos, etapas).length, [etapas, movimentos]);
+  const nomesSemLocalTotal = useMemo(() => nomesSemLocal(movimentos, etapas).length, [etapas, movimentos]);
   const previstosEmAtencao = previstoDoMes.filter(linha => SITUACAO_PREVISTO[linha.situacao].tom === 'alerta').length;
   // A busca olha os 11 mil movimentos: a digitação vem primeiro, a lista acompanha.
   const termo = normalizeComparable(useDeferredValue(busca)).trim();
@@ -201,24 +196,6 @@ export default function MateriaisTab({
   };
   const algumaJanela = materialAberto || lancamentoAberto || viagensAberto || trocarRamoAberto || desfazerAberto || atalhosAberto || Boolean(fichaMaterialId);
   const secoes: SecaoMateriais[] = ORDEM_SECOES.filter(secao => (podeEditar || (secao !== 'importacoes' && secao !== 'lancar')) && (secao !== 'viagens' || Boolean(viagensJazida)));
-  // Classes do menu "Por classe": materiais do cadastro e os que só aparecem nos movimentos.
-  const classesDoMenu = useMemo(() => {
-    const porClasse = new Map<ClasseMaterial, Set<string>>();
-    const contar = (chave: string, material: Pick<Material, 'descricao' | 'categoria'>) => {
-      const nome = classeDoMaterial(material);
-      porClasse.set(nome, (porClasse.get(nome) ?? new Set<string>()).add(chave));
-    };
-    ativos.forEach(item => contar(item.id, item));
-    const cadastrados = new Set(ativos.map(item => item.id));
-    movimentos.forEach(item => { if (item.materialId && !cadastrados.has(item.materialId) && !item.canceladoEm) contar(item.materialId, { descricao: item.materialDescricao, categoria: '' }); });
-    return CLASSES_MATERIAL.filter(nome => porClasse.has(nome)).map(nome => ({ nome, materiais: porClasse.get(nome)?.size || 0 }));
-  }, [ativos, movimentos]);
-  const escolherClasse = (nome: ClasseMaterial) => {
-    setAba('utilizacao');
-    setClasse(nome);
-    setBusca('');
-    setMarcados(new Set());
-  };
   const escolherSecao = (secao: SecaoMateriais) => {
     setAba(secao);
     setClasse('');
@@ -370,151 +347,182 @@ export default function MateriaisTab({
     : [];
 
   const empresasPorId = new Map(empresas.map(empresa => [empresa.id, empresa.nome]));
-  const posicaoColumns: DataTableColumn<PosicaoEstoque>[] = [
-    { id: 'codigo', label: 'Código', sortValue: item => item.material.codigo, cell: item => <span className="font-mono text-slate-600">{item.material.codigo || '—'}</span> },
+  const posicaoColumns: ColunaTabela<PosicaoEstoque>[] = [
     {
-      id: 'material',
-      label: 'Material',
-      sortValue: item => item.material.descricao,
-      cell: item => (
-        <button type="button" onClick={() => setFichaMaterialId(item.material.id)} className={`rounded-lg text-left font-bold text-slate-800 underline decoration-slate-300 decoration-dashed underline-offset-4 hover:text-[#176b4d] ${FOCO}`}>
-          {item.material.descricao}
-        </button>
-      ),
+      chave: 'material',
+      titulo: 'Material',
+      larguraMinima: 220,
+      valorOrdenacao: item => item.material.descricao,
+      render: item => <span className="font-semibold text-slate-900 underline decoration-slate-300 decoration-dashed underline-offset-4">{item.material.descricao}</span>,
+      dica: item => item.material.descricao,
     },
-    { id: 'categoria', label: 'Categoria', sortValue: item => item.material.categoria, cell: item => <span className="text-slate-600">{item.material.categoria || '—'}</span> },
+    { chave: 'codigo', titulo: 'Código', valorOrdenacao: item => item.material.codigo, render: item => <span className="tabular-nums text-slate-600">{item.material.codigo || '—'}</span> },
+    { chave: 'categoria', titulo: 'Categoria', valorOrdenacao: item => item.material.categoria, render: item => item.material.categoria || '—' },
   ];
   if (aba === 'estoque') {
     posicaoColumns.push(
-      { id: 'entradas', label: 'Entradas', sortValue: item => item.entradas, cell: item => <span className="font-mono text-slate-600">{numero(item.entradas)}</span> },
-      { id: 'saidas', label: 'Saídas', sortValue: item => item.saidas, cell: item => <span className="font-mono text-slate-600">{numero(item.saidas)}</span> },
-      { id: 'saldo', label: 'Saldo', sortValue: item => item.saldo, cell: item => <strong className={`font-mono ${item.abaixoDoMinimo ? 'text-amber-700' : 'text-slate-900'}`}>{numero(item.saldo)} {item.material.unidade}</strong> },
-      { id: 'minimo', label: 'Mínimo', sortValue: item => item.material.estoqueMinimo, cell: item => <span className="text-slate-600">{item.material.estoqueMinimo ? numero(item.material.estoqueMinimo) : '—'}</span> },
+      { chave: 'entradas', titulo: 'Entradas', alinhamento: 'direita', valorOrdenacao: item => item.entradas, render: item => numero(item.entradas) },
+      { chave: 'saidas', titulo: 'Saídas', alinhamento: 'direita', valorOrdenacao: item => item.saidas, render: item => numero(item.saidas) },
+      { chave: 'saldo', titulo: 'Saldo', alinhamento: 'direita', valorOrdenacao: item => item.saldo, render: item => <strong className={`whitespace-nowrap ${item.abaixoDoMinimo ? 'text-amber-700' : 'text-slate-900'}`}>{numero(item.saldo)} {item.material.unidade}</strong> },
+      { chave: 'minimo', titulo: 'Mínimo', alinhamento: 'direita', valorOrdenacao: item => item.material.estoqueMinimo, render: item => (item.material.estoqueMinimo ? numero(item.material.estoqueMinimo) : '—') },
     );
   } else {
     posicaoColumns.push(
-      { id: 'unidade', label: 'Unidade', sortValue: item => item.material.unidade, cell: item => <span className="text-slate-600">{item.material.unidade}</span> },
-      { id: 'minimo', label: 'Mínimo', sortValue: item => item.material.estoqueMinimo, cell: item => <span className="text-slate-600">{item.material.estoqueMinimo ? numero(item.material.estoqueMinimo) : '—'}</span> },
-      { id: 'fornecedor', label: 'Fornecedor padrão', sortValue: item => empresasPorId.get(item.material.fornecedorPadraoId || '') || null, cell: item => <span className="text-slate-600">{empresasPorId.get(item.material.fornecedorPadraoId || '') || '—'}</span> },
+      { chave: 'unidade', titulo: 'Unidade', valorOrdenacao: item => item.material.unidade, render: item => item.material.unidade },
+      { chave: 'minimo', titulo: 'Mínimo', alinhamento: 'direita', valorOrdenacao: item => item.material.estoqueMinimo, render: item => (item.material.estoqueMinimo ? numero(item.material.estoqueMinimo) : '—') },
+      { chave: 'fornecedor', titulo: 'Fornecedor padrão', valorOrdenacao: item => empresasPorId.get(item.material.fornecedorPadraoId || '') || null, render: item => empresasPorId.get(item.material.fornecedorPadraoId || '') || '—' },
     );
-    if (podeEditar) posicaoColumns.push({
-      id: 'acoes', label: 'Ações', align: 'right', cell: item => (
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={() => abrirCadastro(item.material)} className={`min-h-10 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 transition duration-200 hover:border-emerald-500 hover:text-[#176b4d] ${FOCO}`}>Editar</button>
-          <button type="button" onClick={() => excluirMaterial(item.material)} className={`min-h-10 rounded-lg border border-rose-200 px-3 text-sm font-semibold text-rose-700 transition duration-200 hover:bg-rose-50 ${FOCO}`}>Excluir</button>
-        </div>
-      ),
-    });
   }
+  const acoesDoMaterial = aba === 'cadastro' && podeEditar
+    ? (item: PosicaoEstoque) => (
+      <>
+        <button type="button" onClick={() => abrirCadastro(item.material)} className={`min-h-11 rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 transition duration-200 hover:border-emerald-500 hover:text-[#176b4d] md:min-h-8 ${FOCO}`}>Editar</button>
+        <button type="button" onClick={() => excluirMaterial(item.material)} className={`min-h-11 rounded-lg border border-rose-200 bg-white px-3 text-[13px] font-semibold text-rose-700 transition duration-200 hover:bg-rose-50 md:min-h-8 ${FOCO}`}>Excluir</button>
+      </>
+    )
+    : undefined;
 
-  const enviosDoLink = useMemo(() => enviosDoCampo(movimentos).length, [movimentos]);
-  const contar = (secao: SecaoMateriais) => {
-    if (secao === 'estoque' || secao === 'cadastro') return ativos.length;
-    if (secao === 'movimentos') return movimentos.length;
-    if (secao === 'viagens') return totalViagensJazida;
-    if (secao === 'locais') return etapas.filter(item => item.tipoLocal !== 'Serviço').length;
-    if (secao === 'previsto') return previstoDoMes.length;
-    if (secao === 'botafora') return viagensBotaFora;
-    if (secao === 'apontadores') return enviosDoLink;
-    return null;
-  };
+  // Selo laranja só no que pede atenção; o total de cada lista fica no rodapé da tabela.
+  const abas = abasDeMateriais(secoes, {
+    resumo: { valor: avisos.length, rotulo: 'avisos' },
+    previsto: { valor: previstosEmAtencao, rotulo: 'pedem atenção' },
+    locais: { valor: nomesSemLocalTotal, rotulo: 'nomes sem local' },
+  });
+  // Lista que ocupa a área toda e rola por dentro; o resto é aba de cartões.
+  const deTabela = aba === 'estoque' || aba === 'cadastro' || aba === 'movimentos';
   const comBusca = aba === 'estoque' || aba === 'movimentos' || aba === 'cadastro' || aba === 'locais' || aba === 'botafora';
 
-  // Entrada do cabeçalho, do menu e dos blocos, no passo do Painel e de Cadastros.
+  // Entrada do cabeçalho e dos blocos, no passo do Painel e de Cadastros.
+  // Respeita prefers-reduced-motion (reduzMovimento) além da guarda global.
   useGSAP(() => {
     const raiz = escopoMotion.current;
-    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    // Na primeira vez entra tudo; ao trocar de parte só o conteúdo muda, sem
-    // o cabeçalho e o menu piscarem de novo.
+    if (!raiz || reduzMovimento()) return;
+    // Na primeira vez entra tudo; ao trocar de aba só o conteúdo muda, sem
+    // o cabeçalho e as abas piscarem de novo.
     const primeira = !jaEntrou.current;
     jaEntrou.current = true;
-    const blocos = primeira ? raiz.querySelectorAll('[data-materiais-reveal]') : raiz.querySelectorAll('#materiais-conteudo [data-materiais-reveal]');
+    const blocos = primeira ? raiz.querySelectorAll('[data-materiais-reveal]') : raiz.querySelectorAll('#materiais-dados [data-materiais-reveal]');
     gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 10 }, { opacity: 1, y: 0, duration: primeira ? 0.5 : 0.35, stagger: primeira ? 0.05 : 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
   }, { scope: escopoMotion, dependencies: [aba] });
 
+  const barraDeMarcados = aba === 'movimentos' && podeEditar && marcados.size > 0 && (
+    <div role="region" aria-label="Movimentos marcados" data-testid="movimentos-barra-selecao" className="flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-2 sm:pl-4">
+      <p className="basis-full px-2 pt-1 text-sm font-bold text-emerald-900 sm:mr-auto sm:basis-auto sm:p-0" aria-live="polite">
+        {marcados.size.toLocaleString('pt-BR')} {marcados.size === 1 ? 'marcado' : 'marcados'}
+      </p>
+      {marcados.size < movimentosFiltrados.length && movimentosFiltrados.length <= 2000 && (
+        <button type="button" onClick={() => alternarVarios(movimentosFiltrados.map(item => item.id), true)} className={`${BOTAO_SECUNDARIO} px-3 max-sm:flex-1`}>
+          Marcar os {movimentosFiltrados.length.toLocaleString('pt-BR')} da busca
+        </button>
+      )}
+      <button type="button" onClick={() => setMarcados(new Set())} className={`${BOTAO_SECUNDARIO} px-3 max-sm:flex-1`}>Desmarcar</button>
+      <button type="button" onClick={() => { setErro(''); setTrocaRamo({ etapaServicoId: '', destino: '' }); setTrocarRamoAberto(true); }} className={`${BOTAO_SECUNDARIO} px-3 max-sm:flex-1`} data-testid="movimentos-trocar-ramo">
+        <MapPin className="size-5" aria-hidden="true" />
+        Mudar ramo ou local
+      </button>
+      <button type="button" onClick={() => setDesfazerAberto(true)} disabled={!marcadosValendo.length} className={`${BOTAO_PERIGO} px-3 max-sm:basis-full`} data-testid="movimentos-desfazer">
+        <Undo2 className="size-5" aria-hidden="true" />
+        Desfazer lançamentos
+      </button>
+    </div>
+  );
 
   return (
-    <div ref={escopoMotion} id="materiais-tab" data-testid="materiais-tab" className="erp-module erp-module--materiais space-y-4">
-      <div data-materiais-reveal>
-        <PageHeader
-          className="materiais-header"
-          eyebrow="Suprimentos"
-          title="Materiais"
-          description="O que chegou, o que saiu e quanto sobra. O saldo é a soma dos movimentos."
-          actions={podeEditar ? (
-            <>
-              <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} max-lg:hidden`} aria-label="Atalhos do teclado">
-                <Keyboard className="size-5" aria-hidden="true" />
-                <Tecla>?</Tecla>
-              </button>
-              <button type="button" onClick={() => abrirCadastro()} className={BOTAO_SECUNDARIO} aria-keyshortcuts="M">
-                <PackagePlus className="size-5" aria-hidden="true" />
-                Novo material
-                <Tecla>M</Tecla>
-              </button>
-              <button type="button" onClick={abrirViagens} className={BOTAO_SECUNDARIO} aria-keyshortcuts="V" data-testid="materiais-varias-viagens">
-                <Layers className="size-5" aria-hidden="true" />
-                Várias viagens
-                <Tecla>V</Tecla>
-              </button>
-              <button type="button" onClick={() => abrirLancamento()} data-testid="materiais-acao-principal" aria-keyshortcuts="N" className={`${BOTAO_PRIMARIO} max-sm:order-first px-5`}>
-                <Plus className="size-5" aria-hidden="true" />
-                Novo lançamento
-                <Tecla>N</Tecla>
-              </button>
-            </>
-          ) : undefined}
-        />
-      </div>
-
-      {erro && !algumaJanela && (
-        <div role="alert" className="flex items-start justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800">
-          <span>{erro}</span>
-          <button type="button" onClick={() => setErro('')} className={`shrink-0 rounded-lg p-1 text-rose-700 hover:bg-rose-100 ${FOCO}`} aria-label="Fechar aviso"><X className="size-5" aria-hidden="true" /></button>
+    <TelaCheia
+      ref={escopoMotion}
+      id="materiais-tab"
+      testId="materiais-tab"
+      rotulo="Materiais"
+      className="erp-module erp-module--materiais"
+      longa={!deTabela}
+      idAbaAtiva={idDaAba('materiais', aba)}
+      idDados="materiais-dados"
+      // relative: o texto só para leitor de tela (sr-only) fica preso à área
+      // que rola, senão ele estica a página e ela rola junto.
+      classeDados="relative"
+      chaveRolagem={aba}
+      cabecalho={(
+        <div data-materiais-reveal>
+          <PageHeader
+            className="materiais-header"
+            eyebrow="Suprimentos"
+            title="Materiais"
+            abas={<AbasDaTela id="materiais" rotulo="Subtelas de materiais" abas={abas} ativa={aba} onTrocar={escolherSecao} idPainel="materiais-dados" testId="materiais-secao" />}
+            actions={podeEditar ? (
+              <>
+                <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} px-3 max-lg:hidden`} aria-label="Atalhos do teclado" title="Atalhos do teclado (?)">
+                  <Keyboard className="size-5" aria-hidden="true" />
+                </button>
+                <button type="button" onClick={() => abrirLancamento()} data-testid="materiais-acao-principal" aria-keyshortcuts="N" title="Novo lançamento (N)" className={`${BOTAO_PRIMARIO} max-sm:order-first px-4`}>
+                  <Plus className="size-5" aria-hidden="true" />
+                  Novo lançamento
+                </button>
+              </>
+            ) : undefined}
+          />
         </div>
       )}
-
-      {/* Lançar usa a tela toda: o menu vira o seletor de cima, como no celular. */}
-      <div className={`grid gap-4 lg:items-start ${aba === 'lancar' ? '' : 'lg:grid-cols-[12.5rem_minmax(0,1fr)] xl:grid-cols-[14rem_minmax(0,1fr)]'}`}>
-        <MateriaisSecoes value={aba} compacto={aba === 'lancar'} secoes={secoes} contar={contar} avisos={secao => (secao === 'resumo' ? avisos.length : secao === 'previsto' ? previstosEmAtencao : 0)} onSelect={escolherSecao} classes={classesDoMenu} classeAtiva={classe} onClasse={escolherClasse} />
-
-        <div id="materiais-conteudo" className="min-w-0 space-y-3">
-          {comBusca && (
-            <div data-materiais-reveal className="lg:sticky lg:top-0 lg:z-20 lg:-mt-2 lg:bg-white lg:pb-2 lg:pt-2">
-              <FilterBar label="Filtros de materiais" className="rounded-2xl border border-slate-200 bg-white p-3">
-                <label className="relative block min-w-0 flex-1">
-                  <span className="sr-only">Buscar material</span>
-                  <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-                  <input
-                    ref={buscaRef}
-                    type="search"
-                    aria-keyshortcuts="/"
-                    value={busca}
-                    onChange={event => setBusca(event.target.value)}
-                    placeholder={aba === 'movimentos' ? 'Material, local, fornecedor, nota ou placa' : aba === 'locais' ? 'Buscar local ou código SGE' : aba === 'botafora' ? 'Placa, nota, origem ou destino' : `Buscar em ${nomeDaSecao(aba).toLocaleLowerCase('pt-BR')}`}
-                    className={`${CAMPO} pl-11`}
-                  />
-                </label>
-                {aba === 'movimentos' && (
-                  <div role="group" aria-label="Mostrar só" className="flex basis-full gap-2 overflow-x-auto pb-1">
-                    {FILTROS_TIPO.map(filtro => (
-                      <button
-                        key={filtro.id}
-                        type="button"
-                        aria-pressed={filtroTipo === filtro.id}
-                        onClick={() => setFiltroTipo(filtro.id)}
-                        className={`min-h-10 shrink-0 rounded-full border px-4 text-sm font-semibold transition duration-200 ${FOCO} ${filtroTipo === filtro.id
-                          ? 'border-[#176b4d] bg-[#176b4d] text-white'
-                          : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-500'}`}
-                      >
-                        {filtro.nome}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </FilterBar>
+      faixa={(erro && !algumaJanela) || comBusca || barraDeMarcados ? (
+        <div className="space-y-2">
+          {erro && !algumaJanela && (
+            <div role="alert" className="flex items-start justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-800">
+              <span>{erro}</span>
+              <button type="button" onClick={() => setErro('')} className={`grid size-8 shrink-0 place-items-center rounded-lg text-rose-700 hover:bg-rose-100 ${FOCO}`} aria-label="Fechar aviso"><X className="size-5" aria-hidden="true" /></button>
             </div>
           )}
+          {comBusca && (
+            <FilterBar
+              label="Filtros de materiais"
+              className="rounded-2xl border border-slate-200 bg-white p-2"
+              actions={podeEditar && (aba === 'cadastro' || aba === 'estoque') ? (
+                <button type="button" onClick={() => abrirCadastro()} className={`${BOTAO_SECUNDARIO} max-sm:w-full`} aria-keyshortcuts="M" title="Atalho: M">
+                  <PackagePlus className="size-5" aria-hidden="true" />
+                  Novo material
+                </button>
+              ) : podeEditar && aba === 'movimentos' ? (
+                <button type="button" onClick={abrirViagens} className={`${BOTAO_SECUNDARIO} max-sm:w-full`} aria-keyshortcuts="V" title="Atalho: V" data-testid="materiais-varias-viagens">
+                  <Layers className="size-5" aria-hidden="true" />
+                  Várias viagens
+                </button>
+              ) : undefined}
+            >
+              <label className="relative block min-w-0 flex-1">
+                <span className="sr-only">Buscar material</span>
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+                <input
+                  ref={buscaRef}
+                  type="search"
+                  aria-keyshortcuts="/"
+                  value={busca}
+                  onChange={event => setBusca(event.target.value)}
+                  placeholder={aba === 'movimentos' ? 'Material, local, fornecedor, nota ou placa' : aba === 'locais' ? 'Buscar local ou código SGE' : aba === 'botafora' ? 'Placa, nota, origem ou destino' : `Buscar em ${nomeDaSecao(aba).toLocaleLowerCase('pt-BR')}`}
+                  className={`${CAMPO} pl-11`}
+                />
+              </label>
+              {aba === 'movimentos' && (
+                <div role="group" aria-label="Mostrar só" className="flex basis-full gap-2 overflow-x-auto pb-1 lg:basis-auto lg:pb-0">
+                  {FILTROS_TIPO.map(filtro => (
+                    <button
+                      key={filtro.id}
+                      type="button"
+                      aria-pressed={filtroTipo === filtro.id}
+                      onClick={() => setFiltroTipo(filtro.id)}
+                      className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold transition duration-200 ${FOCO} ${filtroTipo === filtro.id
+                        ? 'border-[#176b4d] bg-[#176b4d] text-white'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-500'}`}
+                    >
+                      {filtro.nome}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </FilterBar>
+          )}
+          {barraDeMarcados}
+        </div>
+      ) : undefined}
+    >
+          <h2 className="sr-only">{nomeDaSecao(aba)}</h2>
 
           {aba === 'resumo' && (
             <MateriaisVisaoGeral
@@ -549,18 +557,22 @@ export default function MateriaisTab({
           )}
 
           {aba === 'relatorios' && (
-            <RelatoriosMateriais hoje={hoje} materiais={materiais} movimentos={movimentosVigentes} etapas={etapas} />
+            <Suspense fallback={<LoadingState message="Abrindo relatórios..." />}>
+              <RelatoriosMateriais hoje={hoje} materiais={materiais} movimentos={movimentosVigentes} etapas={etapas} />
+            </Suspense>
           )}
 
           {aba === 'graficos' && (
-            <GraficosMateriais
-              hoje={hoje}
-              movimentos={movimentosVigentes}
-              etapas={etapas}
-              onVerMovimentos={termoGrafico => { escolherSecao('movimentos'); setFiltroTipo('todos'); setBusca(termoGrafico); }}
-              onVerBotaFora={() => escolherSecao('botafora')}
-              onIrParaLocais={() => escolherSecao('locais')}
-            />
+            <Suspense fallback={<LoadingState message="Abrindo gráficos..." />}>
+              <GraficosMateriais
+                hoje={hoje}
+                movimentos={movimentosVigentes}
+                etapas={etapas}
+                onVerMovimentos={termoGrafico => { escolherSecao('movimentos'); setFiltroTipo('todos'); setBusca(termoGrafico); }}
+                onVerBotaFora={() => escolherSecao('botafora')}
+                onIrParaLocais={() => escolherSecao('locais')}
+              />
+            </Suspense>
           )}
 
           {aba === 'previsto' && (
@@ -611,28 +623,7 @@ export default function MateriaisTab({
           )}
 
           {aba === 'movimentos' && (
-            <div data-materiais-reveal className="space-y-3">
-              {podeEditar && marcados.size > 0 && (
-                <div role="region" aria-label="Movimentos marcados" data-testid="movimentos-barra-selecao" className="sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-2 shadow-sm sm:pl-4 lg:top-24">
-                  <p className="basis-full px-2 pt-1 text-sm font-bold text-emerald-900 sm:mr-auto sm:basis-auto sm:p-0" aria-live="polite">
-                    {marcados.size.toLocaleString('pt-BR')} {marcados.size === 1 ? 'marcado' : 'marcados'}
-                  </p>
-                  {marcados.size < movimentosFiltrados.length && movimentosFiltrados.length <= 2000 && (
-                    <button type="button" onClick={() => alternarVarios(movimentosFiltrados.map(item => item.id), true)} className={`${BOTAO_SECUNDARIO} px-3 max-sm:flex-1`}>
-                      Marcar os {movimentosFiltrados.length.toLocaleString('pt-BR')} da busca
-                    </button>
-                  )}
-                  <button type="button" onClick={() => setMarcados(new Set())} className={`${BOTAO_SECUNDARIO} px-3 max-sm:flex-1`}>Desmarcar</button>
-                  <button type="button" onClick={() => { setErro(''); setTrocaRamo({ etapaServicoId: '', destino: '' }); setTrocarRamoAberto(true); }} className={`${BOTAO_SECUNDARIO} px-3 max-sm:flex-1`} data-testid="movimentos-trocar-ramo">
-                    <MapPin className="size-5" aria-hidden="true" />
-                    Mudar ramo ou local
-                  </button>
-                  <button type="button" onClick={() => setDesfazerAberto(true)} disabled={!marcadosValendo.length} className={`${BOTAO_PERIGO} px-3 max-sm:basis-full`} data-testid="movimentos-desfazer">
-                    <Undo2 className="size-5" aria-hidden="true" />
-                    Desfazer lançamentos
-                  </button>
-                </div>
-              )}
+            <div data-materiais-reveal className="flex min-h-0 flex-1 flex-col">
               <ListaMovimentos
                 movimentos={movimentosFiltrados}
                 chave={`${termo}|${filtroTipo}`}
@@ -643,28 +634,18 @@ export default function MateriaisTab({
           )}
 
           {(aba === 'estoque' || aba === 'cadastro') && (
-            <div data-materiais-reveal>
-              <div className="hidden md:block">
-                <DataTable
-                  caption={aba === 'estoque' ? 'Posição de estoque por material' : 'Cadastro de materiais'}
-                  rows={posicoesFiltradas}
-                  columns={posicaoColumns}
-                  getRowId={item => item.material.id}
-                  minWidth={aba === 'cadastro' ? 820 : 720}
-                  emptyMessage={termo ? 'Nenhum material com essa busca.' : 'Nenhum material cadastrado. Use Novo material.'}
-                />
-              </div>
-              <div className="md:hidden">
-                <CartoesMateriais
-                  posicoes={posicoesFiltradas}
-                  modo={aba}
-                  fornecedorDe={item => empresasPorId.get(item.material.fornecedorPadraoId || '') || ''}
-                  podeEditar={podeEditar}
-                  onEditar={item => abrirCadastro(item.material)}
-                  onExcluir={item => excluirMaterial(item.material)}
-                  onAbrirFicha={item => setFichaMaterialId(item.material.id)}
-                />
-              </div>
+            <div data-materiais-reveal className="flex min-h-0 flex-1 flex-col">
+              <TabelaPadrao
+                key={aba}
+                titulo={aba === 'estoque' ? 'Posição de estoque por material' : 'Cadastro de materiais'}
+                linhas={posicoesFiltradas}
+                colunas={posicaoColumns}
+                idDaLinha={item => item.material.id}
+                nomeDoItem={{ um: 'material', varios: 'materiais' }}
+                onAbrirLinha={item => setFichaMaterialId(item.material.id)}
+                acoes={acoesDoMaterial}
+                vazio={termo ? 'Nenhum material com essa busca.' : 'Nenhum material cadastrado. Use Novo material.'}
+              />
             </div>
           )}
 
@@ -677,8 +658,6 @@ export default function MateriaisTab({
           {aba === 'importacoes' && podeEditar && (
             <MateriaisImportacoesPanel materiais={materiais} movimentos={movimentos} responsavel={responsavel} etapas={etapas} onApply={onApplyImport} onError={setErro} />
           )}
-        </div>
-      </div>
 
       <Modal
         open={materialAberto}
@@ -844,6 +823,6 @@ export default function MateriaisTab({
           setBusca(termoAviso);
         }}
       />
-    </div>
+    </TelaCheia>
   );
 }

@@ -62,6 +62,10 @@ import FleetReportLayout from './fleet/FleetReportLayout';
 import FleetImportPreviewModal, { type FleetImportPreviewRow } from './fleet/FleetImportPreviewModal';
 import ImportacaoSge from './fleet/ImportacaoSge';
 import { ConfirmDialog, CountUp, Modal, PageHeader } from '../shared/ui';
+import { AbasDaTela, idDaAba, type AbaDaTela } from '../shared/ui/AbasDaTela';
+import { TelaCheia } from '../shared/ui/TelaCheia';
+import { TabelaPadrao, type ColunaTabela } from '../shared/ui/TabelaPadrao';
+import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 import FleetDailyReference from './fleet/FleetDailyReference';
 import FleetDriverReference from './fleet/FleetDriverReference';
 import { repetidosPorDia } from '../fleet/duplicidadeDiaria';
@@ -122,6 +126,65 @@ const ATALHOS: ReadonlyArray<{ teclas: string; oQueFaz: string }> = [
 const dataLonga = (dia: string) => /^\d{4}-\d{2}-\d{2}$/.test(dia)
   ? new Date(`${dia}T12:00:00Z`).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
   : dia;
+
+interface FechamentoDoDia {
+  date: string;
+  total: number;
+  operating: number;
+  maintenance: number;
+  available: number;
+  pending: number;
+  repeated: string[];
+}
+
+const disponibilidadeDo = (dia: FechamentoDoDia) => (dia.total ? Math.round(((dia.operating + dia.available) / dia.total) * 100) : null);
+
+const numeroOuTraco = (valor: number) => (valor ? valor.toLocaleString('pt-BR') : '—');
+
+const COLUNAS_HISTORICO: readonly ColunaTabela<FechamentoDoDia>[] = [
+  {
+    chave: 'date',
+    titulo: 'Dia',
+    larguraMinima: 150,
+    valorOrdenacao: dia => dia.date,
+    render: dia => <span className="font-bold text-slate-900 first-letter:uppercase">{new Date(`${dia.date}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>,
+  },
+  { chave: 'total', titulo: 'Lançadas', alinhamento: 'direita', valorOrdenacao: dia => dia.total, render: dia => dia.total.toLocaleString('pt-BR') },
+  { chave: 'operating', titulo: 'Em operação', alinhamento: 'direita', valorOrdenacao: dia => dia.operating, render: dia => <span className="font-semibold text-[#176b4d]">{numeroOuTraco(dia.operating)}</span> },
+  { chave: 'maintenance', titulo: 'Manutenção', alinhamento: 'direita', valorOrdenacao: dia => dia.maintenance, render: dia => <span className={dia.maintenance ? 'font-semibold text-rose-700' : ''}>{numeroOuTraco(dia.maintenance)}</span> },
+  { chave: 'available', titulo: 'À disposição', alinhamento: 'direita', valorOrdenacao: dia => dia.available, render: dia => numeroOuTraco(dia.available) },
+  { chave: 'pending', titulo: 'A confirmar', alinhamento: 'direita', valorOrdenacao: dia => dia.pending, render: dia => <span className={dia.pending ? 'font-semibold text-[#c2410c]' : ''}>{numeroOuTraco(dia.pending)}</span> },
+  {
+    chave: 'repeated',
+    titulo: 'Repetidos',
+    larguraMinima: 140,
+    valorOrdenacao: dia => dia.repeated.length,
+    dica: dia => (dia.repeated.length ? `Lançados mais de uma vez: ${dia.repeated.join(', ')}` : undefined),
+    render: dia => (dia.repeated.length ? <span className="font-semibold text-rose-700">{dia.repeated.length}: {dia.repeated.join(', ')}</span> : '—'),
+  },
+  {
+    chave: 'availability',
+    titulo: 'Disponível',
+    alinhamento: 'direita',
+    valorOrdenacao: disponibilidadeDo,
+    render: dia => {
+      const valor = disponibilidadeDo(dia);
+      if (valor === null) return '—';
+      return (
+        <span className="inline-flex items-center justify-end gap-2">
+          <span className="block h-1.5 w-14 overflow-hidden rounded-full bg-slate-100" aria-hidden="true"><span className="block h-full rounded-full bg-[#176b4d]" style={{ width: `${valor}%` }} /></span>
+          <span className="font-bold text-slate-900">{valor}%</span>
+        </span>
+      );
+    },
+  },
+];
+
+const COLUNAS_MOTORISTAS: readonly ColunaTabela<Funcionario>[] = [
+  { chave: 'matricula', titulo: 'Matrícula', valorOrdenacao: driver => driver.matricula || '', render: driver => <span className="font-mono font-bold text-slate-700">{driver.matricula || '—'}</span> },
+  { chave: 'nome', titulo: 'Nome', larguraMinima: 200, valorOrdenacao: driver => driver.nome, render: driver => <span className="font-semibold text-slate-950">{driver.nome}</span> },
+  { chave: 'cargo', titulo: 'Função', larguraMinima: 180, valorOrdenacao: driver => driver.cargo, render: driver => driver.cargo || '—' },
+];
 
 const asText = (value: unknown): string => String(value ?? '').trim();
 
@@ -274,16 +337,8 @@ export default function ControleEquipamentosDiarioTab({
       { autoAlpha: 0, y: 10 },
       { autoAlpha: 1, y: 0, duration: 0.32, ease: 'power2.out', clearProps: 'transform,visibility,opacity' },
     );
-    // Nas abas de conferência os cartões entram em cascata curta: dá para ver
-    // que a lista mudou sem a tela piscar.
-    const chips = view.querySelectorAll('[data-testid$="-lista"] > li');
-    if (chips.length) {
-      gsap.fromTo(
-        chips,
-        { autoAlpha: 0, y: 8 },
-        { autoAlpha: 1, y: 0, duration: 0.28, stagger: 0.012, ease: 'power2.out', clearProps: 'transform,visibility,opacity' },
-      );
-    }
+    // As linhas das tabelas entram em cascata curta pelo useEntradaDeLista
+    // de cada subtela.
   }, { scope: pageRef, dependencies: [activeView] });
   const filteredOperationalDrivers = useMemo(() => {
     const query = driverSearch.trim().toLocaleUpperCase('pt-BR');
@@ -314,7 +369,9 @@ export default function ControleEquipamentosDiarioTab({
       .map(([nome, total]) => ({ nome, total }))
       .sort((left, right) => right.total - left.total || left.nome.localeCompare(right.nome, 'pt-BR'));
   }, [registros, filters.date]);
-  const historyByDate = useMemo(() => {
+  const escopoHistorico = useEntradaDeLista<HTMLDivElement>([activeView]);
+  const escopoMotoristas = useEntradaDeLista<HTMLDivElement>([activeView, driverSearch]);
+  const historyByDate = useMemo((): FechamentoDoDia[] => {
     const repetidos = repetidosPorDia(registros);
     const dates = [...new Set(registros.map(record => record.data).filter(Boolean))]
       .sort((left, right) => right.localeCompare(left));
@@ -582,16 +639,16 @@ export default function ControleEquipamentosDiarioTab({
     // versaoRelacao: a relação vem do aparelho e muda sem passar pelos registros.
     [registros, filters.date, versaoRelacao],
   );
-  const vistas: ReadonlyArray<readonly [FleetView, string, string, typeof CalendarDays, number]> = [
-    ['today', 'Situação do dia', 'Dia', CalendarDays, 0],
-    ...(quadro ? [['quadro', 'Quadro', 'Quadro', LayoutGrid, 0] as const] : []),
-    ['equipamentos', 'Equipamentos', 'Equip.', ClipboardCheck, conferenciaDoDia.equipamentos.missing],
-    ['operadores', 'Operadores', 'Operad.', Users, conferenciaDoDia.operadores.missing],
-    ['history', 'Histórico', 'Histórico', History, 0],
-    ['registry', 'Motoristas', 'Motoristas', Database, 0],
+  const vistas: ReadonlyArray<AbaDaTela<FleetView>> = [
+    { id: 'today', rotulo: 'Situação do dia', curto: 'Dia', icone: CalendarDays },
+    ...(quadro ? [{ id: 'quadro' as const, rotulo: 'Quadro', icone: LayoutGrid }] : []),
+    { id: 'equipamentos', rotulo: 'Equipamentos', icone: ClipboardCheck, contador: conferenciaDoDia.equipamentos.missing, contadorRotulo: 'a confirmar' },
+    { id: 'operadores', rotulo: 'Operadores', icone: Users, contador: conferenciaDoDia.operadores.missing, contadorRotulo: 'a confirmar' },
+    { id: 'history', rotulo: 'Histórico', icone: History },
+    { id: 'registry', rotulo: 'Motoristas', icone: Database },
   ];
   const ITEM_MENU = `flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-[#176b4d] disabled:opacity-50 ${FOCO}`;
-  const ROTULO_GRUPO_MENU = 'px-3 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400';
+  const ROTULO_GRUPO_MENU = 'px-3 pt-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-400';
   const aviso = message && (
     <p role={messageTone === 'error' ? 'alert' : 'status'} data-testid="frota-aviso" className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold ring-1 ring-inset ${messageTone === 'success' ? 'bg-emerald-50 text-emerald-900 ring-emerald-200' : messageTone === 'error' ? 'bg-rose-50 text-rose-800 ring-rose-200' : 'bg-[#f7f8f6] text-slate-700 ring-slate-200'}`}>
       {messageTone === 'success' ? <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" /> : messageTone === 'error' ? <AlertTriangle className="size-4 shrink-0" aria-hidden="true" /> : <RefreshCw className="size-4 shrink-0" aria-hidden="true" />}
@@ -600,100 +657,75 @@ export default function ControleEquipamentosDiarioTab({
     </p>
   );
   return (
-    <main id="controle-equipamentos-tab" ref={pageRef} className="mx-auto max-w-[1760px] space-y-4 pb-24 text-slate-800">
-      <div data-fleet-enter>
+    <TelaCheia ref={pageRef} id="controle-equipamentos-tab" rotulo="Controle de Frotas" className="text-slate-800"
+      idAbaAtiva={idDaAba('frota', activeView)} idDados="frota-dados" chaveRolagem={activeView} longa={activeView === 'quadro'}
+      cabecalho={<div data-fleet-enter>
         <PageHeader
           eyebrow="Frota"
           title="Controle de Frotas"
-          actions={<div className="flex w-full min-w-0 flex-col gap-2.5">
-            {/* Linha principal: escolher a vista e lançar. É o que se usa toda hora. */}
-            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-between">
-              {/* Cada aba ocupa a tela inteira. No celular as cinco cabem lado a
-                  lado com ícone em cima e nome curto embaixo; o número laranja
-                  é quem ainda falta lançar no dia. */}
-              <nav className={`grid w-full ${quadro ? 'grid-cols-6' : 'grid-cols-5'} gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 lg:flex lg:w-auto lg:min-w-0 lg:overflow-x-auto`} aria-label="Abas do controle de frotas" data-testid="frota-abas">
-                {vistas.map(([id, label, curto, Icon, pendentes]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-pressed={activeView === id}
-                    onClick={() => setActiveView(id)}
-                    data-testid={`frota-aba-${id}`}
-                    aria-label={pendentes ? `${label}, ${pendentes} a confirmar` : label}
-                    className={`relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl px-0.5 text-[10.5px] font-bold tracking-tight transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] lg:min-h-11 lg:flex-row lg:gap-2 lg:px-3 lg:text-sm lg:tracking-normal ${activeView === id ? 'bg-white text-[#176b4d] shadow-[0_6px_16px_-10px_rgba(15,40,31,0.45)] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}
-                  >
-                    <Icon className="size-5 lg:hidden xl:block xl:size-4" aria-hidden="true"/>
-                    <span className="max-w-full truncate xl:hidden">{curto}</span>
-                    <span className="hidden xl:inline">{label}</span>
-                    {pendentes > 0 && <span className="absolute right-1 top-1 min-w-5 rounded-full bg-[#f26a2e] px-1 text-center text-[10px] font-bold leading-5 tabular-nums text-white lg:static lg:text-[11px]">{pendentes}</span>}
-                  </button>
-                ))}
-              </nav>
-              <button type="button" onClick={() => openNewRecord()} className={`${BOTAO_PRIMARIO} w-full shrink-0 whitespace-nowrap px-5 sm:w-auto`} data-testid="frota-novo">
-                <Plus className="size-5" aria-hidden="true" />
-                Novo lançamento
-                <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>
-              </button>
-            </div>
-            {/* Linha secundária: dia consultado e utilitários (relatório, importar, cadastro). */}
-            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:justify-end">
-              <label className="relative flex w-full min-w-0 items-center sm:inline-flex sm:w-auto">
-                <span className="sr-only">Dia dos lançamentos</span>
-                <CalendarDays className="pointer-events-none absolute left-3 size-4 text-slate-400" aria-hidden="true" />
-                <input type="date" value={filters.date} onChange={event => event.target.value && updateFilter('date', event.target.value)} className={`${CAMPO} min-w-0 pl-9 font-semibold sm:w-auto`} data-testid="frota-dia" />
-              </label>
-              <div className="grid grid-cols-2 gap-2 sm:contents">
-              <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readImport}/>
-              {activeView !== 'quadro' && <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} max-lg:hidden`} aria-label="Atalhos do teclado" data-testid="frota-atalhos">
-                <Keyboard className="size-4" aria-hidden="true" />
-                <kbd className="text-xs">?</kbd>
-              </button>}
-              <details className="erp-fleet-menu group relative w-full sm:w-auto" data-testid="frota-relatorios">
-                <summary className={`${BOTAO_SECUNDARIO} w-full cursor-pointer px-3 list-none sm:w-auto [&::-webkit-details-marker]:hidden`}>
-                  <FileSpreadsheet className="size-4" aria-hidden="true" />
-                  Mais ações
-                  <ChevronDown className="size-4 transition duration-300 group-open:rotate-180" aria-hidden="true" />
-                </summary>
-                <div className="absolute right-0 z-30 mt-2 w-full min-w-60 space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_40px_-16px_rgba(15,40,31,0.35)] sm:w-64">
-                  <p className={ROTULO_GRUPO_MENU}>Exportar</p>
-                  <button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className={ITEM_MENU}><Printer className="size-4" aria-hidden="true" />{exporting === 'pdf' ? 'Gerando PDF…' : 'Relatório do dia em PDF'}</button>
-                  <button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className={ITEM_MENU}><FileSpreadsheet className="size-4" aria-hidden="true" />{exporting === 'excel' ? 'Gerando Excel…' : 'Relatório do dia em Excel'}</button>
-                  <hr className="my-1 border-slate-100" />
-                  <p className={ROTULO_GRUPO_MENU}>Importar</p>
-                  <button type="button" onClick={() => inputRef.current?.click()} className={ITEM_MENU}><Upload className="size-4" aria-hidden="true" />Importar planilha</button>
-                  <ImportacaoSge
-                    equipamentos={equipamentos}
-                    registros={registros}
-                    motoristas={operationalDrivers}
-                    funcionarios={funcionarios}
-                    empresas={empresas}
-                    onImport={onImport}
-                    onApplyCadastroSge={onApplyCadastroSge}
-                    onMensagem={(tom, texto) => { setMessageTone(tom); setMessage(texto); }}
-                    gatilho={abrir => <button type="button" onClick={abrir} className={ITEM_MENU}><Database className="size-4" aria-hidden="true" />Importar apontamento do SGE</button>}
-                  />
-                  <hr className="my-1 border-slate-100" />
-                  <p className={ROTULO_GRUPO_MENU}>Cadastro e tela</p>
-                  <button type="button" onClick={handleRefresh} className={ITEM_MENU}><RefreshCw className="size-4" aria-hidden="true" />Limpar filtros e seleção</button>
-                  {onOpenEquipmentRegistration && <button type="button" onClick={onOpenEquipmentRegistration} className={ITEM_MENU}><Plus className="size-4" aria-hidden="true" />Cadastrar equipamento</button>}
-                </div>
-              </details>
+          abas={<AbasDaTela id="frota" rotulo="Subtelas do controle de frotas" abas={vistas} ativa={activeView} onTrocar={setActiveView} idPainel="frota-dados" testId="frota-aba" />}
+          actions={<>
+            {/* Dia consultado: vale para Situação do dia, Quadro, Equipamentos e Operadores. */}
+            <label className="relative flex min-w-0 items-center">
+              <span className="sr-only">Dia dos lançamentos</span>
+              <CalendarDays className="pointer-events-none absolute left-3 size-4 text-slate-400" aria-hidden="true" />
+              <input type="date" value={filters.date} onChange={event => event.target.value && updateFilter('date', event.target.value)} className={`${CAMPO} min-w-0 pl-9 font-semibold sm:w-auto`} data-testid="frota-dia" />
+            </label>
+            <p className="whitespace-nowrap text-sm font-semibold text-slate-600 first-letter:uppercase max-sm:hidden">{dataLonga(filters.date)}</p>
+            {activeView !== 'quadro' && <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} max-lg:hidden`} aria-label="Atalhos do teclado" data-testid="frota-atalhos">
+              <Keyboard className="size-4" aria-hidden="true" />
+              <kbd className="text-xs">?</kbd>
+            </button>}
+            <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readImport}/>
+            <details className="erp-fleet-menu group relative" data-testid="frota-relatorios">
+              <summary className={`${BOTAO_SECUNDARIO} cursor-pointer px-3 list-none [&::-webkit-details-marker]:hidden`}>
+                <FileSpreadsheet className="size-4" aria-hidden="true" />
+                Mais ações
+                <ChevronDown className="size-4 transition duration-300 group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <div className="absolute right-0 z-30 mt-2 w-64 min-w-60 space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_40px_-16px_rgba(15,40,31,0.35)]">
+                <p className={ROTULO_GRUPO_MENU}>Exportar</p>
+                <button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className={ITEM_MENU}><Printer className="size-4" aria-hidden="true" />{exporting === 'pdf' ? 'Gerando PDF…' : 'Relatório do dia em PDF'}</button>
+                <button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className={ITEM_MENU}><FileSpreadsheet className="size-4" aria-hidden="true" />{exporting === 'excel' ? 'Gerando Excel…' : 'Relatório do dia em Excel'}</button>
+                <hr className="my-1 border-slate-100" />
+                <p className={ROTULO_GRUPO_MENU}>Importar</p>
+                <button type="button" onClick={() => inputRef.current?.click()} className={ITEM_MENU}><Upload className="size-4" aria-hidden="true" />Importar planilha</button>
+                <ImportacaoSge
+                  equipamentos={equipamentos}
+                  registros={registros}
+                  motoristas={operationalDrivers}
+                  funcionarios={funcionarios}
+                  empresas={empresas}
+                  onImport={onImport}
+                  onApplyCadastroSge={onApplyCadastroSge}
+                  onMensagem={(tom, texto) => { setMessageTone(tom); setMessage(texto); }}
+                  gatilho={abrir => <button type="button" onClick={abrir} className={ITEM_MENU}><Database className="size-4" aria-hidden="true" />Importar apontamento do SGE</button>}
+                />
+                <hr className="my-1 border-slate-100" />
+                <p className={ROTULO_GRUPO_MENU}>Cadastro e tela</p>
+                <button type="button" onClick={handleRefresh} className={ITEM_MENU}><RefreshCw className="size-4" aria-hidden="true" />Limpar filtros e seleção</button>
+                {onOpenEquipmentRegistration && <button type="button" onClick={onOpenEquipmentRegistration} className={ITEM_MENU}><Plus className="size-4" aria-hidden="true" />Cadastrar equipamento</button>}
               </div>
-            </div>
-          </div>}
+            </details>
+            <button type="button" onClick={() => openNewRecord()} className={`${BOTAO_PRIMARIO} shrink-0 whitespace-nowrap px-5`} data-testid="frota-novo">
+              <Plus className="size-5" aria-hidden="true" />
+              Novo lançamento
+              <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>
+            </button>
+          </>}
         />
-        <p className="-mt-1 text-sm font-semibold text-slate-500 first-letter:uppercase">{dataLonga(filters.date)}</p>
-      </div>
-      {aviso}
-      {activeView === 'today' && <div data-fleet-view className="space-y-4">
+      </div>}
+      faixa={aviso || undefined}
+    >
+      {activeView === 'today' && <div data-fleet-view className="flex min-h-0 flex-1 flex-col gap-3">
         <FleetKpiStrip metrics={viewModel.metrics} status={filters.status} onPick={status => updateFilter('status', status)}/>
         {viewModel.integrityWarnings.length > 0 && (
-          <details open={viewModel.integrityWarnings.length <= 3} className={`group overflow-hidden rounded-2xl border-2 border-amber-300 bg-amber-50 ${FOCO}`} data-testid="frota-conferencia">
-            <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
-              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-300"><AlertTriangle className="size-5" aria-hidden="true" /></span>
-              <span className="min-w-0">
-                <span className="block text-base font-bold text-amber-900">{viewModel.integrityWarnings.length} ponto(s) para conferir nos lançamentos</span>
-                <span className="block text-xs font-semibold text-amber-700">Toque para {viewModel.integrityWarnings.length <= 3 ? 'esconder' : 'ver'} a lista</span>
+          <details open={viewModel.integrityWarnings.length <= 3} className={`group shrink-0 overflow-hidden rounded-2xl border-2 border-amber-300 bg-amber-50 ${FOCO}`} data-testid="frota-conferencia">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 px-3 py-1.5 [&::-webkit-details-marker]:hidden">
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-300"><AlertTriangle className="size-4" aria-hidden="true" /></span>
+              <span className="flex min-w-0 flex-wrap items-baseline gap-x-3">
+                <span className="text-base font-bold text-amber-900">{viewModel.integrityWarnings.length} ponto(s) para conferir nos lançamentos</span>
+                <span className="text-sm font-semibold text-amber-800">Toque para {viewModel.integrityWarnings.length <= 3 ? 'esconder' : 'ver'} a lista</span>
               </span>
               <ChevronDown className="ml-auto size-5 shrink-0 text-amber-700 transition duration-300 group-open:rotate-180" aria-hidden="true" />
             </summary>
@@ -713,96 +745,82 @@ export default function ControleEquipamentosDiarioTab({
       {activeView === 'quadro' && quadro && <div data-fleet-view>
         <React.Suspense fallback={<p className="p-8 text-center text-sm text-slate-500">Abrindo o quadro…</p>}>{quadro(filters.date, () => setActiveView('today'))}</React.Suspense>
       </div>}
-      {activeView === 'equipamentos' && <div data-fleet-view>
+      {activeView === 'equipamentos' && <div data-fleet-view className="flex min-h-0 flex-1 flex-col">
         <FleetDailyReference records={registros} date={filters.date} onLancar={openNewRecord} onRelacaoChange={relacaoMudou}/>
       </div>}
-      {activeView === 'operadores' && <div data-fleet-view>
+      {activeView === 'operadores' && <div data-fleet-view className="flex min-h-0 flex-1 flex-col">
         <FleetDriverReference records={registros} date={filters.date} drivers={operationalDrivers} onAddDrivers={onAddOperationalDrivers} onLancar={openNewRecord} onRelacaoChange={relacaoMudou}/>
       </div>}
       {activeView === 'history' && (
-        <section data-fleet-view className={`${CARTAO} overflow-hidden`} aria-labelledby="frota-historico-titulo">
-          <header className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <section data-fleet-view className="flex min-h-0 flex-1 flex-col gap-3" aria-labelledby="frota-historico-titulo">
+          <header className={`${CARTAO} flex shrink-0 flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4`}>
             <div>
               <h2 id="frota-historico-titulo" className="text-lg font-bold text-slate-950">Fechamento por dia</h2>
-              <p className="text-sm text-slate-500">Quantas frotas trabalharam, pararam ou ficaram sem informar em cada dia. Toque no dia para abrir.</p>
+              <p className="text-sm text-[#5b6870]">Quantas frotas trabalharam, pararam ou ficaram sem informar em cada dia. Toque no dia para abrir.</p>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:flex">
               <button type="button" disabled={Boolean(exporting) || !weeklyReport.records.length} onClick={() => void handleWeeklyPdf()} className={BOTAO_SECUNDARIO}><Printer className="size-4" aria-hidden="true"/>{exporting === 'weekly-pdf' ? 'Gerando…' : 'Semana em PDF'}</button>
               <button type="button" disabled={Boolean(exporting) || !weeklyReport.records.length} onClick={() => void handleWeeklyExcel()} className={BOTAO_SECUNDARIO}><FileSpreadsheet className="size-4" aria-hidden="true"/>{exporting === 'weekly-excel' ? 'Gerando…' : 'Semana em Excel'}</button>
             </div>
           </header>
-          <ul className="divide-y divide-slate-100">
-            {historyByDate.map(item => {
-              const disponibilidade = item.total ? Math.round(((item.operating + item.available) / item.total) * 100) : 0;
-              return (
-                <li key={item.date}>
-                  <button type="button" onClick={() => { updateFilter('date', item.date); setActiveView('today'); }} className={`grid w-full gap-2 px-4 py-3 text-left transition hover:bg-emerald-50/40 sm:grid-cols-[11rem_minmax(0,1fr)_7rem] sm:items-center ${FOCO}`}>
-                    <span>
-                      <span className="block font-bold text-slate-900 first-letter:uppercase">{new Date(`${item.date}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
-                      <span className="text-xs text-slate-500">{item.total} frota(s) lançada(s)</span>
-                    </span>
-                    <span className="flex flex-wrap gap-1.5 text-xs font-bold">
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[#176b4d] ring-1 ring-inset ring-emerald-200">{item.operating} operando</span>
-                      {item.maintenance > 0 && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700 ring-1 ring-inset ring-rose-200">{item.maintenance} manutenção</span>}
-                      {item.available > 0 && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-800 ring-1 ring-inset ring-amber-200">{item.available} à disposição</span>}
-                      {item.pending > 0 && <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[#f26a2e] ring-1 ring-inset ring-orange-200">{item.pending} a confirmar</span>}
-                      {item.repeated.length > 0 && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700 ring-1 ring-inset ring-rose-200" title={`Lançados mais de uma vez: ${item.repeated.join(', ')}`}>{item.repeated.length} repetido(s): {item.repeated.slice(0, 3).join(', ')}{item.repeated.length > 3 ? '…' : ''}</span>}
-                    </span>
-                    <span className="sm:text-right">
-                      <span className="block text-lg font-bold tabular-nums text-slate-900">{item.total ? `${disponibilidade}%` : '—'}</span>
-                      <span className="block h-1.5 overflow-hidden rounded-full bg-slate-100"><span className="block h-full rounded-full bg-[#176b4d]" style={{ width: `${disponibilidade}%` }} /></span>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          {!historyByDate.length && <p className="p-10 text-center text-sm text-slate-500">Nenhum dia lançado ainda.</p>}
+          <div ref={escopoHistorico} className="flex min-h-[16rem] flex-1 flex-col">
+            <TabelaPadrao
+              titulo="Dias lançados"
+              testId="frota-historico"
+              linhas={historyByDate}
+              colunas={COLUNAS_HISTORICO}
+              idDaLinha={item => item.date}
+              nomeDoItem={{ um: 'dia', varios: 'dias' }}
+              ordenacaoInicial={{ chave: 'date', direcao: 'desc' }}
+              onAbrirLinha={item => { updateFilter('date', item.date); setActiveView('today'); }}
+              vazio="Nenhum dia lançado ainda."
+            />
+          </div>
         </section>
       )}
-      {activeView === 'registry' && <section data-fleet-view className="grid gap-3 xl:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
-        <article data-fleet-lift className={`${CARTAO} p-4`}>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#176b4d]">Frotas cadastradas</p>
+      {activeView === 'registry' && <section data-fleet-view className="flex min-h-0 flex-1 flex-col gap-3 xl:grid xl:grid-cols-[minmax(260px,0.6fr)_minmax(0,1.4fr)] xl:grid-rows-[minmax(0,1fr)]">
+        <article data-fleet-lift className={`${CARTAO} shrink-0 self-start p-4`}>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#176b4d]">Frotas cadastradas</p>
           <CountUp value={equipamentos.length} className="mt-1 block text-3xl font-bold tabular-nums text-slate-950" />
-          <p className="mt-1 text-sm text-slate-500">Equipamentos que podem ser escolhidos no lançamento.</p>
+          <p className="mt-1 text-sm text-[#5b6870]">Equipamentos que podem ser escolhidos no lançamento.</p>
           <div className="mt-4 flex flex-wrap gap-1.5">{equipmentTypes.slice(0, 8).map(type => <span key={type} className="rounded-full bg-[#f7f8f6] px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-slate-200">{type}</span>)}</div>
           {onOpenEquipmentRegistration && <button type="button" onClick={onOpenEquipmentRegistration} className={`${BOTAO_SECUNDARIO} mt-4 w-full`}><Plus className="size-4" aria-hidden="true"/>Novo equipamento</button>}
         </article>
-        <article data-fleet-enter className={`${CARTAO} overflow-hidden`}>
-          <header className="border-b border-slate-100 p-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
+          <header className={`${CARTAO} shrink-0 p-3 sm:p-4`}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="text-lg font-bold text-slate-950">Motoristas e operadores <span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 font-mono text-sm text-slate-700">{operationalDrivers.length}</span></h2>
-                <p className="mt-1 text-sm text-slate-500">Lista usada no lançamento da frota.</p>
+                <p className="mt-1 text-sm text-[#5b6870]">Lista usada no lançamento da frota.</p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <label className="relative block sm:w-72">
                   <span className="sr-only">Buscar motorista</span>
                   <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true"/>
-                  <input value={driverSearch} onChange={event => setDriverSearch(event.target.value)} placeholder="Matrícula, nome ou função" className={`${CAMPO} pl-9`}/>
+                  <input type="search" value={driverSearch} onChange={event => setDriverSearch(event.target.value)} placeholder="Matrícula, nome ou função" className={`${CAMPO} pl-9`} data-testid="frota-motoristas-busca"/>
                 </label>
                 <button type="button" onClick={() => setDriverEditor({ id: `motorista-operacional-${Date.now()}`, nome: '', matricula: '', cargo: 'OPERADOR DE CAMINHAO BASCULANTE', empresaId: empresas[0]?.id || '', telefone: '', ativo: true, status: 'ATIVO', area: 'FROTAS OPERACIONAIS', divisao: 'OPERAÇÃO' })} className={BOTAO_PRIMARIO}><Plus className="size-4" aria-hidden="true"/>Novo motorista</button>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-1.5">{Object.entries(driverRoleCounts).sort((a, b) => b[1] - a[1]).map(([role, count]) => <span key={role} className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-900 ring-1 ring-inset ring-emerald-200">{count} · {role}</span>)}</div>
           </header>
-          <ul className="max-h-[430px] divide-y divide-slate-100 overflow-auto">
-            {filteredOperationalDrivers.map(driver => (
-              <li key={driver.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 hover:bg-emerald-50/40">
-                <span className="w-16 shrink-0 font-mono text-sm font-bold text-slate-700">{driver.matricula}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-semibold text-slate-950">{driver.nome}</span>
-                  <span className="block truncate text-xs text-slate-500">{driver.cargo}</span>
-                </span>
-                <span className="flex gap-1">
-                  <button type="button" onClick={() => setDriverEditor(driver)} aria-label={`Editar ${driver.nome}`} className={`grid size-10 place-items-center rounded-xl border border-slate-200 text-slate-600 hover:border-emerald-400 hover:text-[#176b4d] ${FOCO}`}><Pencil className="size-4" aria-hidden="true"/></button>
-                  {onDeleteOperationalDriver && <button type="button" onClick={() => setDriverExclusao(driver)} aria-label={`Excluir ${driver.nome}`} className={`grid size-10 place-items-center rounded-xl border border-slate-200 text-slate-500 hover:border-rose-300 hover:text-rose-700 ${FOCO}`}><Trash2 className="size-4" aria-hidden="true"/></button>}
-                </span>
-              </li>
-            ))}
-          </ul>
-          {!filteredOperationalDrivers.length && <p className="p-8 text-center text-sm text-slate-500">Nenhum motorista encontrado para “{driverSearch}”.</p>}
-        </article>
+          <div ref={escopoMotoristas} className="flex min-h-[16rem] flex-1 flex-col">
+            <TabelaPadrao
+              titulo="Motoristas e operadores"
+              testId="frota-motoristas"
+              linhas={filteredOperationalDrivers}
+              colunas={COLUNAS_MOTORISTAS}
+              idDaLinha={driver => driver.id}
+              nomeDoItem={{ um: 'motorista', varios: 'motoristas' }}
+              ordenacaoInicial={{ chave: 'nome', direcao: 'asc' }}
+              vazio={driverSearch ? `Nenhum motorista encontrado para “${driverSearch}”.` : 'Nenhum motorista cadastrado.'}
+              acoes={driver => <>
+                <button type="button" onClick={() => setDriverEditor(driver)} aria-label={`Editar ${driver.nome}`} title="Editar" className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-600 hover:border-emerald-400 hover:text-[#176b4d] md:size-8 md:min-h-0 md:min-w-0 md:px-0 ${FOCO}`}><Pencil className="size-4" aria-hidden="true"/><span className="md:hidden">Editar</span></button>
+                {onDeleteOperationalDriver && <button type="button" onClick={() => setDriverExclusao(driver)} aria-label={`Excluir ${driver.nome}`} title="Excluir" className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-600 hover:border-rose-300 hover:text-rose-700 md:size-8 md:min-h-0 md:min-w-0 md:px-0 ${FOCO}`}><Trash2 className="size-4" aria-hidden="true"/><span className="md:hidden">Excluir</span></button>}
+              </>}
+            />
+          </div>
+        </div>
       </section>}
       <Modal
         open={Boolean(driverEditor)}
@@ -865,6 +883,6 @@ export default function ControleEquipamentosDiarioTab({
           ))}
         </dl>
       </Modal>
-    </main>
+    </TelaCheia>
   );
 }

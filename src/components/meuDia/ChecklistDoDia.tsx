@@ -47,10 +47,10 @@ function Marcar({ rotina, blocos, somente, onMudarRotina }: Pick<Props, 'rotina'
   return (
     <div className="space-y-5">
       {momentos.map(momento => (
-        <section key={momento.id} aria-labelledby={`momento-${momento.id}`} className="space-y-2">
+        <section key={momento.id} aria-labelledby={somente ? undefined : `momento-${momento.id}`} className="space-y-2">
           {!somente && (
             <div className="flex items-baseline gap-2 px-1">
-              <h3 id={`momento-${momento.id}`} className="text-sm font-bold uppercase tracking-wide text-[#718087]">{momento.nome}</h3>
+              <h2 id={`momento-${momento.id}`} className="text-sm font-bold uppercase tracking-wide text-[#5b6870]">{momento.nome}</h2>
               <span className="text-sm text-slate-500">{momento.ajuda}</span>
             </div>
           )}
@@ -80,10 +80,10 @@ function Marcar({ rotina, blocos, somente, onMudarRotina }: Pick<Props, 'rotina'
                           const marcado = feitos.has(item.id);
                           return (
                             <li key={item.id}>
-                              <label className={`flex min-h-11 cursor-pointer items-start gap-3 rounded-xl px-2 py-2.5 transition-colors duration-150 hover:bg-[#f7f8f6] ${marcado ? 'text-slate-500' : 'text-slate-800'}`}>
+                              <label className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 transition-colors duration-150 hover:bg-[#f7f8f6] ${marcado ? 'text-slate-500' : 'text-slate-800'}`}>
                                 <input
                                   type="checkbox"
-                                  className="mt-0.5 size-5 shrink-0 cursor-pointer rounded accent-[#176b4d]"
+                                  className="size-6 shrink-0 cursor-pointer rounded accent-[#176b4d]"
                                   checked={marcado}
                                   onChange={() => onMudarRotina(alternarItem(rotina, item.id))}
                                 />
@@ -144,7 +144,7 @@ function Montar({ blocos, proprio, onSalvar, onFechar }: { blocos: readonly Bloc
   return (
     <div className="space-y-4" data-testid="meu-dia-montar">
       <div data-meu-dia-reveal className={`${CARTAO} flex flex-wrap items-center gap-3 border-[#f26a2e]/40 bg-orange-50/40 p-4`}>
-        <Settings2 className="size-6 shrink-0 text-[#f26a2e]" aria-hidden="true" />
+        <Settings2 className="size-6 shrink-0 text-[#c2410c]" aria-hidden="true" />
         <p className="min-w-0 flex-1 basis-60 text-sm text-slate-700">
           Este checklist é só seu. Mude os nomes, acrescente, suba, desça ou apague o que quiser. {proprio ? 'Outras pessoas continuam com o delas.' : 'Hoje você usa o modelo padrão da obra.'}
         </p>
@@ -187,7 +187,7 @@ function Montar({ blocos, proprio, onSalvar, onFechar }: { blocos: readonly Bloc
             <ol className="space-y-1.5">
               {bloco.itens.map((item, indice) => (
                 <li key={item.id} className="flex items-start gap-1.5">
-                  <span className="w-6 shrink-0 pt-3 text-right text-sm font-bold text-slate-400">{indice + 1}</span>
+                  <span className="w-6 shrink-0 pt-3 text-right text-sm font-bold text-[#5b6870]">{indice + 1}</span>
                   <textarea
                     rows={1}
                     className={`${CAMPO} field-sizing-content min-w-0 flex-1 resize-none py-2.5 leading-snug`}
@@ -221,7 +221,7 @@ function Montar({ blocos, proprio, onSalvar, onFechar }: { blocos: readonly Bloc
         ))}
 
         <form data-meu-dia-reveal className={`${CARTAO} space-y-3 border-dashed p-4`} onSubmit={event => { event.preventDefault(); criarBloco(); }}>
-          <h3 className="font-bold text-slate-900">Novo bloco</h3>
+          <h2 className="font-bold text-slate-900">Novo bloco</h2>
           <div className="flex flex-wrap items-end gap-2">
             <label className="min-w-0 flex-1 basis-full space-y-1.5 sm:basis-48">
               <span className={ROTULO}>Nome</span>

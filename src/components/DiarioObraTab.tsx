@@ -22,6 +22,7 @@ import type {
 import { comprimirImagem, validarFoto } from '../utils/imagem';
 import { Card, EmptyState, PageHeader, isoDay, statusTone } from '../shared/ui';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
+import { TelaCheia } from '../shared/ui/TelaCheia';
 import { formatarData } from '../utils/formato';
 
 interface DiarioObraTabProps {
@@ -57,7 +58,7 @@ export default function DiarioObraTab({
   const [dia, setDia] = useState(hoje);
   const [obraId, setObraId] = useState('');
   const inputFoto = useRef<HTMLInputElement>(null);
-  const escopo = useRef<HTMLDivElement>(null);
+  const escopo = useRef<HTMLElement>(null);
   // Indicadores renascem a cada troca de dia; o resto da tela só entra uma vez.
   const escopoIndicadores = useEntradaDeLista<HTMLElement>([dia, obraId]);
   const [erro, setErro] = useState('');
@@ -144,25 +145,36 @@ export default function DiarioObraTab({
   };
 
   return (
-    <div ref={escopo} id="diario-obra-tab" className="min-h-full w-full bg-[#f7f8f6] pb-12">
-      <div data-diario-reveal>
+    <TelaCheia ref={escopo} id="diario-obra-tab" rotulo="Diário de Obra" longa rotuloDados="Registro e resumo do dia"
+      cabecalho={<div data-diario-reveal>
         <PageHeader
           eyebrow="Obra"
           title="Diário de Obra"
-          description="O dia consolidado. Clima, visitas e fotos são registrados aqui; o resto vem dos módulos."
           actions={(
             <div className="flex flex-wrap items-center gap-2">
-              <select value={obraId} onChange={event => { setObraId(event.target.value); setRascunho({}); }} aria-label="Obra" className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 outline-none focus:border-emerald-500">
-                <option value="">Obra geral</option>
-                {obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
-              </select>
-              <input type="date" value={dia} onChange={event => { setDia(event.target.value || hoje); setRascunho({}); }} aria-label="Dia do diário" className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-emerald-500" />
+              <label>
+                <span className="sr-only">Obra</span>
+                <select value={obraId} onChange={event => { setObraId(event.target.value); setRascunho({}); }} className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500">
+                  <option value="">Obra geral</option>
+                  {obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                </select>
+              </label>
+              <label>
+                <span className="sr-only">Dia do diário</span>
+                <input type="date" value={dia} onChange={event => { setDia(event.target.value || hoje); setRascunho({}); }} className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" />
+              </label>
+              {/* No computador o cabeçalho fica parado: salvar está sempre à vista. */}
+              {podeEditar && (
+                <button type="button" onClick={salvar} className="hidden min-h-10 items-center rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white transition-colors hover:bg-emerald-800 lg:inline-flex">
+                  {diario ? 'Atualizar diário' : 'Registrar diário'}
+                </button>
+              )}
             </div>
           )}
         />
-      </div>
-
-      <section ref={escopoIndicadores} className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      </div>}
+    >
+      <section ref={escopoIndicadores} aria-label="Números do dia" className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
           { label: 'Presentes', valor: String(resumo.presentes) },
           { label: 'Equipes com apontamento', valor: String(resumo.equipes) },
@@ -170,7 +182,7 @@ export default function DiarioObraTab({
           { label: 'Horas apontadas', valor: `${resumo.horasApontadas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h` },
         ].map(item => (
           <div key={item.label} data-linha-lista className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-[11px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <p className="text-xs font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
             <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
           </div>
         ))}
@@ -178,7 +190,7 @@ export default function DiarioObraTab({
 
       <input ref={inputFoto} type="file" accept="image/*" capture="environment" hidden onChange={event => void receberFoto(event.target.files?.[0])} />
 
-      <div data-diario-reveal className="mt-4 grid gap-4 xl:grid-cols-2">
+      <div data-diario-reveal className="grid gap-4 xl:grid-cols-2">
         <Card
           className="min-w-0"
           title={`Registro do dia · ${formatarData(dia)}`}
@@ -218,7 +230,7 @@ export default function DiarioObraTab({
                 placeholder="0"
                 className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500 disabled:bg-slate-50"
               />
-              <span className="mt-1 block text-[11px] font-medium text-slate-400">Alimenta o mapa de chuvas do mês.</span>
+              <span className="mt-1 block text-xs font-medium text-[#5b6870]">Alimenta o mapa de chuvas do mês.</span>
             </label>
             <label className="text-xs font-bold text-slate-600">
               Fotos do dia
@@ -228,9 +240,9 @@ export default function DiarioObraTab({
                 onClick={() => inputFoto.current?.click()}
                 className="mt-1 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 disabled:opacity-50"
               >
-                <Camera className="h-4 w-4" /> {(valor.fotos?.length || 0)} foto(s)
+                <Camera className="h-4 w-4" aria-hidden="true" /> {(valor.fotos?.length || 0)} foto(s)
               </button>
-              {erro && <span className="mt-1 block text-[11px] font-bold text-rose-700">{erro}</span>}
+              {erro && <span className="mt-1 block text-xs font-bold text-rose-700">{erro}</span>}
             </label>
             <label className="text-xs font-bold text-slate-600 sm:col-span-2">
               Visitas
@@ -261,7 +273,7 @@ export default function DiarioObraTab({
             </div>
           )}
           {podeEditar && (
-            <button type="button" onClick={salvar} className="mt-4 min-h-11 w-full rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white transition-colors hover:bg-emerald-800 sm:w-auto">
+            <button type="button" onClick={salvar} className="mt-4 min-h-11 w-full rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white transition-colors hover:bg-emerald-800 sm:w-auto lg:hidden">
               {diario ? 'Atualizar diário' : 'Registrar diário'}
             </button>
           )}
@@ -291,7 +303,7 @@ export default function DiarioObraTab({
         </Card>
       </div>
 
-      <div data-diario-reveal className="mt-4">
+      <div data-diario-reveal>
         <Card title="Diários registrados" flush>
           {ativos.length === 0 ? (
             <EmptyState icon={NotebookPen} title="Nenhum diário registrado" description="Registre o clima e as observações do dia." />
@@ -306,14 +318,14 @@ export default function DiarioObraTab({
                   >
                     <span className="min-w-0">
                       <strong className="block text-slate-800">{formatarData(item.data)}</strong>
-                      <span className="block truncate text-[11px] text-slate-400">
+                      <span className="block truncate text-xs text-[#5b6870]">
                         {obras.find(obra => obra.id === item.obraId)?.nome || 'Obra geral'}
                         {item.visitas ? ` · visitas: ${item.visitas}` : ''}
                       </span>
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
-                      <CloudRain className="h-3.5 w-3.5 text-slate-400" />
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone(item.climaManha)}`}>{item.climaManha}</span>
+                      <CloudRain className="h-3.5 w-3.5 text-[#5b6870]" aria-hidden="true" />
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${statusTone(item.climaManha)}`}>{item.climaManha}</span>
                     </span>
                   </button>
                 </li>
@@ -327,6 +339,6 @@ export default function DiarioObraTab({
           lança o pluviômetro é quem consulta o acumulado. A sidebar é aprovada
           e não ganha item novo. */}
       <MapaChuva diarios={diarios} responsavel={responsavel} />
-    </div>
+    </TelaCheia>
   );
 }

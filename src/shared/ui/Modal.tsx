@@ -174,7 +174,7 @@ export function Modal({
                 onClick={alternarTelaCheia}
                 aria-pressed={emTelaCheia}
                 data-testid="modal-tela-cheia"
-                className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60"
+                className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)"
               >
                 {emTelaCheia ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}
                 <span className="max-sm:sr-only">{emTelaCheia ? 'Sair da tela cheia' : 'Tela cheia'}</span>

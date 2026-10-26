@@ -217,7 +217,7 @@ const EmployeeCard = memo(function EmployeeCard({
       </div>
       <div className="presence-public__status-grid">
         {PRIMARY_STATUSES.map(option => (
-          <button key={option} type="button" onClick={() => onStatus(employee.id, option)} data-selected={status === option}>
+          <button key={option} type="button" onClick={() => onStatus(employee.id, option)} data-selected={status === option} aria-pressed={status === option}>
             {status === option && <Check className="h-4 w-4" />}{option}
           </button>
         ))}
@@ -225,6 +225,7 @@ const EmployeeCard = memo(function EmployeeCard({
       <select
         value={SECONDARY_STATUSES.includes(status as PresencaStatus) ? status : ''}
         onChange={event => event.target.value && onStatus(employee.id, event.target.value as PresencaStatus)}
+        aria-label={`Outra situação de ${employee.nome}`}
       >
         <SecondaryStatusOptions />
       </select>
@@ -233,6 +234,7 @@ const EmployeeCard = memo(function EmployeeCard({
         onChange={event => onObservacao(employee.id, event.target.value)}
         rows={2}
         placeholder="Observação opcional"
+        aria-label={`Observação de ${employee.nome}`}
       />
       {erro && <div role="alert" className="presence-public__card-error">{erro}</div>}
       {podeRemover && (
@@ -309,7 +311,7 @@ const SubmittedEmployeeCard = memo(function SubmittedEmployeeCard({
       </div>
       <div className="presence-public__status-grid">
         {PRIMARY_STATUSES.map(status => (
-          <button key={status} type="button" disabled={isSaving} onClick={() => onUpdateStatus(employee.id, status)} data-selected={currentStatus === status}>
+          <button key={status} type="button" disabled={isSaving} onClick={() => onUpdateStatus(employee.id, status)} data-selected={currentStatus === status} aria-pressed={currentStatus === status}>
             {currentStatus === status && <Check className="h-4 w-4" />}{status}
           </button>
         ))}
@@ -318,6 +320,7 @@ const SubmittedEmployeeCard = memo(function SubmittedEmployeeCard({
         value={SECONDARY_STATUSES.includes(currentStatus as PresencaStatus) ? currentStatus : ''}
         disabled={isSaving}
         onChange={event => event.target.value && onUpdateStatus(employee.id, event.target.value as PresencaStatus)}
+        aria-label={`Outra situação de ${employee.nome}`}
       >
         <SecondaryStatusOptions />
       </select>
@@ -327,6 +330,7 @@ const SubmittedEmployeeCard = memo(function SubmittedEmployeeCard({
         onChange={event => onObservacaoChange(employee.id, event.target.value)}
         rows={2}
         placeholder="Observação opcional"
+        aria-label={`Observação de ${employee.nome}`}
       />
       {observacaoDirty && (
         <button
@@ -1072,7 +1076,7 @@ export default function PresencaTempoRealPublica({
           {dayNoteSection}
           {viewingPastDay && observacaoDia && (
             <section className="presence-public__daynote presence-public__daynote--readonly">
-              <label>Observação do dia</label>
+              <h2>Observação do dia</h2>
               <p>{observacaoDia}</p>
             </section>
           )}

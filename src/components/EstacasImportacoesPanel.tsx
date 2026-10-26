@@ -77,14 +77,18 @@ export default function EstacasImportacoesPanel({ controle, responsavel, onApply
     applyAuthorized: true,
   } : undefined;
 
-  return <div className="mt-3 space-y-3">
-    <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-300 bg-white px-4 text-center text-xs font-bold text-slate-600 hover:border-emerald-500 hover:text-emerald-700">
-      <Upload className="h-5 w-5" />
-      {isReading ? 'Lendo planilha...' : 'Selecionar planilha (.xlsx) para prévia'}
-      <input type="file" accept=".xlsx,.xlsm" className="hidden" disabled={isReading} onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void handleFileSelected(file); }} />
+  return <div className="space-y-3">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <h2 className="text-base font-bold text-slate-900">Trazer o controle do Excel</h2>
+      <p className="mt-1 text-sm text-slate-600">Escolha a planilha. Antes de gravar, você confere linha por linha o que vai entrar.</p>
+    </div>
+    <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-white px-4 text-center text-sm font-bold text-slate-700 hover:border-emerald-500 hover:text-emerald-700 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-(--renea-focus)">
+      <Upload className="size-6" aria-hidden="true" />
+      {isReading ? 'Lendo planilha…' : 'Escolher planilha (.xlsx) para conferir'}
+      <input type="file" accept=".xlsx,.xlsm" className="sr-only" disabled={isReading} onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void handleFileSelected(file); }} />
     </label>
-    {preview && <p className="flex items-center gap-2 text-xs font-semibold text-slate-600"><FileSpreadsheet className="h-4 w-4 text-emerald-700" /> {fileName} lido · {preview.rows.length} linha(s) classificada(s).</p>}
-    {resultSummary && <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">{resultSummary}</p>}
+    {preview && <p className="flex items-center gap-2 text-sm font-semibold text-slate-600"><FileSpreadsheet className="size-4 text-emerald-700" aria-hidden="true" /> {fileName} lido · {preview.rows.length} linha(s) classificada(s).</p>}
+    {resultSummary && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">{resultSummary}</p>}
     <SpreadsheetImportReview
       open={Boolean(preview)}
       title="Prévia de importação — Estacas"

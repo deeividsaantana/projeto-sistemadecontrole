@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Camera, CheckCircle2, ClipboardCopy, ImageOff, Link2, MapPin, MessageCircle, Send, Undo2, UserRound, Users, type LucideIcon } from 'lucide-react';
+import { Camera, CheckCircle2, ClipboardCopy, ImageOff, Link2, MapPin, MessageCircle, Send, Undo2, UserRound, Users } from 'lucide-react';
 import type { MovimentoMaterial } from '../../types';
 import { SEM_NOME, enviosDoCampo, mensagemDoLink, resumoPorApontador, semEnvioNoDia, type EnvioCampo, type FiltroEnvios } from '../../modules/materials/apontadores';
 import { cancelMaterialMovement } from '../../modules/materials/materialFieldUse';
@@ -7,17 +7,20 @@ import { fieldReportTime } from '../../utils/fieldReports';
 import { enderecoDaFoto } from '../../utils/fotoDoCampo';
 import { formatarData, numero } from '../../utils/formato';
 import { getSecurePublicMaterialLink } from '../../publicApi';
-import { ConfirmDialog, CountUp, EmptyState } from '../../shared/ui';
+import { ConfirmDialog, CountUp, EmptyState, TabelaPadrao, type ColunaTabela } from '../../shared/ui';
+import { AbasDaTela, type AbaDaTela } from '../../shared/ui/AbasDaTela';
 import { useEntradaDeLista } from '../../shared/hooks/useEntradaDeLista';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO } from '../cadastros/estilos';
 
 type Subaba = 'envios' | 'pessoas' | 'link';
 
-const SUBABAS: ReadonlyArray<{ id: Subaba; nome: string; curto: string; Icone: LucideIcon }> = [
-  { id: 'envios', nome: 'Envios do campo', curto: 'Envios', Icone: Send },
-  { id: 'pessoas', nome: 'Por apontador', curto: 'Pessoas', Icone: Users },
-  { id: 'link', nome: 'Link do campo', curto: 'Link', Icone: Link2 },
+const SUBABAS: ReadonlyArray<AbaDaTela<Subaba>> = [
+  { id: 'envios', rotulo: 'Envios do campo', curto: 'Envios', icone: Send, testId: 'apontadores-aba-envios' },
+  { id: 'pessoas', rotulo: 'Por apontador', curto: 'Pessoas', icone: Users, testId: 'apontadores-aba-pessoas' },
+  { id: 'link', rotulo: 'Link do campo', curto: 'Link', icone: Link2, testId: 'apontadores-aba-link' },
 ];
+
+type Pessoa = ReturnType<typeof resumoPorApontador>[number];
 
 const somarDias = (dia: string, dias: number) => new Date(new Date(`${dia}T12:00:00Z`).getTime() + dias * 86_400_000).toISOString().slice(0, 10);
 const plural = (quantos: number, um: string, varios: string) => `${quantos.toLocaleString('pt-BR')} ${quantos === 1 ? um : varios}`;
@@ -105,6 +108,32 @@ export default function ApontadoresMateriais({ hoje, movimentos, responsavel, po
     }
   };
 
+  const verEnviosDe = (pessoa: Pessoa) => {
+    setFiltro({ de: somarDias(hoje, -29), ate: hoje, apontador: pessoa.nome, ramo: '' });
+    setSubaba('envios');
+  };
+
+  const colunasPessoas: ColunaTabela<Pessoa>[] = [
+    {
+      chave: 'nome',
+      titulo: 'Apontador',
+      larguraMinima: 160,
+      valorOrdenacao: pessoa => pessoa.nome,
+      render: pessoa => (
+        <span className="flex items-center gap-2 font-semibold text-slate-900">
+          {pessoa.ultimo === hoje ? <CheckCircle2 className="size-4 shrink-0 text-[#176b4d]" aria-label="Mandou hoje" /> : <span className="size-4 shrink-0" aria-hidden="true" />}
+          {pessoa.nome}
+        </span>
+      ),
+      dica: pessoa => pessoa.nome,
+    },
+    { chave: 'envios', titulo: 'Envios', alinhamento: 'direita', valorOrdenacao: pessoa => pessoa.envios, render: pessoa => pessoa.envios.toLocaleString('pt-BR') },
+    { chave: 'dias', titulo: 'Dias', alinhamento: 'direita', valorOrdenacao: pessoa => pessoa.dias, render: pessoa => pessoa.dias.toLocaleString('pt-BR') },
+    { chave: 'foto', titulo: 'Com foto', alinhamento: 'direita', valorOrdenacao: pessoa => pessoa.comFoto / pessoa.envios, render: pessoa => `${Math.round((pessoa.comFoto / pessoa.envios) * 100)}%` },
+    { chave: 'ramos', titulo: 'Ramos', larguraMinima: 160, valorOrdenacao: pessoa => pessoa.ramos.join(', '), render: pessoa => pessoa.ramos.join(', ') || '—' },
+    { chave: 'ultimo', titulo: 'Último', alinhamento: 'direita', valorOrdenacao: pessoa => pessoa.ultimo, render: pessoa => formatarData(pessoa.ultimo) },
+  ];
+
   const indicadores: ReadonlyArray<{ rotulo: string; valor: number; detalhe: string; alerta?: boolean }> = [
     { rotulo: 'Envios hoje', valor: deHoje.length, detalhe: plural(new Set(deHoje.map(envio => envio.ramo)).size, 'ramo', 'ramos') },
     { rotulo: 'Apontadores', valor: pessoas.filter(pessoa => pessoa.nome !== SEM_NOME).length, detalhe: 'já mandaram pelo link' },
@@ -118,35 +147,17 @@ export default function ApontadoresMateriais({ hoje, movimentos, responsavel, po
         {indicadores.map(item => (
           <article key={item.rotulo} className={`${CARTAO} min-w-0 p-4`}>
             <p className="text-sm font-semibold text-slate-600">{item.rotulo}</p>
-            <CountUp value={item.valor} className={`mt-1 block text-3xl font-black tabular-nums ${item.alerta ? 'text-[#f26a2e]' : 'text-slate-950'}`} />
+            <CountUp value={item.valor} className={`mt-1 block text-3xl font-black tabular-nums ${item.alerta ? 'text-[#c2410c]' : 'text-slate-950'}`} />
             <span className="block truncate text-xs text-slate-500" title={item.detalhe}>{item.detalhe}</span>
           </article>
         ))}
       </section>
 
-      <div role="tablist" aria-label="Apontadores" data-materiais-reveal className="grid grid-cols-3 gap-2">
-        {SUBABAS.map(({ id, nome, curto, Icone }) => {
-          const ativa = subaba === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={ativa}
-              data-testid={`apontadores-aba-${id}`}
-              onClick={() => setSubaba(id)}
-              className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-2 text-center text-sm font-bold transition duration-200 sm:justify-start sm:px-4 sm:text-base ${FOCO} ${ativa
-                ? 'border-[#176b4d] bg-[#176b4d] text-white shadow-sm'
-                : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-500 hover:text-[#176b4d]'}`}
-            >
-              <Icone className="size-5 shrink-0" aria-hidden="true" />
-              <span className="sm:hidden">{curto}</span>
-              <span className="hidden sm:inline">{nome}</span>
-            </button>
-          );
-        })}
+      <div data-materiais-reveal>
+        <AbasDaTela<Subaba> id="apontadores" rotulo="Apontadores" abas={SUBABAS} ativa={subaba} onTrocar={setSubaba} idPainel="apontadores-conteudo" />
       </div>
 
+      <div id="apontadores-conteudo" className="space-y-4">
       {subaba === 'envios' && (
         <div className="space-y-3">
           <section data-materiais-reveal aria-label="Filtros dos envios" className={`${CARTAO} space-y-3 p-4`}>
@@ -247,7 +258,7 @@ export default function ApontadoresMateriais({ hoje, movimentos, responsavel, po
                       href={`https://www.google.com/maps?q=${envio.local.lat},${envio.local.lng}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex min-h-11 items-center gap-2 border-t border-slate-100 px-4 py-2 text-sm font-semibold text-[#176b4d] hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60"
+                      className="flex min-h-11 items-center gap-2 border-t border-slate-100 px-4 py-2 text-sm font-semibold text-[#176b4d] hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)"
                     >
                       <MapPin className="size-4 shrink-0" aria-hidden="true" />
                       Ver no mapa onde foi apontado
@@ -272,61 +283,18 @@ export default function ApontadoresMateriais({ hoje, movimentos, responsavel, po
           {pessoas.length === 0 ? (
             <EmptyState icon={UserRound} title="Ninguém mandou pelo link ainda" description="Quando um apontador salvar o primeiro uso, ele aparece aqui." />
           ) : (
-            <div ref={lista}>
-              <table className="hidden w-full text-left text-sm md:table">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                  <tr>
-                    <th scope="col" className="p-3">Apontador</th>
-                    <th scope="col" className="p-3 text-right">Envios</th>
-                    <th scope="col" className="p-3 text-right">Dias</th>
-                    <th scope="col" className="p-3 text-right">Com foto</th>
-                    <th scope="col" className="p-3">Ramos</th>
-                    <th scope="col" className="p-3 text-right">Último</th>
-                    <th scope="col" className="p-3"><span className="sr-only">Ver envios</span></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {pessoas.map((pessoa, posicao) => {
-                    const mandouHoje = pessoa.ultimo === hoje;
-                    return (
-                      <tr key={pessoa.chave} data-linha-lista={posicao < 20 ? '' : undefined} className="transition-colors duration-150 hover:bg-emerald-50/50">
-                        <th scope="row" className="p-3 font-semibold text-slate-900">
-                          <span className="flex items-center gap-2">
-                            {mandouHoje ? <CheckCircle2 className="size-4 shrink-0 text-[#176b4d]" aria-label="Mandou hoje" /> : <span className="size-4 shrink-0" aria-hidden="true" />}
-                            {pessoa.nome}
-                          </span>
-                        </th>
-                        <td className="p-3 text-right tabular-nums text-slate-700">{pessoa.envios.toLocaleString('pt-BR')}</td>
-                        <td className="p-3 text-right tabular-nums text-slate-700">{pessoa.dias.toLocaleString('pt-BR')}</td>
-                        <td className="p-3 text-right tabular-nums text-slate-700">{Math.round((pessoa.comFoto / pessoa.envios) * 100)}%</td>
-                        <td className="max-w-[16rem] truncate p-3 text-slate-600" title={pessoa.ramos.join(', ')}>{pessoa.ramos.join(', ')}</td>
-                        <td className="whitespace-nowrap p-3 text-right tabular-nums text-slate-600">{formatarData(pessoa.ultimo)}</td>
-                        <td className="p-3 text-right">
-                          <button type="button" onClick={() => { setFiltro({ de: somarDias(hoje, -29), ate: hoje, apontador: pessoa.nome, ramo: '' }); setSubaba('envios'); }} className={`min-h-10 rounded-xl px-3 text-sm font-bold text-[#176b4d] hover:bg-emerald-50 ${FOCO}`}>Ver envios</button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              <ul className="divide-y divide-slate-100 md:hidden">
-                {pessoas.map((pessoa, posicao) => (
-                  <li key={pessoa.chave} data-linha-lista={posicao < 20 ? '' : undefined}>
-                    <button type="button" onClick={() => { setFiltro({ de: somarDias(hoje, -29), ate: hoje, apontador: pessoa.nome, ramo: '' }); setSubaba('envios'); }} className={`flex w-full items-start justify-between gap-3 p-4 text-left hover:bg-slate-50 ${FOCO}`}>
-                      <span className="min-w-0">
-                        <strong className="flex items-center gap-2 text-base text-slate-900">
-                          {pessoa.ultimo === hoje && <CheckCircle2 className="size-4 shrink-0 text-[#176b4d]" aria-label="Mandou hoje" />}
-                          {pessoa.nome}
-                        </strong>
-                        <span className="block text-sm text-slate-600">{plural(pessoa.envios, 'envio', 'envios')} · {plural(pessoa.dias, 'dia', 'dias')} · {Math.round((pessoa.comFoto / pessoa.envios) * 100)}% com foto</span>
-                        <span className="block truncate text-xs text-slate-500">{pessoa.ramos.join(', ')}</span>
-                      </span>
-                      <span className="shrink-0 text-sm tabular-nums text-slate-500">{formatarData(pessoa.ultimo)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <TabelaPadrao
+              titulo="Envios por apontador"
+              linhas={pessoas}
+              colunas={colunasPessoas}
+              idDaLinha={pessoa => pessoa.chave}
+              nomeDoItem={{ um: 'apontador', varios: 'apontadores' }}
+              ordenacaoInicial={{ chave: 'ultimo', direcao: 'desc' }}
+              onAbrirLinha={verEnviosDe}
+              acoes={pessoa => <button type="button" onClick={() => verEnviosDe(pessoa)} className={`min-h-11 rounded-xl px-3 text-sm font-bold text-[#176b4d] hover:bg-emerald-50 md:min-h-8 ${FOCO}`}>Ver envios</button>}
+              tituloAcoes="Envios"
+              className="rounded-none border-0"
+            />
           )}
         </section>
       )}
@@ -382,6 +350,8 @@ export default function ApontadoresMateriais({ hoje, movimentos, responsavel, po
           </section>
         </div>
       )}
+
+      </div>
 
       <ConfirmDialog
         open={Boolean(desfazendo)}

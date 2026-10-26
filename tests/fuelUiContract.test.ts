@@ -7,10 +7,27 @@ const sourcePath = join(process.cwd(), 'src', 'components', 'CombustivelOperacio
 const source = readFileSync(sourcePath, 'utf8');
 const appSource = readFileSync(join(process.cwd(), 'src', 'App.tsx'), 'utf8');
 const historicoSource = readFileSync(join(process.cwd(), 'src', 'components', 'combustivel', 'HistoricoCombustivel.tsx'), 'utf8');
+const relatorioSourceTopo = readFileSync(join(process.cwd(), 'src', 'components', 'combustivel', 'RelatorioDiesel.tsx'), 'utf8');
+const consumoSource = readFileSync(join(process.cwd(), 'src', 'components', 'combustivel', 'ConsumoPorMaquina.tsx'), 'utf8');
+
+test('lançamentos e consumo por máquina usam a TabelaPadrao, sem lista fingindo tabela (A5, M5)', () => {
+  for (const fonte of [historicoSource, consumoSource]) {
+    assert.match(fonte, /<TabelaPadrao/);
+    assert.doesNotMatch(fonte, /<table\b|role="rowgroup"|<tr[^>]*onClick/);
+    assert.doesNotMatch(fonte, /<aside\b|<h3\b/, 'nada de complementary aninhado nem h3 sem h2');
+  }
+  for (const recurso of [/grupos=\{/, /selecao=\{/, /onTrocarData\(selecionadosLista\)/, /onExcluir\(selecionadosLista\)/, /rodapeInicio=/, /porPagina=\{preferencias\.tamanhoPagina\}/, /refArea=\{listaRef\}/]) {
+    assert.match(historicoSource, recurso, `Lançamentos perdeu ${recurso}`);
+  }
+});
 
 test('combustivel has three screens: lançar, lançamentos e relatórios', () => {
   assert.match(source, /type View = 'novo' \| 'historico' \| 'relatorios';/);
-  assert.match(source, /\['novo', 'Lançar', Plus\], \['historico', 'Lançamentos', History\], \['relatorios', 'Relatórios', BarChart3\]/);
+  assert.match(source, /id: 'novo' as const, rotulo: [^\n]*'Lançar', icone: Plus[\s\S]*id: 'historico' as const, rotulo: 'Lançamentos', icone: History[\s\S]*grupo: 'relatorios', rotulo: 'Relatórios', icone: BarChart3/);
+  // Resumo e Consumo por máquina são abas do topo (segunda linha do grupo), não botões soltos dentro do relatório.
+  assert.match(source, /id: 'resumo' as const, rotulo: 'Resumo'[\s\S]*id: 'consumo' as const, rotulo: 'Consumo por máquina'/);
+  assert.doesNotMatch(relatorioSourceTopo, /aria-label="Parte do relatório"|setParte/);
+  assert.match(source, /<AbasDaTela id="combustivel"[^>]*abas=\{vistas\}/);
   assert.match(source, /data-testid="combustivel-numeros"/);
   assert.match(source, /<RelatorioDiesel/);
   assert.doesNotMatch(source, /createPortal|combustivel-dashboard|abaJanela|abaDashboard|combustivel-por-maquina/);
@@ -45,7 +62,9 @@ test('combustivel history and report avoid forced desktop-only wide tables', () 
   assert.doesNotMatch(source, /min-w-\[1180px\]/);
   assert.doesNotMatch(source, /min-w-\[1320px\]/);
   assert.match(source, /listaSomente/);
-  assert.match(source, /h-\[calc\(100dvh-0\.5rem\)\]/);
+  // A lista aberta sozinha ocupa a janela inteira em qualquer largura.
+  assert.match(appSource, /renea-viewport--solta/);
+  assert.match(readFileSync(join(process.cwd(), 'src', 'index.css'), 'utf8'), /\.renea-viewport--solta \.renea-tela-cheia \{\s*height: calc\(100dvh - 2 \* var\(--renea-respiro\)\)/);
 });
 
 test('combustivel excel export follows the FORNECIMENTO DIESEL spreadsheet model', () => {

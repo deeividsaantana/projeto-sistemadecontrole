@@ -39,14 +39,21 @@ const startApplication = async () => {
       </StrictMode>,
     );
   } else {
+    // Guarda global de movimento reduzido para o GSAP, instalada antes da
+    // primeira tela animar. Carrega junto com o app (o GSAP já faz parte
+    // dele); os links públicos ficam de fora para seguirem leves e usam a
+    // guarda local de cada tela.
+    const guardaDeMovimento = import('./shared/motion/guardaDeMovimento')
+      .then(({ instalarGuardaDeMovimento }) => { instalarGuardaDeMovimento(); })
+      .catch(error => { console.warn('Guarda de movimento indisponível; as telas seguem com a guarda local.', error); });
     const privateRoute = parsePrivatePath(window.location.pathname);
     if (privateRoute && isSupabaseCloudEnabled) {
-      const { PrivateRouteApp } = await import('./app/routing/PrivateRouteApp');
+      const [{ PrivateRouteApp }] = await Promise.all([import('./app/routing/PrivateRouteApp'), guardaDeMovimento]);
       root.render(<StrictMode><AppProviders><PrivateRouteApp route={privateRoute} /></AppProviders></StrictMode>);
     } else {
       const pendentes = await restoreMissingReneaLocalStorage(reserva);
       registrarPendentesDaReserva(pendentes);
-      const { default: App } = await import('./App');
+      const [{ default: App }] = await Promise.all([import('./App'), guardaDeMovimento]);
       root.render(<StrictMode><AppProviders><App /></AppProviders></StrictMode>);
     }
     startReneaStorageMirror(reserva);

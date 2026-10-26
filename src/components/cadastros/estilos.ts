@@ -1,9 +1,9 @@
 /**
  * Classes repetidas da aba Cadastros, no padrão do Painel de Controle:
- * verde RENEA na ação principal, foco laranja, cantos de 12 a 16 px e toque
- * de pelo menos 44 px.
+ * verde RENEA na ação principal, foco com borda verde-escura sólida, cantos
+ * de 12 a 16 px e toque de pelo menos 44 px.
  */
-export const FOCO = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60';
+export const FOCO = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)';
 
 const BOTAO = `inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${FOCO}`;
 
@@ -24,5 +24,4 @@ export const TOM_SITUACAO = {
   inativo: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200',
 } as const;
 
-export const reduzMovimento = () => typeof window !== 'undefined'
-  && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+export { reduzMovimento } from '../../shared/motion/reduzMovimento';

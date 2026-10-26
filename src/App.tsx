@@ -5,7 +5,7 @@
 
 import React, { lazy, Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';import { migrarEfetivoObra3 } from './utils/migracaoEfetivoObra3';
 
-import { RouteMotion, isoDay } from './shared/ui';
+import { PularParaConteudo, RouteMotion, isoDay } from './shared/ui';
 import { 
   Empresa, 
   ObraLocal, 
@@ -77,14 +77,13 @@ import {
   INITIAL_PRESENCAS_LINK,
   INITIAL_HISTORICO_PRESENCAS,
   INITIAL_TICKETS_JAZIDA,
-  hydrateInitialOperationalSeedData,
 } from './utils/initialData';
 import { registrosComCanteiroRenomeado } from './utils/frenteServico';
 import { INITIAL_CONTROLE_ESTACAS } from './utils/initialEstacasData';
 import { INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO } from './utils/initialControleEquipamentosDiario';
 import { OPERATIONAL_DRIVERS } from './fleet/operationalDrivers';
 import { juntarComLancamentoDoDia } from './fleet/duplicidadeDiaria';
-import { aplicarCadastroSge, type PreviaCadastroSge } from './fleet/sgeApontamentos';
+import type { PreviaCadastroSge } from './fleet/sgeApontamentos';
 import { enqueueOfflineCommand, flushOfflineCommands } from './utils/offlineQueue';
 import { useOfflineQueueCount } from './hooks/useOfflineQueue';
 import {
@@ -198,7 +197,6 @@ import { describeInvalidBackup, validateSystemBackup } from './utils/systemBacku
 import type { MasterWorkbookReviewRow } from './masterData/masterWorkbook';
 import { validateCentralRecord } from './masterData/centralRegistry';
 import { inactivateEmpresa, inactivateEquipamento, inactivateFuncionario, normalizeEmpresa, normalizeFuncionario, saveRegistryItem } from './masterData/registryCommands';
-import { removerEquipamentosDoQuadro } from './modules/frota/quadroFrota';
 import { rotuloAbastecimento } from './modules/frota/lixeiraCombustivel';
 import { usosDoCadastro } from './masterData/registryDependencies';
 import { mergeEmpresaImport, mergeEquipamentoImport, mergeFuncionarioImport } from './masterData/registryImportMerge';
@@ -296,34 +294,6 @@ const numberFromImport = (value: string) => {
   const cleaned = String(value || '').replace(/\./g, '').replace(',', '.').replace(/[^0-9.-]/g, '');
   const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const mergeSeedRecords = <T,>(current: T[], seed: T[], getKey: (item: T) => string) => {
-  const keys = new Set(current.map(item => getKey(item)).filter(Boolean));
-  const next = [...current];
-  seed.forEach(item => {
-    const key = getKey(item);
-    if (!key || keys.has(key)) return;
-    keys.add(key);
-    next.push(item);
-  });
-  return next;
-};
-
-const mergeSeedRecordsPreferSeed = <T,>(current: T[], seed: T[], getKey: (item: T) => string) => {
-  const seedByKey = new Map(seed.map(item => [getKey(item), item]));
-  const next = current.map(item => {
-    const seedItem = seedByKey.get(getKey(item));
-    if (seedItem && getKey(item).startsWith('CA')) {
-      return item;
-    }
-    return seedItem ?? item;
-  });
-  const currentKeys = new Set(current.map(getKey));
-  seed.forEach(item => {
-    if (!currentKeys.has(getKey(item))) next.push(item);
-  });
-  return next;
 };
 
 const mergeTicketCollections = (current: TicketJazida[], incoming: TicketJazida[]) => {
@@ -692,25 +662,13 @@ export default function App() {
 
   // Hydrate states from localstorage on mount
   useEffect(() => {
-    let cancelled = false;
-    const hydrateLocalData = async () => {
+    const hydrateLocalData = () => {
       if (externalTicketLink || externalPresenceToken) return;
 
       const isDataLoadedV2 = readStoredFlag(localStorage, STORAGE_KEYS.dataLoadedV2);
-      // A base de exemplo (seed) só é usada na primeira carga do aparelho e na
-      // migração pontual da planilha operacional (shouldMigrateSpreadsheetSeed,
-      // mais abaixo). Com as duas já feitas, baixar e processar esses módulos
-      // (~1,6 MB) a cada abertura do app não tinha efeito nenhum — só custava tempo.
-      const needsSeedData = !isDataLoadedV2
-        || !readStoredFlag(localStorage, STORAGE_KEYS.planilhasOperacionaisV2);
-      if (needsSeedData) {
-        try {
-          await hydrateInitialOperationalSeedData();
-          if (cancelled) return;
-        } catch (error) {
-          console.error('Falha ao carregar a base historica inicial:', error);
-        }
-      }
+      // Navegador sem dados não recebe mais base de exemplo (empresas, comboios,
+      // viagens da jazida e estacas de agosto): começa vazio, fica marcado como
+      // aguardando o primeiro download e só envia depois de baixar a nuvem.
 
     if (!isDataLoadedV2) {
       const initialStorageEntries = [
@@ -746,7 +704,6 @@ export default function App() {
         // aqui é só a semente do sistema. Nada sobe até a nuvem ser baixada.
         { key: AGUARDANDO_PRIMEIRO_DOWNLOAD, value: 'true' },
         { key: 'renea_colaboradores_planilha_v1', value: 'true' },
-        { key: 'renea_planilhas_operacionais_v2', value: 'true' },
       ]);
 
       setEmpresas(INITIAL_EMPRESAS);
@@ -800,7 +757,6 @@ export default function App() {
       const savedHistory = localStorage.getItem('renea_history_logs');
       const savedNotifications = localStorage.getItem('renea_notifications');
       const shouldMigratePresencePeople = !readStoredFlag(localStorage, STORAGE_KEYS.colaboradoresPlanilhaV1);
-      const shouldMigrateSpreadsheetSeed = !readStoredFlag(localStorage, STORAGE_KEYS.planilhasOperacionaisV2);
       const parsedEquipamentos = parseStoredJson(savedEquipamentos, 'renea_equipamentos', INITIAL_EQUIPAMENTOS);
       const parsedEmpresas = parseStoredJson(savedEmpresas, 'renea_empresas', INITIAL_EMPRESAS);
       const parsedComboios = parseStoredJson(savedComboios, 'renea_comboios', INITIAL_COMBOIOS);
@@ -828,40 +784,19 @@ export default function App() {
         parsedGruposEquipe,
         readStoredFlag(localStorage, STORAGE_KEYS.linksPublicosEstaveisV1),
       );
-      const loadedEquipamentos = shouldMigrateSpreadsheetSeed
-        ? mergeSeedRecordsPreferSeed(parsedEquipamentos, INITIAL_EQUIPAMENTOS, item => item.prefixo.trim().toLowerCase())
-        : parsedEquipamentos;
-      const loadedEmpresas = shouldMigrateSpreadsheetSeed
-        ? mergeSeedRecords(parsedEmpresas, INITIAL_EMPRESAS, item => item.id)
-        : parsedEmpresas;
-      const loadedComboios = shouldMigrateSpreadsheetSeed
-        ? mergeSeedRecords(parsedComboios, INITIAL_COMBOIOS, item => item.placa.trim().toLowerCase())
-        : parsedComboios;
-      const loadedAbastecimentos = resetLocalFuel ? [] : shouldMigrateSpreadsheetSeed
-        ? mergeSeedRecords(parsedAbastecimentos, INITIAL_ABASTECIMENTOS, item => `${item.data}|${item.equipamentoId}|${item.hora}|${item.quantidadeLitros}|${item.bombaInicial}`)
-        : parsedAbastecimentos;
-      const loadedTicketsJazida = shouldMigrateSpreadsheetSeed
-        ? mergeSeedRecords(parsedTicketsJazida, INITIAL_TICKETS_JAZIDA, item => `${item.tipoTicket || 'Liberação'}|${item.data}|${item.ticketNumero}|${item.prefixo}`)
-        : parsedTicketsJazida;
-      const loadedControleEstacas = shouldMigrateSpreadsheetSeed
-        ? {
-            lotes: mergeSeedRecords(parsedControleEstacas.lotes, INITIAL_CONTROLE_ESTACAS.lotes, item => item.id),
-            cravacoes: mergeSeedRecords(parsedControleEstacas.cravacoes, INITIAL_CONTROLE_ESTACAS.cravacoes, item => item.id),
-          }
-        : parsedControleEstacas;
-      setEmpresas(loadedEmpresas);
+      setEmpresas(parsedEmpresas);
       setObras(parseStoredJson(savedObras, 'renea_obras', INITIAL_OBRAS));
-      setEquipamentos(loadedEquipamentos);
+      setEquipamentos(parsedEquipamentos);
       setFuncionarios(shouldMigratePresencePeople ? INITIAL_FUNCIONARIOS : parseStoredJson(savedFuncionarios, 'renea_funcionarios', INITIAL_FUNCIONARIOS));
       setMotoristasOperacionais(parseStoredJson(savedMotoristasOperacionais, STORAGE_KEYS.motoristasOperacionais, [...OPERATIONAL_DRIVERS]));
-      setComboios(loadedComboios);
+      setComboios(parsedComboios);
       setCanteiros(parseStoredJson(savedCanteiros, 'renea_canteiros', INITIAL_CANTEIROS));
       setCombustiveis(parseStoredJson(savedCombustiveis, 'renea_combustiveis', INITIAL_TIPOS_COMBUSTIVEL));
       setLubrificantes(parseStoredJson(savedLubrificantes, 'renea_lubrificantes', INITIAL_PRODUTOS_LUBRIFICACAO));
       setEtapas(parseStoredJson(savedEtapas, 'renea_etapas', INITIAL_ETAPAS_SERVICO));
-      setAbastecimentos(loadedAbastecimentos);
+      setAbastecimentos(resetLocalFuel ? [] : parsedAbastecimentos);
       setLubrificacoes(parseStoredJson(savedLubrificacoes, 'renea_lubrificacoes', INITIAL_LUBRIFICACOES));
-      setTicketsJazida(loadedTicketsJazida);
+      setTicketsJazida(parsedTicketsJazida);
       setListasPresenca(parsedListasPresenca);
       setOrdensServico(parseStoredJson(savedOrdensServico, 'renea_ordens_servico', INITIAL_ORDENS_SERVICO));
       setChecklists(parseStoredJson(localStorage.getItem(STORAGE_KEYS.checklists), STORAGE_KEYS.checklists, [] as ChecklistEquipamento[]));
@@ -894,7 +829,7 @@ export default function App() {
       setPresencasLink(parseStoredJson(savedPresencasLink, 'renea_presencas_link', INITIAL_PRESENCAS_LINK));
       setHistoricoPresencas(parseStoredJson(savedHistoricoPresencas, 'renea_historico_presencas', INITIAL_HISTORICO_PRESENCAS));
       setControleEquipamentosDiario(parseStoredJson(savedControleEquipamentosDiario, 'renea_controle_equipamentos_diario', INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO));
-      setControleEstacas(loadedControleEstacas);
+      setControleEstacas(parsedControleEstacas);
       setPeriodosArquivados(parseStoredJson(savedPeriodosArquivados, 'renea_periodos_arquivados', [] as PeriodoArquivado[]));
       setVinculosOperadorEquipamento(parseStoredJson(savedVinculosOperadorEquipamento, 'renea_vinculos_operador_equipamento', [] as VinculoOperadorEquipamento[]));
       setHistoryLogs(parseStoredJson(savedHistory, 'renea_history_logs', [] as HistoryLog[]));
@@ -972,15 +907,6 @@ export default function App() {
           { key: LOCAL_FUEL_RESET_STORAGE_KEY, value: LOCAL_FUEL_RESET_VERSION },
         ]);
       }
-      if (shouldMigrateSpreadsheetSeed) {
-        writeStorageValue(localStorage, 'renea_empresas', JSON.stringify(loadedEmpresas));
-        writeStorageValue(localStorage, 'renea_equipamentos', JSON.stringify(loadedEquipamentos));
-        writeStorageValue(localStorage, 'renea_comboios', JSON.stringify(loadedComboios));
-        writeStorageValue(localStorage, 'renea_abastecimentos', JSON.stringify(loadedAbastecimentos));
-        writeStorageValue(localStorage, 'renea_tickets_jazida', JSON.stringify(loadedTicketsJazida));
-        writeStorageValue(localStorage, 'renea_controle_estacas', JSON.stringify(loadedControleEstacas));
-        writeStorageValue(localStorage, 'renea_planilhas_operacionais_v2', 'true');
-      }
       // Compatibilidade com aparelhos que já tinham uma versão sincronizada
       // antes desta correção. A fotografia é feita ainda durante a hidratação,
       // antes que o usuário possa excluir qualquer registro nesta sessão.
@@ -991,8 +917,7 @@ export default function App() {
       }
     }
     };
-    void hydrateLocalData();
-    return () => { cancelled = true; };
+    hydrateLocalData();
   }, []);
 
   useEffect(() => auth.onAuthStateChanged(async user => {
@@ -2224,8 +2149,10 @@ export default function App() {
     );
   };
 
-  const handleAplicarCadastroSge = (previa: PreviaCadastroSge) => {
+  const handleAplicarCadastroSge = async (previa: PreviaCadastroSge) => {
     if (!previa.alteracoes.length) return;
+    // Só o Controle de Frotas usa: carrega com a tela, fora do pedaço do App.
+    const { aplicarCadastroSge } = await import('./fleet/sgeApontamentos');
     const now = new Date().toISOString();
     const nextEquipment = aplicarCadastroSge(equipamentos, previa, funcionarios);
     const trocas = previa.alteracoes.filter(item => item.motorista);
@@ -4221,7 +4148,9 @@ export default function App() {
    * hoje, se tiver: mesma ação de excluir em Cadastros > Equipamentos, só que
    * disparada direto do Quadro da Frota, pra sumir da tela na hora.
    */
-  const handleRemoverEquipamentosDoQuadro = (itens: Array<{ equipamentoId: string; registroId?: string }>) => {
+  const handleRemoverEquipamentosDoQuadro = async (itens: Array<{ equipamentoId: string; registroId?: string }>) => {
+    // Só o Quadro da Frota usa: o módulo já veio com a tela.
+    const { removerEquipamentosDoQuadro } = await import('./modules/frota/quadroFrota');
     const { alvos, equipamentosAtualizados: updatedEquipamentos, registrosAtualizados: updatedControle } = removerEquipamentosDoQuadro(equipamentos, controleEquipamentosDiario, itens);
     if (!alvos.length) return;
     const mudouControle = updatedControle.length !== controleEquipamentosDiario.length;
@@ -4401,7 +4330,8 @@ export default function App() {
   // Logged-in Core App Layout (Responsive Green Theme)
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased font-sans" id="app-root">
-      
+      <PularParaConteudo />
+
       {/* Mobile navigation header */}
       <header className="lg:hidden flex items-center justify-between h-[4.25rem] bg-white border-b border-slate-200 px-4 text-slate-900 print:hidden shrink-0" id="mobile-header">
         <img
@@ -4412,7 +4342,7 @@ export default function App() {
         />
 
         <div
-          className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-bold ${isCloudConnected ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-300 bg-amber-50 text-amber-700'}`}
+          className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-bold ${isCloudConnected ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-300 bg-amber-50 text-amber-700'}`}
           title={lastCloudSync ? `Última sincronização com a nuvem: ${lastCloudSync}` : 'Ainda sem sincronização com a nuvem nesta sessão'}
         >
           <span className={`w-2 h-2 rounded-full shrink-0 ${isCloudConnected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
@@ -4420,7 +4350,7 @@ export default function App() {
         </div>
         {pendingCount > 0 && (
           <span
-            className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700"
+            className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700"
             title={`${pendingCount} pendência(s) offline aguardando envio`}
             aria-live="polite"
           >
@@ -4496,7 +4426,7 @@ export default function App() {
                 <button type="button" onClick={() => { void handleLogout(); setIsMobileMenuOpen(false); }} className="w-full py-3 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-xl font-semibold text-xs flex items-center justify-center gap-2">
                   <LogOut className="w-4 h-4" /> Sair da conta
                 </button>
-                <p className="mt-3 text-center text-[10px] text-slate-500">{APP_VERSION_LABEL}</p>
+                <p className="mt-3 text-center text-xs text-slate-500">{APP_VERSION_LABEL}</p>
               </div>
             </nav>
           </div>
@@ -4534,8 +4464,9 @@ export default function App() {
           onMarkNotificationAsRead={handleMarkNotificationAsRead}
           onLogout={() => void handleLogout()}
         />}
-        {/* Dynamic Inner Tab Viewport */}
-        <div id="main-tab-viewport" className={`flex-1 overflow-x-clip w-full max-w-none print:p-0 print:m-0 ${activeTab === 'dashboard' ? 'dashboard-viewport' : combustivelListaSomente ? 'p-1 sm:p-2' : 'p-3 sm:p-4 lg:p-5'}`}>
+        {/* Área das abas: o recuo vem de --renea-respiro (index.css), a mesma
+            medida que a TelaCheia desconta para caber na altura da tela. */}
+        <div id="main-tab-viewport" tabIndex={-1} className={`flex-1 overflow-x-clip w-full max-w-none p-[var(--renea-respiro)] print:p-0 print:m-0${combustivelListaSomente ? ' renea-viewport--solta' : ''}`}>
           <Suspense fallback={<ScreenLoadingFallback />}>
             <RouteMotion key={activeTab}>
             {activeTab === 'dashboard' && (
@@ -4734,7 +4665,6 @@ export default function App() {
                     onReserveTicketNumbers={handleReserveTicketNumbers}
                   />
                 )}
-                totalViagensJazida={ticketsJazida.length}
                 materiais={materiaisCadastro}
                 movimentos={materiaisMovimentos}
                 empresas={empresas}

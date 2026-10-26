@@ -27,6 +27,8 @@ import { exclusoesAtivas, type ExclusaoRegistro } from '../cloud/exclusoes';
 import OrganizationChart from './OrganizationChart';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
 import { FilterBar, Modal, PageHeader } from '../shared/ui';
+import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
+import { TelaCheia } from '../shared/ui/TelaCheia';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 import { abaSugerida, type AbaPlanilha } from '../utils/planilhaAbas';
 import { CADASTRO_CATEGORIAS, categoriaCadastro, type CadastroCategoriaId } from '../utils/cadastrosCategorias';
@@ -45,7 +47,7 @@ import {
   type RegistroCadastro,
   type SituacaoLista,
 } from '../utils/cadastrosLista';
-import CadastroTipos, { type VistaCadastros } from './cadastros/CadastroTipos';
+import { abasCadastros, type VistaCadastros } from './cadastros/abasCadastros';
 import CadastroLista from './cadastros/CadastroLista';
 import CadastroDetalhe, { type UsoCadastro } from './cadastros/CadastroDetalhe';
 import CadastroFormulario from './cadastros/CadastroFormulario';
@@ -133,7 +135,6 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   const [ordem, setOrdem] = useState<{ coluna: string; direcao: 'asc' | 'desc' }>({ coluna: COLUNAS.funcionarios[0].id, direcao: 'asc' });
   const [pagina, setPagina] = useState(1);
   const [organograma, setOrganograma] = useState(false);
-  const [organogramaAtivoId, setOrganogramaAtivoId] = useState<string | null>(null);
 
   const [detalheId, setDetalheId] = useState<string | null>(null);
   const [formulario, setFormulario] = useState<{ editandoId: string | null; valores: ValoresCadastro } | null>(null);
@@ -198,9 +199,9 @@ export default function CadastrosTab(props: CadastrosTabProps) {
     return () => window.clearTimeout(relogio);
   }, [aviso]);
 
-  const escopo = useEntradaDeLista<HTMLDivElement>([vista, pagina, busca, situacao, filtros]);
+  const escopo = useEntradaDeLista<HTMLElement>([vista, pagina, busca, situacao, filtros]);
 
-  // Entrada do cabeçalho, dos tipos e da barra de filtros, no passo do Painel.
+  // Entrada do cabeçalho, das abas e da barra de filtros, no passo do Painel.
   useGSAP(() => {
     const raiz = escopo.current;
     if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -208,26 +209,6 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   }, { scope: escopo });
 
   const avisoRef = useRef<HTMLDivElement>(null);
-  // No computador, busca, filtros e barra de marcados ficam presos no topo e só
-  // a lista rola. A altura deles vira variável para o cabeçalho da tabela
-  // parar logo abaixo.
-  const topoFixoRef = useRef<HTMLDivElement>(null);
-  const barraSelecaoRef = useRef<HTMLDivElement>(null);
-  const listaRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const lista = listaRef.current;
-    if (!lista || typeof ResizeObserver === 'undefined') return;
-    const medir = () => {
-      const filtros = topoFixoRef.current?.offsetHeight ?? 0;
-      const barra = barraSelecaoRef.current?.offsetHeight ?? 0;
-      lista.style.setProperty('--cad-filtros', `${filtros}px`);
-      lista.style.setProperty('--cad-topo-lista', `${filtros + barra}px`);
-    };
-    medir();
-    const observador = new ResizeObserver(medir);
-    [topoFixoRef.current, barraSelecaoRef.current].forEach(alvo => { if (alvo) observador.observe(alvo); });
-    return () => observador.disconnect();
-  });
   useEffect(() => {
     if (!aviso || !avisoRef.current || reduzMovimento()) return;
     gsap.fromTo(avisoRef.current, { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, ease: 'power2.out', clearProps: 'transform,opacity' });
@@ -293,7 +274,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
 
   // Sem nenhuma janela aberta: N cadastra, / vai direto pra busca. É a mesma
   // ideia já usada em Manutenção e Combustível — só falta aqui.
-  const semJanelaAberta = !formulario && !confirmacao && !lote && !apagando && !escolhaDeAba && !importacao;
+  const semJanelaAberta = !formulario && !confirmacao && !lote && !apagando && !escolhaDeAba && !importacao && !organograma;
   useEffect(() => {
     if (!semJanelaAberta) return undefined;
     const handleShortcut = (event: KeyboardEvent) => {
@@ -544,226 +525,232 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   const temConsulta = Boolean(busca) || filtrosAtivos.length > 0 || situacao !== 'ativos';
   const emLixeira = vista === 'lixeira';
 
-  return (
-    <div ref={escopo} className="erp-module erp-module--cadastros space-y-4" id="cadastros-tab" data-testid="cadastros-tab">
-      <div data-cadastros-reveal>
-        <PageHeader
-          className="cadastros-header"
-          eyebrow="Base corporativa"
-          title="Cadastros"
-          description="Escolha o tipo, filtre e abra o cadastro. O que for gravado aqui vale para a obra inteira."
-          actions={<>
-            {!emLixeira && (
-              <button type="button" onClick={exportar} disabled={exportando || linhasFiltradas.length === 0} className={`${BOTAO_SECUNDARIO} max-sm:hidden`}>
-                <Download className="size-5" aria-hidden="true" />
-                {exportando ? 'Gerando…' : 'Exportar lista'}
-              </button>
-            )}
-            {podeEditar && importaPlanilha && (
-              <button type="button" onClick={() => arquivoRef.current?.click()} className={BOTAO_SECUNDARIO}>
-                <Upload className="size-5" aria-hidden="true" />
-                Importar planilha
-              </button>
-            )}
-            <input ref={arquivoRef} type="file" accept=".xlsx,.xlsm,.csv,.tsv" onChange={importarArquivo} className="hidden" />
-            {podeEditar && (
-              <button type="button" data-testid="cadastro-acao-principal" onClick={abrirNovo} className={`${BOTAO_PRIMARIO} max-sm:order-first px-5`}>
-                <Plus className="size-5" aria-hidden="true" />
-                {categoriaAtual.acaoNovo}
-                <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>
-              </button>
-            )}
-          </>}
-        />
-      </div>
+  const abas = abasCadastros(item => totais.get(item) ?? 0, podeExcluir || lixeira.length > 0);
 
-      <div className="grid gap-4 lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start">
-        <CadastroTipos value={vista} contar={item => totais.get(item) ?? 0} onSelect={escolherVista} mostrarLixeira={podeExcluir || lixeira.length > 0} />
-
-        <div ref={listaRef} className="min-w-0 space-y-3">
-          {emLixeira ? (
-            <>
-              <div data-cadastros-reveal className="space-y-1">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="text-lg font-bold text-slate-900">Lixeira</h2>
-                  {podeExcluir && lixeira.length > 1 && (
-                    <button type="button" onClick={() => setApagando(lixeira)} className={BOTAO_PERIGO_LEVE} data-testid="lixeira-esvaziar">
-                      <Trash2 className="size-5" aria-hidden="true" />
-                      Esvaziar Lixeira
-                    </button>
-                  )}
-                </div>
-                <p className="text-sm text-slate-500">Cadastros excluídos. Restaurar devolve o cadastro para a lista em todos os aparelhos. Excluir de vez tira daqui e não tem volta.</p>
+  const filtrosDaLista = (
+    <div data-cadastros-reveal className="space-y-2">
+      <FilterBar label="Filtros de cadastros" className="rounded-2xl border border-slate-200 bg-white p-3">
+        <div className="w-full space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-0 basis-full sm:min-w-56 sm:flex-1 sm:basis-auto">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+              <input
+                ref={buscaRef}
+                type="search"
+                aria-label="Buscar cadastros"
+                placeholder={`Buscar em ${categoriaAtual.label.toLowerCase()}`}
+                value={busca}
+                onChange={event => setBusca(event.target.value)}
+                className={`${CAMPO} pl-11`}
+              />
+            </div>
+            {comSituacao && (
+              <div role="radiogroup" aria-label="Situação" className="grid grid-cols-3 overflow-hidden max-sm:basis-full rounded-xl border border-slate-200 bg-white text-sm font-semibold">
+                {([
+                  ['ativos', 'Ativos', contagem.ativos],
+                  ['inativos', 'Inativos', contagem.inativos],
+                  ['todos', 'Todos', contagem.todos],
+                ] as const).map(([valor, rotulo, total]) => (
+                  <button
+                    key={valor}
+                    type="button"
+                    role="radio"
+                    aria-checked={situacao === valor}
+                    onClick={() => setSituacao(valor)}
+                    className={`flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap border-r border-slate-200 px-3 transition-colors duration-150 last:border-0 ${FOCO} ${situacao === valor ? 'bg-[#176b4d] text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    {rotulo}
+                    <span className={`text-xs tabular-nums ${situacao === valor ? 'text-white' : 'text-slate-600'}`}>{total}</span>
+                  </button>
+                ))}
               </div>
-              <CadastroLixeira exclusoes={lixeira} podeRestaurar={podeExcluir} restaurandoId={restaurandoId} onRestaurar={restaurar} onExcluirDeVez={item => setApagando([item])} />
-            </>
-          ) : (
-            <>
-              <div ref={topoFixoRef} data-cadastros-reveal className="lg:sticky lg:top-0 lg:z-20 lg:-mt-2 lg:bg-white lg:pb-2 lg:pt-2">
-                <FilterBar label="Filtros de cadastros" className="rounded-2xl border border-slate-200 bg-white p-3">
-                  <div className="w-full space-y-2">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                      <div className="relative min-w-0 flex-1">
-                        <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-                        <input
-                          ref={buscaRef}
-                          type="search"
-                          aria-label="Buscar cadastros"
-                          placeholder={`Buscar em ${categoriaAtual.label.toLowerCase()}`}
-                          value={busca}
-                          onChange={event => setBusca(event.target.value)}
-                          className={`${CAMPO} pl-11`}
-                        />
-                      </div>
-                      {comSituacao && (
-                        <div role="radiogroup" aria-label="Situação" className="grid grid-cols-3 overflow-hidden rounded-xl border border-slate-200 bg-white text-sm font-semibold">
-                          {([
-                            ['ativos', 'Ativos', contagem.ativos],
-                            ['inativos', 'Inativos', contagem.inativos],
-                            ['todos', 'Todos', contagem.todos],
-                          ] as const).map(([valor, rotulo, total]) => (
-                            <button
-                              key={valor}
-                              type="button"
-                              role="radio"
-                              aria-checked={situacao === valor}
-                              onClick={() => setSituacao(valor)}
-                              className={`flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap border-r border-slate-200 px-3 transition-colors duration-150 last:border-0 ${FOCO} ${situacao === valor ? 'bg-[#176b4d] text-white' : 'text-slate-600 hover:bg-slate-50'}`}
-                            >
-                              {rotulo}
-                              <span className={`text-xs tabular-nums ${situacao === valor ? 'text-white/70' : 'text-slate-400'}`}>{total}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {filtrosDoTipo.length > 0 && (
-                        <button
-                          type="button"
-                          aria-expanded={filtrosAbertos}
-                          onClick={() => setFiltrosAbertos(atual => !atual)}
-                          className={`${BOTAO_SECUNDARIO} sm:hidden`}
-                        >
-                          <SlidersHorizontal className="size-5" aria-hidden="true" />
-                          {filtrosAtivos.length > 0 ? `Filtros · ${filtrosAtivos.length}` : 'Filtros'}
-                        </button>
-                      )}
-                      {categoria === 'funcionarios' && (
-                        <button
-                          type="button"
-                          aria-pressed={organograma}
-                          onClick={() => setOrganograma(atual => !atual)}
-                          className={`${BOTAO_SECUNDARIO} shrink-0 px-3 ${organograma ? 'border-emerald-500 text-[#176b4d]' : ''}`}
-                        >
-                          <Network className="size-5" aria-hidden="true" />
-                          {organograma ? 'Esconder organograma' : 'Organograma'}
-                        </button>
-                      )}
-                    </div>
-
-                    {filtrosDoTipo.length > 0 && (
-                      <div className={`${filtrosAbertos ? 'grid' : 'hidden'} gap-2 sm:grid sm:grid-cols-2 lg:grid-cols-4`}>
-                        {filtrosDoTipo.map(filtro => (
-                          <label key={filtro.id} className="min-w-0">
-                            <span className="sr-only">{filtro.label}</span>
-                            <select
-                              value={filtros[filtro.id] || ''}
-                              onChange={event => setFiltros(atual => ({ ...atual, [filtro.id]: event.target.value }))}
-                              className={`${CAMPO} cursor-pointer ${filtros[filtro.id] ? 'border-[#f26a2e]/60 bg-orange-50/40' : ''}`}
-                            >
-                              <option value="">{filtro.label}: todos</option>
-                              {opcoesDoFiltro(todasAsLinhas, filtro.id).map(opcao => (
-                                <option key={opcao.valor} value={opcao.valor}>{`${opcao.valor} (${opcao.total})`}</option>
-                              ))}
-                            </select>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-
-                    {(filtrosAtivos.length > 0 || temConsulta) && (
-                      <div className="flex flex-wrap items-center gap-2">
-                        {filtrosAtivos.map(([id, valor]) => (
-                          <button
-                            key={id}
-                            type="button"
-                            onClick={() => setFiltros(atual => ({ ...atual, [id]: '' }))}
-                            className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[#f26a2e]/40 bg-orange-50 px-3 text-sm font-medium text-slate-800 ${FOCO}`}
-                          >
-                            {filtrosDoTipo.find(filtro => filtro.id === id)?.label}: {valor}
-                            <X className="size-4" aria-label="Tirar filtro" />
-                          </button>
-                        ))}
-                        {temConsulta && (
-                          <button type="button" onClick={limparFiltros} className={`min-h-9 rounded-lg px-2 text-sm font-semibold text-slate-500 underline-offset-2 hover:text-slate-800 hover:underline ${FOCO}`}>
-                            Limpar filtros
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </FilterBar>
+            )}
+            {filtrosDoTipo.length > 0 && (
+              <button
+                type="button"
+                aria-expanded={filtrosAbertos}
+                onClick={() => setFiltrosAbertos(atual => !atual)}
+                className={`${BOTAO_SECUNDARIO} flex-1 sm:hidden`}
+              >
+                <SlidersHorizontal className="size-5" aria-hidden="true" />
+                {filtrosAtivos.length > 0 ? `Filtros · ${filtrosAtivos.length}` : 'Filtros'}
+              </button>
+            )}
+            {filtrosDoTipo.length > 0 && (
+              <div className={`${filtrosAbertos ? 'grid' : 'hidden'} gap-2 max-sm:order-last max-sm:basis-full sm:contents`}>
+                {filtrosDoTipo.map(filtro => (
+                  <label key={filtro.id} className="min-w-0 sm:w-44">
+                    <span className="sr-only">{filtro.label}</span>
+                    <select
+                      value={filtros[filtro.id] || ''}
+                      onChange={event => setFiltros(atual => ({ ...atual, [filtro.id]: event.target.value }))}
+                      className={`${CAMPO} cursor-pointer ${filtros[filtro.id] ? 'border-[#f26a2e]/60 bg-orange-50/40' : ''}`}
+                    >
+                      <option value="">{filtro.label}: todos</option>
+                      {opcoesDoFiltro(todasAsLinhas, filtro.id).map(opcao => (
+                        <option key={opcao.valor} value={opcao.valor}>{`${opcao.valor} (${opcao.total})`}</option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
               </div>
+            )}
+            {categoria === 'funcionarios' && (
+              <button
+                type="button"
+                aria-haspopup="dialog"
+                onClick={() => setOrganograma(true)}
+                className={`${BOTAO_SECUNDARIO} px-3 max-sm:flex-1`}
+                data-testid="cadastro-organograma"
+              >
+                <Network className="size-5" aria-hidden="true" />
+                Organograma
+              </button>
+            )}
+          </div>
 
-              {organograma && categoria === 'funcionarios' && (
-                <div className="rounded-2xl border border-slate-200 bg-white p-3">
-                  <OrganizationChart
-                    funcionarios={linhasFiltradas.map(linha => linha.registro as Funcionario)}
-                    empresas={empresas}
-                    activeId={organogramaAtivoId}
-                    onActiveIdChange={setOrganogramaAtivoId}
-                  />
-                </div>
+          {(filtrosAtivos.length > 0 || temConsulta) && (
+            <div className="flex flex-wrap items-center gap-2">
+              {filtrosAtivos.map(([id, valor]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setFiltros(atual => ({ ...atual, [id]: '' }))}
+                  className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[#f26a2e]/40 bg-orange-50 px-3 text-sm font-medium text-slate-800 ${FOCO}`}
+                >
+                  {filtrosDoTipo.find(filtro => filtro.id === id)?.label}: {valor}
+                  <X className="size-4" aria-label="Tirar filtro" />
+                </button>
+              ))}
+              {temConsulta && (
+                <button type="button" onClick={limparFiltros} className={`min-h-9 rounded-lg px-2 text-sm font-semibold text-slate-600 underline-offset-2 hover:text-slate-800 hover:underline ${FOCO}`}>
+                  Limpar filtros
+                </button>
               )}
-
-              <section id="database-lists-viewport" aria-label={`Lista de ${categoriaAtual.label.toLowerCase()}`} className="space-y-3">
-                {podeExcluir && marcados.size > 0 && (
-                  <div role="region" aria-label="Cadastros marcados" ref={barraSelecaoRef} data-testid="cadastro-barra-selecao" className="sticky top-2 z-10 lg:top-[var(--cad-filtros,0px)] flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-2 shadow-sm sm:pl-4">
-                    <p className="basis-full px-2 pt-1 text-sm font-bold text-emerald-900 sm:mr-auto sm:basis-auto sm:p-0" aria-live="polite">
-                      {marcados.size.toLocaleString('pt-BR')} {marcados.size === 1 ? 'marcado' : 'marcados'}
-                    </p>
-                    {marcados.size < linhasFiltradas.length && (
-                      <button type="button" onClick={() => alternarPagina(linhasFiltradas.map(linha => linha.id), true)} className={`${BOTAO_SECUNDARIO} px-3 max-sm:flex-1`} data-testid="cadastro-marcar-todos">
-                        Marcar todos os {linhasFiltradas.length.toLocaleString('pt-BR')}
-                      </button>
-                    )}
-                    <button type="button" onClick={() => setMarcados(new Set())} className={`${BOTAO_SECUNDARIO} px-3 max-sm:flex-1`}>
-                      Desmarcar
-                    </button>
-                    <button type="button" onClick={pedirExclusaoEmLote} className={`${BOTAO_PERIGO} px-3 max-sm:basis-full`} data-testid="cadastro-excluir-marcados">
-                      <Trash2 className="size-5" aria-hidden="true" />
-                      Excluir marcados
-                    </button>
-                  </div>
-                )}
-                <CadastroLista
-                  linhas={linhasFiltradas}
-                  colunas={COLUNAS[categoria]}
-                  mostrarSituacao={comSituacao}
-                  ordem={ordem}
-                  onOrdenar={ordenar}
-                  pagina={pagina}
-                  onPagina={setPagina}
-                  selecionadoId={detalheId}
-                  onAbrir={linha => setDetalheId(linha.id)}
-                  selecao={podeExcluir ? { marcados, onAlternar: alternarMarcado, onAlternarPagina: alternarPagina } : undefined}
-                  vazio={todasAsLinhas.length === 0
-                    ? {
-                        titulo: `Nenhum cadastro em ${categoriaAtual.label.toLowerCase()}`,
-                        texto: podeEditar ? 'Cadastre o primeiro pelo botão verde ou importe uma planilha.' : 'Ainda não há nada cadastrado aqui.',
-                        acao: podeEditar ? { label: categoriaAtual.acaoNovo, onClick: abrirNovo } : undefined,
-                      }
-                    : {
-                        titulo: 'Nada encontrado',
-                        texto: 'Nenhum cadastro bate com a busca e os filtros escolhidos.',
-                        acao: { label: 'Limpar filtros', onClick: limparFiltros },
-                      }}
-                />
-              </section>
-            </>
+            </div>
           )}
         </div>
-      </div>
+      </FilterBar>
 
+      {podeExcluir && marcados.size > 0 && (
+        <div role="region" aria-label="Cadastros marcados" data-testid="cadastro-barra-selecao" className="flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-2 sm:pl-4">
+          <p className="basis-full px-2 pt-1 text-sm font-bold text-emerald-900 sm:mr-auto sm:basis-auto sm:p-0" aria-live="polite">
+            {marcados.size.toLocaleString('pt-BR')} {marcados.size === 1 ? 'marcado' : 'marcados'}
+          </p>
+          {marcados.size < linhasFiltradas.length && (
+            <button type="button" onClick={() => alternarPagina(linhasFiltradas.map(linha => linha.id), true)} className={`${BOTAO_SECUNDARIO} px-3 max-sm:flex-1`} data-testid="cadastro-marcar-todos">
+              Marcar todos os {linhasFiltradas.length.toLocaleString('pt-BR')}
+            </button>
+          )}
+          <button type="button" onClick={() => setMarcados(new Set())} className={`${BOTAO_SECUNDARIO} px-3 max-sm:flex-1`}>
+            Desmarcar
+          </button>
+          <button type="button" onClick={pedirExclusaoEmLote} className={`${BOTAO_PERIGO} px-3 max-sm:basis-full`} data-testid="cadastro-excluir-marcados">
+            <Trash2 className="size-5" aria-hidden="true" />
+            Excluir marcados
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  const cabecalhoDaLixeira = (
+    <div data-cadastros-reveal className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white p-3">
+      <p className="min-w-0 flex-1 text-sm text-slate-600">
+        <strong className="text-slate-900">Cadastros excluídos.</strong> Restaurar devolve o cadastro para a lista em todos os aparelhos. Excluir de vez tira daqui e não tem volta.
+      </p>
+      {podeExcluir && lixeira.length > 1 && (
+        <button type="button" onClick={() => setApagando(lixeira)} className={BOTAO_PERIGO_LEVE} data-testid="lixeira-esvaziar">
+          <Trash2 className="size-5" aria-hidden="true" />
+          Esvaziar Lixeira
+        </button>
+      )}
+    </div>
+  );
+
+  return (
+    <TelaCheia
+      ref={escopo}
+      id="cadastros-tab"
+      testId="cadastros-tab"
+      rotulo="Cadastros"
+      longa={emLixeira}
+      idAbaAtiva={idDaAba('cadastros', vista)}
+      idDados="cadastros-dados"
+      chaveRolagem={vista}
+      cabecalho={(
+        <div data-cadastros-reveal>
+          <PageHeader
+            className="cadastros-header"
+            eyebrow="Base corporativa"
+            title="Cadastros"
+            abas={<AbasDaTela id="cadastros" rotulo="Tipos de cadastro" abas={abas} ativa={vista} onTrocar={escolherVista} idPainel="cadastros-dados" testId="cadastro-aba" />}
+            actions={<>
+              {!emLixeira && (
+                <button type="button" onClick={exportar} disabled={exportando || linhasFiltradas.length === 0} className={`${BOTAO_SECUNDARIO} max-sm:hidden`}>
+                  <Download className="size-5" aria-hidden="true" />
+                  {exportando ? 'Gerando…' : 'Exportar lista'}
+                </button>
+              )}
+              {podeEditar && importaPlanilha && (
+                <button type="button" onClick={() => arquivoRef.current?.click()} className={BOTAO_SECUNDARIO}>
+                  <Upload className="size-5" aria-hidden="true" />
+                  Importar planilha
+                </button>
+              )}
+              <input ref={arquivoRef} type="file" accept=".xlsx,.xlsm,.csv,.tsv" onChange={importarArquivo} className="hidden" />
+              {podeEditar && (
+                <button type="button" data-testid="cadastro-acao-principal" onClick={abrirNovo} className={`${BOTAO_PRIMARIO} max-sm:order-first px-5`}>
+                  <Plus className="size-5" aria-hidden="true" />
+                  {categoriaAtual.acaoNovo}
+                  <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>
+                </button>
+              )}
+            </>}
+          />
+        </div>
+      )}
+      faixa={emLixeira ? cabecalhoDaLixeira : filtrosDaLista}
+    >
+      {emLixeira ? (
+        <CadastroLixeira exclusoes={lixeira} podeRestaurar={podeExcluir} restaurandoId={restaurandoId} onRestaurar={restaurar} onExcluirDeVez={item => setApagando([item])} />
+      ) : (
+        <section id="database-lists-viewport" aria-label={`Lista de ${categoriaAtual.label.toLowerCase()}`} className="flex min-h-0 flex-1 flex-col">
+          <CadastroLista
+            titulo={categoriaAtual.label}
+            linhas={linhasFiltradas}
+            colunas={COLUNAS[categoria]}
+            mostrarSituacao={comSituacao}
+            ordem={ordem}
+            onOrdenar={ordenar}
+            pagina={pagina}
+            onPagina={setPagina}
+            selecionadoId={detalheId}
+            onAbrir={linha => setDetalheId(linha.id)}
+            selecao={podeExcluir ? { marcados, onAlternar: alternarMarcado, onAlternarPagina: alternarPagina } : undefined}
+            vazio={todasAsLinhas.length === 0
+              ? {
+                  titulo: `Nenhum cadastro em ${categoriaAtual.label.toLowerCase()}`,
+                  texto: podeEditar ? 'Cadastre o primeiro pelo botão verde ou importe uma planilha.' : 'Ainda não há nada cadastrado aqui.',
+                  acao: podeEditar ? { label: categoriaAtual.acaoNovo, onClick: abrirNovo } : undefined,
+                }
+              : {
+                  titulo: 'Nada encontrado',
+                  texto: 'Nenhum cadastro bate com a busca e os filtros escolhidos.',
+                  acao: { label: 'Limpar filtros', onClick: limparFiltros },
+                }}
+          />
+        </section>
+      )}
+
+      <Modal
+        open={organograma && categoria === 'funcionarios'}
+        onClose={() => setOrganograma(false)}
+        title="Organograma de colaboradores"
+        size="xl"
+      >
+        <OrganizationChart funcionarios={linhasFiltradas.map(linha => linha.registro as Funcionario)} empresas={empresas} />
+      </Modal>
       {linhaDetalhe && !formulario && !confirmacao && (
         <CadastroDetalhe
           categoria={categoria}
@@ -908,6 +895,6 @@ export default function CadastrosTab(props: CadastrosTabProps) {
         </div>,
         document.body,
       )}
-    </div>
+    </TelaCheia>
   );
 }

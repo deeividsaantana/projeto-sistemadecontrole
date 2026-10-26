@@ -27,7 +27,7 @@ export function EmptyState({
     >
       <Icon className="mb-2 h-7 w-7 text-slate-400" aria-hidden="true" />
       <p className="text-xs font-bold text-slate-600">{title}</p>
-      {description && <p className="mt-1 max-w-64 text-[11px] leading-relaxed text-slate-500">{description}</p>}
+      {description && <p className="mt-1 max-w-64 text-xs leading-relaxed text-slate-500">{description}</p>}
     </div>
   );
 }

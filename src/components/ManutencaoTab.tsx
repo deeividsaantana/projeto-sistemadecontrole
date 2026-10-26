@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { Clock3, FileSpreadsheet, Gauge, History, Plus, Search, TriangleAlert, Wrench } from 'lucide-react';
+import { BarChart3, ClipboardList, FileSpreadsheet, History, Plus, Search, Wrench } from 'lucide-react';
 import type { ControleEquipamentoDiario, Equipamento, HistoryLog, OrdemServico } from '../types';
 import { historicoDaManutencao } from '../utils/manutencaoHistorico';
 import {
@@ -33,14 +33,15 @@ import {
   Modal,
   PageHeader,
   PeriodFilter,
-  TableBody,
-  TableHead,
-  TableShell,
+  TabelaPadrao,
   buildPeriod,
   isoDay,
   statusTone,
+  type ColunaTabela,
   type PeriodValue,
 } from '../shared/ui';
+import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
+import { TelaCheia } from '../shared/ui/TelaCheia';
 
 interface ManutencaoTabProps {
   ordensServico: OrdemServico[];
@@ -59,6 +60,7 @@ interface ManutencaoTabProps {
 const TIPOS: OrdemServico['tipo'][] = ['Corretiva', 'Preventiva', 'Preditiva', 'Revisão'];
 const PRIORIDADES: OrdemServico['prioridade'][] = ['Baixa', 'Média', 'Alta', 'Urgente'];
 const STATUS_FILTRO = ['Todas', 'Em aberto', ...FLUXO_MANUTENCAO, 'Cancelada'] as const;
+type Subtela = 'ordens' | 'fila' | 'motivos' | 'historico';
 
 const prioridadeTone = (prioridade: OrdemServico['prioridade']) => {
   if (prioridade === 'Urgente') return 'danger' as const;
@@ -97,7 +99,8 @@ export default function ManutencaoTab({
   onSave,
   onDelete,
 }: ManutencaoTabProps) {
-  const escopo = useRef<HTMLDivElement>(null);
+  const escopo = useRef<HTMLElement>(null);
+  const [subtela, setSubtela] = useState<Subtela>('ordens');
   const [busca, setBusca] = useState('');
   const [filtroStatus, setFiltroStatus] = useState<(typeof STATUS_FILTRO)[number]>('Em aberto');
   const [filtroFamilia, setFiltroFamilia] = useState<EquipmentFamily | 'todas'>('todas');
@@ -113,7 +116,6 @@ export default function ManutencaoTab({
   const [exclusao, setExclusao] = useState<OrdemServico | null>(null);
   const [exportando, setExportando] = useState(false);
   const [avisoExport, setAvisoExport] = useState('');
-  const [historicoAberto, setHistoricoAberto] = useState(false);
   const equipamentoFieldRef = useRef<HTMLSelectElement>(null);
 
   useEffect(() => {
@@ -326,88 +328,155 @@ export default function ManutencaoTab({
     onSave({ ...atualizada, horasParadas: atualizada.dataConclusao ? calcularHorasParadas(atualizada) : undefined }, false);
   };
 
+  const colunasOrdens: ColunaTabela<OrdemServico>[] = [
+    {
+      chave: 'numero',
+      titulo: 'OS',
+      valorOrdenacao: ordem => ordem.numero,
+      render: ordem => (
+        <span className="flex flex-col items-start gap-0.5">
+          <strong className="whitespace-nowrap tabular-nums text-slate-900">{ordem.numero}</strong>
+          <Badge tone={prioridadeTone(ordem.prioridade)}>{ordem.prioridade}</Badge>
+        </span>
+      ),
+    },
+    {
+      chave: 'equipamento',
+      titulo: 'Equipamento',
+      larguraMinima: 150,
+      valorOrdenacao: ordem => prefixoDe(ordem.equipamentoId),
+      render: ordem => {
+        const { Icon: EquipmentIcon, label: equipmentLabel } = presentEquipment(equipamentoPorId.get(ordem.equipamentoId));
+        return (
+          <span className="flex items-center gap-2">
+            <span className="grid size-7 shrink-0 place-items-center rounded-md bg-emerald-50 text-emerald-800" aria-hidden="true">
+              <EquipmentIcon className="size-4" strokeWidth={1.7} />
+            </span>
+            <span className="min-w-0">
+              <strong className="block text-slate-800">{prefixoDe(ordem.equipamentoId)}</strong>
+              <small className="block text-xs text-slate-500">{equipmentLabel}</small>
+            </span>
+          </span>
+        );
+      },
+    },
+    {
+      chave: 'problema',
+      titulo: 'Problema',
+      larguraMinima: 160,
+      valorOrdenacao: ordem => ordem.descricao || ordem.motivo,
+      dica: ordem => ordem.descricao || ordem.motivo,
+      render: ordem => ordem.descricao || ordem.motivo || '—',
+    },
+    {
+      chave: 'situacao',
+      titulo: 'Situação',
+      valorOrdenacao: ordem => ordem.status,
+      render: ordem => <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold ${statusTone(ordem.status)}`}>{ordem.status}</span>,
+    },
+    {
+      chave: 'abertura',
+      titulo: 'Abertura',
+      valorOrdenacao: ordem => `${ordem.dataAbertura} ${ordem.horaAbertura || ''}`,
+      render: ordem => <span className="whitespace-nowrap tabular-nums">{formatarData(ordem.dataAbertura)}{ordem.horaAbertura ? ` ${ordem.horaAbertura}` : ''}</span>,
+    },
+    {
+      chave: 'horas',
+      titulo: 'Horas paradas',
+      alinhamento: 'direita',
+      valorOrdenacao: ordem => calcularHorasParadas(ordem),
+      render: ordem => {
+        const horas = calcularHorasParadas(ordem);
+        if (horas === undefined) return '—';
+        return (
+          <>
+            <span className="whitespace-nowrap">{`${horas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`}</span>
+            {!isOrdemEncerrada(ordem.status) && <span className="block text-xs text-slate-500">em curso</span>}
+          </>
+        );
+      },
+    },
+  ];
+  const BOTAO_LINHA = 'min-h-11 rounded-lg border bg-white px-2.5 text-[13px] font-bold transition-colors md:min-h-8';
+  const acoesDaOrdem = podeEditar
+    ? (ordem: OrdemServico) => {
+      const proximo = proximoStatusManutencao(ordem.status);
+      return (
+        <>
+          {proximo && <button type="button" onClick={() => avancar(ordem)} className={`${BOTAO_LINHA} border-emerald-300 text-emerald-800 hover:border-emerald-500`}>{proximo}</button>}
+          <button type="button" onClick={() => abrirEdicao(ordem)} aria-label={`Editar OS ${ordem.numero}`} className={`${BOTAO_LINHA} border-slate-200 text-slate-700 hover:border-emerald-500 hover:text-emerald-800`}>Editar</button>
+          {onDelete && <button type="button" onClick={() => setExclusao(ordem)} aria-label={`Excluir OS ${ordem.numero}`} className={`${BOTAO_LINHA} border-slate-200 text-rose-700 hover:border-rose-400`}>Excluir</button>}
+        </>
+      );
+    }
+    : undefined;
+
   useGSAP(() => {
     const raiz = escopo.current;
     if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     gsap.fromTo(raiz.querySelectorAll('[data-manutencao-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out', clearProps: 'transform,opacity' });
-  }, { scope: escopo });
+  }, { scope: escopo, dependencies: [subtela] });
+
+  const subtelas = [
+    { id: 'ordens' as const, rotulo: 'Ordens de serviço', curto: 'Ordens', icone: ClipboardList },
+    { id: 'fila' as const, rotulo: 'Fila de oficina', curto: 'Fila', icone: Wrench, contador: filaOperacional.length, contadorRotulo: 'em curso' },
+    { id: 'motivos' as const, rotulo: 'Motivos de parada', curto: 'Motivos', icone: BarChart3 },
+    { id: 'historico' as const, rotulo: 'Histórico', icone: History },
+  ];
 
   return (
-    <div ref={escopo} id="manutencao-tab" className="min-h-full w-full space-y-3 bg-[#f7f8f6] pb-12">
-      <PageHeader
+    <TelaCheia ref={escopo} id="manutencao-tab" rotulo="Manutenção"
+      longa={subtela !== 'ordens'} idAbaAtiva={idDaAba('manutencao', subtela)} idDados="manutencao-dados" chaveRolagem={subtela}
+      cabecalho={<PageHeader
         eyebrow="Frota"
         title="Manutenção"
-        description="Ordens de serviço da frota, do chamado até a liberação."
+        abas={<AbasDaTela<Subtela> id="manutencao" rotulo="Subtelas da manutenção" abas={subtelas} ativa={subtela} onTrocar={setSubtela} idPainel="manutencao-dados" testId="manutencao-aba" />}
         actions={<>
-          <button
-            type="button"
-            onClick={() => setHistoricoAberto(atual => !atual)}
-            aria-expanded={historicoAberto}
-            className={`inline-flex min-h-10 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold transition-colors ${
-              historicoAberto
-                ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                : 'border-slate-300 bg-white text-slate-700 hover:border-emerald-500 hover:text-emerald-700'
-            }`}
-          >
-            <History className="h-4 w-4" /> Histórico
-            {historico.length > 0 && (
-              <span className="rounded-full bg-slate-100 px-1.5 text-[11px] font-black text-slate-600">
-                {historico.length}
-              </span>
-            )}
-          </button>
           <button
             type="button"
             onClick={() => void exportarExcel()}
             disabled={exportando || lista.length === 0}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700 disabled:opacity-50"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700 disabled:opacity-50"
           >
-            <FileSpreadsheet className="h-4 w-4" /> {exportando ? 'Gerando...' : 'Exportar Excel'}
+            <FileSpreadsheet className="h-4 w-4" aria-hidden="true" /> {exportando ? 'Gerando...' : 'Exportar Excel'}
           </button>
           {podeEditar && (
             <button
               type="button"
               onClick={abrirNova}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800"
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white transition-colors hover:bg-emerald-800"
             >
-              <Plus className="h-4 w-4" /> Abrir OS
+              <Plus className="h-4 w-4" aria-hidden="true" /> Abrir OS
             </button>
           )}
         </>}
-      />
+      />}
+      faixa={<div data-manutencao-reveal className="space-y-2">
+        {/* Números do recorte: acompanham os filtros logo abaixo. */}
+        <ul aria-label="Números do recorte" className="flex flex-wrap items-center gap-1.5">
+          {[
+            { label: 'OS em aberto', valor: String(resumo.abertas), alerta: false },
+            { label: 'Alta ou urgente', valor: String(resumo.criticas), alerta: resumo.criticas > 0 },
+            { label: 'Aguardando peça', valor: String(resumo.aguardandoPeca), alerta: false },
+            { label: 'Concluídas', valor: String(resumo.concluidas), alerta: false },
+            { label: 'Horas paradas', valor: `${resumo.horasAbertas.toLocaleString('pt-BR')} h`, alerta: false },
+          ].map(item => (
+            <li key={item.label} className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-sm font-semibold ring-1 ring-inset ${item.alerta ? 'bg-amber-50 text-amber-900 ring-amber-200' : 'bg-white text-slate-600 ring-slate-200'}`}>
+              {item.label} <strong className="tabular-nums text-slate-950">{item.valor}</strong>
+            </li>
+          ))}
+        </ul>
 
-      {/* KPIs do recorte atual */}
-      <section data-manutencao-reveal className="grid grid-cols-2 gap-2.5 lg:grid-cols-5">
-        {[
-          { icon: Wrench, label: 'OS em aberto', valor: String(resumo.abertas) },
-          { icon: TriangleAlert, label: 'Alta ou urgente', valor: String(resumo.criticas) },
-          { icon: Clock3, label: 'Aguardando peça', valor: String(resumo.aguardandoPeca) },
-          { icon: Gauge, label: 'Concluídas', valor: String(resumo.concluidas) },
-          { icon: Clock3, label: 'Horas paradas', valor: `${resumo.horasAbertas.toLocaleString('pt-BR')} h` },
-        ].map(item => (
-          <div key={item.label} className="renea-card rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="flex items-start gap-3">
-              <item.icon className="mt-0.5 size-5 shrink-0 text-slate-400" strokeWidth={1.5} aria-hidden="true" />
-              <div className="min-w-0">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
-                <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-              </div>
-            </div>
-          </div>
-        ))}
-      </section>
+        {avisoExport && (
+          <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{avisoExport}</p>
+        )}
 
-      {avisoExport && (
-        <p role="alert" className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-700">{avisoExport}</p>
-      )}
-
-      {/* Filtros */}
-      <div data-manutencao-reveal className="mt-4 space-y-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <label className="relative min-w-0 flex-1">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <label className="relative min-w-0 flex-1 sm:min-w-56">
             <span className="sr-only">Buscar ordem de serviço</span>
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5b6870]" aria-hidden="true" />
             <input
+              type="search"
               value={busca}
               onChange={event => setBusca(event.target.value)}
               placeholder="Número, prefixo, problema, responsável..."
@@ -426,14 +495,13 @@ export default function ManutencaoTab({
             value={filtroMotivo}
             onChange={event => setFiltroMotivo(event.target.value)}
             aria-label="Filtrar por motivo"
-            className="min-h-10 max-w-[16rem] rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500"
+            className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500 sm:max-w-[16rem]"
           >
             <option value="todos">Todos os motivos</option>
             {motivosDisponiveis.map(motivo => <option key={motivo} value={motivo}>{motivo}</option>)}
           </select>
         </div>
 
-        {/* Família do equipamento: a operação reconhece pelo desenho. */}
         {familiasComOrdens.length > 1 && (
           <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filtrar por tipo de equipamento">
             <button
@@ -442,7 +510,7 @@ export default function ManutencaoTab({
               aria-pressed={filtroFamilia === 'todas'}
               className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold transition-colors ${filtroFamilia === 'todas' ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-400'}`}
             >
-              Todos <span className="tabular-nums text-slate-400">{ordensServico.length}</span>
+              Todos <span className="tabular-nums text-[#5b6870]">{ordensServico.length}</span>
             </button>
             {familiasComOrdens.map(({ familia, total }) => {
               const Icon = equipmentFamilyIcon(familia);
@@ -458,7 +526,7 @@ export default function ManutencaoTab({
                 >
                   <Icon className="size-4" strokeWidth={1.7} aria-hidden="true" />
                   <span className="hidden sm:inline">{EQUIPMENT_FAMILY_LABELS[familia]}</span>
-                  <span className="tabular-nums text-slate-400">{total}</span>
+                  <span className="tabular-nums text-[#5b6870]">{total}</span>
                 </button>
               );
             })}
@@ -471,23 +539,39 @@ export default function ManutencaoTab({
               type="checkbox"
               checked={usarPeriodo}
               onChange={event => setUsarPeriodo(event.target.checked)}
-              className="size-4 accent-emerald-700"
+              className="size-6 accent-emerald-700"
             />
             Filtrar por período de abertura
           </label>
           {usarPeriodo && <PeriodFilter value={periodo} onChange={setPeriodo} />}
         </div>
-      </div>
+      </div>}
+    >
+      {subtela === 'ordens' && (
+        <TabelaPadrao
+          titulo="Ordens de serviço"
+          linhas={lista}
+          colunas={colunasOrdens}
+          idDaLinha={ordem => ordem.id}
+          nomeDoItem={{ um: 'ordem de serviço', varios: 'ordens de serviço' }}
+          acoes={acoesDaOrdem}
+          onAbrirLinha={podeEditar ? abrirEdicao : undefined}
+          vazio={<EmptyState icon={Wrench} title="Nenhuma ordem de serviço" description="Abra uma OS quando um equipamento precisar de atendimento." />}
+        />
+      )}
 
-      {filaOperacional.length > 0 && (
-        <section aria-label="Fila operacional de manutenção" className="mt-5">
+      {subtela === 'fila' && (
+        <section aria-label="Fila operacional de manutenção">
           <div className="flex items-end justify-between gap-4">
             <div>
               <h2 className="text-sm font-black text-slate-900">Fila de oficina</h2>
-              <p className="text-xs text-slate-500">OS em curso, ordenadas pelo tempo parado do equipamento.</p>
+              <p className="text-sm text-slate-600">OS em curso, ordenadas pelo tempo parado do equipamento.</p>
             </div>
-            <span className="shrink-0 text-xs font-bold tabular-nums text-slate-500">{filaOperacional.length} em curso</span>
+            <span className="shrink-0 text-sm font-bold tabular-nums text-slate-600">{filaOperacional.length} em curso</span>
           </div>
+          {filaOperacional.length === 0
+            ? <EmptyState icon={Wrench} title="Nenhuma OS em curso" description="Com os filtros de agora, nenhum equipamento está parado na oficina." />
+            : (
           <div className="mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
             {filaOperacional.slice(0, 12).map(item => {
               const Icon = equipmentFamilyIcon(item.familia);
@@ -496,45 +580,48 @@ export default function ManutencaoTab({
               return (
                 <article key={item.ordemId} className="group rounded-xl border border-slate-200 bg-white p-3.5 transition duration-200 hover:border-emerald-300 hover:shadow-[0_10px_24px_rgba(6,60,49,0.08)]">
                   <header className="flex items-start gap-3">
-                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-800" aria-label={EQUIPMENT_FAMILY_LABELS[item.familia]}>
+                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-800" role="img" aria-label={EQUIPMENT_FAMILY_LABELS[item.familia]}>
                       <Icon className="size-5" strokeWidth={1.7} aria-hidden="true" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <strong className="block truncate font-mono text-sm font-black text-slate-900">{item.prefixo}</strong>
-                          <span className="block truncate text-[11px] font-bold uppercase tracking-wide text-slate-400">{item.equipamentoNome}</span>
+                          <span className="block line-clamp-2 break-words text-xs font-bold uppercase tracking-wide text-slate-500">{item.equipamentoNome}</span>
                         </div>
-                        <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${statusTone(item.status)}`}>{item.status}</span>
+                        <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${statusTone(item.status)}`}>{item.status}</span>
                       </div>
                     </div>
                   </header>
                   <p className="mt-3 line-clamp-2 min-h-9 text-xs font-semibold leading-4 text-slate-700" title={item.motivo}>{item.motivo}</p>
-                  <dl className="mt-3 grid grid-cols-2 gap-x-3 border-y border-slate-100 py-2.5 text-[11px]">
-                    <div><dt className="text-slate-400">Desde</dt><dd className="mt-0.5 font-bold text-slate-700">{formatarData(item.desde)}</dd></div>
-                    <div className="text-right"><dt className="text-slate-400">Tempo parado</dt><dd className="mt-0.5 font-mono font-black tabular-nums text-rose-700">{formatarHoras(item.horasParadas)}</dd></div>
+                  <dl className="mt-3 grid grid-cols-2 gap-x-3 border-y border-slate-100 py-2.5 text-xs">
+                    <div><dt className="text-[#5b6870]">Desde</dt><dd className="mt-0.5 font-bold text-slate-700">{formatarData(item.desde)}</dd></div>
+                    <div className="text-right"><dt className="text-[#5b6870]">Tempo parado</dt><dd className="mt-0.5 font-mono font-black tabular-nums text-rose-700">{formatarHoras(item.horasParadas)}</dd></div>
                   </dl>
                   <footer className="mt-3 flex items-center justify-between gap-2">
-                    <span className="font-mono text-[11px] font-bold text-slate-400">{item.numero}</span>
+                    <span className="font-mono text-xs font-bold text-[#5b6870]">{item.numero}</span>
                     <span className="flex gap-1.5">
-                      {podeEditar && proximo && ordem && <button type="button" onClick={() => avancar(ordem)} className="min-h-8 rounded-md border border-emerald-200 bg-emerald-50 px-2 text-[11px] font-bold text-emerald-800 transition hover:border-emerald-500">{proximo}</button>}
-                      {podeEditar && ordem && <button type="button" aria-label={`Editar ${item.numero}`} onClick={() => abrirEdicao(ordem)} className="min-h-8 rounded-md border border-slate-200 px-2.5 text-[11px] font-bold text-slate-600 transition hover:border-emerald-500 hover:text-emerald-800">Editar</button>}
+                      {podeEditar && proximo && ordem && <button type="button" onClick={() => avancar(ordem)} className="min-h-10 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 text-sm font-bold text-emerald-800 transition hover:border-emerald-500">{proximo}</button>}
+                      {podeEditar && ordem && <button type="button" aria-label={`Editar ${item.numero}`} onClick={() => abrirEdicao(ordem)} className="min-h-10 rounded-md border border-slate-200 px-2.5 text-sm font-bold text-slate-600 transition hover:border-emerald-500 hover:text-emerald-800">Editar</button>}
                     </span>
                   </footer>
                 </article>
               );
             })}
           </div>
+            )}
         </section>
       )}
 
-      {/* Motivos que mais param a frota */}
-      {motivosRanking.length > 1 && (
-        <section className="mt-5 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      {subtela === 'motivos' && (
+        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-labelledby="manutencao-motivos-titulo">
           <header className="border-b border-slate-200 px-4 py-3 sm:px-5">
-            <h2 className="text-sm font-black text-slate-900">Motivos que mais param a frota</h2>
-            <p className="text-xs text-slate-500">Horas somadas por motivo no recorte atual.</p>
+            <h2 id="manutencao-motivos-titulo" className="text-sm font-black text-slate-900">Motivos que mais param a frota</h2>
+            <p className="text-sm text-slate-600">Horas somadas por motivo no recorte atual.</p>
           </header>
+          {motivosRanking.length === 0
+            ? <EmptyState icon={BarChart3} title="Nenhum motivo no recorte" description="Ajuste os filtros para ver as paradas." />
+            : (
           <ul className="divide-y divide-slate-100">
             {motivosRanking.map(item => {
               const maior = motivosRanking[0]?.horas || 1;
@@ -547,122 +634,24 @@ export default function ManutencaoTab({
                   <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
                     <div className="h-full rounded-full bg-emerald-600" style={{ width: `${Math.max(3, (item.horas / maior) * 100)}%` }} />
                   </div>
-                  <span className="mt-1 block text-[11px] text-slate-400">{item.ocorrencias} ordem(ns)</span>
+                  <span className="mt-1 block text-xs text-[#5b6870]">{item.ocorrencias} ordem(ns)</span>
                 </li>
               );
             })}
           </ul>
+            )}
         </section>
       )}
 
-      {/* Tabela de Ordens */}
-      <section data-manutencao-reveal className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-3 sm:px-5">
-          <span className="text-xs font-bold text-slate-600">{lista.length} Ordem(ns) de Serviço</span>
-        </div>
-        {lista.length === 0 ? (
-          <EmptyState icon={Wrench} title="Nenhuma ordem de serviço" description="Abra uma OS quando um equipamento precisar de atendimento." />
-        ) : (
-          <TableShell minWidth={980}>
-            <TableHead>
-              <tr>
-                <th className="p-3">OS</th>
-                <th className="p-3">Equipamento</th>
-                <th className="p-3">Problema</th>
-                <th className="p-3">Situação</th>
-                <th className="p-3">Abertura</th>
-                <th className="p-3 text-right">Horas paradas</th>
-                <th className="p-3 text-right">Ações</th>
-              </tr>
-            </TableHead>
-            <TableBody>
-              {lista.map(ordem => {
-                const horas = calcularHorasParadas(ordem);
-                const proximo = proximoStatusManutencao(ordem.status);
-                const { Icon: EquipmentIcon, label: equipmentLabel } = presentEquipment(equipamentoPorId.get(ordem.equipamentoId));
-                return (
-                  <tr key={ordem.id} className="border-b border-slate-100 transition-colors hover:bg-slate-50">
-                    <td className="whitespace-nowrap p-3 text-xs font-mono font-bold text-slate-900">{ordem.numero}</td>
-                    <td className="p-3">
-                      <span className="flex items-center gap-2.5">
-                        <span className="grid size-8 shrink-0 place-items-center rounded-md bg-emerald-50 text-emerald-800" aria-hidden="true">
-                          <EquipmentIcon className="size-4" strokeWidth={1.7} />
-                        </span>
-                        <span className="min-w-0">
-                          <strong className="block truncate text-sm text-slate-800">{prefixoDe(ordem.equipamentoId)}</strong>
-                          <small className="block text-[11px] uppercase tracking-wide text-slate-400">{equipmentLabel}</small>
-                        </span>
-                      </span>
-                    </td>
-                    <td className="max-w-[260px] p-3">
-                      <span className="block truncate text-slate-700" title={ordem.descricao}>{ordem.descricao || ordem.motivo || '—'}</span>
-                      <Badge tone={prioridadeTone(ordem.prioridade)} className="mt-1">{ordem.prioridade}</Badge>
-                    </td>
-                    <td className="p-3">
-                      <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone(ordem.status)}`}>{ordem.status}</span>
-                    </td>
-                    <td className="whitespace-nowrap p-3 text-slate-600">{formatarData(ordem.dataAbertura)}{ordem.horaAbertura ? ` ${ordem.horaAbertura}` : ''}</td>
-                    <td className="whitespace-nowrap p-3 text-right font-mono text-slate-700">
-                      {horas === undefined ? '—' : `${horas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`}
-                      {!isOrdemEncerrada(ordem.status) && horas !== undefined && <span className="ml-1 text-[11px] text-slate-400">em curso</span>}
-                    </td>
-                    <td className="p-3">
-                      <div className="flex justify-end gap-1.5 whitespace-nowrap">
-                        {podeEditar && proximo && (
-                          <button
-                            type="button"
-                            onClick={() => avancar(ordem)}
-                            className="min-h-9 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 text-[11px] font-bold text-emerald-800 transition-colors hover:border-emerald-500"
-                          >
-                            {proximo}
-                          </button>
-                        )}
-                        {podeEditar && (
-                          <button
-                            type="button"
-                            onClick={() => abrirEdicao(ordem)}
-                            className="min-h-9 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700"
-                          >
-                            Editar
-                          </button>
-                        )}
-                        {podeEditar && onDelete && (
-                          <button
-                            type="button"
-                            onClick={() => setExclusao(ordem)}
-                            className="min-h-9 rounded-lg border border-slate-200 px-2.5 text-[11px] font-bold text-rose-600 transition-colors hover:border-rose-400"
-                          >
-                            Excluir
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </TableBody>
-          </TableShell>
-        )}
-      </section>
-
       {/* Histórico: o que já aconteceu com as ordens, incluindo as abertas
           automaticamente pelo controle diário da frota. */}
-      {historicoAberto && (
-        <section className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-            <div>
-              <h2 className="text-sm font-black text-slate-900">Histórico de manutenção</h2>
-              <p className="text-[11px] text-slate-500">
-                Aberturas, edições e liberações — inclusive as OS abertas pelo Controle de Frotas.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setHistoricoAberto(false)}
-              className="text-[11px] font-bold text-slate-500 hover:text-emerald-700"
-            >
-              Fechar
-            </button>
+      {subtela === 'historico' && (
+        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-labelledby="manutencao-historico-titulo">
+          <header className="border-b border-slate-200 px-4 py-3">
+            <h2 id="manutencao-historico-titulo" className="text-sm font-black text-slate-900">Histórico de manutenção</h2>
+            <p className="text-sm text-slate-600">
+              Aberturas, edições e liberações — inclusive as OS abertas pelo Controle de Frotas.
+            </p>
           </header>
 
           {historico.length === 0 ? (
@@ -672,7 +661,7 @@ export default function ManutencaoTab({
               description="Assim que uma ordem for aberta, editada ou liberada, o movimento aparece aqui."
             />
           ) : (
-            <ul className="max-h-96 divide-y divide-slate-100 overflow-y-auto">
+            <ul className="divide-y divide-slate-100">
               {historico.slice(0, 200).map(item => (
                 <li key={item.id} className="flex items-start gap-3 px-4 py-3">
                   <Badge tone={item.acao === 'Excluiu' ? 'danger' : item.acao === 'Criou' ? 'success' : 'info'}>
@@ -680,7 +669,7 @@ export default function ManutencaoTab({
                   </Badge>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-slate-700">{item.descricao}</p>
-                    <p className="mt-0.5 text-[11px] text-slate-400">
+                    <p className="mt-0.5 text-xs text-[#5b6870]">
                       {item.timestamp} · {item.usuario} · {item.tela}
                     </p>
                   </div>
@@ -690,7 +679,7 @@ export default function ManutencaoTab({
           )}
 
           {historico.length > 200 && (
-            <p className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400">
+            <p className="border-t border-slate-100 px-4 py-2 text-xs text-[#5b6870]">
               Mostrando os 200 movimentos mais recentes de {historico.length}.
             </p>
           )}
@@ -707,8 +696,8 @@ export default function ManutencaoTab({
         initialFocusRef={equipamentoFieldRef}
         footer={(
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button type="button" onClick={() => setFormAberto(false)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar <span className="ml-1 text-[11px] text-slate-400">Esc</span></button>
-            <button type="button" onClick={salvar} className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800">Salvar ordem <span className="ml-1 text-[11px] text-emerald-100">Ctrl + Enter</span></button>
+            <button type="button" onClick={() => setFormAberto(false)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar <span className="ml-1 text-xs text-[#5b6870]">Esc</span></button>
+            <button type="button" onClick={salvar} className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800">Salvar ordem <span className="ml-1 text-xs text-emerald-100">Ctrl + Enter</span></button>
           </div>
         )}
       >
@@ -795,6 +784,6 @@ export default function ManutencaoTab({
           setExclusao(null);
         }}
       />
-    </div>
+    </TelaCheia>
   );
 }

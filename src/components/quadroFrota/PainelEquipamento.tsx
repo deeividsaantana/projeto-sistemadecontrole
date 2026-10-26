@@ -171,7 +171,7 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, canteiros = 
                       >
                         <item.Icone className="size-5" aria-hidden="true" />
                         {item.rotulo}
-                        <kbd className="hidden text-[10px] font-semibold opacity-60 lg:inline">{item.tecla}</kbd>
+                        <kbd className="hidden text-xs font-semibold opacity-60 lg:inline">{item.tecla}</kbd>
                       </button>
                     );
                   })}

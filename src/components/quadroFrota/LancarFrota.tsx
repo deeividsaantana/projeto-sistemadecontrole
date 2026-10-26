@@ -218,7 +218,7 @@ export function LancarFrota({ cartoes, dia, equipamentos, registros, canteiros =
       </div>
 
       <div className={`${CARTAO} overflow-hidden`} data-quadro-reveal>
-        <div className="hidden items-center gap-3 border-b border-slate-200 bg-[#f7f8f6] px-3 py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 lg:grid lg:grid-cols-[2.75rem_minmax(13rem,1.2fr)_minmax(17rem,1.3fr)_minmax(9rem,0.9fr)_minmax(9rem,0.9fr)_minmax(11rem,1fr)]">
+        <div className="hidden items-center gap-3 border-b border-slate-200 bg-[#f7f8f6] px-3 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-slate-500 lg:grid lg:grid-cols-[2.75rem_minmax(13rem,1.2fr)_minmax(17rem,1.3fr)_minmax(9rem,0.9fr)_minmax(9rem,0.9fr)_minmax(11rem,1fr)]">
           <label className="grid size-11 cursor-pointer place-items-center">
             <span className="sr-only">Selecionar todas</span>
             <input type="checkbox" checked={todasMarcadas} onChange={() => setMarcadas(todasMarcadas ? new Set() : new Set(cartoes.map(cartao => cartao.equipamentoId)))} className="size-5 accent-[#176b4d]" data-testid="lancar-sel-todas" />
@@ -255,8 +255,8 @@ export function LancarFrota({ cartoes, dia, equipamentos, registros, canteiros =
                     </span>
                     <span className="min-w-0">
                       <strong className="block font-mono text-sm font-bold text-slate-900">{cartao.prefixo}</strong>
-                      <span className="block truncate text-[11px] font-semibold uppercase text-slate-500">{cartao.modelo}</span>
-                      <span className={`mt-0.5 inline-flex items-center gap-1 rounded-full px-1.5 text-[10px] font-bold uppercase ring-1 ring-inset ${tom.etiqueta}`}>
+                      <span className="block truncate text-xs font-semibold uppercase text-slate-500">{cartao.modelo}</span>
+                      <span className={`mt-0.5 inline-flex items-center gap-1 rounded-full px-1.5 text-xs font-bold uppercase ring-1 ring-inset ${tom.etiqueta}`}>
                         <span className={`size-1.5 rounded-full ${tom.ponto}`} aria-hidden="true" />
                         {mudou ? 'Não salvo' : ROTULO_GRUPO[cartao.grupo]}
                       </span>

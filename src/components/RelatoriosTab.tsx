@@ -11,6 +11,7 @@ import { gsap } from 'gsap';
 import { ChevronRight, Fuel, Hammer, Lock, Package, Truck, Users, type LucideIcon } from 'lucide-react';
 import type { Abastecimento, ControleEquipamentoDiario, CravacaoEstaca, MovimentoMaterial, PresencaApontamento } from '../types';
 import { PageHeader } from '../shared/ui';
+import { TelaCheia } from '../shared/ui/TelaCheia';
 import { resumirBase, textoBase, type BaseRelatorio } from '../utils/centralRelatorios';
 import { CARTAO, FOCO } from './cadastros/estilos';
 
@@ -43,7 +44,7 @@ const SEM_LANCAMENTO = ['Produção e avanço físico', 'Planejamento', 'Custos'
 export default function RelatoriosTab({
   abastecimentos, controlesEquipamentos, presencas, movimentosMaterial, cravacoes, podeAbrir, onAbrir,
 }: RelatoriosTabProps) {
-  const escopo = useRef<HTMLDivElement>(null);
+  const escopo = useRef<HTMLElement>(null);
 
   const itens = useMemo<ItemRelatorio[]>(() => [
     {
@@ -104,15 +105,12 @@ export default function RelatoriosTab({
   }, { scope: escopo });
 
   return (
-    <div ref={escopo} id="relatorios-tab" data-testid="relatorios-tab" className="erp-module space-y-4">
-      <div data-relatorios-reveal>
-        <PageHeader
-          eyebrow="Consulta"
-          title="Relatórios"
-          description="Escolha o relatório. Ele abre na aba onde o dado é lançado, com os mesmos números de lá."
-        />
-      </div>
-
+    <TelaCheia ref={escopo} id="relatorios-tab" testId="relatorios-tab" rotulo="Relatórios" className="erp-module" longa rotuloDados="Relatórios disponíveis"
+      cabecalho={<div data-relatorios-reveal>
+        <PageHeader eyebrow="Consulta" title="Relatórios" />
+      </div>}
+      faixa={<p data-relatorios-reveal className="px-1 text-sm text-slate-600">Escolha o relatório. Ele abre na aba onde o dado é lançado, com os mesmos números de lá.</p>}
+    >
       <ul className="grid gap-3 lg:grid-cols-2" aria-label="Relatórios disponíveis">
         {itens.map(item => {
           const liberado = podeAbrir(item.aba);
@@ -126,7 +124,7 @@ export default function RelatoriosTab({
                 data-testid={`relatorio-${item.aba}`}
                 className={`${CARTAO} group flex h-full w-full items-start gap-3 p-4 text-left transition duration-200 enabled:hover:border-emerald-500 enabled:hover:shadow-sm enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-50 ${FOCO}`}
               >
-                <span className={`grid size-11 shrink-0 place-items-center rounded-xl ${liberado ? 'bg-emerald-50 text-[#176b4d]' : 'bg-slate-100 text-slate-400'}`}>
+                <span className={`grid size-11 shrink-0 place-items-center rounded-xl ${liberado ? 'bg-emerald-50 text-[#176b4d]' : 'bg-slate-100 text-[#5b6870]'}`}>
                   <item.Icone className="size-5" aria-hidden="true" />
                 </span>
                 <span className="min-w-0 flex-1">
@@ -165,6 +163,6 @@ export default function RelatoriosTab({
           ))}
         </ul>
       </section>
-    </div>
+    </TelaCheia>
   );
 }

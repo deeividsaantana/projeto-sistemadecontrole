@@ -38,6 +38,9 @@ import {
 } from '../utils/teamSpreadsheetSync';
 import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
 import { ConfirmDialog, Modal, PageHeader } from '../shared/ui';
+import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
+import { TelaCheia } from '../shared/ui/TelaCheia';
+import { TabelaPadrao, type ColunaTabela } from '../shared/ui/TabelaPadrao';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { readableTeamText, recoverTeamGroups, teamRecordMatches } from '../utils/teamIdentity';
 import type { SituacaoLancada } from '../utils/presencaManual';
@@ -100,9 +103,11 @@ const STATUS_STYLES: Record<PresencaStatus, string> = {
 };
 
 const PANEL = 'rounded-xl border border-slate-200 bg-white';
+const FOCO = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)';
+const ROTULO_CAMPO = 'block text-xs font-bold text-[#5b6870]';
 const FIELD = 'min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-emerald-700 focus:ring-4 focus:ring-emerald-700/10';
-const SECONDARY_BUTTON = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-emerald-700 hover:text-emerald-800 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-700/15';
-const PRIMARY_BUTTON = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white transition hover:bg-emerald-800 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-700/20 disabled:cursor-not-allowed disabled:opacity-45';
+const SECONDARY_BUTTON = `inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-emerald-700 hover:text-emerald-800 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-45 ${FOCO}`;
+const PRIMARY_BUTTON = `inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white transition hover:bg-emerald-800 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-45 ${FOCO}`;
 
 interface ControlePresencaTabProps {
   empresas: Empresa[];
@@ -214,6 +219,15 @@ const saveBlob = (blob: Blob, name: string) => {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+};
+
+const dataBr = (iso: string) => (iso ? iso.split('-').reverse().join('/') : '');
+
+/** "2026-09-03T14:05:00.000Z" vira "03/09/2026 11:05"; texto que não é data fica como veio. */
+const quandoBr = (valor: string) => {
+  const data = new Date(valor);
+  if (!valor || Number.isNaN(data.getTime())) return valor || '—';
+  return data.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
 const toCsv = (rows: Array<Array<string | number>>) => rows
@@ -608,7 +622,7 @@ export default function ControlePresencaTab({
   useGSAP(() => {
     const scope = tabRef.current;
     if (!scope || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const rows = scope.querySelectorAll('[data-presence-row]');
+    const rows = scope.querySelectorAll('[data-linha-lista]');
     if (!rows.length) return;
     gsap.fromTo(
       rows,
@@ -973,106 +987,273 @@ export default function ControlePresencaTab({
     setSelectedRecordIds([]);
   };
 
-  const navItems: Array<{ id: View; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-    { id: 'ao-vivo', label: 'Ao vivo', icon: Radio },
-    { id: 'relatorios', label: 'Relatórios', icon: PieChart },
-    { id: 'equipes', label: 'Equipes', icon: Users },
-    { id: 'registros', label: 'Registros', icon: FileSpreadsheet },
-    { id: 'historico', label: 'Histórico', icon: History },
+  const navItems: Array<{ id: View; rotulo: string; icone: React.ComponentType<{ className?: string }> }> = [
+    { id: 'ao-vivo', rotulo: 'Ao vivo', icone: Radio },
+    { id: 'relatorios', rotulo: 'Relatórios', icone: PieChart },
+    { id: 'equipes', rotulo: 'Equipes', icone: Users },
+    { id: 'registros', rotulo: 'Registros', icone: FileSpreadsheet },
+    { id: 'historico', rotulo: 'Histórico', icone: History },
   ];
 
-  return (
-    <section ref={tabRef} id="presenca-tab" className="mx-auto w-full max-w-[1440px] space-y-5 pb-24 text-slate-900 lg:pb-8">
-      {/* O cabeçalho antigo era um hero: logo repetido, foto de fundo e os sete
-          filtros sempre abertos. Media 307px no desktop e 788px no celular —
-          mais alto que a própria tela de 727px, ou seja, uma tela inteira de
-          rolagem antes da primeira pessoa aparecer. Agora usa o mesmo cabeçalho
-          compacto das outras telas, e os filtros viram uma gaveta que só abre
-          quando alguém quer filtrar. */}
-      <PageHeader
-        eyebrow="Controle em tempo real"
-        title="Presença ao vivo"
-        description="Acompanhe as equipes, compartilhe o link oficial e receba cada envio assim que ele chegar."
-      />
+  // Registros e Histórico são tabelas: a área de dados fica do tamanho da tela
+  // e só as linhas rolam. O resto (painel, relatório, cartões de equipe) é
+  // aba longa, que rola por dentro.
+  const telaDeTabela = view === 'registros' || view === 'historico';
+  const nomeDoHistorico = (item: HistoricoPresenca) => safeText(employeeById.get(item.funcionarioId)?.nome) || item.funcionarioId;
+  const todosFiltradosMarcados = filteredRecords.length > 0 && filteredRecords.every(record => selectedRecordIds.includes(record.id));
+  const marcados = useMemo(() => new Set(selectedRecordIds), [selectedRecordIds]);
 
-      <nav aria-label="Seções do controle de presença" className={`${PANEL} grid grid-cols-3 gap-1 p-1.5 sm:flex sm:gap-1.5`}>
-        {navItems.map(item => {
-          const Icon = item.icon;
-          const active = view === item.id;
-          return (
-            <button key={item.id} type="button" onClick={() => setView(item.id)} aria-current={active ? 'page' : undefined} className={`flex min-h-12 min-w-0 items-center justify-center gap-1 rounded-lg px-1 text-xs font-bold transition sm:min-w-32 sm:gap-2 sm:px-3 sm:text-sm ${active ? 'bg-emerald-700 text-white' : 'text-slate-500 hover:bg-emerald-50 hover:text-slate-900'}`}>
-              <Icon className="h-4 w-4" /> <span className="max-w-full truncate">{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+  const colunasRegistros: ColunaTabela<PresencaApontamento>[] = [
+    {
+      chave: 'data',
+      titulo: 'Data',
+      larguraMinima: 120,
+      valorOrdenacao: record => `${record.data} ${record.horaEnvio}`,
+      dica: record => `${dataBr(record.data)} ${record.horaEnvio || ''}`.trim(),
+      render: record => (
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="tabular-nums"><strong className="font-bold text-slate-900">{dataBr(record.data)}</strong> {record.horaEnvio || '--:--'}</span>
+          {duplicateKeys.has(duplicateKey(record)) && <span className="inline-flex items-center gap-1 rounded-md bg-rose-100 px-1.5 py-0.5 text-xs font-bold text-rose-800"><AlertTriangle className="h-3 w-3" aria-hidden="true" /> Duplicado</span>}
+        </span>
+      ),
+    },
+    {
+      chave: 'colaborador',
+      titulo: 'Colaborador',
+      larguraMinima: 200,
+      valorOrdenacao: record => record.funcionarioNome,
+      dica: record => [record.funcionarioNome, record.funcao].filter(Boolean).join(' · '),
+      render: record => (
+        <>
+          <span className="font-bold text-slate-900">{record.funcionarioNome || 'Colaborador não informado'}</span>
+          <span className="text-[#5b6870]"> · {record.funcao || 'Função não informada'}</span>
+        </>
+      ),
+    },
+    {
+      chave: 'equipe',
+      titulo: 'Equipe',
+      larguraMinima: 180,
+      valorOrdenacao: record => record.grupoNome,
+      dica: record => [record.grupoNome, record.responsavel, record.frenteServico].filter(Boolean).join(' · '),
+      render: record => (
+        <>
+          <span className="font-semibold text-slate-900">{record.grupoNome || 'Equipe não informada'}</span>
+          {(record.responsavel || record.frenteServico) && <span className="text-[#5b6870]"> · {[record.responsavel, record.frenteServico].filter(Boolean).join(' · ')}</span>}
+        </>
+      ),
+    },
+    {
+      chave: 'situacao',
+      titulo: 'Situação',
+      larguraMinima: 130,
+      valorOrdenacao: record => record.status,
+      dica: record => record.status,
+      render: record => <span className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-bold ${STATUS_STYLES[record.status] || STATUS_STYLES.Outro}`}>{record.status}</span>,
+    },
+    {
+      chave: 'observacao',
+      titulo: 'Observação',
+      larguraMinima: 160,
+      render: record => record.observacao || '—',
+      dica: record => record.observacao || undefined,
+    },
+  ];
 
-      <section className={PANEL} aria-label="Recorte do painel">
-        <div className="flex flex-wrap items-center gap-2 p-3">
+  const colunasHistorico: ColunaTabela<HistoricoPresenca>[] = [
+    { chave: 'data', titulo: 'Dia', larguraMinima: 100, valorOrdenacao: item => item.data, render: item => <span className="tabular-nums">{item.data.includes('-') ? dataBr(item.data) : item.data}</span> },
+    { chave: 'colaborador', titulo: 'Colaborador', larguraMinima: 180, valorOrdenacao: item => nomeDoHistorico(item), render: item => <span className="font-bold text-slate-900">{nomeDoHistorico(item)}</span> },
+    {
+      chave: 'alteracao',
+      titulo: 'Alteração',
+      larguraMinima: 200,
+      dica: item => `${item.valorAnterior} → ${item.valorNovo}`,
+      render: item => (
+        <span><span className="text-rose-700">{item.valorAnterior}</span> <ArrowRight className="mx-0.5 inline h-3.5 w-3.5" aria-hidden="true" /><span className="sr-only">para</span> <span className="font-bold text-emerald-800">{item.valorNovo}</span></span>
+      ),
+    },
+    { chave: 'motivo', titulo: 'Motivo', larguraMinima: 180, render: item => item.motivo || '—', dica: item => item.motivo || undefined },
+    { chave: 'editadoPor', titulo: 'Quem alterou', larguraMinima: 140, valorOrdenacao: item => item.editadoPor, render: item => item.editadoPor || '—' },
+    { chave: 'editadoEm', titulo: 'Quando', larguraMinima: 140, valorOrdenacao: item => item.editadoEm, render: item => <span className="tabular-nums">{quandoBr(item.editadoEm)}</span> },
+  ];
+
+  const aviso = feedback ? (
+    <div role="status" className="flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-900">
+      <span className="min-w-0 flex-1">{feedback}</span>
+      {desfazerInativacao.length > 0 && <button type="button" onClick={() => reativarRegistros(desfazerInativacao)} className={`${SECONDARY_BUTTON} shrink-0`} data-testid="presenca-desfazer"><Undo2 className="h-4 w-4" aria-hidden="true" />Desfazer</button>}
+      <button type="button" onClick={() => { setFeedback(''); setDesfazerInativacao([]); }} aria-label="Fechar mensagem" className={`grid size-11 shrink-0 place-items-center rounded-lg hover:bg-emerald-100 lg:size-9 ${FOCO}`}><X className="h-4 w-4" aria-hidden="true" /></button>
+    </div>
+  ) : null;
+
+  const faixaPainel = (
+    <section className={PANEL} aria-label="Recorte do painel">
+      <div className="flex flex-wrap items-center gap-2 p-3">
+        <button
+          type="button"
+          onClick={() => setFiltrosAbertos(atual => !atual)}
+          aria-expanded={filtrosAbertos}
+          aria-controls="presenca-filtros"
+          className={`inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-900 transition hover:border-emerald-700 ${FOCO}`}
+        >
+          <Filter className="h-4 w-4 text-emerald-800" aria-hidden="true" />
+          Filtros
+          {filtrosAtivos > 0 && (
+            <span className="rounded-full bg-emerald-700 px-1.5 text-xs font-black text-white">{filtrosAtivos}</span>
+          )}
+          <ChevronDown className={`h-4 w-4 transition-transform ${filtrosAbertos ? 'rotate-180' : ''}`} aria-hidden="true" />
+        </button>
+
+        {view === 'relatorios' ? (
+          <span className="inline-flex min-h-11 items-center rounded-lg px-1 text-xs font-semibold text-[#5b6870]">
+            Os filtros valem para o relatório inteiro
+          </span>
+        ) : (
+          <>
+            <span className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#5b6870]">Exibindo</span>
+              <strong className="text-sm font-black text-emerald-800">{dashboardRecords.length} pessoas</strong>
+            </span>
+
+            <span className="inline-flex min-h-11 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-900">
+              {dataBr(referenceDate)}
+            </span>
+          </>
+        )}
+
+        {filtrosAtivos > 0 && (
           <button
             type="button"
-            onClick={() => setFiltrosAbertos(atual => !atual)}
-            aria-expanded={filtrosAbertos}
-            aria-controls="presenca-filtros"
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-900 transition hover:border-emerald-700"
+            onClick={limparFiltrosPainel}
+            className={`ml-auto inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-black uppercase tracking-wider text-[#5b6870] hover:text-emerald-800 ${FOCO}`}
           >
-            <Filter className="h-4 w-4 text-emerald-800" />
-            Filtros
-            {filtrosAtivos > 0 && (
-              <span className="rounded-full bg-emerald-700 px-1.5 text-[11px] font-black text-white">{filtrosAtivos}</span>
-            )}
-            <ChevronDown className={`h-4 w-4 transition-transform ${filtrosAbertos ? 'rotate-180' : ''}`} />
+            Limpar
           </button>
-
-          {view === 'relatorios' ? (
-            <span className="inline-flex min-h-11 items-center rounded-lg px-1 text-xs font-semibold text-slate-500">
-              Os filtros valem para o relatório inteiro
-            </span>
-          ) : (
-            <>
-              <span className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Exibindo</span>
-                <strong className="text-sm font-black text-emerald-800">{dashboardRecords.length} pessoas</strong>
-              </span>
-
-              <span className="inline-flex min-h-11 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-900">
-                {referenceDate.split('-').reverse().join('/')}
-              </span>
-            </>
-          )}
-
-          {filtrosAtivos > 0 && (
-            <button
-              type="button"
-              onClick={limparFiltrosPainel}
-              className="ml-auto inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-black uppercase tracking-wider text-slate-500 hover:text-emerald-800"
-            >
-              Limpar
-            </button>
-          )}
-        </div>
-
-        {filtrosAbertos && (
-          <div id="presenca-filtros" className="grid gap-2 border-t border-slate-200 p-3 sm:grid-cols-2 xl:grid-cols-4">
-            {view !== 'relatorios' && <label><span className="sr-only">Data de referência</span><input type="date" value={referenceDate} onChange={event => setReferenceDate(event.target.value)} max={today} className={FIELD} /></label>}
-            <label><span className="sr-only">Empresa</span><select value={dashboardCompany} onChange={event => setDashboardCompany(event.target.value)} className={FIELD}><option value="todas">Todas as empresas</option>{safeEmpresas.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}</select></label>
-            <label><span className="sr-only">Equipe</span><select value={dashboardGroup} onChange={event => setDashboardGroup(event.target.value)} className={FIELD}><option value="todos">Todas as equipes</option>{activeGroups.map(group => <option key={group.id} value={group.id}>{group.nome}</option>)}</select></label>
-            <label><span className="sr-only">Função</span><select value={dashboardRole} onChange={event => setDashboardRole(event.target.value)} className={FIELD}><option value="todas">Todas as funções</option>{roleOptions.map(role => <option key={role}>{role}</option>)}</select></label>
-            <label><span className="sr-only">Situação</span><select value={dashboardStatus} onChange={event => setDashboardStatus(event.target.value as 'todos' | PresencaStatus)} className={FIELD}><option value="todos">Todos os status</option>{STATUS_OPTIONS.map(status => <option key={status}>{status}</option>)}</select></label>
-            <label><span className="sr-only">Ramo</span><select value={dashboardBranch} onChange={event => setDashboardBranch(event.target.value)} className={FIELD}><option value="todos">Todos os ramos</option>{ACTIVE_BRANCHES.map(branch => <option key={branch}>{branch}</option>)}</select></label>
-            <label><span className="sr-only">Canteiro</span><select value={dashboardSite} onChange={event => setDashboardSite(event.target.value)} className={FIELD}><option value="todos">Todos os canteiros</option>{canteiros.map(site => <option key={site}>{site}</option>)}</select></label>
-            <label><span className="sr-only">Buscar pessoa</span><input type="search" value={dashboardSearch} onChange={event => setDashboardSearch(event.target.value)} placeholder="Nome ou matrícula" className={FIELD} /></label>
-          </div>
         )}
-      </section>
+      </div>
 
-      {feedback && (
-        <div role="status" className="flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-          <span className="min-w-0 flex-1">{feedback}</span>
-          {desfazerInativacao.length > 0 && <button type="button" onClick={() => reativarRegistros(desfazerInativacao)} className={`${SECONDARY_BUTTON} shrink-0`} data-testid="presenca-desfazer"><Undo2 className="h-4 w-4" />Desfazer</button>}
-          <button type="button" onClick={() => { setFeedback(''); setDesfazerInativacao([]); }} aria-label="Fechar mensagem" className="rounded-lg p-1 hover:bg-emerald-100"><X className="h-4 w-4" /></button>
+      {filtrosAbertos && (
+        <div id="presenca-filtros" className="grid gap-2 border-t border-slate-200 p-3 sm:grid-cols-2 xl:grid-cols-4">
+          {view !== 'relatorios' && <label><span className="sr-only">Data de referência</span><input type="date" value={referenceDate} onChange={event => setReferenceDate(event.target.value)} max={today} className={FIELD} /></label>}
+          <label><span className="sr-only">Empresa</span><select value={dashboardCompany} onChange={event => setDashboardCompany(event.target.value)} className={FIELD}><option value="todas">Todas as empresas</option>{safeEmpresas.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}</select></label>
+          <label><span className="sr-only">Equipe</span><select value={dashboardGroup} onChange={event => setDashboardGroup(event.target.value)} className={FIELD}><option value="todos">Todas as equipes</option>{activeGroups.map(group => <option key={group.id} value={group.id}>{group.nome}</option>)}</select></label>
+          <label><span className="sr-only">Função</span><select value={dashboardRole} onChange={event => setDashboardRole(event.target.value)} className={FIELD}><option value="todas">Todas as funções</option>{roleOptions.map(role => <option key={role}>{role}</option>)}</select></label>
+          <label><span className="sr-only">Situação</span><select value={dashboardStatus} onChange={event => setDashboardStatus(event.target.value as 'todos' | PresencaStatus)} className={FIELD}><option value="todos">Todos os status</option>{STATUS_OPTIONS.map(status => <option key={status}>{status}</option>)}</select></label>
+          <label><span className="sr-only">Ramo</span><select value={dashboardBranch} onChange={event => setDashboardBranch(event.target.value)} className={FIELD}><option value="todos">Todos os ramos</option>{ACTIVE_BRANCHES.map(branch => <option key={branch}>{branch}</option>)}</select></label>
+          <label><span className="sr-only">Canteiro</span><select value={dashboardSite} onChange={event => setDashboardSite(event.target.value)} className={FIELD}><option value="todos">Todos os canteiros</option>{canteiros.map(site => <option key={site}>{site}</option>)}</select></label>
+          <label><span className="sr-only">Buscar pessoa</span><input type="search" value={dashboardSearch} onChange={event => setDashboardSearch(event.target.value)} placeholder="Nome ou matrícula" className={FIELD} /></label>
         </div>
       )}
+    </section>
+  );
+
+  const faixaEquipes = (
+    <div className={`${PANEL} flex flex-col gap-2 p-3 sm:flex-row sm:flex-wrap sm:items-center`}>
+      <label className="relative min-w-0 flex-1 sm:min-w-64">
+        <span className="sr-only">Buscar equipe</span>
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5b6870]" aria-hidden="true" />
+        <input type="search" value={teamSearch} onChange={event => setTeamSearch(event.target.value)} placeholder="Buscar equipe, responsável ou frente" className={`${FIELD} pl-10`} />
+      </label>
+      {onSyncEquipesPlanilha && (
+        <label className={`${SECONDARY_BUTTON} cursor-pointer focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-(--renea-focus)`}>
+          {syncBusy ? <RotateCcw className="h-4 w-4 animate-spin" aria-hidden="true" /> : <FileSpreadsheet className="h-4 w-4" aria-hidden="true" />}
+          {syncBusy ? 'Lendo planilha' : 'Sincronizar pela planilha'}
+          <input
+            type="file"
+            accept=".xlsx,.xlsm"
+            className="sr-only"
+            disabled={syncBusy}
+            onChange={event => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              if (file) void lerPlanilhaEfetivo(file);
+            }}
+          />
+        </label>
+      )}
+      <button type="button" onClick={() => void exportEquipesExcel()} className={SECONDARY_BUTTON} title="Baixa um Excel com cada pessoa e a sua equipe"><Download className="h-4 w-4" aria-hidden="true" /> Exportar equipes</button>
+      {syncError && (
+        <div role="alert" className="w-full rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800">{syncError}</div>
+      )}
+    </div>
+  );
+
+  const faixaRegistros = (
+    <div className={`${PANEL} space-y-3 p-3`}>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[170px_minmax(0,220px)_minmax(0,200px)_minmax(0,1fr)]">
+        <label className="space-y-1">
+          <span className={ROTULO_CAMPO}>Dia</span>
+          <input type="date" value={recordDate} onChange={event => setRecordDate(event.target.value)} className={FIELD} aria-describedby="presenca-dia-dica" />
+        </label>
+        <label className="space-y-1">
+          <span className={ROTULO_CAMPO}>Equipe</span>
+          <select value={recordGroup} onChange={event => setRecordGroup(event.target.value)} className={FIELD}><option value="todos">Todas as equipes</option>{safeGroups.map(group => <option key={group.id} value={group.id}>{group.nome}</option>)}</select>
+        </label>
+        <label className="space-y-1">
+          <span className={ROTULO_CAMPO}>Situação</span>
+          <select value={recordStatus} onChange={event => setRecordStatus(event.target.value as 'todos' | PresencaStatus)} className={FIELD}><option value="todos">Todos os status</option>{STATUS_OPTIONS.map(status => <option key={status}>{status}</option>)}</select>
+        </label>
+        <label className="relative space-y-1">
+          <span className={ROTULO_CAMPO}>Buscar</span>
+          <span className="relative block">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5b6870]" aria-hidden="true" />
+            <input type="search" value={recordSearch} onChange={event => setRecordSearch(event.target.value)} placeholder="Colaborador, função ou responsável" className={`${FIELD} pl-10`} />
+          </span>
+        </label>
+      </div>
+      <p id="presenca-dia-dica" className="sr-only">Apague o dia para ver todos os dias.</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => setSelectedRecordIds(todosFiltradosMarcados ? [] : filteredRecords.map(record => record.id))} disabled={filteredRecords.length === 0} className={SECONDARY_BUTTON} aria-pressed={todosFiltradosMarcados} data-testid="presenca-marcar-filtrados">
+          <Check className="h-4 w-4" aria-hidden="true" />
+          {todosFiltradosMarcados ? 'Desmarcar todos' : `Marcar os ${filteredRecords.length}`}
+        </button>
+        {selectedRecordIds.length > 0 && (verInativos
+          ? <button type="button" onClick={() => reativarRegistros(selectedRecordIds)} className={PRIMARY_BUTTON} data-testid="presenca-reativar"><RotateCcw className="h-4 w-4" aria-hidden="true" /> Reativar ({selectedRecordIds.length})</button>
+          : <button type="button" onClick={deleteSelectedRecords} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-bold text-white transition hover:bg-rose-800 ${FOCO}`} data-testid="presenca-inativar"><Archive className="h-4 w-4" aria-hidden="true" /> Inativar ({selectedRecordIds.length})</button>)}
+        <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+          {(verInativos || inativos.length > 0) && <button type="button" onClick={alternarInativos} aria-pressed={verInativos} className={SECONDARY_BUTTON} data-testid="presenca-ver-inativos">{verInativos ? <><ChevronLeft className="h-4 w-4" aria-hidden="true" />Voltar aos ativos</> : <><Archive className="h-4 w-4" aria-hidden="true" />Inativados ({inativos.length})</>}</button>}
+          {onRestorePresenceHistory && <button type="button" onClick={() => void restoreHistory()} disabled={restoringHistory} className={`${SECONDARY_BUTTON} disabled:cursor-not-allowed disabled:opacity-60`} title="Busca de novo todos os envios já feitos pelo link público e traz de volta dias que sumiram, sem apagar nada"><RotateCcw className={`h-4 w-4 ${restoringHistory ? 'animate-spin' : ''}`} aria-hidden="true" />{restoringHistory ? 'Recuperando...' : 'Recuperar histórico'}</button>}
+          {onResetPresencaDia && (
+            <button
+              type="button"
+              onClick={() => void zerarDia()}
+              disabled={recordGroup === 'todos' || resetBusy}
+              title={recordGroup === 'todos' ? 'Escolha uma equipe para zerar o dia' : 'Apaga o apontamento do dia e libera novo envio pelo link'}
+              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 text-sm font-bold text-rose-800 transition hover:border-rose-400 disabled:cursor-not-allowed disabled:opacity-45 ${FOCO}`}
+            >
+              <RotateCcw className={`h-4 w-4 ${resetBusy ? 'animate-spin' : ''}`} aria-hidden="true" />
+              Zerar o dia
+            </button>
+          )}
+          <button type="button" onClick={() => void exportPdf()} className={SECONDARY_BUTTON}><FileText className="h-4 w-4" aria-hidden="true" /> PDF</button>
+          <button type="button" onClick={exportCsv} className={SECONDARY_BUTTON}><Download className="h-4 w-4" aria-hidden="true" /> CSV</button>
+        </div>
+      </div>
+      {verInativos && <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-900" data-testid="presenca-aviso-inativos">Mostrando os registros inativados. Marque os que devem voltar e toque em Reativar.</p>}
+    </div>
+  );
+
+  const faixaDaVista = view === 'ao-vivo' || view === 'relatorios' ? faixaPainel
+    : view === 'equipes' ? faixaEquipes
+      : view === 'registros' ? faixaRegistros
+        : null;
+
+  const acaoPrincipal = view === 'equipes'
+    ? <button type="button" onClick={openNewGroup} className={PRIMARY_BUTTON}><Plus className="h-4 w-4" aria-hidden="true" /> Nova equipe</button>
+    : view === 'registros'
+      ? <button type="button" onClick={() => void exportExcel()} className={PRIMARY_BUTTON} disabled={filteredRecords.length === 0}><FileSpreadsheet className="h-4 w-4" aria-hidden="true" /> Baixar Excel</button>
+      : undefined;
+
+  return (
+    <TelaCheia ref={tabRef} id="presenca-tab" rotulo="Presença" className="text-slate-900"
+      longa={!telaDeTabela} idAbaAtiva={idDaAba('presenca', view)} idDados="presenca-dados" chaveRolagem={view}
+      cabecalho={<PageHeader
+        eyebrow="Pessoas"
+        title="Presença"
+        abas={<AbasDaTela<View> id="presenca" rotulo="Seções do controle de presença" abas={navItems} ativa={view} onTrocar={setView} idPainel="presenca-dados" testId="presenca-aba" />}
+        actions={acaoPrincipal}
+      />}
+      faixa={aviso || faixaDaVista ? <>{aviso}{faixaDaVista && <div className={aviso ? 'mt-2' : undefined}>{faixaDaVista}</div>}</> : undefined}
+    >
 
       {view === 'ao-vivo' && pendingPublicSubmissionsCount > 0 && (
         <div role="status" className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -1101,7 +1282,7 @@ export default function ControlePresencaTab({
                 <div data-seta-efetivo className="absolute right-5 top-5 text-emerald-800/20"><ArrowRight className="h-12 w-12" strokeWidth={1} /></div>
                 <div className="relative">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Efetivo confirmado</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Efetivo confirmado</p>
                     <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-800"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-700" />{metrics.latest ? `Atualizado às ${metrics.latest}` : 'Aguardando o primeiro envio'}</span>
                   </div>
                   <div className="mt-4 flex items-end gap-3">
@@ -1129,12 +1310,12 @@ export default function ControlePresencaTab({
                 ].map(([label, value, tone]) => (
                   <article key={String(label)} className={`${PANEL} p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_-16px_rgba(16,24,32,0.3)] sm:p-5`}>
                     <strong data-count={value} className={`block text-3xl font-black tabular-nums ${tone}`}>0</strong>
-                    <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:text-xs">{label}</span>
+                    <span className="mt-1 block text-xs font-bold uppercase tracking-[0.12em] text-slate-500 sm:text-xs">{label}</span>
                   </article>
                 ))}
               </div>
             </div>
-            <aside className="space-y-5">
+            <div className="space-y-5">
             <article data-cartao-painel className={`renea-card ${PANEL} p-5`}>
               <div className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-amber-700" /><h2 className="text-lg font-black text-slate-900">Atenção agora</h2></div>
               <div className="mt-4 space-y-2">
@@ -1158,16 +1339,16 @@ export default function ControlePresencaTab({
                 {metrics.absent > 0 && <button type="button" onClick={() => { setRecordStatus('Ausente'); setView('registros'); }} className="flex w-full items-center justify-between rounded-xl border border-rose-200 bg-rose-50 p-3 text-left text-sm font-semibold text-rose-900"><span>{metrics.absent} ausência(s) aguardando conferência</span><ChevronRight className="h-4 w-4" /></button>}
               </div>
             </article>
-            </aside>
+            </div>
           </div>
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <article data-cartao-painel className={`renea-card ${PANEL} flex flex-col p-5 md:col-span-2`}>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Confirmados nos últimos 7 dias</p>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Confirmados nos últimos 7 dias</p>
                 <div className="mt-5 flex min-h-28 flex-1 items-end gap-2">
                   {tendencia.map(item => (
                     <button type="button" key={item.iso} onClick={() => setReferenceDate(item.iso)} className="group flex h-full flex-1 flex-col items-center gap-1" title={`Ver ${item.presentes} presente(s) em ${item.rotulo}`}>
-                      <span className="text-[10px] font-bold tabular-nums text-slate-500">{item.presentes || ''}</span>
+                      <span className="text-xs font-bold tabular-nums text-slate-500">{item.presentes || ''}</span>
                       <div className="flex w-full flex-1 items-end">
                         <div
                           data-trend-bar
@@ -1175,14 +1356,14 @@ export default function ControlePresencaTab({
                           className={`w-full cursor-pointer rounded-t-md transition-colors duration-200 ${item.iso === referenceDate ? 'bg-[#176b4d]' : 'bg-emerald-200 group-hover:bg-emerald-300'}`}
                         />
                       </div>
-                      <span className="text-[9px] font-bold tabular-nums text-slate-500">{item.rotulo}</span>
+                      <span className="text-xs font-bold tabular-nums text-slate-500">{item.rotulo}</span>
                     </button>
                   ))}
                 </div>
               </article>
 
               <article data-cartao-painel className={`renea-card ${PANEL} p-5`}>
-                <div className="flex items-center justify-between gap-3"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Efetivo por função</p><span className="text-[10px] font-black text-emerald-800">{referenceDate.split('-').reverse().join('/')}</span></div>
+                <div className="flex items-center justify-between gap-3"><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Efetivo por função</p><span className="text-xs font-black text-emerald-800">{referenceDate.split('-').reverse().join('/')}</span></div>
                 {funcoesDoDia.length === 0 ? <p className="mt-6 text-sm text-slate-500">Nenhuma função registrada neste recorte.</p> : (
                   <div className="mt-4 space-y-3">
                     {funcoesDoDia.slice(0, 7).map(item => <button type="button" key={item.funcao} onClick={() => setDashboardRole(item.funcao)} className="group block w-full text-left" aria-label={`Filtrar ${item.funcao}: ${item.total}`}>
@@ -1194,7 +1375,7 @@ export default function ControlePresencaTab({
               </article>
 
               <article data-cartao-painel className={`renea-card ${PANEL} p-5`}>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Situações registradas no dia</p>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Situações registradas no dia</p>
                 {distribuicao.length === 0 ? (
                   <p className="mt-6 text-sm text-slate-500">Nenhum envio recebido para {referenceDate.split('-').reverse().join('/')}.</p>
                 ) : (
@@ -1205,7 +1386,7 @@ export default function ControlePresencaTab({
                           <span className="flex items-center gap-1.5 text-slate-700 group-hover:text-emerald-800">
                             {item.status}
                             {AFASTAMENTOS_PREVISTOS.includes(item.status) && (
-                              <span className="rounded-full border border-stone-300 bg-stone-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-stone-600">
+                              <span className="rounded-full border border-stone-300 bg-stone-100 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider text-stone-600">
                                 Afastamento previsto
                               </span>
                             )}
@@ -1222,7 +1403,7 @@ export default function ControlePresencaTab({
               </article>
 
               <article data-cartao-painel className={`renea-card ${PANEL} p-5 md:col-span-2`}>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Efetivo por equipe</p>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Efetivo por equipe</p>
                 {equipesDoDia.length === 0 ? <p className="mt-6 text-sm text-slate-500">Nenhuma equipe com envio neste recorte.</p> : (
                   <div className="mt-4 space-y-3">
                     {equipesDoDia.slice(0, 7).map(item => (
@@ -1242,7 +1423,7 @@ export default function ControlePresencaTab({
               <article data-cartao-painel className={`renea-card ${PANEL} overflow-hidden`}>
                 <header className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-rose-700">Conferência</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.15em] text-rose-700">Conferência</p>
                     <h2 className="mt-1 text-lg font-black tracking-tight text-slate-900">Quem não está em campo hoje</h2>
                   </div>
                   <span className="text-sm font-black tabular-nums text-rose-700">{ausentesDoDia.length}</span>
@@ -1250,7 +1431,7 @@ export default function ControlePresencaTab({
                 <ul className="divide-y divide-slate-200">
                   {ausentesDoDia.slice(0, 8).map(record => (
                     <li key={record.id} className="flex items-center gap-3 px-5 py-3">
-                      <span className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${STATUS_STYLES[record.status] || STATUS_STYLES.Outro}`}>{record.status}</span>
+                      <span className={`rounded-lg border px-2 py-1 text-xs font-bold ${STATUS_STYLES[record.status] || STATUS_STYLES.Outro}`}>{record.status}</span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-bold text-slate-900">{record.funcionarioNome}</p>
                         <p className="truncate text-xs text-slate-500">{record.grupoNome} · {record.observacao || 'Sem observação'}</p>
@@ -1269,7 +1450,7 @@ export default function ControlePresencaTab({
 
             <article data-cartao-painel className={`renea-card ${PANEL} overflow-hidden`}>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-                <div><p className="text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-800">Equipes</p><h2 className="mt-1 text-xl font-black tracking-tight text-slate-900">Situação do dia</h2></div>
+                <div><p className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-800">Equipes</p><h2 className="mt-1 text-xl font-black tracking-tight text-slate-900">Situação do dia</h2></div>
                 <div className="flex flex-wrap items-center gap-2">
                   <input type="date" value={referenceDate} onChange={event => setReferenceDate(event.target.value)} max={today} className={`${FIELD} w-auto`} aria-label="Data do relatório diário" />
                   <button type="button" onClick={() => void exportDailyExcel()} className={PRIMARY_BUTTON} disabled={dayRecords.length === 0} title="Baixar situação do dia em Excel"><FileSpreadsheet className="h-4 w-4" /> Excel</button>
@@ -1286,7 +1467,7 @@ export default function ControlePresencaTab({
                       {row.sent ? <Check className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
                     </div>
                     <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-slate-900">{row.group.nome}</p><p className="mt-0.5 truncate text-xs text-slate-500">{row.group.responsavel} · {row.group.frenteServico}</p></div>
-                    <div className="text-right"><p className="text-lg font-black tabular-nums text-slate-900">{row.present}/{row.total}</p><p className={`text-[10px] font-bold uppercase tracking-[0.1em] ${row.sent ? 'text-emerald-800' : 'text-amber-800'}`}>{row.sent ? row.updatedAt || 'Recebido' : 'Pendente'}</p></div>
+                    <div className="text-right"><p className="text-lg font-black tabular-nums text-slate-900">{row.present}/{row.total}</p><p className={`text-xs font-bold uppercase tracking-[0.1em] ${row.sent ? 'text-emerald-800' : 'text-amber-800'}`}>{row.sent ? row.updatedAt || 'Recebido' : 'Pendente'}</p></div>
                   </div>
                 ))}
               </div>
@@ -1298,7 +1479,7 @@ export default function ControlePresencaTab({
             <div className="grid gap-5 xl:grid-cols-2">
               <article data-cartao-painel className={`renea-card ${PANEL} overflow-hidden`}>
                 <div className="border-b border-slate-200 px-5 py-4">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-800">Frentes de serviço</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-800">Frentes de serviço</p>
                   <h2 className="mt-1 text-xl font-black tracking-tight text-slate-900">Onde falta gente</h2>
                   <p className="mt-1 text-xs text-slate-500">Da maior falta para a menor. Toque numa frente para recortar o painel por ela.</p>
                 </div>
@@ -1330,7 +1511,7 @@ export default function ControlePresencaTab({
                             <p className="text-base font-black tabular-nums text-slate-900">
                               {linha.confirmados}{linha.previstos > 0 ? <span className="text-xs font-bold text-slate-500">/{linha.previstos}</span> : null}
                             </p>
-                            <p className={`text-[11px] font-bold ${falta > 0 ? 'text-amber-800' : 'text-emerald-800'}`}>
+                            <p className={`text-xs font-bold ${falta > 0 ? 'text-amber-800' : 'text-emerald-800'}`}>
                               {falta > 0 ? `faltam ${falta}` : 'completa'}
                             </p>
                           </div>
@@ -1343,7 +1524,7 @@ export default function ControlePresencaTab({
 
               <article data-cartao-painel className={`renea-card ${PANEL} overflow-hidden`}>
                 <div className="border-b border-slate-200 px-5 py-4">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-800">Empresas</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-800">Empresas</p>
                   <h2 className="mt-1 text-xl font-black tracking-tight text-slate-900">Quem entregou efetivo</h2>
                   <p className="mt-1 text-xs text-slate-500">Toque numa empresa para ver só o efetivo dela.</p>
                 </div>
@@ -1364,7 +1545,7 @@ export default function ControlePresencaTab({
                           <p className="min-w-0 flex-1 truncate text-sm font-bold text-slate-900">{linha.rotulo}</p>
                           <div className="shrink-0 text-right">
                             <p className="text-base font-black tabular-nums text-slate-900">{linha.confirmados}</p>
-                            {linha.ausentes > 0 && <p className="text-[11px] font-bold text-rose-700">{linha.ausentes} ausente(s)</p>}
+                            {linha.ausentes > 0 && <p className="text-xs font-bold text-rose-700">{linha.ausentes} ausente(s)</p>}
                           </div>
                         </button>
                       </li>
@@ -1377,11 +1558,11 @@ export default function ControlePresencaTab({
             <article data-cartao-painel className={`renea-card ${PANEL} overflow-hidden`}>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-800">Últimos 30 dias</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-800">Últimos 30 dias</p>
                   <h2 className="mt-1 text-xl font-black tracking-tight text-slate-900">Quem falta sempre</h2>
                   <p className="mt-1 text-xs text-slate-500">O painel mostra o dia; o problema aparece no mês. Toque no nome para ver os registros da pessoa.</p>
                 </div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   <span className="sr-only">Mínimo de faltas</span>
                   <select
                     value={minimoFaltas}
@@ -1410,14 +1591,14 @@ export default function ControlePresencaTab({
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-bold text-slate-900">{pessoa.nome}</p>
                         <p className="mt-0.5 truncate text-xs text-slate-500">{pessoa.funcao} · {pessoa.equipe}</p>
-                        <p className="mt-1 truncate text-[11px] text-slate-500">
+                        <p className="mt-1 truncate text-xs text-slate-500">
                           {pessoa.datas.slice(0, 6).map(data => data.slice(8, 10) + '/' + data.slice(5, 7)).join(' · ')}
                           {pessoa.datas.length > 6 ? ` · +${pessoa.datas.length - 6}` : ''}
                         </p>
                       </div>
                       <div className="shrink-0 text-right">
                         <p className="text-lg font-black tabular-nums text-rose-700">{pessoa.faltas}</p>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">faltas</p>
+                        <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">faltas</p>
                       </div>
                     </button>
                   </li>
@@ -1438,106 +1619,63 @@ export default function ControlePresencaTab({
       )}
 
       {view === 'equipes' && (
-        <div className="space-y-4">
-          <div className={`${PANEL} flex flex-col gap-3 p-4 sm:flex-row sm:items-center`}>
-            <div className="relative flex-1"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><input value={teamSearch} onChange={event => setTeamSearch(event.target.value)} placeholder="Buscar equipe, responsável ou frente" className={`${FIELD} pl-10`} /></div>
-            {syncError && (
-              <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800">{syncError}</div>
-            )}
-            {onSyncEquipesPlanilha && (
-              <label className={`${SECONDARY_BUTTON} cursor-pointer`}>
-                {syncBusy ? <RotateCcw className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
-                {syncBusy ? 'Lendo planilha' : 'Sincronizar pela planilha'}
-                <input
-                  type="file"
-                  accept=".xlsx,.xlsm"
-                  className="hidden"
-                  disabled={syncBusy}
-                  onChange={event => {
-                    const file = event.target.files?.[0];
-                    event.target.value = '';
-                    if (file) void lerPlanilhaEfetivo(file);
-                  }}
-                />
-              </label>
-            )}
-            <button type="button" onClick={() => void exportEquipesExcel()} className={SECONDARY_BUTTON} title="Baixa um Excel com cada pessoa e a sua equipe"><Download className="h-4 w-4" /> Exportar equipes</button>
-            <button type="button" onClick={openNewGroup} className={PRIMARY_BUTTON}><Plus className="h-4 w-4" /> Nova equipe</button>
-          </div>
-          <div className="grid gap-4 lg:grid-cols-2">
+        filteredGroups.length === 0 ? (
+          <div className={`${PANEL} px-5 py-14 text-center text-sm text-[#5b6870]`}>{teamSearch.trim() ? 'Nenhuma equipe com esse nome.' : 'Nenhuma equipe cadastrada. Toque em Nova equipe para começar.'}</div>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
             {filteredGroups.map(group => {
               const members = group.funcionarioIds.map(id => safeFuncionarios.find(employee => employee.id === id)).filter(Boolean) as Funcionario[];
               return (
                 <article key={group.id} className={`${PANEL} p-5`}>
-                  <div className="flex items-start gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-900"><Users className="h-5 w-5" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-black text-slate-900">{group.nome || 'Equipe sem nome'}</h2><span className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.1em] ${group.status === 'ativo' && group.linkAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-700'}`}>{group.status === 'ativo' && group.linkAtivo ? 'Ativa' : 'Inativa'}</span></div><p className="mt-1 text-sm text-slate-500">{group.responsavel || 'Sem responsável'} · {group.frenteServico || 'Sem frente'}</p></div><button type="button" onClick={() => openGroup(group)} className="rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:border-emerald-700 hover:text-emerald-800" aria-label={`Editar ${group.nome}`}><Edit3 className="h-4 w-4" /></button></div>
-                  <div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-slate-50 p-3"><strong className="text-2xl font-black text-slate-900">{members.length}</strong><span className="ml-2 text-xs text-slate-500">colaboradores</span></div><div className="rounded-xl bg-slate-50 p-3"><strong className="text-sm font-black text-slate-900">{group.linkAtivo ? 'Disponível' : 'Pausado'}</strong><span className="mt-1 block text-xs text-slate-500">link da equipe</span></div></div>
-                  {group.token && <div className="mt-4 flex gap-2"><button type="button" onClick={() => copyLink(group.token, `Link de ${group.nome}`)} className={`${SECONDARY_BUTTON} flex-1`}><ClipboardCopy className="h-4 w-4" /> Copiar</button><button type="button" onClick={() => shareOnWhatsApp(group)} className={`${PRIMARY_BUTTON} flex-1`}><MessageCircle className="h-4 w-4" /> Enviar</button></div>}
-                  <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4">{onDeleteGrupoEquipe && <button type="button" onClick={() => setEquipeExcluindo(group)} className="inline-flex min-h-9 items-center gap-1.5 text-xs font-bold text-rose-700 hover:text-rose-900"><Trash2 className="h-3.5 w-3.5" /> Excluir</button>}<button type="button" onClick={() => openGroup({ ...group, token: generateToken() })} className="ml-auto inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950"><RotateCcw className="h-3.5 w-3.5" /> Renovar token</button></div>
+                  <div className="flex items-start gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-900"><Users className="h-5 w-5" aria-hidden="true" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-black text-slate-900">{group.nome || 'Equipe sem nome'}</h2><span className={`rounded-md px-2 py-1 text-xs font-bold uppercase tracking-[0.1em] ${group.status === 'ativo' && group.linkAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-700'}`}>{group.status === 'ativo' && group.linkAtivo ? 'Ativa' : 'Inativa'}</span></div><p className="mt-1 text-sm text-[#5b6870]">{group.responsavel || 'Sem responsável'} · {group.frenteServico || 'Sem frente'}</p></div><button type="button" onClick={() => openGroup(group)} className={`grid size-11 shrink-0 place-items-center rounded-xl border border-slate-200 text-[#5b6870] hover:border-emerald-700 hover:text-emerald-800 ${FOCO}`} aria-label={`Editar ${group.nome}`}><Edit3 className="h-4 w-4" aria-hidden="true" /></button></div>
+                  <div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-slate-50 p-3"><strong className="text-2xl font-black text-slate-900">{members.length}</strong><span className="ml-2 text-xs text-[#5b6870]">colaboradores</span></div><div className="rounded-xl bg-slate-50 p-3"><strong className="text-sm font-black text-slate-900">{group.linkAtivo ? 'Disponível' : 'Pausado'}</strong><span className="mt-1 block text-xs text-[#5b6870]">link da equipe</span></div></div>
+                  {group.token && <div className="mt-4 flex gap-2"><button type="button" onClick={() => copyLink(group.token, `Link de ${group.nome}`)} className={`${SECONDARY_BUTTON} flex-1`}><ClipboardCopy className="h-4 w-4" aria-hidden="true" /> Copiar link</button><button type="button" onClick={() => shareOnWhatsApp(group)} className={`${PRIMARY_BUTTON} flex-1`}><MessageCircle className="h-4 w-4" aria-hidden="true" /> Enviar no WhatsApp</button></div>}
+                  <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4">{onDeleteGrupoEquipe && <button type="button" onClick={() => setEquipeExcluindo(group)} className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-bold text-rose-700 hover:text-rose-900 lg:min-h-9 ${FOCO}`}><Trash2 className="h-4 w-4" aria-hidden="true" /> Excluir</button>}<button type="button" onClick={() => openGroup({ ...group, token: generateToken() })} className={`ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-bold text-emerald-800 hover:text-emerald-950 lg:min-h-9 ${FOCO}`}><RotateCcw className="h-4 w-4" aria-hidden="true" /> Renovar link</button></div>
                 </article>
               );
             })}
           </div>
-        </div>
+        )
       )}
 
       {view === 'registros' && (
-        <div className="space-y-4">
-          <div className={`${PANEL} grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-[160px_220px_220px_1fr_auto]`}>
-            <input type="date" value={recordDate} onChange={event => setRecordDate(event.target.value)} className={FIELD} />
-            <select value={recordGroup} onChange={event => setRecordGroup(event.target.value)} className={FIELD}><option value="todos">Todas as equipes</option>{safeGroups.map(group => <option key={group.id} value={group.id}>{group.nome}</option>)}</select>
-            <select value={recordStatus} onChange={event => setRecordStatus(event.target.value as 'todos' | PresencaStatus)} className={FIELD}><option value="todos">Todos os status</option>{STATUS_OPTIONS.map(status => <option key={status}>{status}</option>)}</select>
-            <div className="relative"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><input value={recordSearch} onChange={event => setRecordSearch(event.target.value)} placeholder="Buscar colaborador, função ou responsável" className={`${FIELD} pl-10`} /></div>
-            {onResetPresencaDia && (
-              <button
-                type="button"
-                onClick={() => void zerarDia()}
-                disabled={recordGroup === 'todos' || resetBusy}
-                title={recordGroup === 'todos' ? 'Escolha uma equipe para zerar o dia' : 'Apaga o apontamento do dia e libera novo envio pelo link'}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 text-sm font-bold text-rose-800 transition hover:border-rose-400 disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                {resetBusy ? <RotateCcw className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                Zerar o dia
-              </button>
-            )}
-            <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void exportExcel()} className={PRIMARY_BUTTON} title="Exportar Excel"><FileSpreadsheet className="h-4 w-4" /><span className="hidden sm:inline">Excel</span></button><button type="button" onClick={() => void exportPdf()} className={SECONDARY_BUTTON} title="Exportar PDF"><FileText className="h-4 w-4" /></button><button type="button" onClick={exportCsv} className={SECONDARY_BUTTON} title="Exportar CSV"><Download className="h-4 w-4" /></button>{onRestorePresenceHistory && <button type="button" onClick={() => void restoreHistory()} disabled={restoringHistory} className={`${SECONDARY_BUTTON} disabled:cursor-not-allowed disabled:opacity-60`} title="Busca de novo todos os envios já feitos pelo link público e traz de volta dias que sumiram, sem apagar nada"><RotateCcw className={`h-4 w-4 ${restoringHistory ? 'animate-spin' : ''}`} /><span className="hidden sm:inline">{restoringHistory ? 'Recuperando...' : 'Recuperar histórico'}</span></button>}{(verInativos || inativos.length > 0) && <button type="button" onClick={alternarInativos} aria-pressed={verInativos} className={SECONDARY_BUTTON} data-testid="presenca-ver-inativos">{verInativos ? <><ChevronLeft className="h-4 w-4" />Voltar aos ativos</> : <><Archive className="h-4 w-4" />Inativados ({inativos.length})</>}</button>}{selectedRecordIds.length > 0 && (verInativos
-              ? <button type="button" onClick={() => reativarRegistros(selectedRecordIds)} className={PRIMARY_BUTTON} data-testid="presenca-reativar"><RotateCcw className="h-4 w-4" /> Reativar ({selectedRecordIds.length})</button>
-              : <button type="button" onClick={deleteSelectedRecords} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-bold text-white transition hover:bg-rose-800" data-testid="presenca-inativar"><Archive className="h-4 w-4" /> Inativar ({selectedRecordIds.length})</button>)}</div>
-          </div>
-          {verInativos && <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900" data-testid="presenca-aviso-inativos">Mostrando os registros inativados. Marque os que devem voltar e toque em Reativar.</p>}
-          <label className="flex min-h-11 items-center gap-2 px-1 text-xs font-bold text-slate-600"><input type="checkbox" checked={filteredRecords.length > 0 && filteredRecords.every(record => selectedRecordIds.includes(record.id))} onChange={event => setSelectedRecordIds(event.target.checked ? filteredRecords.map(record => record.id) : [])} className="h-4 w-4 accent-emerald-700" /> Selecionar registros filtrados</label>
-          <div className="grid gap-3">
-            {filteredRecords.length === 0 ? <div className={`${PANEL} px-5 py-14 text-center text-sm text-slate-500`}>Nenhum registro encontrado para os filtros selecionados.</div> : filteredRecords.map(record => {
-              const duplicated = duplicateKeys.has(duplicateKey(record));
-              return (
-                <article key={record.id || `${duplicateKey(record)}-${record.horaEnvio}`} data-presence-row className={`${PANEL} grid gap-4 p-4 lg:grid-cols-[28px_150px_1.2fr_1.2fr_180px_auto] lg:items-center`}>
-                  <label className="flex items-start justify-center pt-1"><input type="checkbox" checked={selectedRecordIds.includes(record.id)} onChange={event => setSelectedRecordIds(current => event.target.checked ? [...new Set([...current, record.id])] : current.filter(id => id !== record.id))} aria-label={`Selecionar presença de ${record.funcionarioNome}`} className="h-4 w-4 accent-emerald-700" /></label><div><p className="text-xs font-bold text-slate-500">{record.data.split('-').reverse().join('/')}</p><p className="mt-1 text-lg font-black tabular-nums text-slate-900">{record.horaEnvio || '--:--'}</p>{duplicated && <span className="mt-2 inline-flex items-center gap-1 rounded-md bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-800"><AlertTriangle className="h-3 w-3" /> Duplicado</span>}</div>
-                  <div><p className="text-sm font-black text-slate-900">{record.funcionarioNome || 'Colaborador não informado'}</p><p className="mt-1 text-xs text-slate-500">{record.funcao || 'Função não informada'}</p></div>
-                  <div><p className="text-sm font-bold text-slate-900">{record.grupoNome || 'Equipe não informada'}</p><p className="mt-1 text-xs text-slate-500">{record.responsavel} · {record.frenteServico}</p></div>
-                  <span className={`w-fit rounded-lg border px-3 py-2 text-xs font-bold ${STATUS_STYLES[record.status] || STATUS_STYLES.Outro}`}>{record.status}</span>
-                  <button type="button" onClick={() => openRecordEditor(record)} className={SECONDARY_BUTTON}><Edit3 className="h-4 w-4" /> Atualizar</button>
-                  {record.observacao && <p className="border-t border-slate-200 pt-3 text-sm text-slate-500 lg:col-span-6">{record.observacao}</p>}
-                </article>
-              );
-            })}
-          </div>
-        </div>
+        <TabelaPadrao
+          titulo={verInativos ? 'Registros de presença inativados' : 'Registros de presença'}
+          linhas={filteredRecords}
+          colunas={colunasRegistros}
+          idDaLinha={record => record.id || `${duplicateKey(record)}-${record.horaEnvio}`}
+          nomeDoItem={{ um: 'registro', varios: 'registros' }}
+          vazio="Nenhum registro encontrado para os filtros escolhidos."
+          selecao={{
+            marcados,
+            onAlternar: id => setSelectedRecordIds(atual => (atual.includes(id) ? atual.filter(item => item !== id) : [...atual, id])),
+            onAlternarVarios: (ids, marcar) => setSelectedRecordIds(atual => (marcar ? [...new Set([...atual, ...ids])] : atual.filter(id => !ids.includes(id)))),
+            rotulo: record => `Marcar presença de ${record.funcionarioNome || 'colaborador'} em ${dataBr(record.data)}`,
+          }}
+          tituloAcoes="Corrigir"
+          acoes={record => (
+            <button type="button" onClick={() => openRecordEditor(record)} className={`${SECONDARY_BUTTON} min-h-11 px-3 md:min-h-8`} aria-label={`Corrigir presença de ${record.funcionarioNome || 'colaborador'}`}>
+              <Edit3 className="h-4 w-4" aria-hidden="true" /> Corrigir
+            </button>
+          )}
+          className="flex-1"
+          testId="presenca-registros"
+        />
       )}
 
       {view === 'historico' && (
-        <div className="grid gap-3">
-          {safeHistory.length === 0 ? <div className={`${PANEL} px-5 py-14 text-center text-sm text-slate-500`}>Nenhuma alteração de presença registrada.</div> : safeHistory.map(item => {
-            const employee = safeFuncionarios.find(person => person.id === item.funcionarioId);
-            return (
-              <article key={item.id} data-presence-row className={`${PANEL} grid gap-3 p-4 md:grid-cols-[180px_1fr_1fr] md:items-center`}>
-                <div><p className="text-xs font-bold text-slate-500">{item.data}</p><p className="mt-1 text-sm font-black text-slate-900">{safeText(employee?.nome) || item.funcionarioId}</p></div>
-                <div><p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Alteração</p><p className="mt-1 text-sm text-slate-700"><span className="text-rose-700">{item.valorAnterior}</span> <ArrowRight className="mx-1 inline h-3.5 w-3.5" /> <span className="font-bold text-emerald-800">{item.valorNovo}</span></p><p className="mt-1 text-xs text-slate-500">{item.motivo}</p></div>
-                <div className="md:text-right"><p className="text-sm font-semibold text-slate-700">{item.editadoPor}</p><p className="mt-1 text-xs text-slate-500">{item.editadoEm}</p></div>
-              </article>
-            );
-          })}
-        </div>
+        <TabelaPadrao
+          titulo="Correções feitas nos registros de presença"
+          linhas={safeHistory}
+          colunas={colunasHistorico}
+          idDaLinha={item => item.id}
+          nomeDoItem={{ um: 'correção', varios: 'correções' }}
+          ordenacaoInicial={{ chave: 'editadoEm', direcao: 'desc' }}
+          vazio="Nenhuma correção de presença registrada. Toda correção feita em Registros aparece aqui, com o motivo e quem fez."
+          className="flex-1"
+          testId="presenca-historico"
+        />
       )}
-
       {syncPlan && createPortal(
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4" role="dialog" aria-modal="true" aria-label="Conferir sincronização das equipes">
           <div className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white">
@@ -1572,7 +1710,7 @@ export default function ControlePresencaTab({
                 {syncPlan.entradas.filter(entry => entry.acao !== 'inalterada').map(entry => (
                   <li key={entry.grupo.id} className="rounded-xl border border-slate-200 p-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.1em] ${
+                      <span className={`rounded-md px-2 py-1 text-xs font-bold uppercase tracking-[0.1em] ${
                         entry.acao === 'criar' ? 'bg-emerald-100 text-emerald-800'
                           : entry.acao === 'desativar' ? 'bg-rose-100 text-rose-800'
                             : 'bg-amber-100 text-amber-900'}`}
@@ -1632,7 +1770,7 @@ export default function ControlePresencaTab({
       {isGroupEditorOpen && createPortal(
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/55 p-0 sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-label={editingGroupId ? 'Editar equipe' : 'Nova equipe'}>
           <div ref={groupEditorScrollRef} className="max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-t-[1.75rem] bg-white p-5  sm:rounded-[1.75rem] sm:p-7">
-            <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-800">Controle ao vivo</p><h2 className="mt-1 text-2xl font-black tracking-tight text-slate-900">{editingGroupId ? 'Editar equipe' : 'Nova equipe'}</h2></div><button type="button" onClick={() => setIsGroupEditorOpen(false)} className="rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:text-slate-900"><X className="h-5 w-5" /></button></div>
+            <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-800">Controle ao vivo</p><h2 className="mt-1 text-2xl font-black tracking-tight text-slate-900">{editingGroupId ? 'Editar equipe' : 'Nova equipe'}</h2></div><button type="button" onClick={() => setIsGroupEditorOpen(false)} className="rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:text-slate-900"><X className="h-5 w-5" /></button></div>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <label><span className="mb-1.5 block text-xs font-bold text-slate-600">Nome da equipe</span><input value={groupForm.nome} onChange={event => setGroupForm(current => ({ ...current, nome: event.target.value }))} className={FIELD} /></label>
               <label><span className="mb-1.5 block text-xs font-bold text-slate-600">Responsável</span><input value={groupForm.responsavel} onChange={event => setGroupForm(current => ({ ...current, responsavel: event.target.value }))} className={FIELD} /></label>
@@ -1641,7 +1779,7 @@ export default function ControlePresencaTab({
               <label><span className="mb-1.5 block text-xs font-bold text-slate-600">Situação</span><select value={groupForm.status} onChange={event => setGroupForm(current => ({ ...current, status: event.target.value as GrupoEquipe['status'] }))} className={FIELD}><option value="ativo">Ativa</option><option value="inativo">Inativa</option></select></label>
               <label className="flex min-h-11 items-center gap-3 self-end rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700"><input type="checkbox" checked={groupForm.linkAtivo} onChange={event => setGroupForm(current => ({ ...current, linkAtivo: event.target.checked }))} className="h-4 w-4 accent-emerald-700" /> Link de campo ativo</label>
             </div>
-            <div className="mt-6 border-t border-slate-200 pt-5">{editingGroupId && <div className="mb-3 inline-flex rounded-xl border border-slate-300 bg-white p-1" role="group" aria-label="Quais colaboradores mostrar"><button type="button" aria-pressed={Boolean(membrosAoAbrir)} onClick={() => setMembrosAoAbrir(safeIds(groupForm.funcionarioIds))} className={`min-h-10 rounded-lg px-4 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60 ${membrosAoAbrir ? 'bg-[#176b4d] text-white' : 'text-slate-600 hover:text-slate-900'}`}>Da equipe ({safeIds(groupForm.funcionarioIds).length})</button><button type="button" aria-pressed={!membrosAoAbrir} onClick={() => setMembrosAoAbrir(null)} className={`min-h-10 rounded-lg px-4 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60 ${!membrosAoAbrir ? 'bg-[#176b4d] text-white' : 'text-slate-600 hover:text-slate-900'}`}>Todos ativos</button></div>}<div className="flex flex-col gap-3 sm:flex-row"><div className="relative flex-1"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><input value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar colaborador, função ou matrícula" className={`${FIELD} pl-10`} /></div><select value={employeeCompany} onChange={event => setEmployeeCompany(event.target.value)} className={`${FIELD} sm:w-64`}><option value="">Todas as empresas</option>{teamCompanies.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}</select></div>
+            <div className="mt-6 border-t border-slate-200 pt-5">{editingGroupId && <div className="mb-3 inline-flex rounded-xl border border-slate-300 bg-white p-1" role="group" aria-label="Quais colaboradores mostrar"><button type="button" aria-pressed={Boolean(membrosAoAbrir)} onClick={() => setMembrosAoAbrir(safeIds(groupForm.funcionarioIds))} className={`min-h-10 rounded-lg px-4 text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus) ${membrosAoAbrir ? 'bg-[#176b4d] text-white' : 'text-slate-600 hover:text-slate-900'}`}>Da equipe ({safeIds(groupForm.funcionarioIds).length})</button><button type="button" aria-pressed={!membrosAoAbrir} onClick={() => setMembrosAoAbrir(null)} className={`min-h-10 rounded-lg px-4 text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus) ${!membrosAoAbrir ? 'bg-[#176b4d] text-white' : 'text-slate-600 hover:text-slate-900'}`}>Todos ativos</button></div>}<div className="flex flex-col gap-3 sm:flex-row"><div className="relative flex-1"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><input value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar colaborador, função ou matrícula" className={`${FIELD} pl-10`} /></div><select value={employeeCompany} onChange={event => setEmployeeCompany(event.target.value)} className={`${FIELD} sm:w-64`}><option value="">Todas as empresas</option>{teamCompanies.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}</select></div>
               <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">{membrosAoAbrir && visibleEmployees.length === 0 && <p className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">Nenhum colaborador ativo nesta equipe. Toque em <strong>Todos ativos</strong> para incluir.</p>}{visibleEmployees.map(employee => { const checked = safeIds(groupForm.funcionarioIds).includes(employee.id); return <label key={employee.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${checked ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white hover:border-emerald-300'}`}><input type="checkbox" checked={checked} onChange={event => setGroupForm(current => ({ ...current, funcionarioIds: event.target.checked ? [...safeIds(current.funcionarioIds), employee.id] : safeIds(current.funcionarioIds).filter(id => id !== employee.id) }))} className="h-4 w-4 accent-emerald-700" /><div className="min-w-0"><p className="truncate text-sm font-bold text-slate-900">{employee.nome}</p><p className="truncate text-xs text-slate-500">{employee.cargo}{employee.matricula ? ` · ${employee.matricula}` : ''}</p></div></label>; })}</div>
             </div>
             {feedback && <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{feedback}</p>}
@@ -1654,17 +1792,13 @@ export default function ControlePresencaTab({
       {editingRecord && createPortal(
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/55 p-0 sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-label="Atualizar presença">
           <div className="w-full max-w-lg rounded-t-[1.75rem] bg-white p-5  sm:rounded-[1.75rem] sm:p-7">
-            <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-800">Registro auditável</p><h2 className="mt-1 text-2xl font-black text-slate-900">Atualizar presença</h2><p className="mt-1 text-sm text-slate-500">{editingRecord.funcionarioNome} · {editingRecord.grupoNome}</p></div><button type="button" onClick={() => setEditingRecord(null)} className="rounded-xl border border-slate-200 p-2.5 text-slate-500"><X className="h-5 w-5" /></button></div>
+            <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-800">Registro auditável</p><h2 className="mt-1 text-2xl font-black text-slate-900">Atualizar presença</h2><p className="mt-1 text-sm text-slate-500">{editingRecord.funcionarioNome} · {editingRecord.grupoNome}</p></div><button type="button" onClick={() => setEditingRecord(null)} className="rounded-xl border border-slate-200 p-2.5 text-slate-500"><X className="h-5 w-5" /></button></div>
             <div className="mt-6 space-y-4"><label><span className="mb-1.5 block text-xs font-bold text-slate-600">Status</span><select value={editStatus} onChange={event => setEditStatus(event.target.value as PresencaStatus)} className={FIELD}>{STATUS_OPTIONS.map(status => <option key={status}>{status}</option>)}</select></label><label><span className="mb-1.5 block text-xs font-bold text-slate-600">Observação</span><textarea value={editObservation} onChange={event => setEditObservation(event.target.value)} rows={3} className={`${FIELD} py-3`} /></label><label><span className="mb-1.5 block text-xs font-bold text-slate-600">Motivo obrigatório</span><textarea value={editReason} onChange={event => setEditReason(event.target.value)} rows={3} className={`${FIELD} py-3`} /></label></div>
             <div className="mt-6 flex gap-3"><button type="button" onClick={() => setEditingRecord(null)} className={`${SECONDARY_BUTTON} flex-1`}>Cancelar</button><button type="button" onClick={saveRecordEdit} disabled={!editReason.trim()} className={`${PRIMARY_BUTTON} flex-1`}><CheckCircle2 className="h-4 w-4" /> Salvar</button></div>
           </div>
         </div>,
         document.body,
       )}
-
-      <div className="fixed inset-x-3 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-30 grid grid-cols-5 gap-1 rounded-lg border border-slate-300 bg-white/95 p-1.5 lg:hidden">
-        {navItems.map(item => { const Icon = item.icon; const active = view === item.id; return <button key={item.id} type="button" onClick={() => setView(item.id)} className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-bold ${active ? 'bg-slate-900 text-white' : 'text-slate-500'}`}><Icon className="h-4 w-4" />{item.label}</button>; })}
-      </div>
 
       <ConfirmDialog
         open={Boolean(equipeExcluindo)}
@@ -1746,7 +1880,7 @@ export default function ControlePresencaTab({
             <div className="space-y-3">
               <div className="grid gap-2 sm:grid-cols-2">
                 <label className="block space-y-1.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Dia</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Dia</span>
                   <input
                     type="date"
                     max={today}
@@ -1756,7 +1890,7 @@ export default function ControlePresencaTab({
                   />
                 </label>
                 <label className="block space-y-1.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Observação do dia</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Observação do dia</span>
                   <input
                     value={lancamento.observacaoDia}
                     onChange={event => setLancamento(atual => atual && { ...atual, observacaoDia: event.target.value })}
@@ -1766,7 +1900,7 @@ export default function ControlePresencaTab({
                 </label>
               </div>
 
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-900">
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
                 O lançamento fica marcado como feito pelo painel, com o seu nome. Relançar o mesmo dia
                 corrige as situações escolhidas e não duplica ninguém.
               </p>
@@ -1778,7 +1912,7 @@ export default function ControlePresencaTab({
                     <li key={pessoa.id} className="rounded-lg border border-slate-200 p-3">
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
                         <strong className="text-sm font-bold text-slate-900">{pessoa.nome}</strong>
-                        <span className="text-[11px] text-slate-500">{pessoa.cargo}{pessoa.matricula ? ` · Mat. ${pessoa.matricula}` : ''}</span>
+                        <span className="text-xs text-slate-500">{pessoa.cargo}{pessoa.matricula ? ` · Mat. ${pessoa.matricula}` : ''}</span>
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {STATUS_OPTIONS.map(status => (
@@ -1808,6 +1942,6 @@ export default function ControlePresencaTab({
           </Modal>
         );
       })()}
-    </section>
+    </TelaCheia>
   );
 }

@@ -8,9 +8,9 @@
  */
 import { useMemo, useState } from 'react';
 import { Check, KeyRound, Minus, ShieldAlert } from 'lucide-react';
-import { ALL_NAVIGATION_ITEMS, ROLE_ACCESS, type UserRole } from '../../app/navigation/navigation';
+import { ALL_NAVIGATION_ITEMS, ROLE_ACCESS, type NavigationItem, type UserRole } from '../../app/navigation/navigation';
 import { CAPACIDADES_CONHECIDAS, pode } from '../../utils/permissoes';
-import { TableBody, TableHead, TableShell } from '../../shared/ui';
+import { TabelaPadrao, type ColunaTabela } from '../../shared/ui';
 
 const PAPEIS: UserRole[] = ['admin', 'gestor', 'operador', 'leitura'];
 
@@ -36,6 +36,18 @@ export default function MatrizPermissoes() {
     [papel],
   );
   const semAcesso = ALL_NAVIGATION_ITEMS.length - modulos.length;
+  const colunas = useMemo<ColunaTabela<NavigationItem>[]>(() => [
+    { chave: 'tela', titulo: 'Tela', larguraMinima: 200, valorOrdenacao: modulo => modulo.label, render: modulo => <strong className="text-slate-900">{modulo.label}</strong> },
+    ...CAPACIDADES_CONHECIDAS.map((capacidade): ColunaTabela<NavigationItem> => ({
+      chave: capacidade,
+      titulo: ROTULO_CAPACIDADE[capacidade],
+      alinhamento: 'centro',
+      valorOrdenacao: modulo => (pode(papel, modulo.id, capacidade) ? 1 : 0),
+      render: modulo => (pode(papel, modulo.id, capacidade)
+        ? <span className="inline-flex items-center gap-1 text-emerald-800"><Check className="size-4" aria-hidden="true" /><span className="sr-only">Pode</span></span>
+        : <span className="inline-flex items-center gap-1 text-slate-600"><Minus className="size-4" aria-hidden="true" /><span className="sr-only">Não pode</span></span>),
+    })),
+  ], [papel]);
 
   return (
     <div id="administracao-permissoes" className="space-y-4">
@@ -73,43 +85,25 @@ export default function MatrizPermissoes() {
           { label: 'Pode aprovar', valor: String(modulos.filter(item => pode(papel, item.id, 'aprovar')).length) },
         ].map(item => (
           <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+            <p className="text-xs font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
             <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
           </div>
         ))}
       </section>
 
-      <div data-admin-reveal className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <TableShell minWidth={720}>
-          <TableHead>
-            <tr>
-              <th className="p-3">Tela</th>
-              {CAPACIDADES_CONHECIDAS.map(capacidade => (
-                <th key={capacidade} className="p-3">{ROTULO_CAPACIDADE[capacidade]}</th>
-              ))}
-            </tr>
-          </TableHead>
-          <TableBody>
-            {modulos.map(modulo => (
-              <tr key={modulo.id} className="transition-colors hover:bg-slate-50">
-                <td className="p-3 font-bold text-slate-800">{modulo.label}</td>
-                {CAPACIDADES_CONHECIDAS.map(capacidade => {
-                  const permitido = pode(papel, modulo.id, capacidade);
-                  return (
-                    <td key={capacidade} className="p-3">
-                      {permitido
-                        ? <Check className="h-4 w-4 text-emerald-600" aria-label="permitido" />
-                        : <Minus className="h-4 w-4 text-slate-700" aria-label="não permitido" />}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </TableBody>
-        </TableShell>
+      <div data-admin-reveal>
+        <TabelaPadrao
+          titulo={`Permissões do perfil ${ROTULO_PAPEL[papel]}`}
+          linhas={modulos}
+          colunas={colunas}
+          idDaLinha={modulo => modulo.id}
+          nomeDoItem={{ um: 'tela visível', varios: 'telas visíveis' }}
+          semPaginacao
+          vazio="Este perfil não vê nenhuma tela."
+        />
       </div>
 
-      <p className="flex items-center gap-2 text-[11px] text-slate-500">
+      <p className="flex items-center gap-2 text-xs text-slate-500">
         <KeyRound className="h-3.5 w-3.5" />
         Medição e orçamento só são aprovados pelo administrador; a operação registra o que acontece em campo, mas não
         decide medição, orçamento, contrato ou tratativa de não conformidade.

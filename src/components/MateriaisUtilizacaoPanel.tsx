@@ -15,6 +15,9 @@ import { formatMaterialQuantity, fromPieces, pieceLength, toPieces, unitLabel } 
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { formatarData } from '../utils/formato';
 import { EmptyState, FilterBar, Modal, isoDay } from '../shared/ui';
+import { AbasDaTela, type AbaDaTela } from '../shared/ui/AbasDaTela';
+import { reduzMovimento } from '../shared/motion/reduzMovimento';
+import { ICONE_DA_CLASSE } from './materiais/MateriaisSecoes';
 import { getSecurePublicMaterialLink } from '../publicApi';
 
 interface Props {
@@ -23,14 +26,15 @@ interface Props {
   etapas: EtapaServico[];
   responsavel: string;
   podeEditar: boolean;
-  /** Classe escolhida no menu ou nas subabas; vazio mostra todas. */
+  /** Classe escolhida nas abas de classe; vazio mostra todas. */
   classe: ClasseMaterial | '';
   onClasse: (classe: ClasseMaterial | '') => void;
   onSaveMovimentos: (movimentos: MovimentoMaterial[], descricao: string) => void;
   onUpdateMovimentos: (movimentos: MovimentoMaterial[], descricao: string, acao?: 'Editou' | 'Excluiu') => void;
 }
 
-const focusRing = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f26a2e]/60';
+const TODAS_AS_CLASSES = 'todas';
+const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)';
 const number = (value: number) => value.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 const percentText = (value: number | null) => value === null ? 'Sem entrada' : `${value.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
 
@@ -63,6 +67,10 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
   const classes = useMemo(() => CLASSES_MATERIAL
     .filter(nome => todasLinhas.some(item => classeDaLinha(item) === nome))
     .map(nome => ({ nome })), [todasLinhas, classeDaLinha]);
+  const abasDeClasse: AbaDaTela<string>[] = [
+    { id: TODAS_AS_CLASSES, rotulo: 'Todas' },
+    ...classes.map(item => ({ id: item.nome, rotulo: item.nome, icone: ICONE_DA_CLASSE[item.nome] })),
+  ];
   const linhas = useMemo(() => (classe ? todasLinhas.filter(item => classeDaLinha(item) === classe) : todasLinhas), [todasLinhas, classe, classeDaLinha]);
   const porTipo = useMemo(() => (classe ? resumoPorTipo(linhas, catalogo) : []), [classe, linhas, catalogo]);
   const termo = normalizeComparable(busca).trim();
@@ -85,7 +93,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
   }, [linhas]);
 
   useGSAP(() => {
-    if (!escopo.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!escopo.current || reduzMovimento()) return;
     gsap.fromTo(escopo.current.querySelectorAll('[data-uso-reveal]'), { opacity: 0, y: 12 }, {
       opacity: 1, y: 0, duration: 0.45, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity',
     });
@@ -171,7 +179,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
   };
 
   return (
-    <section ref={escopo} className="mt-3 space-y-3" aria-label="Utilização de materiais por ramo">
+    <section ref={escopo} className="space-y-3" aria-label="Utilização de materiais por ramo">
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {[
           { label: 'Uso médio', valor: resumo.mediaUso === null ? 'Sem entrada' : `${resumo.mediaUso.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`, detalhe: 'do que chegou em cada ramo' },
@@ -181,7 +189,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
         ].map(item => (
           <article key={item.label} data-uso-reveal className={`renea-card rounded-2xl border bg-white p-3.5 sm:p-4 ${item.alerta ? 'border-[#f26a2e]/40' : 'border-slate-200'}`}>
             <p className="text-sm font-semibold text-slate-600">{item.label}</p>
-            <strong className={`mt-1 block text-2xl font-black tabular-nums ${item.alerta ? 'text-[#b3461a]' : 'text-slate-950'}`}>{item.valor}</strong>
+            <strong className={`mt-1 block text-2xl font-black tabular-nums ${item.alerta ? 'text-[#c2410c]' : 'text-slate-950'}`}>{item.valor}</strong>
             <span className="mt-1 block text-xs leading-4 text-slate-500">{item.detalhe}</span>
           </article>
         ))}
@@ -213,28 +221,23 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
       </FilterBar>
 
       {classes.length > 1 && (
-        <nav data-uso-reveal aria-label="Classes de material" className="flex gap-2 overflow-x-auto pb-1">
-          {[{ nome: '' as const }, ...classes].map(item => {
-            const ativo = classe === item.nome;
-            return (
-              <button
-                key={item.nome || 'todas'}
-                type="button"
-                aria-pressed={ativo}
-                onClick={() => { onClasse(item.nome); setAberto(''); }}
-                className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-bold transition-colors active:scale-[0.98] ${ativo ? 'border-[#176b4d] bg-[#176b4d] text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-[#176b4d]'} ${focusRing}`}
-              >
-                {item.nome || 'Todas'}
-              </button>
-            );
-          })}
-        </nav>
+        <div data-uso-reveal>
+          <AbasDaTela<string>
+            id="uso-classe"
+            rotulo="Classes de material"
+            abas={abasDeClasse}
+            ativa={classe || TODAS_AS_CLASSES}
+            onTrocar={id => { onClasse(id === TODAS_AS_CLASSES ? '' : id as ClasseMaterial); setAberto(''); }}
+            idPainel="uso-por-ramo-lista"
+            testId="uso-classe"
+          />
+        </div>
       )}
 
       {classe && porTipo.length > 0 && (
         <article data-uso-reveal className="overflow-hidden rounded-2xl border border-slate-200 bg-white" aria-labelledby="uso-classe-titulo">
           <header className="border-b border-slate-100 px-4 pb-3 pt-4">
-            <h2 id="uso-classe-titulo" className="text-base font-black text-slate-950">{classe}: quanto chegou e quanto foi usado</h2>
+            <h3 id="uso-classe-titulo" className="text-base font-black text-slate-950">{classe}: quanto chegou e quanto foi usado</h3>
             <p className="mt-0.5 text-xs text-slate-500">Soma de todos os ramos{classe.startsWith('Tubo') && porTipo.some(item => item.unidade === 'pç') ? '. Tubo conta em peças' : ''}.</p>
           </header>
           <ul className="divide-y divide-slate-100">
@@ -245,8 +248,8 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
                   <span className="flex flex-wrap items-baseline justify-between gap-x-3">
                     <strong className="min-w-0 text-sm font-bold text-slate-900">{item.tipo}</strong>
                     <span className="text-sm tabular-nums text-slate-700">
-                      <strong className="text-slate-950">{number(item.usado)}</strong> <span className="text-slate-400">usados de</span> {number(item.recebido)} {item.unidade}
-                      <strong className={`ml-2 ${acima ? 'text-[#b3461a]' : 'text-emerald-800'}`}>{percentText(item.percentual)}</strong>
+                      <strong className="text-slate-950">{number(item.usado)}</strong> <span className="text-slate-500">usados de</span> {number(item.recebido)} {item.unidade}
+                      <strong className={`ml-2 ${acima ? 'text-[#c2410c]' : 'text-emerald-800'}`}>{percentText(item.percentual)}</strong>
                     </span>
                   </span>
                   <span className="block h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
@@ -256,7 +259,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
                     {item.ramos} {item.ramos === 1 ? 'ramo' : 'ramos'}
                     {item.recebido > 0 && !acima ? ` · sobram ${number(Number((item.recebido - item.usado + item.usadoSemEntrada).toFixed(2)))} ${item.unidade}` : ''}
                     {acima ? ` · ${number(Number((item.usado - item.usadoSemEntrada - item.recebido).toFixed(2)))} ${item.unidade} acima do recebido` : ''}
-                    {item.usadoSemEntrada > 0 && <span className="font-semibold text-[#b3461a]"> · {number(item.usadoSemEntrada)} {item.unidade} usados em ramo sem entrada</span>}
+                    {item.usadoSemEntrada > 0 && <span className="font-semibold text-[#c2410c]"> · {number(item.usadoSemEntrada)} {item.unidade} usados em ramo sem entrada</span>}
                   </span>
                 </li>
               );
@@ -276,7 +279,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
         <article data-uso-reveal className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4" aria-live="polite">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-black text-slate-950">Link dos apontadores</h2>
+              <h3 className="text-sm font-black text-slate-950">Link dos apontadores</h3>
               <p className="mt-1 text-xs text-slate-600">Mande pelo WhatsApp. Abre no celular sem senha; cada um informa o nome uma vez.</p>
             </div>
             <button type="button" onClick={() => setLink({ estado: 'fechado' })} className={`min-h-9 rounded-xl px-2 text-xs font-bold text-slate-500 hover:text-slate-800 ${focusRing}`}>Fechar</button>
@@ -293,13 +296,13 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
               </a>
             </div>
           )}
-          {link.erro && <p role="alert" className="mt-3 flex items-center gap-2 text-xs font-bold text-[#b3461a]"><AlertTriangle className="h-4 w-4" /> {link.erro}</p>}
+          {link.erro && <p role="alert" className="mt-3 flex items-center gap-2 text-xs font-bold text-[#c2410c]"><AlertTriangle className="h-4 w-4" /> {link.erro}</p>}
         </article>
       )}
 
       {podeEditar && semRamo.length > 0 && (
         <article data-uso-reveal className="rounded-2xl border border-[#f26a2e]/40 bg-[#fff7f2] p-4">
-          <h2 className="flex items-center gap-2 text-sm font-black text-slate-950"><AlertTriangle className="h-4 w-4 text-[#f26a2e]" /> Entradas que ainda não contam</h2>
+          <h3 className="flex items-center gap-2 text-sm font-black text-slate-950"><AlertTriangle className="h-4 w-4 text-[#c2410c]" aria-hidden="true" /> Entradas que ainda não contam</h3>
           <p className="mt-1 text-xs text-slate-600">Estas notas têm o local escrito à mão. Escolha o ramo cadastrado e toque em Vincular. Nada é apagado.</p>
           <ul className="mt-3 grid gap-2">
             {semRamo.slice(0, 8).map(grupo => {
@@ -330,6 +333,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
         </article>
       )}
 
+      <div id="uso-por-ramo-lista">
       {grupos.length === 0 ? (
         <EmptyState
           icon={Package}
@@ -342,12 +346,12 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
             <article key={grupo.branchId} data-uso-reveal className="overflow-hidden rounded-2xl border border-slate-200 bg-white" aria-labelledby={`ramo-${grupo.branchId}`}>
               <header className="flex items-end justify-between gap-3 border-b border-slate-100 px-4 pb-3 pt-4">
                 <div className="min-w-0">
-                  <h2 id={`ramo-${grupo.branchId}`} className="truncate text-base font-black text-slate-950">{grupo.branchName}</h2>
+                  <h3 id={`ramo-${grupo.branchId}`} className="truncate text-base font-black text-slate-950">{grupo.branchName}</h3>
                   <p className="mt-0.5 text-xs text-slate-500">{grupo.rows.length} material(is){grupo.mixedUnits ? ' · uso médio entre eles' : ''}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="grid justify-items-end">
-                    <strong className={`${grupo.percent === null ? 'text-base' : 'text-3xl'} font-black leading-none tabular-nums ${grupo.percent === null ? 'text-slate-500' : grupo.percent > 100 ? 'text-[#b3461a]' : 'text-emerald-800'}`}>{percentText(grupo.percent)}</strong>
+                    <strong className={`${grupo.percent === null ? 'text-base' : 'text-3xl'} font-black leading-none tabular-nums ${grupo.percent === null ? 'text-slate-500' : grupo.percent > 100 ? 'text-[#c2410c]' : 'text-emerald-800'}`}>{percentText(grupo.percent)}</strong>
                     {grupo.percent !== null && <span className="mt-0.5 text-xs font-semibold text-slate-500">aplicado</span>}
                   </span>
                   {podeEditar && (
@@ -377,7 +381,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
                           <span className="min-w-0 text-sm font-bold text-slate-900">{row.materialDescription}</span>
                           <span className="flex shrink-0 items-center gap-1.5 text-sm tabular-nums text-slate-700">
                             <strong className="text-slate-950">{number(inCountUnit(material, row.used))}</strong>
-                            <span className="text-slate-400">de</span> {number(inCountUnit(material, row.received))} {unidade}
+                            <span className="text-slate-500">de</span> {number(inCountUnit(material, row.received))} {unidade}
                             <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${expandido ? 'rotate-180' : ''}`} />
                           </span>
                         </span>
@@ -390,7 +394,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
                           <span className={`block h-full origin-left rounded-full transition-transform duration-500 ${acima ? 'bg-[#f26a2e]' : 'bg-emerald-700'}`} style={{ transform: `scaleX(${largura / 100})` }} />
                         </span>
                         <span className="flex flex-wrap items-center justify-between gap-x-3 text-xs text-slate-500">
-                          <span className={acima ? 'font-bold text-[#b3461a]' : ''}>
+                          <span className={acima ? 'font-bold text-[#c2410c]' : ''}>
                             {row.received === 0
                               ? 'Uso sem entrada neste ramo'
                               : acima
@@ -417,11 +421,11 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
                                   </span>
                                   {podeEditar && !uso.canceladoEm && (confirmarDesfazer === uso.id ? (
                                     <span className="flex gap-1.5">
-                                      <button type="button" onClick={() => desfazer(uso)} className={`inline-flex min-h-9 items-center gap-1 rounded-xl bg-[#b3461a] px-2.5 text-xs font-bold text-white ${focusRing}`}><Undo2 className="h-3.5 w-3.5" /> Confirmar</button>
+                                      <button type="button" onClick={() => desfazer(uso)} className={`inline-flex min-h-9 items-center gap-1 rounded-xl bg-[#c2410c] px-2.5 text-xs font-bold text-white ${focusRing}`}><Undo2 className="h-3.5 w-3.5" /> Confirmar</button>
                                       <button type="button" onClick={() => setConfirmarDesfazer('')} className={`min-h-9 rounded-xl border border-slate-200 px-2.5 text-xs font-bold text-slate-600 ${focusRing}`}>Manter</button>
                                     </span>
                                   ) : (
-                                    <button type="button" onClick={() => setConfirmarDesfazer(uso.id)} className={`inline-flex min-h-9 items-center gap-1 rounded-xl border border-slate-200 px-2.5 text-xs font-bold text-slate-600 hover:border-[#f26a2e] hover:text-[#b3461a] ${focusRing}`}>
+                                    <button type="button" onClick={() => setConfirmarDesfazer(uso.id)} className={`inline-flex min-h-9 items-center gap-1 rounded-xl border border-slate-200 px-2.5 text-xs font-bold text-slate-600 hover:border-[#f26a2e] hover:text-[#c2410c] ${focusRing}`}>
                                       <RotateCcw className="h-3.5 w-3.5" /> Desfazer
                                     </button>
                                   ))}
@@ -439,6 +443,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
           ))}
         </div>
       )}
+      </div>
 
       <Modal
         open={Boolean(apontar)}

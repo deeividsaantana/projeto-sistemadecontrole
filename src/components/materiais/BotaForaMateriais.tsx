@@ -12,7 +12,7 @@ import { resumirBotaFora, viagensDeBotaFora, type ResumoDestino, type ViagemBota
 import { nomeDoMes } from '../../modules/materials/previstoMateriais';
 import { normalizeComparable } from '../../utils/canonicalIdentity';
 import { moeda, numero } from '../../utils/formato';
-import { EmptyState } from '../../shared/ui';
+import { EmptyState, TabelaPadrao, type ColunaTabela } from '../../shared/ui';
 import { BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO, reduzMovimento } from '../cadastros/estilos';
 
 interface Props {
@@ -23,7 +23,6 @@ interface Props {
   onIrParaLocais: () => void;
 }
 
-const POR_PAGINA = 30;
 // Uma cor por destino, na ordem de quem recebeu mais viagens: sempre a mesma em toda a tela.
 // A obra tem três bota-foras; um quarto repete o cinza.
 const CORES = ['#176b4d', '#f26a2e', '#718087'];
@@ -37,7 +36,6 @@ const quantidadeDa = (viagem: ViagemBotaFora) => `${numero(Math.abs(Number(viage
 export default function BotaForaMateriais({ movimentos, etapas, termo, onIrParaLocais }: Props) {
   const raiz = useRef<HTMLDivElement>(null);
   const [mes, setMes] = useState('');
-  const [limite, setLimite] = useState(POR_PAGINA);
   const [destaque, setDestaque] = useState<string | null>(null);
 
   const viagens = useMemo(() => viagensDeBotaFora(movimentos, etapas), [etapas, movimentos]);
@@ -64,10 +62,34 @@ export default function BotaForaMateriais({ movimentos, etapas, termo, onIrParaL
     gsap.from(raiz.current.querySelectorAll('[data-botafora-barra]'), { scaleY: 0, transformOrigin: 'bottom center', duration: 0.6, ease: 'power2.out', stagger: 0.03, clearProps: 'transform' });
   }, { scope: raiz, dependencies: [mes] });
 
-  const escolherMes = (proximo: string) => {
-    setMes(proximo);
-    setLimite(POR_PAGINA);
-  };
+  const escolherMes = (proximo: string) => setMes(proximo);
+
+  const colunas: ColunaTabela<ViagemBotaFora>[] = [
+    { chave: 'data', titulo: 'Data', valorOrdenacao: viagem => viagem.movimento.data, render: viagem => <span className="tabular-nums">{dataCurta(viagem.movimento.data)}</span> },
+    {
+      chave: 'destino',
+      titulo: 'Destino',
+      larguraMinima: 160,
+      valorOrdenacao: viagem => viagem.destino.nome,
+      render: viagem => (
+        <>
+          <span className="flex items-center gap-2 font-semibold text-slate-900"><i className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: corDe(viagem.destino.id) }} aria-hidden="true" />{viagem.destino.nome}</span>
+          <span className="block text-xs text-slate-600">{viagem.residuo}</span>
+        </>
+      ),
+      dica: viagem => `${viagem.destino.nome} · ${viagem.residuo}`,
+    },
+    {
+      chave: 'origem',
+      titulo: 'Origem',
+      larguraMinima: 140,
+      valorOrdenacao: viagem => viagem.origem?.nome || viagem.origemTexto || null,
+      render: viagem => <>{viagem.origem?.nome || viagem.origemTexto || '—'}{viagem.codigoSge ? <span className="ml-1 font-mono text-xs text-[#176b4d]">({viagem.codigoSge})</span> : null}</>,
+    },
+    { chave: 'placa', titulo: 'Placa · nota', valorOrdenacao: viagem => viagem.movimento.placa || null, render: viagem => <span className="font-mono text-xs text-slate-700">{[viagem.movimento.placa, viagem.movimento.notaFiscal].filter(Boolean).join(' · ') || '—'}</span> },
+    { chave: 'quantidade', titulo: 'Quantidade', alinhamento: 'direita', valorOrdenacao: viagem => Math.abs(Number(viagem.movimento.quantidade) || 0), render: quantidadeDa },
+    { chave: 'custo', titulo: 'Custo', alinhamento: 'direita', valorOrdenacao: viagem => viagem.custo || 0, render: viagem => (viagem.custo ? moeda(viagem.custo) : '—') },
+  ];
 
   if (!viagens.length) {
     return (
@@ -165,7 +187,7 @@ export default function BotaForaMateriais({ movimentos, etapas, termo, onIrParaL
           ))}
         </div>
         <div className="relative mt-3">
-          <span className="absolute left-0 top-0 text-xs tabular-nums text-slate-400">{numero(maiorMes, 0)}</span>
+          <span className="absolute left-0 top-0 text-xs tabular-nums text-slate-500">{numero(maiorMes, 0)}</span>
           <div className="ml-8 grid h-44 items-end gap-1 border-b border-slate-200 sm:gap-2" style={{ gridTemplateColumns: `repeat(${geral.porMes.length}, minmax(0, 1fr))` }} onMouseLeave={() => setDestaque(null)}>
             {geral.porMes.map(ponto => {
               const escolhido = mes === ponto.mes;
@@ -193,7 +215,7 @@ export default function BotaForaMateriais({ movimentos, etapas, termo, onIrParaL
           </div>
           <div className="ml-8 grid gap-1 pt-1 sm:gap-2" style={{ gridTemplateColumns: `repeat(${geral.porMes.length}, minmax(0, 1fr))` }} aria-hidden="true">
             {geral.porMes.map(ponto => (
-              <span key={ponto.mes} className="text-center text-[11px] leading-tight tabular-nums text-slate-500">
+              <span key={ponto.mes} className="text-center text-xs leading-tight tabular-nums text-slate-500">
                 <span className="block">{nomeDoMes(ponto.mes).slice(0, 3)}</span>
                 <span className="block">{ponto.mes.slice(2, 4)}</span>
               </span>
@@ -220,7 +242,7 @@ export default function BotaForaMateriais({ movimentos, etapas, termo, onIrParaL
             <li key={item.chave} className="flex min-h-14 items-center gap-3 px-4 py-2.5">
               {item.codigoSge
                 ? <span className="inline-flex min-w-12 shrink-0 justify-center rounded-lg bg-emerald-50 px-2 py-1 font-mono text-sm font-bold tabular-nums text-[#176b4d] ring-1 ring-inset ring-emerald-200" title="Código SGE da viagem">{item.codigoSge}</span>
-                : <span className="inline-flex min-w-12 shrink-0 justify-center rounded-lg bg-slate-50 px-2 py-1 text-sm font-semibold text-slate-400 ring-1 ring-inset ring-slate-200" title="Sem código SGE">—</span>}
+                : <span className="inline-flex min-w-12 shrink-0 justify-center rounded-lg bg-slate-50 px-2 py-1 text-sm font-semibold text-slate-500 ring-1 ring-inset ring-slate-200" title="Sem código SGE">—</span>}
               <span className="min-w-0 flex-1">
                 <strong className={`block break-words text-base font-bold sm:text-sm ${item.conhecida ? 'text-slate-900' : 'text-slate-600'}`}>{item.origem}</strong>
                 <span className="text-sm text-slate-500">para {item.destino}</span>
@@ -232,7 +254,7 @@ export default function BotaForaMateriais({ movimentos, etapas, termo, onIrParaL
         {origensSemLocal.length > 0 && (
           <div className="flex flex-col gap-3 border-t border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center">
             <p className="flex min-w-0 flex-1 items-start gap-2 text-sm text-amber-900">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#f26a2e]" aria-hidden="true" />
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#c2410c]" aria-hidden="true" />
               {plural(origensSemLocal.length, 'origem ainda não tem', 'origens ainda não têm')} local no cadastro, por isso ficam sem código SGE. Ligue em Ramos e locais.
             </p>
             <button type="button" onClick={onIrParaLocais} className={`${BOTAO_SECUNDARIO} sm:shrink-0`}>
@@ -248,62 +270,16 @@ export default function BotaForaMateriais({ movimentos, etapas, termo, onIrParaL
           <h3 id="botafora-lista" className="text-base font-bold text-slate-900">Viagens{mes ? ` de ${nomeDoMes(mes)}` : ''}</h3>
           <span className="text-sm tabular-nums text-slate-500">{plural(lista.length, 'lançamento', 'lançamentos')}{termo ? ' com a busca' : ''}</span>
         </header>
-        {!lista.length ? (
-          <EmptyState icon={Truck} title="Nada encontrado" description="Nenhuma viagem com essa busca no período." />
-        ) : (
-          <>
-            <table className="hidden w-full text-left text-sm md:table">
-              <caption className="sr-only">Viagens de bota-fora, da mais recente para a mais antiga</caption>
-              <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-4 py-2">Data</th>
-                  <th className="px-4 py-2">Destino</th>
-                  <th className="px-4 py-2">Origem</th>
-                  <th className="px-4 py-2">Placa · nota</th>
-                  <th className="px-4 py-2 text-right">Quantidade</th>
-                  <th className="px-4 py-2 text-right">Custo</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {lista.slice(0, limite).map(viagem => (
-                  <tr key={viagem.movimento.id}>
-                    <td className="px-4 py-2.5 tabular-nums text-slate-700">{dataCurta(viagem.movimento.data)}</td>
-                    <td className="px-4 py-2.5">
-                      <span className="flex items-center gap-2 font-semibold text-slate-900"><i className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: corDe(viagem.destino.id) }} aria-hidden="true" />{viagem.destino.nome}</span>
-                      <span className="text-xs text-slate-500">{viagem.residuo}</span>
-                    </td>
-                    <td className="px-4 py-2.5 text-slate-700">{viagem.origem?.nome || viagem.origemTexto || '—'}{viagem.codigoSge ? <span className="ml-1 font-mono text-xs text-[#176b4d]">({viagem.codigoSge})</span> : null}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-slate-600">{[viagem.movimento.placa, viagem.movimento.notaFiscal].filter(Boolean).join(' · ') || '—'}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-900">{quantidadeDa(viagem)}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-900">{viagem.custo ? moeda(viagem.custo) : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <ul className="divide-y divide-slate-100 md:hidden">
-              {lista.slice(0, limite).map(viagem => (
-                <li key={viagem.movimento.id} className="px-4 py-3">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <strong className="flex items-center gap-2 text-base font-bold text-slate-900"><i className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: corDe(viagem.destino.id) }} aria-hidden="true" />{viagem.destino.nome}</strong>
-                    <span className="shrink-0 text-sm tabular-nums text-slate-500">{dataCurta(viagem.movimento.data)}</span>
-                  </div>
-                  <p className="mt-0.5 text-sm text-slate-600">{viagem.residuo} · {quantidadeDa(viagem)}{viagem.custo ? ` · ${moeda(viagem.custo)}` : ''}</p>
-                  <p className="text-sm text-slate-500">
-                    {viagem.origem?.nome || viagem.origemTexto ? `De ${viagem.origem?.nome || viagem.origemTexto}` : 'Sem origem'}
-                    {[viagem.movimento.placa, viagem.movimento.notaFiscal && `nota ${viagem.movimento.notaFiscal}`].filter(Boolean).map(texto => ` · ${texto}`).join('')}
-                  </p>
-                </li>
-              ))}
-            </ul>
-            {lista.length > limite && (
-              <div className="border-t border-slate-100 p-3 text-center">
-                <button type="button" onClick={() => setLimite(atual => atual + POR_PAGINA)} className={BOTAO_SECUNDARIO}>
-                  Ver mais {Math.min(POR_PAGINA, lista.length - limite)} de {numero(lista.length - limite, 0)}
-                </button>
-              </div>
-            )}
-          </>
-        )}
+        <TabelaPadrao
+          titulo={`Viagens de bota-fora${mes ? ` de ${nomeDoMes(mes)}` : ''}`}
+          linhas={lista}
+          colunas={colunas}
+          idDaLinha={viagem => viagem.movimento.id}
+          nomeDoItem={{ um: 'viagem', varios: 'viagens' }}
+          ordenacaoInicial={{ chave: 'data', direcao: 'desc' }}
+          vazio={<EmptyState icon={Truck} title="Nada encontrado" description="Nenhuma viagem com essa busca no período." />}
+          className="rounded-none border-0"
+        />
       </article>
     </div>
   );

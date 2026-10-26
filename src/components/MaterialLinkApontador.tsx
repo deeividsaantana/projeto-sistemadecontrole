@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
+import { reduzMovimento } from '../shared/motion/reduzMovimento';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -43,7 +44,7 @@ const MAX_FOTOS = 3;
 const NAME_KEY = 'renea_material_apontador_nome';
 const PENDING_KEY = 'renea_material_envio_pendente';
 
-const FOCO = 'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f26a2e]/60';
+const FOCO = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)';
 const CARTAO = 'rounded-2xl border border-slate-200 bg-white';
 const BOTAO_PRIMARIO = `inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#176b4d] px-5 text-base font-bold text-white transition active:scale-[0.98] disabled:bg-slate-200 disabled:text-slate-500 ${FOCO}`;
 const BOTAO_SECUNDARIO = `inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 text-base font-bold text-slate-800 transition active:scale-[0.98] ${FOCO}`;
@@ -75,7 +76,6 @@ const dayLabel = (iso: string, today: string) => {
 };
 
 const number = (value: number) => value.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
-const reduzMovimento = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** O apontador conta peça quando o material tem comprimento; senão, na unidade do cadastro. */
 const countUnit = (item: PublicMaterialStock) => pieceLength(item) ? 'pç' : (item.unidade || '').toLowerCase().replace(/^mt$/, 'm');
@@ -185,7 +185,7 @@ function CameraNoApp({ onFoto, onFechar }: { onFoto: (arquivo: File) => void; on
         {!pronta && !erro && <p className="absolute inset-0 grid place-items-center text-base font-semibold text-white/80">Abrindo a câmera...</p>}
         {erro && (
           <div className="absolute inset-x-4 top-1/3 rounded-2xl bg-white p-4 text-center">
-            <AlertTriangle className="mx-auto size-8 text-[#f26a2e]" aria-hidden="true" />
+            <AlertTriangle className="mx-auto size-8 text-[#c2410c]" aria-hidden="true" />
             <p className="mt-2 text-base font-semibold text-slate-800">{erro}</p>
           </div>
         )}
@@ -498,7 +498,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
           </Titulo>
           <form className={`${CARTAO} grid gap-3 p-4`} data-material-reveal onSubmit={event => { event.preventDefault(); salvarNome(); }}>
             <label htmlFor="material-link-nome" className="text-sm font-bold text-slate-700">Seu nome</label>
-            <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 focus-within:border-[#176b4d] focus-within:ring-4 focus-within:ring-[#f26a2e]/40">
+            <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 focus-within:border-[#176b4d] focus-within:ring-2 focus-within:ring-(--renea-focus)">
               <UserRound className="size-5 shrink-0 text-slate-400" aria-hidden="true" />
               <input
                 id="material-link-nome"
@@ -540,7 +540,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
             </ul>
             {recibo.fotosFalharam && (
               <p className="mt-3 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-left text-sm font-semibold text-amber-900" role="status">
-                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#f26a2e]" aria-hidden="true" /> O uso foi salvo, mas as fotos não chegaram. Avise o escritório.
+                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#c2410c]" aria-hidden="true" /> O uso foi salvo, mas as fotos não chegaram. Avise o escritório.
               </p>
             )}
             <div className="mt-5 grid gap-2">
@@ -564,7 +564,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
             <button type="button" className={`rounded font-bold text-[#176b4d] underline underline-offset-4 ${FOCO}`} onClick={() => { setNomeRascunho(nome); setTrocandoNome(true); }}>Trocar nome</button>
           </Titulo>
           {(view?.ramos.length || 0) > 5 && (
-            <label className="mb-3 flex min-h-14 items-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 focus-within:border-[#176b4d] focus-within:ring-4 focus-within:ring-[#f26a2e]/40" data-material-reveal>
+            <label className="mb-3 flex min-h-14 items-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 focus-within:border-[#176b4d] focus-within:ring-2 focus-within:ring-(--renea-focus)" data-material-reveal>
               <Search className="size-5 shrink-0 text-slate-400" aria-hidden="true" />
               <span className="sr-only">Buscar ramo ou material</span>
               <input inputMode="search" enterKeyHint="search" autoComplete="off" value={busca} onChange={event => setBusca(event.target.value)} placeholder="Buscar ramo ou material" className="min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400 focus-visible:outline-none" />
@@ -611,7 +611,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
           <Passos atual={2} />
           <Titulo eyebrow={ramo.nome} titulo="O que foi usado?">Toque no material e diga quanto usou.</Titulo>
           {ramo.materiais.length > 6 && (
-            <label className="mb-3 flex min-h-14 items-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 focus-within:border-[#176b4d] focus-within:ring-4 focus-within:ring-[#f26a2e]/40" data-material-reveal>
+            <label className="mb-3 flex min-h-14 items-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 focus-within:border-[#176b4d] focus-within:ring-2 focus-within:ring-(--renea-focus)" data-material-reveal>
               <Search className="size-5 shrink-0 text-slate-400" aria-hidden="true" />
               <span className="sr-only">Buscar material</span>
               <input inputMode="search" autoComplete="off" value={buscaMaterial} onChange={event => setBuscaMaterial(event.target.value)} placeholder="Buscar material" className="min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400 focus-visible:outline-none" />
@@ -643,7 +643,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
                       <p className="mb-2 text-sm font-bold text-slate-700">Quanto usou?</p>
                       <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_3.5rem] items-center gap-2">
                         <button type="button" onClick={() => ajustar(item, -1)} disabled={marcado <= 0} aria-label={`Diminuir ${item.descricao}`} className={`grid h-14 place-items-center rounded-2xl border border-slate-300 bg-white text-slate-700 disabled:opacity-40 ${FOCO}`}><Minus className="size-6" aria-hidden="true" /></button>
-                        <label className="flex h-14 items-baseline justify-center gap-1.5 rounded-2xl border border-slate-300 bg-white px-3 focus-within:border-[#176b4d] focus-within:ring-4 focus-within:ring-[#f26a2e]/40">
+                        <label className="flex h-14 items-baseline justify-center gap-1.5 rounded-2xl border border-slate-300 bg-white px-3 focus-within:border-[#176b4d] focus-within:ring-2 focus-within:ring-(--renea-focus)">
                           <span className="sr-only">Quantidade usada de {item.descricao} em {unidade}</span>
                           <input
                             inputMode="decimal"
@@ -671,7 +671,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
 
           {lancadosNoRamo.length > 0 && (
             <section className="mt-6" data-material-reveal aria-labelledby="material-link-hoje">
-              <h2 id="material-link-hoje" className="mb-2 text-sm font-bold uppercase tracking-wide text-[#718087]">Já lançado hoje neste ramo</h2>
+              <h2 id="material-link-hoje" className="mb-2 text-sm font-bold uppercase tracking-wide text-[#5b6870]">Já lançado hoje neste ramo</h2>
               <ul className={`${CARTAO} divide-y divide-slate-100`}>
                 {lancadosNoRamo.slice(0, 12).map(uso => {
                   const material = ramo.materiais.find(item => item.materialId === uso.materialId);
@@ -766,7 +766,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
                 <Camera className="size-6 text-[#176b4d]" aria-hidden="true" />
                 <span>Câmera aqui</span>
               </button>
-              <label className={`${BOTAO_SECUNDARIO} cursor-pointer flex-col gap-1 py-3 focus-within:ring-4 focus-within:ring-[#f26a2e]/60`}>
+              <label className={`${BOTAO_SECUNDARIO} cursor-pointer flex-col gap-1 py-3 focus-within:ring-2 focus-within:ring-(--renea-focus)`}>
                 {preparandoFoto ? <RefreshCw className="size-6 animate-spin text-[#176b4d]" aria-hidden="true" /> : <Images className="size-6 text-[#176b4d]" aria-hidden="true" />}
                 <span>{preparandoFoto ? 'Preparando' : 'Da galeria'}</span>
                 <input
@@ -784,7 +784,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
 
         <section className={`${CARTAO} mt-3 p-4`} data-material-reveal aria-live="polite" aria-labelledby="material-link-gps">
           <div className="flex items-start gap-3">
-            <span className={`grid size-11 shrink-0 place-items-center rounded-xl ${gps.estado === 'ativo' ? 'bg-emerald-50 text-[#176b4d]' : 'bg-amber-50 text-[#f26a2e]'}`}>
+            <span className={`grid size-11 shrink-0 place-items-center rounded-xl ${gps.estado === 'ativo' ? 'bg-emerald-50 text-[#176b4d]' : 'bg-amber-50 text-[#c2410c]'}`}>
               <LocateFixed className={`size-5 ${gps.estado === 'buscando' ? 'animate-pulse' : ''}`} aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">

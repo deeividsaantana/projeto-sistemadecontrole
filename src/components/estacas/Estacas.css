@@ -42,7 +42,7 @@
 .cortina-pontos-cor { fill: var(--cortina-solo-escuro); opacity: 0.4; }
 .cortina-chao { stroke: var(--cortina-solo-escuro); stroke-width: 2; }
 .cortina-regua { stroke: var(--cortina-linha); stroke-dasharray: 3 4; stroke-width: 1; }
-.cortina-regua-texto { fill: #718087; font-size: 10px; font-weight: 600; }
+.cortina-regua-texto { fill: #5b6870; font-size: .75rem; font-weight: 600; }
 
 .cortina-cravada-corpo { fill: url(#cortina-aco); }
 .cortina-cravada-face { fill: var(--cortina-cravada); opacity: 0.55; }
@@ -73,13 +73,6 @@
 @media (prefers-reduced-motion: reduce) {
   .estacas-vivo, .estacas-vivo:hover { transform: none; transition: none; }
   .cortina-anel, .cortina-contorno { transition: none; }
-}
-
-.estacas-menu {
-  max-height: calc(100dvh - 2rem);
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
 }
 
 @media (max-width: 639px) {

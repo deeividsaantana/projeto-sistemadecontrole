@@ -11,15 +11,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { BarChart3, CheckCircle2, Droplets, History, Maximize2, Minimize2, Plus, Undo2 } from 'lucide-react';
+import { BarChart3, CheckCircle2, Droplets, Gauge, History, Plus, Undo2 } from 'lucide-react';
 import type { Abastecimento, Comboio, ControleEquipamentoDiario, Empresa, Equipamento, GrupoEquipe, TipoCombustivel } from '../types';
 import type { FuelImportedMasterData } from '../utils/fuelMasterDataImport';
 import { ConfirmDialog, isoDay } from '../shared/ui';
 import { PageHeader } from '../shared/ui/PageHeader';
+import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
+import { TelaCheia } from '../shared/ui/TelaCheia';
 import { BOTAO_SECUNDARIO, FOCO } from './cadastros/estilos';
 import HistoricoCombustivel, { type FiltrosExportacao, type PedidoFiltro } from './combustivel/HistoricoCombustivel';
 import LancamentoCombustivel from './combustivel/LancamentoCombustivel';
-import RelatorioDiesel from './combustivel/RelatorioDiesel';
+import RelatorioDiesel, { type ParteRelatorio } from './combustivel/RelatorioDiesel';
 import TrocarDataLote from './combustivel/TrocarDataLote';
 import { buildFuelReport, type FuelReportExcelRow } from '../modules/frota/fuelReport';
 import { ligarPeloPrefixo } from '../modules/frota/vinculoPrefixo';
@@ -62,8 +64,8 @@ interface Props {
 
 /** Três telas: lançar, ver os lançamentos e os relatórios (com o consumo por máquina dentro). */
 type View = 'novo' | 'historico' | 'relatorios';
-
-const CHAVE_TELA_CHEIA = 'renea_combustivel_tela_cheia_v1';
+/** As abas do topo: Relatórios se abre em Resumo e Consumo por máquina. */
+type AbaCombustivel = Exclude<View, 'relatorios'> | ParteRelatorio;
 
 const hoje = () => isoDay(new Date());
 const dataCurta = (dia: string) => dia ? new Date(`${dia}T12:00:00`).toLocaleDateString('pt-BR') : 'Sem data';
@@ -78,6 +80,8 @@ export default function CombustivelOperacionalTab({
   const escopo = useRef<HTMLElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
   const [view, setView] = useState<View>(listaSomente ? 'historico' : porMaquinaInicial ? 'relatorios' : initialView);
+  /** Subtela de Relatórios: resumo ou consumo por máquina (segunda linha de abas). */
+  const [parteRelatorio, setParteRelatorio] = useState<ParteRelatorio>(porMaquinaInicial ? 'consumo' : 'resumo');
   /** Filtro pedido pelo relatório; a lista aplica quando a chave muda. */
   const [pedidoFiltro, setPedidoFiltro] = useState<PedidoFiltro | undefined>();
   const [trocandoData, setTrocandoData] = useState<Abastecimento[]>([]);
@@ -92,9 +96,6 @@ export default function CombustivelOperacionalTab({
   const avisoRef = useRef<HTMLParagraphElement>(null);
   /** Lançamento aberto: a chave remonta o formulário a cada novo pedido. */
   const [lancamento, setLancamento] = useState<{ chave: number; emEdicao?: Abastecimento; prefixo?: string; comboioId?: string }>({ chave: 0 });
-  const [telaCheia, setTelaCheia] = useState(() => {
-    try { return window.localStorage.getItem(CHAVE_TELA_CHEIA) === '1'; } catch { return false; }
-  });
 
   useEffect(() => {
     if (openHistorySignal > 0) setView('historico');
@@ -103,10 +104,6 @@ export default function CombustivelOperacionalTab({
   useEffect(() => {
     if (listaSomente) setView('historico');
   }, [listaSomente]);
-
-  useEffect(() => {
-    try { window.localStorage.setItem(CHAVE_TELA_CHEIA, telaCheia ? '1' : '0'); } catch { /* aba anônima */ }
-  }, [telaCheia]);
 
   const ativos = useMemo(() => ligarPeloPrefixo(abastecimentos
     .filter(item => !item.inativoEm && item.status !== 'Cancelado'), equipamentos)
@@ -263,10 +260,6 @@ export default function CombustivelOperacionalTab({
   useEffect(() => {
     const teclar = (event: KeyboardEvent) => {
       const alvo = event.target as HTMLElement | null;
-      if (event.key === 'Escape' && telaCheia && !excluindo.length && !trocandoData.length && !alvo?.matches('input, textarea, select')) {
-        setTelaCheia(false);
-        return;
-      }
       if (view === 'novo' || alvo?.matches('input, textarea, select, [contenteditable="true"]') || event.ctrlKey || event.metaKey || event.altKey || excluindo.length || trocandoData.length) return;
       if (event.key.toLowerCase() === 'n') {
         event.preventDefault();
@@ -305,7 +298,24 @@ export default function CombustivelOperacionalTab({
     };
   }, [ativos]);
 
-  const vistas = [['novo', 'Lançar', Plus], ['historico', 'Lançamentos', History], ['relatorios', 'Relatórios', BarChart3]] as const;
+  const vistas = [
+    { id: 'novo' as const, rotulo: view === 'novo' && lancamento.emEdicao ? 'Corrigindo' : 'Lançar', icone: Plus, testId: 'combustivel-vista-novo' },
+    { id: 'historico' as const, rotulo: 'Lançamentos', icone: History, testId: 'combustivel-vista-historico' },
+    // Relatórios tem duas subtelas: o grupo abre a segunda linha de abas (AbasDaTela).
+    {
+      grupo: 'relatorios', rotulo: 'Relatórios', icone: BarChart3, abas: [
+        { id: 'resumo' as const, rotulo: 'Resumo', icone: BarChart3, testId: 'combustivel-vista-resumo' },
+        { id: 'consumo' as const, rotulo: 'Consumo por máquina', curto: 'Por máquina', icone: Gauge, testId: 'combustivel-vista-consumo' },
+      ],
+    },
+  ];
+  const abaAtiva: AbaCombustivel = view === 'relatorios' ? parteRelatorio : view;
+  const trocarVista = (id: AbaCombustivel) => {
+    if (id === 'novo') { if (view !== 'novo') abrirNovo(); return; }
+    if (id === 'resumo' || id === 'consumo') { setParteRelatorio(id); setView('relatorios'); return; }
+    if (id === 'historico') setPedidoFiltro(undefined);
+    setView(id);
+  };
   const cartoes = [
     { titulo: 'Hoje', valor: litrosTexto(numeros.litrosHoje), detalhe: `${numeros.lancamentosHoje} lançamento(s)` },
     { titulo: 'Mês', valor: litrosTexto(numeros.litrosMes), detalhe: `${numeros.maquinasMes} máquina(s)` },
@@ -313,35 +323,32 @@ export default function CombustivelOperacionalTab({
   ];
 
   return (
-    <section ref={escopo} id="combustivel-tab" data-testid="combustivel-tab" aria-label="Combustível"
-      className={`w-full max-w-none flex-col ${telaCheia ? 'fixed inset-0 z-[90] block overflow-y-auto bg-[#f7f8f6] p-2 sm:p-3 xl:flex xl:overflow-hidden' : listaSomente ? 'flex h-[calc(100dvh-0.5rem)] overflow-hidden' : 'flex xl:h-[calc(100dvh-6.5rem)] xl:min-h-[34rem] xl:overflow-hidden'}`}>
-      {!listaSomente && <div data-comb-reveal className="mb-1.5 shrink-0">
-        <PageHeader eyebrow="Frota" title="Combustível" className="mb-0 !items-center !gap-2 !p-0 [&_h1]:!text-lg [&_.renea-page-actions]:!flex-wrap" actions={<>
-          <nav aria-label="Área de combustível" className="grid w-full grid-cols-3 gap-1 sm:w-auto rounded-xl bg-white p-1 ring-1 ring-inset ring-slate-200">
-            {vistas.map(([id, rotulo, Icone]) => <button key={id} type="button" aria-pressed={view === id} onClick={() => { if (id === 'novo') { if (view !== 'novo') abrirNovo(); return; } if (id === 'historico') setPedidoFiltro(undefined); setView(id); }} data-testid={`combustivel-vista-${id}`} className={`inline-flex min-h-9 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-sm font-bold sm:px-3 transition ${view === id ? 'bg-[#176b4d] text-white shadow-sm' : 'text-slate-600 hover:bg-[#f7f8f6] hover:text-slate-900'} ${FOCO}`}><Icone className="hidden size-4 shrink-0 sm:block" aria-hidden="true" />{id === 'novo' && lancamento.emEdicao && view === 'novo' ? 'Corrigindo' : rotulo}</button>)}
-          </nav>
-          {view === 'historico' && <ul className="hidden min-w-0 flex-wrap items-center gap-1.5 md:flex" data-testid="combustivel-numeros">
-            {cartoes.map(cartao => <li key={cartao.titulo} title={cartao.detalhe} className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold ring-1 ring-inset ${cartao.alerta ? 'bg-amber-50 text-amber-900 ring-amber-200' : 'bg-white text-slate-600 ring-slate-200'}`}>
-              {cartao.titulo} <strong className="tabular-nums text-slate-950">{cartao.valor}</strong>
-            </li>)}
-          </ul>}
-          <button type="button" onClick={() => setTelaCheia(atual => !atual)} aria-pressed={telaCheia} aria-label={telaCheia ? 'Sair da tela cheia' : 'Tela cheia'} title={telaCheia ? 'Sair da tela cheia (Esc)' : 'Usar a tela toda'} className={`${BOTAO_SECUNDARIO} hidden size-9 shrink-0 justify-center !px-0 sm:inline-flex`} data-testid="combustivel-tela-cheia">
-            {telaCheia ? <Minimize2 className="size-4 shrink-0" aria-hidden="true" /> : <Maximize2 className="size-4 shrink-0" aria-hidden="true" />}
-          </button>
-          <button type="button" onClick={onOpenLubrificacao} aria-label="Lubrificação" title="Lubrificação" className={`${BOTAO_SECUNDARIO} size-9 shrink-0 justify-center !px-0`}><Droplets className="size-4 shrink-0" aria-hidden="true" /></button>
-        </>} />
+    <TelaCheia ref={escopo} id="combustivel-tab" testId="combustivel-tab" rotulo="Combustível"
+      idAbaAtiva={listaSomente ? undefined : idDaAba('combustivel', abaAtiva)} idDados="combustivel-dados" chaveRolagem={abaAtiva}
+      cabecalho={listaSomente ? undefined : <div data-comb-reveal>
+        <PageHeader eyebrow="Frota" title="Combustível"
+          abas={<AbasDaTela id="combustivel" rotulo="Área de combustível" abas={vistas} ativa={abaAtiva} onTrocar={trocarVista} idPainel="combustivel-dados" />}
+          actions={<>
+            {view === 'historico' && <ul className="hidden min-w-0 flex-wrap items-center gap-1.5 md:flex" data-testid="combustivel-numeros">
+              {cartoes.map(cartao => <li key={cartao.titulo} title={cartao.detalhe} className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold ring-1 ring-inset ${cartao.alerta ? 'bg-amber-50 text-amber-900 ring-amber-200' : 'bg-white text-slate-600 ring-slate-200'}`}>
+                {cartao.titulo} <strong className="tabular-nums text-slate-950">{cartao.valor}</strong>
+              </li>)}
+            </ul>}
+            <button type="button" onClick={onOpenLubrificacao} aria-label="Lubrificação" title="Lubrificação" className={`${BOTAO_SECUNDARIO} size-10 shrink-0 justify-center !px-0`}><Droplets className="size-4 shrink-0" aria-hidden="true" /></button>
+          </>} />
       </div>}
-
-      <p ref={avisoRef} role="status" aria-live="polite" className={`${aviso ? 'mb-2' : 'sr-only'} flex shrink-0 items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900 ring-1 ring-inset ring-emerald-200`} data-testid="combustivel-aviso">
-        {aviso && <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />}
-        <span className="min-w-0 flex-1">{aviso}</span>
-        {aviso && temDesfazer && (
-          <button type="button" onClick={datasAntigas.length ? desfazerTrocaDeData : desfazerExclusao} className={`${BOTAO_SECUNDARIO} min-h-9 shrink-0`} data-testid="combustivel-desfazer">
-            <Undo2 className="size-4" aria-hidden="true" />Desfazer
-          </button>
-        )}
-      </p>
-
+      faixa={<>
+        <p ref={avisoRef} role="status" aria-live="polite" className={`${aviso ? '' : 'sr-only'} flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900 ring-1 ring-inset ring-emerald-200`} data-testid="combustivel-aviso">
+          {aviso && <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />}
+          <span className="min-w-0 flex-1">{aviso}</span>
+          {aviso && temDesfazer && (
+            <button type="button" onClick={datasAntigas.length ? desfazerTrocaDeData : desfazerExclusao} className={`${BOTAO_SECUNDARIO} min-h-9 shrink-0`} data-testid="combustivel-desfazer">
+              <Undo2 className="size-4" aria-hidden="true" />Desfazer
+            </button>
+          )}
+        </p>
+        {view !== 'novo' && erro && <p role="alert" className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200" data-testid="combustivel-erro">{erro}</p>}
+      </>}>
       {view === 'novo' && <div data-comb-reveal className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl bg-white ring-1 ring-inset ring-slate-200" data-testid="combustivel-lancar">
         <LancamentoCombustivel
           key={lancamento.chave}
@@ -363,8 +370,6 @@ export default function CombustivelOperacionalTab({
         />
       </div>}
 
-      {view !== 'novo' && erro && <p role="alert" className="mb-2 shrink-0 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200" data-testid="combustivel-erro">{erro}</p>}
-
       {view === 'relatorios' && (
         <RelatorioDiesel
           abastecimentos={ativos}
@@ -372,7 +377,7 @@ export default function CombustivelOperacionalTab({
           empresas={empresas}
           comboios={comboios}
           combustiveis={combustiveis}
-          parteInicial={porMaquinaInicial ? 'consumo' : 'resumo'}
+          parte={parteRelatorio}
           onAbrirLista={abrirLista}
           onErro={setErro}
           onAviso={setAviso}
@@ -418,6 +423,6 @@ export default function CombustivelOperacionalTab({
         onCancel={() => setExcluindo([])}
         onConfirm={excluirConfirmado}
       />
-    </section>
+    </TelaCheia>
   );
 }

@@ -11,7 +11,7 @@ import { rankingPor, type AvisoMaterial } from '../../modules/materials/avisosMa
 import { resumirBotaFora, viagensDeBotaFora } from '../../modules/materials/botaFora';
 import { normalizeComparable } from '../../utils/canonicalIdentity';
 import { formatarData, moeda, numero } from '../../utils/formato';
-import { CountUp, EmptyState } from '../../shared/ui';
+import { CountUp, EmptyState, TabelaPadrao, type ColunaTabela } from '../../shared/ui';
 import type { SecaoMateriais } from './MateriaisSecoes';
 import AvisosMateriais from './AvisosMateriais';
 import BarrasRanking from './BarrasRanking';
@@ -20,6 +20,28 @@ import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO, reduzMov
 
 const TIPOS: TipoMovimentoMaterial[] = ['Entrada', 'Saída', 'Transferência', 'Ajuste'];
 const FILTROS_VAZIOS = { material: '', fornecedor: '', local: '', tipo: '' };
+
+type Pendencia = ReturnType<typeof pendenciasDeRecebimento>[number];
+const COLUNAS_PENDENCIAS: ColunaTabela<Pendencia>[] = [
+  {
+    chave: 'material',
+    titulo: 'Material',
+    larguraMinima: 200,
+    valorOrdenacao: item => item.material,
+    render: item => (
+      <>
+        <strong className="block text-slate-900">{item.material}</strong>
+        <span className="text-xs text-slate-600">{formatarData(item.data)}</span>
+      </>
+    ),
+    dica: item => item.material,
+  },
+  { chave: 'documento', titulo: 'SC / Nota', valorOrdenacao: item => item.solicitacaoCompra || item.notaFiscal || null, render: item => [item.solicitacaoCompra, item.notaFiscal && `NF\u00a0${item.notaFiscal}`].filter(Boolean).join(' · ') || '—' },
+  { chave: 'destino', titulo: 'Aplicação', valorOrdenacao: item => item.destino || null, render: item => item.destino || '—' },
+  { chave: 'nota', titulo: 'Nota', alinhamento: 'direita', valorOrdenacao: item => item.quantidadeNota, render: item => item.quantidadeNota.toLocaleString('pt-BR') },
+  { chave: 'recebido', titulo: 'Recebido', alinhamento: 'direita', valorOrdenacao: item => item.quantidadeRecebida, render: item => item.quantidadeRecebida.toLocaleString('pt-BR') },
+  { chave: 'falta', titulo: 'Falta', alinhamento: 'direita', valorOrdenacao: item => item.faltante, render: item => <strong className="whitespace-nowrap font-black text-rose-700">{item.faltante.toLocaleString('pt-BR')} {item.unidade}</strong> },
+];
 
 interface Props {
   hoje: string;
@@ -117,11 +139,11 @@ export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movim
           >
             <span className="flex w-full items-start justify-between gap-2">
               <span className="text-sm font-semibold text-slate-600">{rotulo}</span>
-              <span className={`hidden size-9 shrink-0 place-items-center rounded-xl sm:grid ${alerta ? 'bg-orange-50 text-[#f26a2e]' : 'bg-emerald-50 text-[#176b4d]'}`}>
+              <span className={`hidden size-9 shrink-0 place-items-center rounded-xl sm:grid ${alerta ? 'bg-orange-50 text-[#c2410c]' : 'bg-emerald-50 text-[#176b4d]'}`}>
                 <Icone className="size-5" aria-hidden="true" />
               </span>
             </span>
-            <CountUp value={valor} className={`block text-3xl font-black tabular-nums ${alerta ? 'text-[#f26a2e]' : 'text-slate-950'}`} />
+            <CountUp value={valor} className={`block text-3xl font-black tabular-nums ${alerta ? 'text-[#c2410c]' : 'text-slate-950'}`} />
             <span className="mt-auto flex items-center gap-1 text-xs text-slate-500">
               {detalhe}
               <ChevronRight className="size-3.5 opacity-0 transition duration-200 group-hover:translate-x-0.5 group-hover:opacity-100 motion-reduce:transition-none" aria-hidden="true" />
@@ -143,45 +165,16 @@ export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movim
             </h2>
             <span className="text-sm font-semibold text-rose-800">{recebimento.percentualRecebido}% do que as notas prometeram já chegou</span>
           </header>
-          <table className="hidden w-full text-left text-sm sm:table">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="p-3">Material</th>
-                <th className="p-3">SC / Nota</th>
-                <th className="p-3">Aplicação</th>
-                <th className="p-3 text-right">Nota</th>
-                <th className="p-3 text-right">Recebido</th>
-                <th className="p-3 text-right">Falta</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {pendencias.map(item => (
-                <tr key={item.movimentoId}>
-                  <td className="p-3">
-                    <strong className="block text-slate-900">{item.material}</strong>
-                    <span className="text-xs text-slate-500">{formatarData(item.data)}</span>
-                  </td>
-                  <td className="p-3 text-slate-600">{[item.solicitacaoCompra, item.notaFiscal && `NF\u00a0${item.notaFiscal}`].filter(Boolean).join(' · ') || '-'}</td>
-                  <td className="p-3 text-slate-600">{item.destino || '-'}</td>
-                  <td className="p-3 text-right tabular-nums text-slate-700">{item.quantidadeNota.toLocaleString('pt-BR')}</td>
-                  <td className="p-3 text-right tabular-nums text-slate-700">{item.quantidadeRecebida.toLocaleString('pt-BR')}</td>
-                  <td className="p-3 text-right font-black tabular-nums text-rose-700">{item.faltante.toLocaleString('pt-BR')} {item.unidade}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <ul className="divide-y divide-slate-100 sm:hidden">
-            {pendencias.map(item => (
-              <li key={item.movimentoId} className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <strong className="min-w-0 text-base text-slate-900">{item.material}</strong>
-                  <span className="shrink-0 text-base font-black tabular-nums text-rose-700">falta {item.faltante.toLocaleString('pt-BR')} {item.unidade}</span>
-                </div>
-                <p className="mt-1 text-sm text-slate-600">{[item.solicitacaoCompra, item.notaFiscal && `NF ${item.notaFiscal}`, item.destino].filter(Boolean).join(' · ')}</p>
-                <p className="text-sm text-slate-500">{formatarData(item.data)} · nota {item.quantidadeNota.toLocaleString('pt-BR')} · chegou {item.quantidadeRecebida.toLocaleString('pt-BR')}</p>
-              </li>
-            ))}
-          </ul>
+          <TabelaPadrao
+            titulo="Entregas com carga faltando"
+            linhas={pendencias}
+            colunas={COLUNAS_PENDENCIAS}
+            idDaLinha={item => item.movimentoId}
+            nomeDoItem={{ um: 'entrega', varios: 'entregas' }}
+            ordenacaoInicial={{ chave: 'falta', direcao: 'desc' }}
+            porPaginaInicial={25}
+            className="rounded-none border-0"
+          />
         </section>
       )}
 

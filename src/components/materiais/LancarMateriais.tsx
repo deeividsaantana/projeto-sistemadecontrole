@@ -5,6 +5,7 @@ import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, ClipboardList, Receip
 import type { Empresa, EtapaServico, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../../types';
 import { numero } from '../../utils/formato';
 import { CARTAO, FOCO, reduzMovimento } from '../cadastros/estilos';
+import { AbasDaTela } from '../../shared/ui/AbasDaTela';
 import FormLancamento from './FormLancamento';
 import GradeViagens from './GradeViagens';
 import LerNota from './LerNota';
@@ -12,9 +13,9 @@ import LerNota from './LerNota';
 type Aba = 'um' | 'varios' | 'nota';
 
 const ABAS: ReadonlyArray<{ id: Aba; nome: string; ajuda: string; Icone: LucideIcon }> = [
-  { id: 'um', nome: 'Um lançamento', ajuda: 'Uma entrega, um uso ou uma viagem', Icone: ClipboardList },
-  { id: 'varios', nome: 'Várias viagens', ajuda: 'Uma linha por viagem, como na planilha', Icone: Rows3 },
-  { id: 'nota', nome: 'Ler nota', ajuda: 'Foto ou PDF da nota fiscal', Icone: Receipt },
+  { id: 'um', nome: 'Um lançamento', ajuda: 'Uma entrega, um uso ou uma viagem.', Icone: ClipboardList },
+  { id: 'varios', nome: 'Várias viagens', ajuda: 'Uma linha por viagem, como na planilha.', Icone: Rows3 },
+  { id: 'nota', nome: 'Ler nota', ajuda: 'Foto ou PDF da nota fiscal.', Icone: Receipt },
 ];
 
 const ICONE_TIPO: Record<TipoMovimentoMaterial, LucideIcon> = {
@@ -99,31 +100,19 @@ export default function LancarMateriais({ hoje, materiais, movimentos, empresas,
 
   return (
     <div ref={raiz} className="space-y-4">
-      <div role="tablist" aria-label="Como lançar" data-materiais-reveal className="grid grid-cols-3 gap-2">
-        {ABAS.map(({ id, nome, ajuda, Icone }) => {
-          const ativa = aba === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={ativa}
-              data-testid={`lancar-aba-${id}`}
-              onClick={() => setAba(id)}
-              className={`flex min-h-14 items-center gap-2 rounded-2xl border px-3 py-3 sm:min-h-16 sm:gap-3 sm:px-4 text-left transition duration-200 ${FOCO} ${ativa
-                ? 'border-[#176b4d] bg-[#176b4d] text-white shadow-sm'
-                : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-500'}`}
-            >
-              <Icone className="hidden size-5 shrink-0 sm:block sm:size-6" aria-hidden="true" />
-              <span className="min-w-0">
-                <span className="block text-sm font-bold sm:text-base">{nome}</span>
-                <span className={`hidden text-sm sm:block ${ativa ? 'text-white/80' : 'text-slate-500'}`}>{ajuda}</span>
-              </span>
-            </button>
-          );
-        })}
+      <div data-materiais-reveal className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <AbasDaTela<Aba>
+          id="lancar"
+          rotulo="Como lançar"
+          abas={ABAS.map(({ id, nome, Icone }) => ({ id, rotulo: nome, icone: Icone, testId: `lancar-aba-${id}` }))}
+          ativa={aba}
+          onTrocar={setAba}
+          idPainel="lancar-conteudo"
+        />
+        <p className="text-sm text-slate-600">{ABAS.find(item => item.id === aba)?.ajuda}</p>
       </div>
 
+      <div id="lancar-conteudo">
       {aba === 'um' ? (
         <div data-lancar-conteudo className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
           <FormLancamento
@@ -140,7 +129,7 @@ export default function LancarMateriais({ hoje, materiais, movimentos, empresas,
             onFechar={() => undefined}
           />
 
-          <aside data-materiais-reveal aria-labelledby="lancados-hoje" className={`${CARTAO} flex flex-col self-start overflow-hidden xl:sticky xl:top-4`}>
+          <section data-materiais-reveal aria-labelledby="lancados-hoje" className={`${CARTAO} flex flex-col self-start overflow-hidden xl:sticky xl:top-4`}>
             <header className="border-b border-slate-100 px-4 py-3">
               <h2 id="lancados-hoje" className="text-base font-bold text-slate-900">Lançados hoje</h2>
               <p className="text-sm text-slate-500">
@@ -161,7 +150,7 @@ export default function LancarMateriais({ hoje, materiais, movimentos, empresas,
                         className={`group flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left transition duration-200 hover:bg-emerald-50/60 ${FOCO}`}
                         title="Tocar para corrigir"
                       >
-                        <span className={`grid size-8 shrink-0 place-items-center rounded-lg transition-transform duration-200 group-hover:scale-110 motion-reduce:transition-none ${item.tipo === 'Entrada' ? 'bg-emerald-50 text-[#176b4d]' : item.tipo === 'Saída' ? 'bg-orange-50 text-[#f26a2e]' : 'bg-slate-100 text-slate-600'}`}>
+                        <span className={`grid size-8 shrink-0 place-items-center rounded-lg transition-transform duration-200 group-hover:scale-110 motion-reduce:transition-none ${item.tipo === 'Entrada' ? 'bg-emerald-50 text-[#176b4d]' : item.tipo === 'Saída' ? 'bg-orange-50 text-[#c2410c]' : 'bg-slate-100 text-slate-600'}`}>
                           <Icone className="size-4" aria-hidden="true" />
                         </span>
                         <span className="min-w-0 flex-1">
@@ -180,7 +169,7 @@ export default function LancarMateriais({ hoje, materiais, movimentos, empresas,
                 Ver todos os movimentos
               </button>
             </div>
-          </aside>
+          </section>
         </div>
       ) : aba === 'nota' ? (
         <div data-lancar-conteudo>
@@ -201,6 +190,7 @@ export default function LancarMateriais({ hoje, materiais, movimentos, empresas,
           />
         </div>
       )}
+      </div>
     </div>
   );
 }

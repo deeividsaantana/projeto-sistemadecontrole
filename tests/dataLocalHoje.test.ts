@@ -6,6 +6,10 @@ import test from 'node:test';
 const ARQUIVOS = [
   'src/App.tsx',
   'src/components/TicketsJazidaTab.tsx',
+  'src/components/jazida/JanelaTicket.tsx',
+  'src/components/jazida/JanelaSequencia.tsx',
+  'src/components/jazida/filtrosTickets.ts',
+  'src/components/jazida/exportarConferencia.ts',
   'src/components/LancamentosTab.tsx',
   'src/components/ManutencaoTab.tsx',
   'src/components/ColaboradoresTab.tsx',

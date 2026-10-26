@@ -36,7 +36,14 @@
   --renea-soft: #ffffff;
   --renea-green: #063c31;
   --renea-green-deep: #022b24;
-  --renea-focus: rgb(13 89 70 / 0.22);
+  /* Foco do teclado: borda sólida verde-escura de 2px, afastada 2px do
+     controle. Contraste de 8:1 no branco (auditoria de front, A7). */
+  --renea-focus: #0d5946;
+  /* Cores de TEXTO acessíveis (≥4,5:1 no branco e nos fundos claros do app).
+     #718087 e #f26a2e continuam para fundo, borda e ícone decorativo, mas
+     como letra ficam abaixo de 4,5:1 (auditoria de front, A6). */
+  --renea-texto-cinza: #5b6870;
+  --renea-texto-laranja: #c2410c;
 }
 
 html { min-width: 20rem; background: var(--renea-stone); scroll-behavior: smooth; }
@@ -113,7 +120,32 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 :is(#app-root, [data-app-portal]) option, :is(#app-root, [data-app-portal]) select { background-color: #fff; color: #33413b; }
 #app-root :is(button, a, input, select, textarea) { transition-duration: 240ms; transition-timing-function: cubic-bezier(.32,.72,0,1); }
 #app-root :is(button, [role="button"]):not(:disabled):active { transform: scale(.985); }
-#app-root :is(button, a, input, select, textarea):focus-visible { outline: 3px solid var(--renea-focus); outline-offset: 2px; }
+#app-root :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--renea-focus); outline-offset: 2px; }
+/* O menu lateral é a única superfície escura: lá o foco é branco. */
+#app-root .erp-sidebar :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline-color: #fff; }
+/* "Pular para o conteúdo": primeiro item do Tab, fora da tela até receber o
+   foco. A área da aba recebe o foco sem contorno, que seria a tela toda. */
+.pular-para-conteudo {
+  position: fixed;
+  top: .75rem;
+  left: .75rem;
+  z-index: 100;
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  padding: 0 1rem;
+  border: 2px solid #176b4d;
+  border-radius: .75rem;
+  background: #fff;
+  color: #176b4d;
+  font-size: .875rem;
+  font-weight: 700;
+  box-shadow: 0 10px 24px -12px rgb(11 56 42 / .6);
+  transform: translateY(-200%);
+}
+.pular-para-conteudo:focus { transform: none; }
+.pular-para-conteudo:focus-visible { outline: 2px solid var(--renea-focus); outline-offset: 2px; }
+#app-root #main-tab-viewport:focus-visible, #app-root #main-tab-viewport:focus { outline: none; }
 
 #app-root :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
   border-color: #cfd4d0;
@@ -122,7 +154,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   box-shadow: none;
 }
 #app-root :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):hover { border-color: #9fa9a3; }
-#app-root :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):focus { border-color: var(--renea-green); box-shadow: 0 0 0 3px var(--renea-focus); }
+#app-root :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):focus { border-color: var(--renea-green); }
 
 #app-root table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
 #app-root thead { background: #fafcfb; color: #3e4843; letter-spacing: .025em; }
@@ -322,7 +354,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .erp-topbar__project:hover { border-color: #dce4df; background: #f7faf8; }
 .erp-topbar__project > svg:first-child { width: 1rem; height: 1rem; flex: 0 0 auto; color: #087653; }
 .erp-topbar__project > span { display: grid; min-width: 0; gap: 0; line-height: 1.2; }
-.erp-topbar__project small { color: #728078; font-size: .6875rem; font-weight: 600; }
+.erp-topbar__project small { color: var(--renea-texto-cinza); font-size: .75rem; font-weight: 600; }
 .erp-topbar__project strong { overflow: hidden; font-size: .75rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .erp-topbar__actions { display: flex; flex: 0 0 auto; align-items: center; gap: .5rem; margin-left: auto; }
 .erp-topbar__status {
@@ -346,10 +378,10 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .erp-topbar__pending button:hover:not(:disabled) { background: #d97706; }
 .erp-topbar__pending button:disabled { cursor: wait; opacity: .65; }
 .erp-topbar__user { display: flex; min-width: 0; align-items: center; gap: .5rem; padding-left: .75rem; border-left: 1px solid #dce4df; }
-.erp-topbar__avatar { display: grid; width: 2rem; height: 2rem; flex: 0 0 auto; place-items: center; border: 1px solid #b8d9c8; border-radius: 8px; background: #eff8f2; color: #087345; font-size: .6875rem; font-weight: 800; }
+.erp-topbar__avatar { display: grid; width: 2rem; height: 2rem; flex: 0 0 auto; place-items: center; border: 1px solid #b8d9c8; border-radius: 8px; background: #eff8f2; color: #087345; font-size: .75rem; font-weight: 800; }
 .erp-topbar__user > span:last-child { display: grid; min-width: 0; gap: 0; line-height: 1.25; }
 .erp-topbar__user strong { max-width: 11rem; overflow: hidden; color: #10211c; font-size: .75rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.erp-topbar__user small { color: #60716a; font-size: .6875rem; }
+.erp-topbar__user small { color: #60716a; font-size: .75rem; }
 .erp-topbar button { min-height: 2.25rem; }
 
 /* Notebook de 1366 px: o nome do usuário cede lugar à obra (fica no title
@@ -374,6 +406,71 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   .erp-topbar { display: none; }
   #main-workspace { overflow-y: auto; }
   #mobile-header { position: sticky; top: 0; z-index: 40; }
+}
+
+/* Molde de página (src/shared/ui/TelaCheia.tsx). A área de trabalho é a
+   tela inteira abaixo da barra do topo: --renea-topo é a altura da barra e
+   --renea-respiro o recuo do #main-tab-viewport (o App usa a mesma variável
+   no padding). No computador a aba tem altura fixa, cabeçalho e filtros
+   ficam parados e só a área de dados rola. Até 1023 px a página rola
+   normalmente, na mesma ordem. Na lista do Combustível aberta sozinha
+   (sem barra do topo, renea-viewport--solta) a aba é cheia em qualquer
+   largura, porque a janela é a própria lista. */
+#main-tab-viewport { --renea-topo: 3.25rem; --renea-respiro: .75rem; }
+#main-tab-viewport.renea-viewport--solta { --renea-topo: 0px; --renea-respiro: .25rem; }
+@media (min-width: 640px) {
+  #main-tab-viewport { --renea-respiro: 1rem; }
+  #main-tab-viewport.renea-viewport--solta { --renea-respiro: .5rem; }
+}
+@media (min-width: 1024px) {
+  .renea-tela-cheia {
+    height: calc(100dvh - var(--renea-topo) - 2 * var(--renea-respiro));
+    min-height: 28rem;
+  }
+  .renea-tela-cheia__dados {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  /* O respiro de 2 rem embaixo das telas que rolam a página sobraria aqui e
+     faria a página rolar à toa. */
+  #main-tab-viewport > :not(.erp-dashboard):has(.renea-tela-cheia) { padding-bottom: 0; }
+  /* Subtela que é uma tela inteira (TelaCheia dentro da área de dados de
+     outra): ocupa só essa área, e a área de dados dela é que rola. */
+  .renea-tela-cheia.renea-tela-cheia--embutida { height: auto; min-height: 0; flex: 1 1 0%; }
+}
+#main-tab-viewport.renea-viewport--solta > :has(.renea-tela-cheia) { padding: 0; }
+.renea-viewport--solta .renea-tela-cheia {
+  height: calc(100dvh - 2 * var(--renea-respiro));
+  min-height: 0;
+}
+.renea-viewport--solta .renea-tela-cheia__dados { overflow-y: auto; }
+/* Aba longa: os blocos não encolhem, a área rola. O recuo de 2 px deixa o
+   anel de foco dos cartões das bordas inteiro, sem ser cortado pela rolagem. */
+/* Faixa só com o aviso vazio (sr-only, que segue anunciando) não abre
+   espaço entre o cabeçalho e os dados. */
+.renea-tela-cheia__faixa:not(:has(> :not(.sr-only))) { display: contents; }
+.renea-tela-cheia__dados--longa > * { flex-shrink: 0; }
+@media (min-width: 1024px) {
+  .renea-tela-cheia__dados--longa { margin: -2px; padding: 2px 2px 1rem; }
+}
+
+/* Cabeçalho com subtelas: título curto, abas logo ao lado e a ação
+   principal encostada à direita, numa linha só quando couber. Quando não
+   cabe, as ações descem para a linha de baixo, ainda à direita. No celular
+   cada parte ganha a própria linha, e as ações quebram linha em vez de
+   rolar para o lado (o botão principal nunca fica escondido). */
+#main-tab-viewport .renea-page-header.renea-page-header--com-abas { align-items: center; justify-content: flex-start; }
+#main-tab-viewport .renea-page-header.renea-page-header--com-abas .renea-page-header__copy { flex: 0 1 auto; margin-right: 0; }
+.renea-page-header__abas { display: flex; min-width: 0; max-width: 100%; flex: 0 1 auto; }
+@media (max-width: 767px) {
+  #main-tab-viewport .renea-page-header.renea-page-header--com-abas .renea-page-header__copy,
+  .renea-page-header__abas { flex-basis: 100%; }
+  #main-tab-viewport .renea-page-header.renea-page-header--com-abas .renea-page-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    margin-left: 0;
+    overflow: visible;
+  }
 }
 
 /* RENEA front-end v2 foundation: one calm industrial system for every module. */
@@ -461,10 +558,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .renea-card,
 .renea-stat { box-shadow: none !important; }
 .renea-card:hover { border-color: #aebbb4; }
-.renea-table-shell { scrollbar-color: #82958b #edf1ee; }
-.renea-table :is(th, td) { padding: .85rem 1rem; }
-.renea-table tbody tr { background: #fff; }
-.renea-table tbody tr:hover { background: #f0f4f1; }
 
 /* Normalize legacy screen containers without flattening dialogs and popovers. */
 #main-tab-viewport > :not(.erp-dashboard) {
@@ -503,7 +596,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   background: linear-gradient(90deg, #f7f8f5 0%, rgb(247 248 245 / .92) 9%, rgb(7 27 21 / .1) 45%, rgb(5 25 19 / .58) 100%);
 }
 .dashboard-hero__visual img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.78) contrast(1.06); }
-.dashboard-hero__visual > span { position: absolute; z-index: 2; top: 2.2rem; right: 2rem; padding-left: 1.2rem; border-left: 1px solid rgb(255 255 255 / .65); color: #fff; font-size: .62rem; font-weight: 800; line-height: 1.65; letter-spacing: .25em; text-transform: uppercase; }
+.dashboard-hero__visual > span { position: absolute; z-index: 2; top: 2.2rem; right: 2rem; padding-left: 1.2rem; border-left: 1px solid rgb(255 255 255 / .65); color: #fff; font-size: .75rem; font-weight: 800; line-height: 1.65; letter-spacing: .25em; text-transform: uppercase; }
 .dashboard-project-tabs { position: relative; z-index: 3; }
 .dashboard-metrics { grid-template-columns: repeat(4, minmax(0,1fr)) minmax(15rem,1.15fr); gap: 0; }
 .dashboard-metric { border-color: #e7ebe6; transition: background-color .2s ease, box-shadow .2s ease; }
@@ -573,8 +666,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 #main-tab-viewport > :not(.erp-dashboard) > :is(section, article, .renea-card, [role="region"]):nth-of-type(-n+3) {
   animation: renea-v3-slide .3s cubic-bezier(.2,.8,.2,1) both;
 }
-#main-tab-viewport .renea-card :is(button, tr),
-#main-tab-viewport .renea-table tr { transition: background-color .18s ease, border-color .18s ease, transform .18s ease; }
+#main-tab-viewport .renea-card :is(button, tr) { transition: background-color .18s ease, border-color .18s ease, transform .18s ease; }
 #main-tab-viewport .renea-card button:hover { transform: translateX(2px); }
 
 /* Realce de ponteiro que antes vinha de gsap.quickTo com três listeners por
@@ -624,7 +716,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   .dashboard-integrated-metric { min-width: min(78vw, 18rem); min-height: 9.5rem; scroll-snap-align: start; border-top: 0 !important; border-left: 1px solid #dfe5e1 !important; }
   .dashboard-integrated-metric:first-child { border-left: 0 !important; }
   .dashboard-module-signal { grid-template-columns: minmax(6.5rem,.8fr) minmax(4.5rem,.45fr) minmax(7rem,1fr); gap: .65rem; }
-  .renea-table-shell { margin-inline: -1px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -688,12 +779,12 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   margin-bottom: .15rem;
   color: #4d6a5d;
   /* 0.68rem dava 10,88px e ficava abaixo do piso de legibilidade da obra. */
-  font-size: .72rem;
+  font-size: .75rem;
   font-weight: 700;
   letter-spacing: .12em;
   text-transform: uppercase;
 }
-.renea-page-header h1 {
+.renea-page-header__copy > :is(h1, h2) {
   color: #0d1a15;
   font-size: clamp(1.2rem, 1.05rem + .5vw, 1.6rem);
   font-weight: 750;
@@ -801,7 +892,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 #main-tab-viewport a { transition: color .2s ease, background-color .2s ease, border-color .2s ease, transform .2s cubic-bezier(.2,.8,.2,1); }
 #main-tab-viewport button:active,
 #main-tab-viewport a:active { transform: translateY(1px) scale(.99); }
-#main-tab-viewport :is(button, a, input, select, textarea):focus-visible { outline: 3px solid rgb(0 139 98 / .22); outline-offset: 2px; }
+#main-tab-viewport :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--renea-focus); outline-offset: 2px; }
 
 
 @media (prefers-reduced-motion: reduce) {
@@ -885,7 +976,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   letter-spacing: .08em;
 }
 
-.renea-page-header h1 {
+.renea-page-header__copy > :is(h1, h2) {
   font-size: clamp(1.45rem, 1.2rem + .5vw, 1.85rem);
   font-weight: 760;
 }
@@ -904,20 +995,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .renea-card:hover {
   border-color: var(--erp-line-strong);
   box-shadow: 0 8px 24px -22px rgb(13 53 40 / .45) !important;
-}
-
-.renea-table th {
-  white-space: nowrap;
-  border-bottom: 1px solid var(--erp-line);
-}
-
-.renea-table td {
-  color: #34443d;
-  font-size: .8125rem;
-}
-
-.renea-table tbody tr:hover {
-  background: #f4f8f6;
 }
 
 #main-tab-viewport :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
@@ -947,8 +1024,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
-  max-width: 1600px;
-  margin-inline: auto;
   padding: 1.5rem clamp(1rem, 2vw, 2rem) 1.35rem;
   border-bottom: 1px solid var(--erp-line);
   background: var(--erp-surface);
@@ -1029,7 +1104,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   align-items: center;
   gap: .5rem;
   color: var(--erp-brand);
-  font-size: .7rem;
+  font-size: .75rem;
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -1092,7 +1167,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   padding: 0 .85rem;
   background: rgb(5 52 39 / .84);
   color: #fff;
-  font-size: .74rem;
+  font-size: .75rem;
   font-weight: 750;
   box-shadow: 0 10px 24px -18px rgb(0 29 21 / .9);
   transition: background-color .2s ease, transform .2s ease, border-color .2s ease;
@@ -1122,7 +1197,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 
 .dashboard-command-header__status small {
   color: var(--erp-muted);
-  font-size: .7rem;
+  font-size: .75rem;
 }
 
 .erp-dashboard > div {
@@ -1340,7 +1415,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   .dashboard-command-header__actions button {
     flex: 1;
     padding-inline: .5rem;
-    font-size: .67rem;
+    font-size: .75rem;
   }
 
   .erp-dashboard > div {
@@ -1442,17 +1517,8 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
     font-size: 16px;
   }
 
-  /* Piso de legibilidade. 9px e 10px são legíveis num monitor, não num celular
-     ao sol. As classes continuam onde estão; só o tamanho renderizado sobe. */
-  .text-\[8px\],
-  .text-\[9px\],
-  .text-\[10px\] {
-    font-size: 11.5px;
-    line-height: 1.35;
-  }
-
   /* O piso de 16px do campo tem de vencer as classes utilitárias de tamanho —
-     um <select class="text-[10px]"> continuava abaixo do piso e o iOS voltava
+     um <select class="text-xs"> continuava abaixo do piso e o iOS voltava
      a dar zoom. O seletor com [class] empata em especificidade e vem depois. */
   input[class]:not([type='checkbox']):not([type='radio']):not([type='range']),
   select[class],
@@ -1701,7 +1767,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .dashboard-command-header__visual-copy { position: relative; z-index: 1; max-width: 11.5rem; }
 .dashboard-command-header__visual-copy > span,
 .dashboard-command-header__visual-copy > small,
-.dashboard-command-header__visual-copy dt { display: block; color: #5d766a; font-size: .6rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.dashboard-command-header__visual-copy dt { display: block; color: #5d766a; font-size: .75rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .dashboard-command-header__visual-copy strong { display: block; margin-top: .4rem; color: #07533e; font-size: clamp(3.5rem, 4vw, 5rem); line-height: .82; letter-spacing: -.09em; }
 .dashboard-command-header__visual-copy dl { display: grid; gap: .45rem; margin-top: .85rem; }
 .dashboard-command-header__visual-copy dl div { display: flex; justify-content: space-between; gap: .55rem; border-top: 1px solid #d2e2d8; padding-top: .35rem; }
@@ -1766,7 +1832,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   gap: .55rem;
   margin: 0;
   color: #a8c9b9;
-  font-size: .67rem;
+  font-size: .75rem;
   font-weight: 800;
   letter-spacing: .12em;
   text-transform: uppercase;
@@ -1782,7 +1848,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 }
 .dashboard-command-deck h1 { max-width: 36rem; margin: .45rem 0 .25rem; color: #fff; font-size: clamp(1.8rem, 3.2vw, 3.2rem); font-weight: 850; line-height: .95; letter-spacing: -.065em; }
 .dashboard-command-deck__intro > strong { color: #e2f0e7; font-size: .8rem; }
-.dashboard-command-deck__intro > small { margin-top: .25rem; color: #99b7a8; font-size: .68rem; }
+.dashboard-command-deck__intro > small { margin-top: .25rem; color: #99b7a8; font-size: .75rem; }
 .dashboard-command-deck__actions { display: flex; gap: .55rem; margin-top: 0.95rem; flex-wrap: wrap; }
 .dashboard-command-deck__actions button { display: inline-flex; min-height: 2.85rem; align-items: center; justify-content: center; gap: .55rem; border: 1px solid #436e5d; padding: .65rem 1rem; color: #e6f5ec; font-size: .76rem; font-weight: 800; transition: transform .2s ease, background-color .2s ease; }
 .dashboard-command-deck__actions button:first-child { border-color: #52ce98; background: #52ce98; color: #083529; }
@@ -1792,7 +1858,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .dashboard-command-deck__fleet::after { position: absolute; inset: 0; content: ''; opacity: .35; background-image: radial-gradient(#5f8e78 1px, transparent 1px); background-size: 13px 13px; }
 .dashboard-command-deck__metrics { position: relative; z-index: 1; display: grid; width: min(16rem, 64%); grid-template-columns: 1fr 1fr; gap: .55rem; }
 .dashboard-command-deck__metrics div { min-height: 4.8rem; border-left: 2px solid #4bbd85; padding: .25rem 0 .25rem .65rem; background: rgb(247 253 249 / .55); }
-.dashboard-command-deck__metrics span { display: block; color: #4f7563; font-size: .56rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.dashboard-command-deck__metrics span { display: block; color: #4f7563; font-size: .75rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 .dashboard-command-deck__metrics strong { display: block; margin-top: .35rem; color: #0a4534; font-size: 1.85rem; font-variant-numeric: tabular-nums; letter-spacing: -.06em; line-height: 1; }
 .dashboard-command-deck__metrics div:last-child strong { font-size: 1.35rem; }
 .dashboard-command-deck__fleet > img { position: absolute; z-index: 1; right: -1rem; bottom: .8rem; width: 50%; height: 78%; object-fit: contain; opacity: .47; mix-blend-mode: multiply; }
@@ -1802,26 +1868,26 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .dashboard-command-deck__intro { color: #172b23; }
 .dashboard-command-deck h1 { margin: 0; color: #10251d; font-size: clamp(1.85rem, 2.8vw, 2.4rem); }
 .dashboard-command-deck__intro > strong { display: block; margin-top: .35rem; color: #315245; font-size: .85rem; }
-.dashboard-command-deck__intro > small { display: block; color: #71857b; font-size: .75rem; }
+.dashboard-command-deck__intro > small { display: block; color: #4a6b5a; font-size: .75rem; }
 .dashboard-command-deck__actions { margin-top: 0.9rem; }
 .dashboard-command-deck__actions button { border-color: #cfddd5; color: #164b3a; background: #fff; }
 .dashboard-command-deck__actions button:first-child { border-color: #07513c; background: #07513c; color: #fff; }
 .dashboard-command-deck__actions button:hover { background: #edf6f0; }
 .dashboard-command-deck__actions button:first-child:hover { background: #0b654a; }
-.dashboard-command-deck__actions button { min-height: 2.4rem; font-size: .7rem; }
+.dashboard-command-deck__actions button { min-height: 2.4rem; font-size: .75rem; }
 .dashboard-central-grid { overflow: hidden; border: 1px solid #dce5df; border-radius: 8px; background: #fff; box-shadow: 0 14px 30px -30px rgb(11 56 42 / .75); }
 .dashboard-central-grid > header { display: flex; align-items: end; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #dce5df; padding: 1rem 1.25rem; }
-.dashboard-central-grid > header p { margin: 0; color: #16805a; font-size: .58rem; font-weight: 900; letter-spacing: .15em; text-transform: uppercase; }
+.dashboard-central-grid > header p { margin: 0; color: #16805a; font-size: .75rem; font-weight: 900; letter-spacing: .15em; text-transform: uppercase; }
 .dashboard-central-grid h2 { margin: .25rem 0 0; color: #10211b; font-size: 1.05rem; font-weight: 850; letter-spacing: -.025em; }
-.dashboard-central-grid > header > span { color: #718087; font-size: .66rem; font-variant-numeric: tabular-nums; }
+.dashboard-central-grid > header > span { color: var(--renea-texto-cinza); font-size: .75rem; font-variant-numeric: tabular-nums; }
 .dashboard-central-grid > div { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .dashboard-central-grid button { position: relative; min-height: 8.4rem; border-right: 1px solid #e1e8e3; padding: 1.1rem 1.15rem; text-align: left; transition: transform .3s cubic-bezier(.2,.8,.2,1), background-color .24s ease; }
 .dashboard-central-grid button:last-child { border-right: 0; }
 .dashboard-central-grid button:hover { z-index: 1; transform: translateY(-3px); background: #f2f8f4; }
 .dashboard-central-grid button svg { color: #16805a; }
-.dashboard-central-grid button span { display: block; margin-top: .7rem; color: #4e6259; font-size: .7rem; font-weight: 800; }
+.dashboard-central-grid button span { display: block; margin-top: .7rem; color: #4e6259; font-size: .75rem; font-weight: 800; }
 .dashboard-central-grid button strong { display: block; margin-top: .15rem; color: #0d4b38; font-size: 2.25rem; font-variant-numeric: tabular-nums; letter-spacing: -.065em; line-height: 1; }
-.dashboard-central-grid button small { display: block; margin-top: .45rem; color: #718087; font-size: .64rem; }
+.dashboard-central-grid button small { display: block; margin-top: .45rem; color: var(--renea-texto-cinza); font-size: .75rem; }
 .erp-dashboard > div { padding-top: .3rem; }
 .project-workspace-tabs {
   display: grid;
@@ -1936,7 +2002,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   .dashboard-command-header__visual { display: none; }
   .dashboard-command-header__tools { display: block; padding: 0; border: 0; background: transparent; }
   .dashboard-command-header__status { display: flex; align-items: center; justify-content: space-between; margin-bottom: .8rem; }
-  .dashboard-command-header__status > span { font-size: .72rem; }
+  .dashboard-command-header__status > span { font-size: .75rem; }
   .dashboard-command-header__status small { display: block; }
   .dashboard-command-header__actions {
     position: static;
@@ -1944,7 +2010,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
     grid-template-columns: 1fr 1fr;
     width: 100%;
   }
-  .dashboard-command-header__actions button { min-height: 2.8rem; font-size: .7rem; }
+  .dashboard-command-header__actions button { min-height: 2.8rem; font-size: .75rem; }
   .dashboard-metrics { grid-template-columns: 1fr 1fr; gap: .55rem; }
   .dashboard-metric { min-height: 8.8rem; padding: .9rem; }
   .dashboard-metric strong { font-size: 2.2rem; }
@@ -1987,10 +2053,11 @@ body,
   min-height: 100%;
 }
 
+/* Largura: toda aba usa 100% da área de trabalho (A1, auditoria de
+   21/10/2026). Nada de teto de largura por tela. */
 #main-tab-viewport > .renea-route-motion > :not(.erp-dashboard),
 #main-tab-viewport > :not(.erp-dashboard) {
-  width: min(100%, 96rem);
-  margin-inline: auto;
+  width: 100%;
 }
 
 #main-tab-viewport > .renea-route-motion > [id$="-tab"] {
@@ -1998,7 +2065,6 @@ body,
 }
 
 #main-tab-viewport .renea-filter-bar,
-#main-tab-viewport .renea-table,
 #main-tab-viewport .renea-card,
 #main-tab-viewport .renea-stat {
   border-radius: 8px;
@@ -2027,11 +2093,6 @@ body,
 }
 
 /* Master data is used repeatedly; keep selection, search and editing calm. */
-.erp-module--cadastros {
-  max-width: 1580px;
-  margin: 0 auto;
-}
-
 .erp-module--cadastros #subtab-selector {
   gap: .6rem;
   padding: .65rem;
@@ -2060,7 +2121,7 @@ body,
 
 .erp-module--cadastros #subtab-selector > button span:first-of-type {
   color: inherit;
-  font-size: .67rem;
+  font-size: .75rem;
   letter-spacing: .04em;
 }
 
@@ -2116,18 +2177,13 @@ body,
    tabelas compactas com números alinhados e área útil que acompanha o
    monitor grande. Fica por último para vencer as camadas antigas.
    ========================================================================== */
-#main-tab-viewport > .renea-route-motion > :not(.erp-dashboard),
-#main-tab-viewport > :not(.erp-dashboard) {
-  width: min(100%, 120rem);
-}
-
 .renea-page-header { gap: .5rem 1rem; }
 .renea-page-header__eyebrow {
   margin-bottom: .1rem;
-  font-size: .6875rem;
+  font-size: .75rem;
   letter-spacing: .1em;
 }
-.renea-page-header h1 {
+.renea-page-header__copy > :is(h1, h2) {
   font-size: clamp(1.2rem, 1.05rem + .35vw, 1.45rem);
   font-weight: 750;
   line-height: 1.2;
@@ -2151,44 +2207,6 @@ body,
   }
 }
 
-/* Tabelas: cabeçalho fixo dentro da própria rolagem, linhas de ~34 px,
-   números em largura fixa para datas, prefixos, litros e valores ficarem
-   em coluna. A rolagem lateral fica dentro da tabela, nunca na página. */
-.renea-table-shell {
-  max-width: 100%;
-  overscroll-behavior-x: contain;
-}
-.renea-table {
-  border-collapse: separate;
-  border-spacing: 0;
-  font-variant-numeric: tabular-nums;
-}
-.renea-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  padding: .55rem .75rem;
-  border-bottom: 1px solid var(--erp-line);
-  background: #f3f6f4;
-  color: #4f5f58;
-  font-size: .6875rem;
-  font-weight: 700;
-  letter-spacing: .04em;
-  line-height: 1.25;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.renea-table td {
-  padding: .45rem .75rem;
-  border-bottom: 1px solid #edf1ee;
-  color: #26352f;
-  font-size: .8125rem;
-  line-height: 1.35;
-  vertical-align: middle;
-}
-.renea-table tbody tr:last-child td { border-bottom: 0; }
-.renea-table thead th button { min-height: 1.75rem; }
-
 /* Cabeçalho sem descrição (só rótulo e título) não reserva 22rem para o
    texto: as ações sobem para a mesma linha do título em vez de abrir uma
    segunda faixa (Combustível perdia ~50 px de tabela em 1366 px). */
@@ -2202,8 +2220,8 @@ body,
   #main-tab-viewport :is(td, th) :is(button, [role="button"]) { min-height: 2rem; }
 }
 
-/* Tabelas montadas à mão nas abas (fora do TableShell): mesma densidade da
-   tabela padrão. Coluna de número (alinhada à direita) e cabeçalho não
+/* Tabelas montadas à mão nas abas que ainda não passaram para a TabelaPadrao
+   (src/shared/ui/TabelaPadrao.tsx): mesma densidade da tabela padrão. Coluna de número (alinhada à direita) e cabeçalho não
    quebram linha, para "2.000 PC" ou "1.169,4 h" não partirem no meio. */
 #main-tab-viewport table { font-variant-numeric: tabular-nums; }
 #main-tab-viewport table th { white-space: nowrap; }
