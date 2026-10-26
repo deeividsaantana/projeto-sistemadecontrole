@@ -2182,7 +2182,7 @@ export default function TicketsJazidaTab({
         </button>
         <button type="button" onClick={abrirImportacao} className="group flex items-start gap-3 rounded-xl border border-sky-500/25 bg-sky-500/5 p-4 text-left transition hover:border-sky-400">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-sky-500 text-xs font-black text-[#14231e]">2</span>
-          <span><b className="block text-xs text-[#14231e]">Importar sua planilha</b><small className="mt-1 block text-[9px] leading-relaxed text-[#65716b]">Veja uma prévia, confira erros e confirme. Linhas incompletas entram como rascunho.</small></span>
+          <span><b className="block text-xs text-[#14231e]">Importar sua planilha</b><small className="mt-1 block text-[9px] leading-relaxed text-[#65716b]">Veja uma prévia e confirme. Ticket que já está no app não entra de novo; linha incompleta fica de fora com o motivo.</small></span>
         </button>
         <button type="button" onClick={() => setOperationsOpen(true)} className="group flex items-start gap-3 rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 text-left transition hover:border-amber-400">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-500 text-xs font-black text-[#14231e]">3</span>
