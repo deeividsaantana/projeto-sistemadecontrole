@@ -8,6 +8,7 @@ import {
   POR_PAGINA_PADRAO,
   TabelaPadrao,
   colunasDoCartao,
+  gruposDaPagina,
   ordenarLinhasTabela,
   paginarLinhas,
   paginasVisiveis,
@@ -146,6 +147,55 @@ test('ordenação e página controladas por fora: a tabela não reordena o que r
   const ordem = [...html.matchAll(/>(Escavadeira 10|escavadeira 2|Caminhão 7|Ácido)</g)].map(match => match[1]);
   assert.deepEqual(ordem, ['Escavadeira 10', 'escavadeira 2', 'Caminhão 7', 'Ácido']);
   assert.match(html, /aria-sort="ascending"/);
+});
+
+test('grupos seguidos na página: cada grupo vira um tbody com th scope=rowgroup que abre e fecha', () => {
+  const grupos = gruposDaPagina(['a1', 'a2', 'b1', 'a3'], item => item[0]);
+  assert.deepEqual(grupos.map(grupo => [grupo.chave, grupo.linhas.length, grupo.inicio]), [['a', 2, 0], ['b', 1, 2], ['a', 1, 3]], 'só junta o que vem seguido');
+  const html = renderToStaticMarkup(
+    <TabelaPadrao
+      titulo="Abastecimentos"
+      linhas={linhas}
+      colunas={colunas}
+      idDaLinha={l => l.id}
+      grupos={{
+        chaveDe: l => (l.litros === null ? 'Sem litros' : 'Com litros'),
+        cabecalho: (chave, doGrupo) => `${chave}: ${doGrupo.length}`,
+        fechados: new Set(['Sem litros']),
+        onAlternar: () => undefined,
+      }}
+      testIdLinha="linha-teste"
+    />,
+  );
+  assert.equal((html.match(/<tbody/g) ?? []).length, 3, 'Com litros, Sem litros, Com litros');
+  assert.match(html, /<th scope="rowgroup" colSpan="3"|<th scope="rowgroup" colspan="3"/);
+  assert.match(html, /aria-expanded="false"[^>]*>.*?Sem litros: 1/);
+  assert.match(html, /aria-expanded="true"[^>]*>.*?Com litros: 2/);
+  assert.doesNotMatch(html, /escavadeira 2/, 'grupo fechado não mostra as linhas');
+  assert.equal((html.match(/data-testid="linha-teste"/g) ?? []).length, 3);
+});
+
+test('tabela densa, rodapé com começo e resumo, e quantos por página controlado por fora', () => {
+  const html = renderToStaticMarkup(
+    <TabelaPadrao
+      titulo="Planilha"
+      linhas={Array.from({ length: 130 }, (_, indice) => ({ id: `l${indice}`, nome: `M${indice}`, litros: indice, obs: '' }))}
+      colunas={colunas}
+      idDaLinha={l => l.id}
+      densa
+      porPagina={100}
+      onPorPagina={() => undefined}
+      pagina={Number.POSITIVE_INFINITY}
+      onPagina={() => undefined}
+      rodapeInicio={<nav aria-label="Meses">Outubro</nav>}
+      resumo={<span> · Total 10 L</span>}
+    />,
+  );
+  assert.match(html, /white-space:normal/, 'título do cabeçalho pode quebrar');
+  assert.match(html, /101 a 130 de 130 registros<\/span><span> · Total 10 L<\/span>/, 'página infinita cai na última; resumo vem depois do total');
+  assert.match(html, /<nav aria-label="Meses">Outubro<\/nav>/);
+  const vazia = renderToStaticMarkup(<TabelaPadrao titulo="X" linhas={[]} colunas={colunas} idDaLinha={l => l.id} rodapeInicio={<nav aria-label="Meses">Outubro</nav>} />);
+  assert.match(vazia, /<footer[\s\S]*Meses[\s\S]*0 registros/, 'sem linhas, o rodapé fica para trocar de mês');
 });
 
 test('o padrão antigo de tabela não volta: só a TabelaPadrao desenha tabela compartilhada', () => {
