@@ -8,6 +8,8 @@ import {
   Database,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   FileSpreadsheet,
   History,
   Keyboard,
@@ -41,6 +43,7 @@ import type {
 import { useFleetReport } from '../fleet/useFleetReport';
 import { calculateFleetMetrics } from '../fleet/reportService';
 import { toLegacyDailyStatus } from '../fleet/status';
+import { getOperationalToday, shiftIsoDate } from '../fleet/time';
 import { previewFleetImport } from '../fleet/importService';
 import type { PreviaCadastroSge } from '../fleet/sgeApontamentos';
 import { loadValidatedWorkbook } from '../utils/excelCorporate';
@@ -265,6 +268,7 @@ export default function ControleEquipamentosDiarioTab({
     activeFilterCount,
     viewModel,
   } = useFleetReport(context);
+  const hoje = getOperationalToday();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingRecord, setEditingRecord] = useState<FleetPersistedRecord>();
   const [formOpen, setFormOpen] = useState(false);
@@ -666,12 +670,19 @@ export default function ControleEquipamentosDiarioTab({
           abas={<AbasDaTela id="frota" rotulo="Subtelas do controle de frotas" abas={vistas} ativa={activeView} onTrocar={setActiveView} idPainel="frota-dados" testId="frota-aba" />}
           actions={<>
             {/* Dia consultado: vale para Situação do dia, Quadro, Equipamentos e Operadores. */}
-            <label className="relative flex min-w-0 items-center">
-              <span className="sr-only">Dia dos lançamentos</span>
-              <CalendarDays className="pointer-events-none absolute left-3 size-4 text-slate-400" aria-hidden="true" />
-              <input type="date" value={filters.date} onChange={event => event.target.value && updateFilter('date', event.target.value)} className={`${CAMPO} min-w-0 pl-9 font-semibold sm:w-auto`} data-testid="frota-dia" />
-            </label>
-            <p className="whitespace-nowrap text-sm font-semibold text-slate-600 first-letter:uppercase max-sm:hidden">{dataLonga(filters.date)}</p>
+            {/* Setas trocam de dia sem abrir o calendário; "Hoje" só aparece
+                quando a pessoa está olhando outro dia. */}
+            <div className="flex min-w-0 items-center gap-1" role="group" aria-label="Dia dos lançamentos">
+              <button type="button" onClick={() => updateFilter('date', shiftIsoDate(filters.date, -1))} aria-label="Dia anterior" title="Dia anterior" className={`${BOTAO_SECUNDARIO} shrink-0 px-0 min-w-11 lg:min-w-10`} data-testid="frota-dia-anterior"><ChevronLeft className="size-5" aria-hidden="true" /></button>
+              <label className="relative flex min-w-0 items-center">
+                <span className="sr-only">Escolher o dia</span>
+                <CalendarDays className="pointer-events-none absolute left-3 size-4 text-slate-400" aria-hidden="true" />
+                <input type="date" value={filters.date} onChange={event => event.target.value && updateFilter('date', event.target.value)} className={`${CAMPO} min-w-0 pl-9 font-semibold sm:w-auto`} data-testid="frota-dia" />
+              </label>
+              <button type="button" onClick={() => updateFilter('date', shiftIsoDate(filters.date, 1))} aria-label="Próximo dia" title="Próximo dia" className={`${BOTAO_SECUNDARIO} shrink-0 px-0 min-w-11 lg:min-w-10`} data-testid="frota-dia-seguinte"><ChevronRight className="size-5" aria-hidden="true" /></button>
+              {filters.date !== hoje && <button type="button" onClick={() => updateFilter('date', hoje)} className={`${BOTAO_SECUNDARIO} shrink-0 px-3`} data-testid="frota-hoje">Hoje</button>}
+            </div>
+            <p className="whitespace-nowrap text-sm font-semibold text-slate-600 first-letter:uppercase max-2xl:hidden">{dataLonga(filters.date)}</p>
             {activeView !== 'quadro' && <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} max-lg:hidden`} aria-label="Atalhos do teclado" data-testid="frota-atalhos">
               <Keyboard className="size-4" aria-hidden="true" />
               <kbd className="text-xs">?</kbd>
@@ -719,27 +730,7 @@ export default function ControleEquipamentosDiarioTab({
     >
       {activeView === 'today' && <div data-fleet-view className="flex min-h-0 flex-1 flex-col gap-3">
         <FleetKpiStrip metrics={viewModel.metrics} status={filters.status} onPick={status => updateFilter('status', status)}/>
-        {viewModel.integrityWarnings.length > 0 && (
-          <details open={viewModel.integrityWarnings.length <= 3} className={`group shrink-0 overflow-hidden rounded-2xl border-2 border-amber-300 bg-amber-50 ${FOCO}`} data-testid="frota-conferencia">
-            <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 px-3 py-1.5 [&::-webkit-details-marker]:hidden">
-              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-300"><AlertTriangle className="size-4" aria-hidden="true" /></span>
-              <span className="flex min-w-0 flex-wrap items-baseline gap-x-3">
-                <span className="text-base font-bold text-amber-900">{viewModel.integrityWarnings.length} ponto(s) para conferir nos lançamentos</span>
-                <span className="text-sm font-semibold text-amber-800">Toque para {viewModel.integrityWarnings.length <= 3 ? 'esconder' : 'ver'} a lista</span>
-              </span>
-              <ChevronDown className="ml-auto size-5 shrink-0 text-amber-700 transition duration-300 group-open:rotate-180" aria-hidden="true" />
-            </summary>
-            <ul className="max-h-48 space-y-1 overflow-y-auto border-t border-amber-200 bg-white/60 px-4 py-3 text-sm text-amber-900">
-              {viewModel.integrityWarnings.map(warning => (
-                <li key={warning} className="flex items-start gap-2">
-                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
-                  {warning}
-                </li>
-              ))}
-            </ul>
-          </details>
-        )}
-        <FleetFilterBar filters={filters} companies={empresas} groups={groups} equipmentTypes={equipmentTypes} locations={canteirosDoDia} activeFilterCount={activeFilterCount} onChange={updateFilter} onClear={clearFilters}/>
+        <FleetFilterBar filters={filters} companies={empresas} groups={groups} equipmentTypes={equipmentTypes} locations={canteirosDoDia} activeFilterCount={activeFilterCount} onChange={updateFilter} onClear={clearFilters} avisos={viewModel.integrityWarnings}/>
         <FleetDataTable rows={viewModel.allRows} selectedIds={selectedIds} onSelectionChange={setSelectedIds} onEdit={openEdit} onDetails={setDetailState} onDelete={onDeleteMany ? state => setConfirmation({ kind: 'delete', ids: [state.recordId] }) : undefined} canApprove={canApproveFleet} onApprove={(state, status) => onApproveFleetRecord?.(state.recordId, status)}/>
       </div>}
       {activeView === 'quadro' && quadro && <div data-fleet-view>

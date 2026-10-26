@@ -36,27 +36,28 @@ interface ResumoProps {
 }
 
 export function ResumoConferencia({ id, Icone, data, titulo, descricao, contadores, rotuloProgresso, progresso, filtro, onFiltro, opcoesFiltro, rotuloFiltro, acao }: ResumoProps) {
+  // Duas linhas baixas no computador (título e contadores; barra, filtro e
+  // ação) para a tabela de baixo mostrar o máximo de linhas.
   return (
-    <header className={`${CARTAO} grid shrink-0 gap-3 p-3 sm:p-4`}>
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
-        <div className="flex items-start gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-[#176b4d]"><Icone className="size-5" aria-hidden="true" /></span>
+    <header className={`${CARTAO} grid shrink-0 gap-2 p-3`}>
+      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-[#176b4d]"><Icone className="size-5" aria-hidden="true" /></span>
           <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#176b4d]">Conferência do dia · {dataCurta(data)}</p>
-            <h2 id={id} className="mt-0.5 text-lg font-bold text-slate-950">{titulo}</h2>
-            <p className="mt-0.5 text-sm text-[#5b6870]">{descricao}</p>
+            <h2 id={id} className="text-base font-bold text-slate-950">{titulo} <span className="text-sm font-semibold text-[#5b6870]">· {dataCurta(data)}</span></h2>
+            <p className="text-sm text-[#5b6870]">{descricao}</p>
           </div>
         </div>
         <dl className="grid grid-cols-2 overflow-hidden rounded-xl border border-slate-200 bg-[#f7f8f6] text-center sm:grid-cols-4">
           {contadores.map((contador, indice) => (
-            <div key={contador.rotulo} className={`px-4 py-1.5 ${indice ? 'border-l border-slate-200' : ''} ${indice > 1 ? 'max-sm:border-t' : ''} ${indice === 2 ? 'max-sm:border-l-0' : ''}`}>
-              <dt className={`text-xs font-bold uppercase ${contador.tom ?? 'text-[#5b6870]'}`}>{contador.rotulo}</dt>
-              <dd className={`text-xl font-bold tabular-nums ${contador.tom ?? 'text-slate-950'}`}>{contador.valor}</dd>
+            <div key={contador.rotulo} className={`flex items-baseline justify-center gap-2 px-4 py-1.5 ${indice ? 'border-l border-slate-200' : ''} ${indice > 1 ? 'max-sm:border-t' : ''} ${indice === 2 ? 'max-sm:border-l-0' : ''}`}>
+              <dt className={`whitespace-nowrap text-xs font-bold uppercase ${contador.tom ?? 'text-[#5b6870]'}`}>{contador.rotulo}</dt>
+              <dd className={`text-lg font-bold tabular-nums ${contador.tom ?? 'text-slate-950'}`}>{contador.valor}</dd>
             </div>
           ))}
         </dl>
       </div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-[#5b6870]"><span>{rotuloProgresso}</span><span>{progresso}%</span></div>
           <div className="h-2 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-label={rotuloProgresso} aria-valuenow={progresso} aria-valuemin={0} aria-valuemax={100}>
@@ -65,7 +66,7 @@ export function ResumoConferencia({ id, Icone, data, titulo, descricao, contador
         </div>
         <div className="grid grid-cols-3 gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200" role="group" aria-label={rotuloFiltro}>
           {opcoesFiltro.map(([valor, rotulo]) => (
-            <button key={valor} type="button" aria-pressed={filtro === valor} onClick={() => onFiltro(valor)} className={`min-h-11 rounded-xl px-3 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] lg:min-h-9 ${filtro === valor ? 'bg-white text-[#176b4d] ring-1 ring-slate-200' : 'text-[#5b6870] hover:text-slate-800'} ${FOCO}`}>{rotulo}</button>
+            <button key={valor} type="button" aria-pressed={filtro === valor} onClick={() => onFiltro(valor)} className={`min-h-11 whitespace-nowrap rounded-xl px-3 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] lg:min-h-8 ${filtro === valor ? 'bg-white text-[#176b4d] ring-1 ring-slate-200' : 'text-[#5b6870] hover:text-slate-800'} ${FOCO}`}>{rotulo}</button>
           ))}
         </div>
         {acao}

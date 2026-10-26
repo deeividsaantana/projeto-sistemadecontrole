@@ -165,8 +165,8 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
 
       {faltamEmMotoristas.length > 0 && onAddDrivers && (
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="frota-operadores-faltam">
-          <p><strong>{faltamEmMotoristas.length} operador(es) da relação não estão em Motoristas</strong> e por isso não aparecem no lançamento: {faltamEmMotoristas.map(item => nomeCurto(item.nome)).join(', ')}.</p>
-          <button type="button" onClick={() => incluirEmMotoristas(faltamEmMotoristas)} className={BOTAO_PRIMARIO}>Incluir em Motoristas</button>
+          <p className="min-w-0 flex-1 lg:truncate" title={faltamEmMotoristas.map(item => item.nome).join(', ')}><strong>{faltamEmMotoristas.length} operador(es) da relação não estão em Motoristas</strong> e por isso não aparecem no lançamento: {faltamEmMotoristas.map(item => nomeCurto(item.nome)).join(', ')}.</p>
+          <button type="button" onClick={() => incluirEmMotoristas(faltamEmMotoristas)} className={`${BOTAO_PRIMARIO} shrink-0 lg:min-h-9`}>Incluir em Motoristas</button>
         </div>
       )}
 
@@ -233,7 +233,6 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
         </section>
       )}
 
-      {onLancar && reconciliation.missing > 0 && visibility !== 'informed' && <p className="shrink-0 text-sm font-semibold text-[#5b6870]">Use “Lançar” na linha de quem está “A confirmar” para lançar direto.</p>}
 
       <div ref={escopo} className="flex min-h-[16rem] flex-1 flex-col">
         <TabelaPadrao

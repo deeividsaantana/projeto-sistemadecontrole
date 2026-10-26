@@ -203,3 +203,16 @@ export const getOperationalToday = (): string => {
   const day = String(now.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
+
+/**
+ * Dia anterior (-1) ou seguinte (+1) de uma data AAAA-MM-DD. A conta é feita
+ * em UTC ao meio-dia para o horário de verão e o fuso não pularem nem
+ * repetirem dia. Data inválida volta como veio.
+ */
+export const shiftIsoDate = (value: string, days: number): string => {
+  if (!isValidIsoDate(value)) return value;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, 12));
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+};
