@@ -219,3 +219,4 @@ import './cadastrosEstacasMolde.test';
 import './moldeDemaisTelas.test';
 import './guardaDeMovimento.test';
 import './frotaTabelaPadrao.test';
+import './tabelaMaisLinhas.test';

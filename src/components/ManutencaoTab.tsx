@@ -334,7 +334,7 @@ export default function ManutencaoTab({
       titulo: 'OS',
       valorOrdenacao: ordem => ordem.numero,
       render: ordem => (
-        <span className="flex flex-col items-start gap-0.5">
+        <span className="flex flex-wrap items-center gap-1.5 lg:flex-nowrap">
           <strong className="whitespace-nowrap tabular-nums text-slate-900">{ordem.numero}</strong>
           <Badge tone={prioridadeTone(ordem.prioridade)}>{ordem.prioridade}</Badge>
         </span>
@@ -345,6 +345,7 @@ export default function ManutencaoTab({
       titulo: 'Equipamento',
       larguraMinima: 150,
       valorOrdenacao: ordem => prefixoDe(ordem.equipamentoId),
+      dica: ordem => [prefixoDe(ordem.equipamentoId), presentEquipment(equipamentoPorId.get(ordem.equipamentoId)).label].filter(Boolean).join(' · '),
       render: ordem => {
         const { Icon: EquipmentIcon, label: equipmentLabel } = presentEquipment(equipamentoPorId.get(ordem.equipamentoId));
         return (
@@ -352,9 +353,9 @@ export default function ManutencaoTab({
             <span className="grid size-7 shrink-0 place-items-center rounded-md bg-emerald-50 text-emerald-800" aria-hidden="true">
               <EquipmentIcon className="size-4" strokeWidth={1.7} />
             </span>
-            <span className="min-w-0">
-              <strong className="block text-slate-800">{prefixoDe(ordem.equipamentoId)}</strong>
-              <small className="block text-xs text-slate-500">{equipmentLabel}</small>
+            <span className="min-w-0 lg:truncate">
+              <strong className="text-slate-800">{prefixoDe(ordem.equipamentoId)}</strong>
+              <small className="text-xs text-slate-500"> · {equipmentLabel}</small>
             </span>
           </span>
         );
@@ -391,7 +392,7 @@ export default function ManutencaoTab({
         return (
           <>
             <span className="whitespace-nowrap">{`${horas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`}</span>
-            {!isOrdemEncerrada(ordem.status) && <span className="block text-xs text-slate-500">em curso</span>}
+            {!isOrdemEncerrada(ordem.status) && <span className="whitespace-nowrap text-xs text-slate-500"> · em curso</span>}
           </>
         );
       },
