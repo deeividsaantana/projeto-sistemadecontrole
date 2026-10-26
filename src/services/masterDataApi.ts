@@ -216,14 +216,6 @@ export interface StagedFuelImport {
   pendingRows: number;
 }
 
-export interface StagedTravelImport {
-  batchId: string;
-  preservedRows: number;
-  reviewRows: number;
-  pendingRows: number;
-  duplicateRows: number;
-}
-
 export const stageFuelDataset = async (
   sourceName: string,
   rows: unknown[],
@@ -254,50 +246,6 @@ export const stageFuelDataset = async (
         sourceName: chunks.length > 1 ? `${sourceName} • lote ${index + 1}` : sourceName,
         sourceType: 'fuel-system',
         worksheetName: 'ABASTECIMENTOS',
-        rows: chunk,
-        metadata: {
-          ...metadata,
-          chunkIndex: index,
-          chunkRows: chunk.length,
-          totalRows: rows.length,
-        },
-      }),
-    });
-    batches.push(response.data);
-  }
-  return batches;
-};
-
-export const stageTravelDataset = async (
-  sourceName: string,
-  rows: unknown[],
-  metadata: Record<string, unknown> = {},
-): Promise<StagedTravelImport[]> => {
-  const chunks: unknown[][] = [];
-  let currentChunk: unknown[] = [];
-  let currentBytes = 2;
-  rows.forEach(row => {
-    const rowBytes = new TextEncoder().encode(JSON.stringify(row)).length + 1;
-    if (currentChunk.length > 0 && (currentChunk.length >= 5000 || currentBytes + rowBytes > 3_000_000)) {
-      chunks.push(currentChunk);
-      currentChunk = [];
-      currentBytes = 2;
-    }
-    currentChunk.push(row);
-    currentBytes += rowBytes;
-  });
-  if (currentChunk.length > 0) chunks.push(currentChunk);
-
-  const batches: StagedTravelImport[] = [];
-  for (let index = 0; index < chunks.length; index += 1) {
-    const chunk = chunks[index];
-    const response = await request<StagedTravelImport>(endpoint, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'stage-travel-import',
-        sourceName: chunks.length > 1 ? `${sourceName} • lote ${index + 1}` : sourceName,
-        sourceType: 'travel-system',
-        worksheetName: 'LIBERAÇÃO + RECEBIMENTO',
         rows: chunk,
         metadata: {
           ...metadata,

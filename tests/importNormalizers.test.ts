@@ -46,3 +46,13 @@ assert.equal(normalizeImportPrefixOrNull(''), null);
 
 assert.equal(normalizeImportTextOrNull('  Solo Reforçado  '), 'Solo Reforçado');
 assert.equal(normalizeImportTextOrNull(''), null);
+
+// M16: milhar em texto não vira número 1000 vezes menor.
+assert.equal(normalizeImportDecimalOrNull('1.234'), 1234);
+assert.equal(normalizeImportDecimalOrNull('12.500'), 12500);
+assert.equal(normalizeImportDecimalOrNull('1.234.567'), 1234567);
+assert.equal(normalizeImportDecimalOrNull('R$ 1.234,56'), 1234.56);
+assert.equal(normalizeImportDecimalOrNull('1234,5'), 1234.5);
+assert.equal(normalizeImportDecimalOrNull('7.5'), 7.5, 'ponto com menos de três casas continua decimal');
+assert.equal(normalizeImportDecimalOrNull('12.50'), 12.5);
+assert.equal(normalizeImportDecimalOrNull(9.91), 9.91, 'número nativo do Excel não muda');

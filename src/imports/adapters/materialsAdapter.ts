@@ -13,6 +13,7 @@ import { cleanImportValue, getImportValue, normalizeImportText } from '../../uti
 import { normalizeComparable } from '../../utils/canonicalIdentity';
 import { buildImportPreview } from '../preview';
 import type { MovimentoMaterial } from '../../types';
+import { movementTypeFromSheet } from '../materialImportApplication';
 
 // "lançamentos RENEA" também é lançamento de movimento; "resumo geral" é
 // agregado e fica deferred de propósito, igual ao adaptador de recebimentos.
@@ -91,6 +92,44 @@ const buildOperationalKey = (row: NormalizedMaterialMovementRow): string | undef
   return ['movimento', normalizeComparable(row.material), row.data, normalizeComparable(row.origem || ''), normalizeComparable(row.destino), row.quantidade, row.placaOuPrefixo || ''].join('|');
 };
 
+const chaveCompletaSemNota = (material: string, data: string, origem: string, destino: string, quantidade: number, placa: string) =>
+  [normalizeComparable(material), data, normalizeComparable(origem), normalizeComparable(destino), quantidade, normalizeComparable(placa)].join('|');
+
+const chaveSoltaSemNota = (material: string, data: string, destino: string, quantidade: number) =>
+  [normalizeComparable(material), data, normalizeComparable(destino), quantidade].join('|');
+
+/**
+ * Cada viagem já gravada só "cobre" uma linha da planilha. Placa e origem
+ * entram na comparação, para a viagem de outro caminhão com o mesmo volume
+ * não ser tomada por repetida. Movimento importado antes de o app guardar
+ * placa e origem ainda cobre a linha pelo material, dia, destino e volume.
+ */
+const indiceDeViagensSemNota = (current: readonly MovimentoMaterial[]) => {
+  const completas = new Map<string, MovimentoMaterial[]>();
+  const soltas = new Map<string, MovimentoMaterial[]>();
+  const adicionar = (mapa: Map<string, MovimentoMaterial[]>, chave: string, movimento: MovimentoMaterial) => {
+    const lista = mapa.get(chave);
+    if (lista) lista.push(movimento);
+    else mapa.set(chave, [movimento]);
+  };
+  current.forEach(movimento => {
+    if (movimento.notaFiscal) return;
+    adicionar(completas, chaveCompletaSemNota(movimento.materialDescricao, movimento.data, movimento.origem || '', movimento.destino || '', movimento.quantidade, movimento.placa || ''), movimento);
+    if (!movimento.placa || !movimento.origem) {
+      adicionar(soltas, chaveSoltaSemNota(movimento.materialDescricao, movimento.data, movimento.destino || '', movimento.quantidade), movimento);
+    }
+  });
+  const usados = new Set<string>();
+  const primeiroLivre = (lista: MovimentoMaterial[] | undefined) => lista?.find(movimento => !usados.has(movimento.id));
+  return (linha: NormalizedMaterialMovementRow): MovimentoMaterial | undefined => {
+    if (!linha.data || !linha.destino || linha.quantidade === null) return undefined;
+    const achado = primeiroLivre(completas.get(chaveCompletaSemNota(linha.material, linha.data, linha.origem || '', linha.destino, linha.quantidade, linha.placaOuPrefixo || '')))
+      || primeiroLivre(soltas.get(chaveSoltaSemNota(linha.material, linha.data, linha.destino, linha.quantidade)));
+    if (achado) usados.add(achado.id);
+    return achado;
+  };
+};
+
 export const materialsAdapter: SpreadsheetImportAdapter<NormalizedMaterialMovementRow, readonly MovimentoMaterial[]> = {
   domain: 'materials-movements',
   supports: sheetName => RECOGNIZED_SHEETS.includes(normalizeSheetKey(sheetName)),
@@ -126,8 +165,10 @@ export const materialsAdapter: SpreadsheetImportAdapter<NormalizedMaterialMoveme
     // um material novo com unidade inventada.
     const badUnit = Boolean(value.unidade && /^\d|^[A-Z]{3}-?\d/.test(value.unidade));
     if (badUnit) messages.push(`Unidade "${value.unidade}" não reconhecida.`);
-    const operationalKey = badUnit ? undefined : buildOperationalKey(value);
-    if (!operationalKey) messages.push('Chave operacional incompleta (data + destino + quantidade): linha fica em conferência.');
+    const tipoDesconhecido = !movementTypeFromSheet(value.tipoMovimento);
+    if (tipoDesconhecido) messages.push(`Movimento "${value.tipoMovimento}" não reconhecido: diga se é entrada, saída, transferência ou ajuste.`);
+    const operationalKey = badUnit || tipoDesconhecido ? undefined : buildOperationalKey(value);
+    if (!operationalKey && !tipoDesconhecido) messages.push('Chave operacional incompleta (data + destino + quantidade): linha fica em conferência.');
     return [{
       lineage: buildRowLineage({
         sourceFile: context.sourceFile,
@@ -146,17 +187,20 @@ export const materialsAdapter: SpreadsheetImportAdapter<NormalizedMaterialMoveme
   }),
   reconcile: (rows, current) => {
     const seenKeys = new Set<string>();
+    const encontrarSemNota = indiceDeViagensSemNota(current);
     const previewRows = rows.map(row => {
       if (!row.operationalKey) return { row, disposition: 'review' as const };
+      if (!row.value.notaFiscal) {
+        // Sem nota, viagens iguais no mesmo dia são viagens de verdade: conta
+        // quantas o app já tem e só a que passar disso entra (A25).
+        const existing = encontrarSemNota(row.value);
+        if (!existing) return { row, disposition: 'new' as const };
+        return { row, disposition: 'unchanged' as const, existingReference: existing.id };
+      }
       if (seenKeys.has(row.operationalKey)) return { row, disposition: 'duplicate-in-file' as const };
       seenKeys.add(row.operationalKey);
-      const existing = current.find(movimento => row.value.notaFiscal && movimento.notaFiscal
-        ? movimento.notaFiscal === row.value.notaFiscal && movimento.data === row.value.data
-          && normalizeComparable(movimento.materialDescricao) === normalizeComparable(row.value.material)
-        : normalizeComparable(movimento.materialDescricao) === normalizeComparable(row.value.material)
-        && movimento.data === row.value.data
-        && normalizeComparable(movimento.destino || '') === normalizeComparable(row.value.destino || '')
-        && movimento.quantidade === row.value.quantidade);
+      const existing = current.find(movimento => movimento.notaFiscal === row.value.notaFiscal && movimento.data === row.value.data
+        && normalizeComparable(movimento.materialDescricao) === normalizeComparable(row.value.material));
       if (!existing) return { row, disposition: 'new' as const };
       return { row, disposition: 'unchanged' as const, existingReference: existing.id };
     });

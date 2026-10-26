@@ -26,9 +26,8 @@ const STATUS_LABELS: Record<ImportDisposition, string> = {
 
 /**
  * Mesmo fluxo de MateriaisImportacoesPanel.tsx, para o domínio "travels"
- * (abas LIBERAÇÃO/RECEBIMENTO → TicketJazida). Não substitui o botão de
- * importação já existente em TicketsJazidaTab (handleImportTicketsFile) —
- * fica ao lado, como o caminho com dry-run/lote/lineage/idempotência.
+ * (abas LIBERAÇÃO/RECEBIMENTO → TicketJazida). É o único caminho de
+ * importação de tickets: o importador antigo, que errava hora e número, saiu (A24).
  */
 export default function TicketsJazidaImportacoesPanel({ tickets, responsavel, onApply, onError }: Props) {
   const [fileName, setFileName] = useState('');

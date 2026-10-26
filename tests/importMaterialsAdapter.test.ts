@@ -36,9 +36,27 @@ assert.equal(parsed[1].operationalKey, undefined);
 assert.equal(parsed[2].operationalKey, parsed[0].operationalKey, 'mesma chave operacional da linha 1');
 
 const preview = materialsAdapter.reconcile(parsed, [] as MovimentoMaterial[]);
-assert.equal(preview.counts.new, 1);
+assert.equal(preview.counts.new, 2, 'sem nota, duas viagens iguais no dia são duas viagens (A25)');
 assert.equal(preview.counts.review, 1);
-assert.equal(preview.counts['duplicate-in-file'], 1, 'segunda ocorrência da mesma chave no arquivo é duplicate-in-file, nunca descartada');
+assert.equal(preview.counts['duplicate-in-file'], 0);
+
+// A25: reimportar compara pela placa e pela origem e conta as viagens.
+const viagemNoApp = (id: string, extra: Partial<MovimentoMaterial> = {}) => ({
+  id, data: '2026-01-05', tipo: 'Entrada', materialId: 'm1', materialDescricao: 'RACHÃO', quantidade: 40, unidade: 'M3',
+  origem: 'Jazida', destino: 'Frente 3', placa: 'ABC1D23', responsavel: 'x', criadoEm: '2026-01-05T12:00:00.000Z', ...extra,
+}) as MovimentoMaterial;
+const reimportacao = materialsAdapter.reconcile(parsed, [viagemNoApp('v1')]);
+assert.equal(reimportacao.counts.unchanged, 1, 'uma viagem já no app cobre só uma linha');
+assert.equal(reimportacao.counts.new, 1, 'a segunda viagem igual do dia entra');
+const outroCaminhao = materialsAdapter.reconcile(parsed, [viagemNoApp('v1', { placa: 'XYZ9K87' })]);
+assert.equal(outroCaminhao.counts.new, 2, 'viagem de outro caminhão com o mesmo volume não esconde as da planilha');
+const outraOrigem = materialsAdapter.reconcile(parsed, [viagemNoApp('v1', { origem: 'Pedreira' })]);
+assert.equal(outraOrigem.counts.new, 2, 'origem diferente também é outra viagem');
+const importadaSemPlaca = materialsAdapter.reconcile(parsed, [viagemNoApp('v1', { placa: undefined, origem: undefined })]);
+assert.equal(importadaSemPlaca.counts.unchanged, 1, 'viagem importada antes de guardar placa e origem ainda cobre uma linha');
+assert.equal(importadaSemPlaca.counts.new, 1);
+const ambasNoApp = materialsAdapter.reconcile(parsed, [viagemNoApp('v1'), viagemNoApp('v2')]);
+assert.equal(ambasNoApp.counts.new, 0, 'reimportar a mesma planilha não traz nada de novo');
 
 // Planilha real de agregados: o mesmo caminhão faz viagens iguais no dia, a
 // nota separa uma da outra; o item nomeia o material; a coluna LOCAIS ao lado
@@ -75,3 +93,12 @@ const [botaFora] = materialsAdapter.parse({
 assert.equal(botaFora.value.tipoMovimento, 'Transferência');
 assert.equal(botaFora.value.origem, 'CS RAMO 600/700');
 assert.equal(botaFora.value.destino, 'LARA');
+
+// M17: tipo de movimento desconhecido vai para conferência, não vira entrada.
+const [consumo] = materialsAdapter.parse({
+  ...context,
+  rows: [{ Data: '05/01/2026', Movimento: 'Consumo', Origem: 'Estoque', Destino: 'Ramo 900', Quantidade: 12, Unidade: 'M3' }],
+});
+assert.equal(consumo.lineage.validationStatus, 'review');
+assert.equal(consumo.operationalKey, undefined);
+assert.match(consumo.lineage.validationMessages.join(' '), /Movimento "Consumo" não reconhecido/);
