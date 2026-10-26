@@ -998,10 +998,56 @@ export default function ControlePresencaTab({
   // Registros e Histórico são tabelas: a área de dados fica do tamanho da tela
   // e só as linhas rolam. O resto (painel, relatório, cartões de equipe) é
   // aba longa, que rola por dentro.
-  const telaDeTabela = view === 'registros' || view === 'historico';
+  const telaDeTabela = view === 'registros' || view === 'historico' || view === 'equipes';
   const nomeDoHistorico = (item: HistoricoPresenca) => safeText(employeeById.get(item.funcionarioId)?.nome) || item.funcionarioId;
   const todosFiltradosMarcados = filteredRecords.length > 0 && filteredRecords.every(record => selectedRecordIds.includes(record.id));
   const marcados = useMemo(() => new Set(selectedRecordIds), [selectedRecordIds]);
+
+  const equipesQueEnviaramHoje = useMemo(
+    () => new Set(safeGroups.filter(group => safeRecords.some(record => record.data === today && teamRecordMatches(group, record))).map(group => group.id)),
+    [safeGroups, safeRecords, today],
+  );
+  const colunasEquipes: ColunaTabela<GrupoEquipe>[] = [
+    {
+      chave: 'equipe',
+      titulo: 'Equipe',
+      larguraMinima: 220,
+      valorOrdenacao: group => group.nome,
+      dica: group => group.nome,
+      render: group => {
+        const ativa = group.status === 'ativo' && group.linkAtivo;
+        return (
+          <span className="flex flex-wrap items-center gap-2">
+            <strong className="font-bold text-slate-900">{group.nome || 'Equipe sem nome'}</strong>
+            <span className={`rounded-md px-1.5 py-0.5 text-xs font-bold uppercase ${ativa ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-700'}`}>{ativa ? 'Ativa' : 'Inativa'}</span>
+          </span>
+        );
+      },
+    },
+    {
+      chave: 'responsavel',
+      titulo: 'Responsável · Frente',
+      larguraMinima: 180,
+      valorOrdenacao: group => group.responsavel,
+      dica: group => `${group.responsavel || 'Sem responsável'} · ${group.frenteServico || 'Sem frente'}`,
+      render: group => `${group.responsavel || 'Sem responsável'} · ${group.frenteServico || 'Sem frente'}`,
+    },
+    {
+      chave: 'colaboradores',
+      titulo: 'Pessoas',
+      alinhamento: 'direita',
+      valorOrdenacao: group => group.funcionarioIds.filter(id => employeeById.has(id)).length,
+      render: group => group.funcionarioIds.filter(id => employeeById.has(id)).length,
+    },
+    {
+      chave: 'hoje',
+      titulo: 'Hoje',
+      valorOrdenacao: group => (equipesQueEnviaramHoje.has(group.id) ? 1 : 0),
+      render: group => (equipesQueEnviaramHoje.has(group.id)
+        ? <span className="font-bold text-emerald-800">Enviada</span>
+        : <span className="font-bold text-amber-800">Pendente</span>),
+    },
+  ];
 
   const colunasRegistros: ColunaTabela<PresencaApontamento>[] = [
     {
@@ -1619,23 +1665,27 @@ export default function ControlePresencaTab({
       )}
 
       {view === 'equipes' && (
-        filteredGroups.length === 0 ? (
-          <div className={`${PANEL} px-5 py-14 text-center text-sm text-[#5b6870]`}>{teamSearch.trim() ? 'Nenhuma equipe com esse nome.' : 'Nenhuma equipe cadastrada. Toque em Nova equipe para começar.'}</div>
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-            {filteredGroups.map(group => {
-              const members = group.funcionarioIds.map(id => safeFuncionarios.find(employee => employee.id === id)).filter(Boolean) as Funcionario[];
-              return (
-                <article key={group.id} className={`${PANEL} p-5`}>
-                  <div className="flex items-start gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-900"><Users className="h-5 w-5" aria-hidden="true" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-black text-slate-900">{group.nome || 'Equipe sem nome'}</h2><span className={`rounded-md px-2 py-1 text-xs font-bold uppercase tracking-[0.1em] ${group.status === 'ativo' && group.linkAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-700'}`}>{group.status === 'ativo' && group.linkAtivo ? 'Ativa' : 'Inativa'}</span></div><p className="mt-1 text-sm text-[#5b6870]">{group.responsavel || 'Sem responsável'} · {group.frenteServico || 'Sem frente'}</p></div><button type="button" onClick={() => openGroup(group)} className={`grid size-11 shrink-0 place-items-center rounded-xl border border-slate-200 text-[#5b6870] hover:border-emerald-700 hover:text-emerald-800 ${FOCO}`} aria-label={`Editar ${group.nome}`}><Edit3 className="h-4 w-4" aria-hidden="true" /></button></div>
-                  <div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-slate-50 p-3"><strong className="text-2xl font-black text-slate-900">{members.length}</strong><span className="ml-2 text-xs text-[#5b6870]">colaboradores</span></div><div className="rounded-xl bg-slate-50 p-3"><strong className="text-sm font-black text-slate-900">{group.linkAtivo ? 'Disponível' : 'Pausado'}</strong><span className="mt-1 block text-xs text-[#5b6870]">link da equipe</span></div></div>
-                  {group.token && <div className="mt-4 flex gap-2"><button type="button" onClick={() => copyLink(group.token, `Link de ${group.nome}`)} className={`${SECONDARY_BUTTON} flex-1`}><ClipboardCopy className="h-4 w-4" aria-hidden="true" /> Copiar link</button><button type="button" onClick={() => shareOnWhatsApp(group)} className={`${PRIMARY_BUTTON} flex-1`}><MessageCircle className="h-4 w-4" aria-hidden="true" /> Enviar no WhatsApp</button></div>}
-                  <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4">{onDeleteGrupoEquipe && <button type="button" onClick={() => setEquipeExcluindo(group)} className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-bold text-rose-700 hover:text-rose-900 lg:min-h-9 ${FOCO}`}><Trash2 className="h-4 w-4" aria-hidden="true" /> Excluir</button>}<button type="button" onClick={() => openGroup({ ...group, token: generateToken() })} className={`ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-bold text-emerald-800 hover:text-emerald-950 lg:min-h-9 ${FOCO}`}><RotateCcw className="h-4 w-4" aria-hidden="true" /> Renovar link</button></div>
-                </article>
-              );
-            })}
-          </div>
-        )
+        <TabelaPadrao
+          titulo="Equipes de presença"
+          linhas={filteredGroups}
+          colunas={colunasEquipes}
+          idDaLinha={group => group.id}
+          nomeDoItem={{ um: 'equipe', varios: 'equipes' }}
+          ordenacaoInicial={{ chave: 'equipe', direcao: 'asc' }}
+          vazio={teamSearch.trim() ? 'Nenhuma equipe com esse nome.' : 'Nenhuma equipe cadastrada. Toque em Nova equipe para começar.'}
+          tituloAcoes="Ações"
+          acoes={group => (
+            <span className="flex flex-wrap items-center gap-2 md:flex-nowrap md:gap-1.5">
+              <button type="button" onClick={() => openGroup(group)} className={`${SECONDARY_BUTTON} min-h-11 px-2.5 md:min-h-8 md:px-2`} aria-label={`Editar ${group.nome}`}><Edit3 className="h-4 w-4" aria-hidden="true" /> Editar</button>
+              {group.token && <button type="button" onClick={() => copyLink(group.token, `Link de ${group.nome}`)} className={`${SECONDARY_BUTTON} min-h-11 px-2.5 md:min-h-8 md:px-2`} aria-label={`Copiar link de ${group.nome}`}><ClipboardCopy className="h-4 w-4" aria-hidden="true" /> Copiar<span className="md:sr-only"> link</span></button>}
+              {group.token && <button type="button" onClick={() => shareOnWhatsApp(group)} className={`${PRIMARY_BUTTON} min-h-11 px-2.5 md:min-h-8 md:px-2`} aria-label={`Enviar link de ${group.nome} no WhatsApp`}><MessageCircle className="h-4 w-4" aria-hidden="true" /> WhatsApp</button>}
+              <button type="button" onClick={() => openGroup({ ...group, token: generateToken() })} className={`${SECONDARY_BUTTON} min-h-11 px-2.5 md:min-h-8 md:px-2`} aria-label={`Renovar link de ${group.nome}`} title="Renovar link"><RotateCcw className="h-4 w-4" aria-hidden="true" /><span className="md:sr-only"> Renovar link</span></button>
+              {onDeleteGrupoEquipe && <button type="button" onClick={() => setEquipeExcluindo(group)} className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-bold text-rose-700 hover:text-rose-900 md:min-h-8 ${FOCO}`} aria-label={`Excluir ${group.nome}`} title="Excluir equipe"><Trash2 className="h-4 w-4" aria-hidden="true" /><span className="md:sr-only"> Excluir</span></button>}
+            </span>
+          )}
+          className="flex-1"
+          testId="presenca-equipes"
+        />
       )}
 
       {view === 'registros' && (
