@@ -17,28 +17,12 @@ import {
   GrupoEquipe,
 } from '../types';
 
-import { 
-  Fuel, 
-  Droplets, 
-  ClipboardList, 
-  Search, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  X, 
-  AlertTriangle,
-  CheckCircle,
-  FileSpreadsheet,
-  FilterX,
-  Upload,
-  Download
-} from 'lucide-react';
+import { AlertTriangle, CheckCircle, Edit, Fuel, Plus, Search, Trash2, X } from 'lucide-react';
 import type ExcelJS from 'exceljs';
-import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, loadValidatedWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
+import { loadValidatedWorkbook } from '../utils/excelCorporate';
 import SpreadsheetImportReview from './SpreadsheetImportReview';
 import CombustivelOperacionalTab from './CombustivelOperacionalTab';
 import { findEquipmentByPrefix, isValidFuelDate, normalizeQuickTime } from '../utils/combustivelValidation';
-import { findPreviousPumpForConvoy } from '../utils/fuelPumpSequence';
 import { buildFuelImportKey, isPublishableFuelImport } from '../utils/fuelImportIdentity';
 import { buildFuelImportObservation, fuelSheetCompetence, isFuelImportWorksheet, normalizeConvoyCode } from '../utils/fuelMacroForm';
 import {
@@ -50,7 +34,10 @@ import {
 } from '../utils/fuelMasterDataImport';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { ConfirmDialog, CountUp, PageHeader, isoDay } from '../shared/ui';
+import { ConfirmDialog, PageHeader, isoDay } from '../shared/ui';
+import { TelaCheia } from '../shared/ui/TelaCheia';
+import { TabelaPadrao, type ColunaTabela } from '../shared/ui/TabelaPadrao';
+import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO } from './cadastros/estilos';
 
 export interface ImportAbastecimentosResult {
   requested: number;
@@ -129,33 +116,10 @@ export default function LancamentosTab({
 
   const [mode, setMode] = useState<Mode>('abastecimentos');
   const [searchQuery, setSearchQuery] = useState('');
-  const [abastecimentoSort, setAbastecimentoSort] = useState<'data_desc' | 'litros_desc' | 'litros_asc'>('data_desc');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [selectedAbastecimentoIds, setSelectedAbastecimentoIds] = useState<string[]>([]);
-  const [confirmandoInativacao, setConfirmandoInativacao] = useState(false);
   const [validationError, setValidationError] = useState('');
-
-  // --- Filtros avançados do módulo de Combustível/Lubrificação (Prioridade 1) ---
-  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
-  const [fDataInicial, setFDataInicial] = useState('');
-  const [fDataFinal, setFDataFinal] = useState('');
-  const [fFrotaId, setFFrotaId] = useState('');
-  const [fTipoCombustivelId, setFTipoCombustivelId] = useState('');
-  const [fComboioId, setFComboioId] = useState('');
-  const [fEmpresaId, setFEmpresaId] = useState('');
-  const [fStatus, setFStatus] = useState('');
-  const [fResponsavel, setFResponsavel] = useState('');
-  const [isExportingExcel, setIsExportingExcel] = useState(false);
-
-  const limparFiltros = () => {
-    setFDataInicial(''); setFDataFinal(''); setFFrotaId(''); setFTipoCombustivelId('');
-    setFComboioId(''); setFEmpresaId(''); setFStatus(''); setFResponsavel(''); setSearchQuery('');
-  };
-
-  const hasFiltrosAtivos = !!(fDataInicial || fDataFinal || fFrotaId || fTipoCombustivelId || fComboioId || fEmpresaId || fStatus || fResponsavel || searchQuery);
-
   // --- Importação de Planilhas — Prioridade 3 ---
   interface ImportRow {
     aba: string;
@@ -720,104 +684,41 @@ export default function LancamentosTab({
     setImportedMasterData({ empresas: [], equipamentos: [], comboios: [] });
   };
 
-  // 1. Form Temporary States
-  // Shared
+  // Formulário da Lubrificação. O abastecimento é lançado no CombustivelOperacionalTab.
   const [date, setDate] = useState(isoDay(new Date()));
   const [time, setTime] = useState('08:00');
   const [equipamentoId, setEquipamentoId] = useState('');
   const [responsavel, setResponsavel] = useState('');
-  const [operadorNome, setOperadorNome] = useState('');
-  const [localAbastecimento, setLocalAbastecimento] = useState('');
   const [observacao, setObservacao] = useState('');
-
-  // Fueling logs specific
-  const [horimetroInicial, setHorimetroInicial] = useState<number>(0);
-  const [kmInicial, setKmInicial] = useState<number>(0);
-  const [bombaInicial, setBombaInicial] = useState<number>(0);
-  const [quantidadeLitros, setQuantidadeLitros] = useState<number>(0);
-  const [bombaFinal, setBombaFinal] = useState<number>(0);
-  const [tipoCombustivelId, setTipoCombustivelId] = useState('');
-  const [comboioId, setComboioId] = useState('');
-  const pumpValuesManuallyEditedRef = useRef(false);
-
-  // Lubrication specific
   const [lubHorimetro, setLubHorimetro] = useState<number>(0);
   const [produtoLubrificacaoId, setProdutoLubrificacaoId] = useState('');
   const [compartimento, setCompartimento] = useState('Pinos do Braço / Caçamba');
   const [lubQuantidade, setLubQuantidade] = useState<number>(1);
 
-  // Helper to get derived info
   const selectedEquipment = equipamentos.find(e => e.id === equipamentoId);
   const derivedEquipmentDesc = selectedEquipment ? `${selectedEquipment.marca} ${selectedEquipment.modelo}` : '';
   const derivedCompany = selectedEquipment ? empresas.find(em => em.id === selectedEquipment.empresaId)?.nome : '';
 
-  // A sugestão respeita data/hora e somente o comboio selecionado. Não usa a
-  // maior leitura, pois um medidor pode ser reiniciado e lançamentos retroativos
-  // precisam continuar a sequência que existia naquele momento.
-  const getUltimaBombaFinal = (
-    comboioIdAlvo: string,
-    excluirId: string | null = null,
-    dataReferencia = date,
-    horaReferencia = time,
-  ): number => findPreviousPumpForConvoy(
-    abastecimentos,
-    comboioIdAlvo,
-    dataReferencia,
-    horaReferencia,
-    excluirId || '',
-  )?.bombaFinal || 0;
-
-  const previousPumpForForm = comboioId
-    ? findPreviousPumpForConvoy(abastecimentos, comboioId, date, time, editingId || '')
-    : undefined;
-
-  const applyPumpSuggestion = (
-    nextComboioId: string,
-    nextDate = date,
-    nextTime = time,
-    force = false,
-  ) => {
-    if (editingId !== null || !nextComboioId || (pumpValuesManuallyEditedRef.current && !force)) return;
-    const suggested = getUltimaBombaFinal(nextComboioId, null, nextDate, nextTime);
-    setBombaInicial(suggested);
-    setBombaFinal(suggested + Number(quantidadeLitros));
-  };
-
-  // Reset fields helper
   const resetFormFields = () => {
     setEditingId(null);
     setValidationError('');
     setDate(isoDay(new Date()));
     setTime(new Date().toTimeString().split(' ')[0].substring(0, 5));
     setEquipamentoId('');
-    setResponsavel(''); setOperadorNome(''); setLocalAbastecimento('');
+    setResponsavel('');
     setObservacao('');
-
-    setHorimetroInicial(0);
-    setKmInicial(0);
-    setBombaInicial(0);
-    setQuantidadeLitros(0);
-    setBombaFinal(0);
-    setTipoCombustivelId('');
-    setComboioId('');
-    pumpValuesManuallyEditedRef.current = false;
-
     setLubHorimetro(0);
     setProdutoLubrificacaoId(lubrificantes[0]?.id || '');
     setCompartimento('Pinos do Braço / Caçamba');
     setLubQuantidade(1);
-
   };
 
-  // Open forms
   const handleOpenCreate = () => {
     resetFormFields();
     setIsFormOpen(true);
   };
 
-  // Lubrificação usava a tela sem nenhum atalho de teclado, diferente do
-  // Abastecimento (delegado ao CombustivelOperacionalTab, que já tem N e /).
-  // Mesmo padrão aqui: N lança, / busca.
+  // Mesmo padrão do Combustível: N lança, / busca.
   useEffect(() => {
     if (mode !== 'lubrificacoes' || isFormOpen) return undefined;
     const handleShortcut = (event: KeyboardEvent) => {
@@ -836,119 +737,49 @@ export default function LancamentosTab({
     return () => window.removeEventListener('keydown', handleShortcut);
   }, [mode, isFormOpen]);
 
-  const handleOpenEdit = (item: Abastecimento | Lubrificacao) => {
+  const handleOpenEdit = (x: Lubrificacao) => {
     resetFormFields();
-    setEditingId(item.id);
-    setValidationError('');
-
-    if (mode === 'abastecimentos') {
-      const x = item as Abastecimento;
-      setDate(x.data); setTime(x.hora); setEquipamentoId(x.equipamentoId);
-      setHorimetroInicial(x.horimetroInicial); setKmInicial(x.kmInicial);
-      setBombaInicial(x.bombaInicial); setQuantidadeLitros(x.quantidadeLitros);
-      setBombaFinal(x.bombaFinal);
-      setTipoCombustivelId(x.tipoCombustivelId); setComboioId(x.comboioId);
-      setResponsavel(x.responsavel); setOperadorNome(x.operadorNome || ''); setLocalAbastecimento(x.localAbastecimento || ''); setObservacao(x.observacao);
-      pumpValuesManuallyEditedRef.current = true;
-
-    } else if (mode === 'lubrificacoes') {
-      const x = item as Lubrificacao;
-      setDate(x.data); setTime(x.hora); setEquipamentoId(x.equipamentoId);
-      setLubHorimetro(x.horimetro); setProdutoLubrificacaoId(x.produtoLubrificacaoId);
-      setCompartimento(x.compartimento); setLubQuantidade(x.quantidade);
-      setResponsavel(x.responsavel); setObservacao(x.observacao);
-
-    }
+    setEditingId(x.id);
+    setDate(x.data); setTime(x.hora); setEquipamentoId(x.equipamentoId);
+    setLubHorimetro(x.horimetro); setProdutoLubrificacaoId(x.produtoLubrificacaoId);
+    setCompartimento(x.compartimento); setLubQuantidade(x.quantidade);
+    setResponsavel(x.responsavel); setObservacao(x.observacao);
     setIsFormOpen(true);
   };
 
-  // Quando o usuário troca o comboio no formulário, a Bomba Inicial é recalculada
-  // automaticamente com base na última Bomba Final registrada para aquele comboio
-  // (apenas em novos lançamentos; ao editar um já existente, o valor original é preservado).
-  const handleComboioChange = (novoComboioId: string) => {
-    setComboioId(novoComboioId);
-    pumpValuesManuallyEditedRef.current = false;
-    applyPumpSuggestion(novoComboioId, date, time, true);
-  };
-
-  // Salva o lançamento atual. Quando `keepOpen` é true (botão "Salvar e novo"),
-  // o formulário permanece aberto para o próximo lançamento: campos que tendem a
-  // se repetir em sequência (comboio, produto/compartimento, responsável) são
-  // preservados, os demais são limpos, e o foco volta para a Frota/Equipamento.
+  // Salva. Com `keepOpen` (Salvar e lançar outra) produto, compartimento e
+  // responsável continuam e o foco volta para a máquina.
   const submitForm = (keepOpen: boolean) => {
     setValidationError('');
-
     const isNew = editingId === null;
-    const currentId = isNew ? `txn-${Date.now()}` : editingId!;
-
-    if (mode === 'abastecimentos') {
-      if (!equipamentoId || !tipoCombustivelId || !responsavel.trim() || quantidadeLitros <= 0) {
-        setValidationError('Preencha todos os campos obrigatórios (Frota, Combustível, Litros e Responsável).');
-        return;
-      }
-      onSaveAbastecimento({
-        id: currentId,
-        data: date,
-        hora: time,
-        equipamentoId,
-        horimetroInicial: Number(horimetroInicial) || 0,
-        kmInicial: Number(kmInicial) || 0,
-        bombaInicial: Number(bombaInicial) || 0,
-        quantidadeLitros: Number(quantidadeLitros),
-        bombaFinal: Number(bombaFinal) || (Number(bombaInicial) + Number(quantidadeLitros)),
-        tipoCombustivelId,
-        comboioId,
-        responsavel: responsavel.trim(),
-        operadorNome: operadorNome.trim() || undefined,
-        localAbastecimento: localAbastecimento.trim() || undefined,
-        observacao: observacao.trim()
-      }, isNew);
-
-      if (keepOpen && isNew) {
-        const preservedComboio = comboioId;
-        const preservedResponsavel = responsavel;
-        const preservedTipoCombustivel = tipoCombustivelId;
-        const preservedLocal = localAbastecimento;
-        resetFormFields();
-        setComboioId(preservedComboio);
-        setResponsavel(preservedResponsavel);
-        setTipoCombustivelId(preservedTipoCombustivel);
-        setLocalAbastecimento(preservedLocal);
-        requestAnimationFrame(() => equipamentoFieldRef.current?.focus());
-        return;
-      }
-
-    } else if (mode === 'lubrificacoes') {
-      if (!equipamentoId || !responsavel.trim() || lubQuantidade <= 0) {
-        setValidationError('Preencha todos os campos obrigatórios (Frota, Quantidade, Responsável)!');
-        return;
-      }
-      onSaveLubrificacao({
-        id: currentId,
-        data: date,
-        hora: time,
-        equipamentoId,
-        horimetro: Number(lubHorimetro) || 0,
-        produtoLubrificacaoId: produtoLubrificacaoId || (lubrificantes[0] ? lubrificantes[0].id : ''),
-        compartimento: compartimento.trim() || 'Motor',
-        quantidade: Number(lubQuantidade),
-        responsavel: responsavel.trim(),
-        observacao: observacao.trim()
-      }, isNew);
-
-      if (keepOpen && isNew) {
-        const preservedProduto = produtoLubrificacaoId;
-        const preservedCompartimento = compartimento;
-        const preservedResponsavel = responsavel;
-        resetFormFields();
-        setProdutoLubrificacaoId(preservedProduto);
-        setCompartimento(preservedCompartimento);
-        setResponsavel(preservedResponsavel);
-        requestAnimationFrame(() => equipamentoFieldRef.current?.focus());
-        return;
-      }
+    if (!equipamentoId || !responsavel.trim() || lubQuantidade <= 0) {
+      setValidationError('Preencha a máquina, a quantidade e o responsável.');
+      return;
     }
+    onSaveLubrificacao({
+      id: isNew ? `txn-${Date.now()}` : editingId!,
+      data: date,
+      hora: time,
+      equipamentoId,
+      horimetro: Number(lubHorimetro) || 0,
+      produtoLubrificacaoId: produtoLubrificacaoId || (lubrificantes[0] ? lubrificantes[0].id : ''),
+      compartimento: compartimento.trim() || 'Motor',
+      quantidade: Number(lubQuantidade),
+      responsavel: responsavel.trim(),
+      observacao: observacao.trim()
+    }, isNew);
 
+    if (keepOpen && isNew) {
+      const preservedProduto = produtoLubrificacaoId;
+      const preservedCompartimento = compartimento;
+      const preservedResponsavel = responsavel;
+      resetFormFields();
+      setProdutoLubrificacaoId(preservedProduto);
+      setCompartimento(preservedCompartimento);
+      setResponsavel(preservedResponsavel);
+      requestAnimationFrame(() => equipamentoFieldRef.current?.focus());
+      return;
+    }
     setIsFormOpen(false);
     resetFormFields();
   };
@@ -976,282 +807,41 @@ export default function LancamentosTab({
     }
   };
 
-  // Safe deletion confirmation toggle
-  const handleDeleteTrigger = (id: string) => {
-    setDeleteConfirmId(id);
-  };
-
-  const executeDeletion = (id: string) => {
-    if (mode === 'abastecimentos') onDeleteAbastecimento?.(id);
-    else if (mode === 'lubrificacoes') onDeleteLubrificacao?.(id);
-
-    setDeleteConfirmId(null);
-  };
-
-  // Search filter
+  // Busca
   const q = searchQuery.toLowerCase().trim();
-
-  // Filtragem combinada (AND) do módulo de Combustível — Prioridade 1
-  const filteredAbastecimentos = useMemo(() => {
-    return abastecimentos.filter(ab => {
-      const eq = equipamentos.find(e => e.id === ab.equipamentoId);
-      const comb = combustiveis.find(t => t.id === ab.tipoCombustivelId);
-      const combVeic = comboios.find(c => c.id === ab.comboioId);
-      const emp = eq ? empresas.find(e => e.id === eq.empresaId) : undefined;
-      const status = ab.status || 'OK';
-
-      if (fDataInicial && ab.data < fDataInicial) return false;
-      if (fDataFinal && ab.data > fDataFinal) return false;
-      if (fFrotaId && ab.equipamentoId !== fFrotaId) return false;
-      if (fTipoCombustivelId && ab.tipoCombustivelId !== fTipoCombustivelId) return false;
-      if (fComboioId && ab.comboioId !== fComboioId) return false;
-      if (fEmpresaId && (!eq || eq.empresaId !== fEmpresaId)) return false;
-      if (fStatus && status !== fStatus) return false;
-      if (fResponsavel && !ab.responsavel.toLowerCase().includes(fResponsavel.toLowerCase())) return false;
-
-      if (q) {
-        const haystack = [
-          eq?.prefixo, eq?.nome, comb?.nome, combVeic?.nome, emp?.nome,
-          ab.observacao, ab.responsavel, ab.data
-        ].filter(Boolean).join(' ').toLowerCase();
-        if (!haystack.includes(q)) return false;
-      }
-
-      return true;
-    }).sort((a,b) => {
-      if (abastecimentoSort === 'litros_desc') {
-        return b.quantidadeLitros - a.quantidadeLitros || b.data.localeCompare(a.data);
-      }
-      if (abastecimentoSort === 'litros_asc') {
-        return a.quantidadeLitros - b.quantidadeLitros || b.data.localeCompare(a.data);
-      }
-      return b.data.localeCompare(a.data) || b.hora.localeCompare(a.hora);
-    });
-  }, [abastecimentos, equipamentos, combustiveis, comboios, empresas, fDataInicial, fDataFinal, fFrotaId, fTipoCombustivelId, fComboioId, fEmpresaId, fStatus, fResponsavel, q, abastecimentoSort]);
-
-  // Cards de resumo respeitando os filtros ativos (Prioridade 1)
-  const resumoAbastecimentos = useMemo(() => {
-    const validRecords = filteredAbastecimentos.filter(ab => ab.status !== 'Cancelado');
-    const totalLitros = validRecords.reduce((sum, ab) => sum + (Number(ab.quantidadeLitros) || 0), 0);
-    const totalRegistros = validRecords.length;
-    const mediaLitros = totalRegistros > 0 ? totalLitros / totalRegistros : 0;
-    const frotasUnicas = new Set(validRecords.map(ab => ab.equipamentoId)).size;
-    return { totalLitros, totalRegistros, mediaLitros, frotasUnicas };
-  }, [filteredAbastecimentos]);
-
-  const downloadWorkbookFile = async (wb: ExcelJS.Workbook, fileName: string) => {
-    await downloadCorporateWorkbook(wb, fileName);
-  };
-
-  const handleDownloadModeloCombustivel = async () => {
-    try {
-      const wb = await createCorporateWorkbook();
-      configureCorporateWorkbook(wb, 'Modelo de Importação de Combustível');
-
-      const ws = wb.addWorksheet('COMBUSTIVEL');
-      const headers = [
-        'Data', 'Frota', 'Hora', 'Tipo do Combustivel', 'Quantidade de Litros', 'Bomba Inicial',
-        'Bomba Final', 'Comboio', 'Responsavel', 'Km Inicial', 'Horimetro Inicial', 'Empresa', 'Observacao'
-      ];
-      const widths = [13, 14, 10, 24, 18, 15, 15, 18, 22, 14, 17, 22, 34];
-
-      ws.columns = headers.map((header, index) => ({
-        header,
-        key: `col${index + 1}`,
-        width: widths[index] || 16,
-      }));
-      ws.mergeCells(1, 1, 1, headers.length);
-      ws.getCell(1, 1).value = 'MODELO DE IMPORTAÇÃO - COMBUSTÍVEL';
-      ws.getRow(1).height = 24;
-      ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 13 };
-      ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
-      ws.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
-
-      ws.mergeCells(2, 1, 2, headers.length);
-      ws.getCell(2, 1).value = 'Preencha uma linha por abastecimento. Use as abas EQUIPAMENTOS, COMBUSTIVEIS e COMBOIOS como referência para os nomes aceitos.';
-      ws.getRow(2).height = 26;
-      ws.getRow(2).font = { color: { argb: 'FF475569' }, italic: true };
-      ws.getRow(2).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-
-      const headerRow = ws.getRow(4);
-      headerRow.values = [, ...headers];
-      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
-      headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-      headerRow.height = 22;
-
-      const eqModelo = equipamentos[0];
-      const combModelo = combustiveis[0];
-      const comboioModelo = comboios[0];
-      const empresaModelo = eqModelo ? empresas.find(emp => emp.id === eqModelo.empresaId) : undefined;
-      ws.getRow(5).values = [
-        ,
-        new Date(),
-        eqModelo?.prefixo || '',
-        '07:00',
-        combModelo?.nome || '',
-        0,
-        0,
-        0,
-        comboioModelo?.nome || '',
-        comboioModelo?.responsavel || '',
-        0,
-        0,
-        empresaModelo?.nome || '',
-        'Exemplo: abastecimento importado pela planilha',
-      ];
-
-      ws.getColumn(1).numFmt = 'dd/mm/yyyy';
-      [5, 6, 7, 10, 11].forEach(col => { ws.getColumn(col).numFmt = '#,##0.##'; });
-      ws.eachRow((row, rowNumber) => {
-        row.eachCell({ includeEmpty: true }, cell => {
-          cell.border = {
-            top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-            left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-            bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-            right: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-          };
-          if (rowNumber >= 5) cell.alignment = { vertical: 'middle', horizontal: 'left' };
-        });
-      });
-      ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: headers.length } };
-      ws.views = [{ state: 'frozen', ySplit: 4 }];
-
-      for (let row = 5; row <= 500; row += 1) {
-        ws.getCell(row, 2).dataValidation = { type: 'list', allowBlank: false, formulae: ['EQUIPAMENTOS!$A$2:$A$1000'] };
-        ws.getCell(row, 4).dataValidation = { type: 'list', allowBlank: false, formulae: ['COMBUSTIVEIS!$A$2:$A$1000'] };
-        ws.getCell(row, 8).dataValidation = { type: 'list', allowBlank: true, formulae: ['COMBOIOS!$A$2:$A$1000'] };
-      }
-
-      const setupCatalogSheet = (sheet: ExcelJS.Worksheet, catalogHeaders: string[]) => {
-        sheet.columns = catalogHeaders.map((header, index) => ({ header, key: `col${index + 1}`, width: [18, 32, 18, 16, 24, 18][index] || 18 }));
-        const row = sheet.getRow(1);
-        row.values = [, ...catalogHeaders];
-        row.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
-        row.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-        sheet.views = [{ state: 'frozen', ySplit: 1 }];
-        sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: catalogHeaders.length } };
-      };
-
-      const eqSheet = wb.addWorksheet('EQUIPAMENTOS');
-      setupCatalogSheet(eqSheet, ['Frota', 'Descricao', 'Tipo', 'Placa', 'Empresa', 'Status']);
-      equipamentos.forEach(eq => {
-        const empresa = empresas.find(emp => emp.id === eq.empresaId);
-        eqSheet.addRow([eq.prefixo, eq.nome, eq.tipo, eq.placa || eq.seriePlaca || '', empresa?.nome || '', eq.status]);
-      });
-
-      const combSheet = wb.addWorksheet('COMBUSTIVEIS');
-      setupCatalogSheet(combSheet, ['Tipo do Combustivel']);
-      (combustiveis.length ? combustiveis : [{ id: 'modelo-diesel-s10', nome: 'Diesel S10' }]).forEach(comb => combSheet.addRow([comb.nome]));
-
-      const comboioSheet = wb.addWorksheet('COMBOIOS');
-      setupCatalogSheet(comboioSheet, ['Comboio', 'Placa', 'Capacidade Litros', 'Responsavel']);
-      comboios.forEach(comboio => comboioSheet.addRow([comboio.nome, comboio.placa, comboio.capacidadeLitros, comboio.responsavel]));
-
-      await downloadWorkbookFile(wb, `MODELO_importacao_combustivel_${isoDay(new Date())}.xlsx`);
-    } catch (err) {
-      console.error('Erro ao gerar modelo de combustível:', err);
-      setValidationError('Não foi possível gerar o modelo de importação. Tente novamente.');
-    }
-  };
-
-  // Exportação Excel do módulo de Combustível — Prioridade 2
-  // Exporta somente os registros filtrados (filteredAbastecimentos já reflete os filtros ativos).
-  const handleExportExcelAbastecimentos = async () => {
-    setIsExportingExcel(true);
-    try {
-      const wb = await createCorporateWorkbook();
-      configureCorporateWorkbook(wb, 'Controle de Combustível');
-      const ws = wb.addWorksheet('COMBUSTIVEL');
-      const headers = [
-        'Data', 'Prefixo', 'Descrição', 'Km inicial', 'Horímetro', 'Início bomba', 'Fim bomba',
-        'Litros', 'Hora', 'Comboio', 'Tipo combustível', 'Empresa', 'Bomba calculada',
-        'Fim anterior mesmo comboio', 'Status sequência', 'Observação', 'Criado em', 'Atualizado em'
-      ];
-
-      ws.columns = headers.map((_, index) => ({
-        key: `col${index + 1}`,
-        width: [12, 14, 28, 12, 12, 14, 14, 12, 10, 16, 24, 20, 16, 24, 18, 30, 18, 18][index] || 16,
-      }));
-      ws.mergeCells(1, 1, 1, headers.length);
-      ws.getCell(1, 1).value = 'COMBUSTIVEL';
-      ws.getRow(1).height = 24;
-      ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 13 };
-      ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
-      ws.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
-
-      const headerRow = ws.getRow(4);
-      headerRow.values = [, ...headers];
-      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
-      headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-
-      filteredAbastecimentos.forEach(ab => {
-        const eq = equipamentos.find(e => e.id === ab.equipamentoId);
-        const comb = combustiveis.find(t => t.id === ab.tipoCombustivelId);
-        const combVeic = comboios.find(c => c.id === ab.comboioId);
-        const emp = eq ? empresas.find(e => e.id === eq.empresaId) : undefined;
-
-        ws.addRow([
-          ab.data ? ab.data.split('-').reverse().join('/') : '',
-          eq?.prefixo || '',
-          eq?.nome || '',
-          ab.kmInicial || '',
-          ab.horimetroInicial || '',
-          ab.bombaInicial ?? '',
-          ab.bombaFinal ?? '',
-          ab.quantidadeLitros ?? '',
-          ab.hora || '',
-          combVeic?.nome || '',
-          comb?.nome || '',
-          emp?.nome || '',
-          (ab.bombaInicial || 0) + (ab.quantidadeLitros || 0),
-          '',
-          ab.status || 'OK',
-          ab.observacao || '',
-          ab.criadoEm ? new Date(ab.criadoEm).toLocaleString('pt-BR') : '',
-          ab.atualizadoEm ? new Date(ab.atualizadoEm).toLocaleString('pt-BR') : '',
-        ]);
-      });
-
-      styleCorporateWorksheet(ws, { title: 'Controle de Combustível', headerRow: 4, lastColumn: headers.length, recordCount: filteredAbastecimentos.length });
-      addCorporateSummarySheet(wb, 'Controle de Combustível', [
-        ['Registros exportados', filteredAbastecimentos.length],
-        ['Litros totais', filteredAbastecimentos.reduce((total, item) => total + Number(item.quantidadeLitros || 0), 0)],
-        ['Equipamentos atendidos', new Set(filteredAbastecimentos.map(item => item.equipamentoId)).size],
-        ['Comboios utilizados', new Set(filteredAbastecimentos.map(item => item.comboioId).filter(Boolean)).size],
-      ], [hasFiltrosAtivos ? 'Filtros da tela aplicados' : 'Base completa']);
-
-      const sufixo = hasFiltrosAtivos ? '_filtrado' : '';
-      await downloadWorkbookFile(wb, `RENEA_combustivel${sufixo}_${isoDay(new Date())}.xlsx`);
-    } catch (err) {
-      console.error('Erro ao exportar Excel de combustível:', err);
-      setValidationError('Não foi possível exportar o Excel. Tente novamente.');
-    } finally {
-      setIsExportingExcel(false);
-    }
-  };
 
   const filteredLubrificacoes = lubrificacoes.filter(lub => {
     const eq = equipamentos.find(e => e.id === lub.equipamentoId);
     return lub.data.includes(q) || lub.compartimento.toLowerCase().includes(q) || (eq && eq.prefixo.toLowerCase().includes(q));
   }).sort((a,b) => b.data.localeCompare(a.data));
 
-  // Cascata curta nas linhas das tabelas operacionais. O hook fica antes do
-  // primeiro retorno condicional para manter a ordem dos hooks estável entre
-  // os dois modos da aba.
+  const colunasLubrificacao: ColunaTabela<Lubrificacao>[] = [
+    { chave: 'data', titulo: 'Data', render: lub => <><span className="block font-bold text-slate-800">{lub.data.split('-').reverse().join('/')}</span><span className="block text-xs text-[#5b6870]">{lub.hora}</span></>, valorOrdenacao: lub => `${lub.data}${lub.hora}` },
+    {
+      chave: 'maquina', titulo: 'Máquina', larguraMinima: 160,
+      render: lub => { const eq = equipamentos.find(e => e.id === lub.equipamentoId); return <><span className="block font-mono font-black text-slate-950">{eq?.prefixo || 'Sem cadastro'}</span><span className="block truncate text-xs text-[#5b6870]">{eq?.nome || ''}</span></>; },
+      valorOrdenacao: lub => equipamentos.find(e => e.id === lub.equipamentoId)?.prefixo,
+    },
+    { chave: 'produto', titulo: 'Produto', render: lub => lubrificantes.find(p => p.id === lub.produtoLubrificacaoId)?.nome || '—', valorOrdenacao: lub => lubrificantes.find(p => p.id === lub.produtoLubrificacaoId)?.nome },
+    { chave: 'compartimento', titulo: 'Onde aplicou', render: lub => lub.compartimento, valorOrdenacao: lub => lub.compartimento },
+    { chave: 'quantidade', titulo: 'Quantidade', alinhamento: 'direita', render: lub => <span className="font-black text-[#176b4d]">{lub.quantidade.toLocaleString('pt-BR')} L/kg</span>, valorOrdenacao: lub => lub.quantidade },
+    { chave: 'horimetro', titulo: 'Horímetro', alinhamento: 'direita', render: lub => (lub.horimetro > 0 ? `${lub.horimetro.toLocaleString('pt-BR')} h` : '—'), valorOrdenacao: lub => lub.horimetro || null },
+    { chave: 'responsavel', titulo: 'Responsável', render: lub => lub.responsavel, valorOrdenacao: lub => lub.responsavel, noCartao: false },
+  ];
+
+  // Cascata curta nas linhas da lista. O hook fica antes do primeiro retorno
+  // condicional para manter a ordem dos hooks estável entre os dois modos.
   useGSAP(() => {
     const root = moduleRef.current;
     if (!root || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const rows = root.querySelectorAll('[data-launch-row]');
+    const rows = root.querySelectorAll('[data-linha-lista]');
     if (!rows.length) return;
     gsap.fromTo(
       rows,
       { autoAlpha: 0, y: 8 },
       { autoAlpha: 1, y: 0, duration: 0.32, stagger: 0.022, ease: 'power2.out', clearProps: 'transform,opacity,visibility' },
     );
-  }, { scope: moduleRef, dependencies: [mode, filteredAbastecimentos.length, filteredLubrificacoes.length] });
+  }, { scope: moduleRef, dependencies: [mode, filteredLubrificacoes.length] });
 
   if (String(mode) === 'abastecimentos') {
     return (
@@ -1341,720 +931,128 @@ export default function LancamentosTab({
     );
   }
 
+  // Lubrificação: aba escondida que o botão de gota do Combustível abre.
+  // Mesmo molde do Combustível (TelaCheia + PageHeader + TabelaPadrao).
+  const voltarAoCombustivel = () => {
+    setMode('abastecimentos');
+    setIsFormOpen(false);
+    setSearchQuery('');
+    resetFormFields();
+  };
+  const campo = (rotulo: string, controle: React.ReactNode, classe = '') => (
+    <label className={`block ${classe}`}>
+      <span className={`${ROTULO} mb-1 block`}>{rotulo}</span>
+      {controle}
+    </label>
+  );
+
   return (
-    <div ref={moduleRef} className="erp-module erp-module--lancamentos space-y-5" id="lancamentos-tab">
-      
-      {/* Tab Header bar */}
-      <PageHeader
-        eyebrow="Operação de campo"
-        title="Lançamentos diários"
-        description="Registre abastecimentos e lubrificações com rastreabilidade operacional."
-        actions={<>
-          {mode === 'abastecimentos' && (
-            <>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isParsingImport}
-                className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-xs font-black text-slate-700 transition-colors hover:border-emerald-500 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Upload className="w-4 h-4" />
-                {isParsingImport ? 'Lendo planilha...' : 'Importar planilha'}
-              </button>
-              <button
-                type="button"
-                onClick={handleExportExcelAbastecimentos}
-                disabled={isExportingExcel}
-                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-60 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                {isExportingExcel ? 'Exportando...' : 'Exportar Excel'}
-              </button>
-              <button
-                type="button"
-                onClick={handleDownloadModeloCombustivel}
-                className="px-4 py-2.5 bg-white border border-slate-200 hover:border-slate-500 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                Baixar modelo
-              </button>
-            </>
-          )}
-          <button
-            onClick={handleOpenCreate}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-          >
-            <Plus className="w-4.5 h-4.5" />
-            {mode === 'abastecimentos' ? 'Novo Abastecimento' : 'Nova Lubrificação'}
-            {mode === 'lubrificacoes' && <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>}
-          </button>
-        </>}
-      />
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".xlsx,.xlsm"
-        onChange={handleImportFileSelected}
-        className="hidden"
-      />
-
-      {/* Subtab Selectors */}
-      <div className="flex bg-white p-1 rounded-xl border border-slate-200 max-w-md" id="lancamentos-selector">
-        <button
-          onClick={() => { setMode('abastecimentos'); setIsFormOpen(false); setSearchQuery(''); resetFormFields(); }}
-          className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${mode === 'abastecimentos' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-700'}`}
-        >
-          <Fuel className="w-4 h-4" />
-          Abastecimentos
-        </button>
-        <button
-          onClick={() => { setMode('lubrificacoes'); setIsFormOpen(false); setSearchQuery(''); resetFormFields(); }}
-          className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${mode === 'lubrificacoes' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-700'}`}
-        >
-          <Droplets className="w-4 h-4" />
-          Lubrificação
-        </button>
-      </div>
-
-      {/* Quick Search */}
-      <div className="flex flex-col md:flex-row md:items-center gap-3 bg-white border border-slate-200 p-3 rounded-lg">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-2.5 w-4.5 h-4.5 text-slate-600" />
+    <TelaCheia
+      ref={moduleRef}
+      id="lancamentos-tab"
+      rotulo="Lubrificação"
+      idDados="lubrificacao-dados"
+      cabecalho={(
+        <PageHeader
+          eyebrow="Frota"
+          title="Lubrificação"
+          actions={<>
+            <button type="button" onClick={voltarAoCombustivel} className={BOTAO_SECUNDARIO} data-testid="lubrificacao-voltar">
+              <Fuel className="size-4" aria-hidden="true" />Combustível
+            </button>
+            <button type="button" onClick={handleOpenCreate} className={BOTAO_PRIMARIO} data-testid="lubrificacao-nova">
+              <Plus className="size-4" aria-hidden="true" />Nova lubrificação
+              <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>
+            </button>
+          </>}
+        />
+      )}
+      faixa={(
+        <label className="relative block">
+          <span className="sr-only">Buscar lubrificação</span>
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
           <input
             ref={searchInputRef}
-            type="text"
-            placeholder={mode === 'abastecimentos' ? 'Filtrar por data, responsável ou prefixo de frota...' : mode === 'lubrificacoes' ? 'Filtrar por data, compartimento ou prefixo...' : 'Filtrar por data, obra ou serviço executado...'}
+            type="search"
+            placeholder="Buscar por data, compartimento ou prefixo…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-700 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
+            className={`${CAMPO} pl-9`}
           />
-        </div>
-        {mode === 'abastecimentos' && (
-          <select
-            value={abastecimentoSort}
-            onChange={(e) => setAbastecimentoSort(e.target.value as 'data_desc' | 'litros_desc' | 'litros_asc')}
-            className="w-full md:w-64 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-emerald-500 transition-colors"
-            title="Ordenar abastecimentos"
-          >
-            <option value="data_desc">Mais recentes primeiro</option>
-            <option value="litros_desc">Maior volume para menor</option>
-            <option value="litros_asc">Menor volume para maior</option>
-          </select>
-        )}
-        {mode === 'abastecimentos' && (
-          <button
-            type="button"
-            onClick={() => setFiltrosAbertos(v => !v)}
-            className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${filtrosAbertos ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-200 text-slate-700 hover:border-emerald-500'}`}
-            id="btn-toggle-filtros-combustivel"
-          >
-            <Search className="w-3.5 h-3.5" />
-            Filtros avançados
-          </button>
-        )}
-      </div>
-
-      {/* Painel de Filtros Avançados + Cards de Resumo — Módulo Combustível (Prioridade 1) */}
-      {mode === 'abastecimentos' && filtrosAbertos && (
-        <div className="bg-white border border-slate-200 rounded-lg p-5 space-y-4" id="filtros-combustivel-painel">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="space-y-1">
-              <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data Inicial</label>
-              <input type="date" value={fDataInicial} onChange={e => setFDataInicial(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-emerald-500" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data Final</label>
-              <input type="date" value={fDataFinal} onChange={e => setFDataFinal(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-emerald-500" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Frota / Equipamento</label>
-              <select value={fFrotaId} onChange={e => setFFrotaId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                <option value="">Todas</option>
-                {equipamentos.map(eq => <option key={eq.id} value={eq.id}>{eq.prefixo} — {eq.nome}</option>)}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Tipo de Combustível</label>
-              <select value={fTipoCombustivelId} onChange={e => setFTipoCombustivelId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                <option value="">Todos</option>
-                {combustiveis.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Comboio / Tanque</label>
-              <select value={fComboioId} onChange={e => setFComboioId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                <option value="">Todos</option>
-                {comboios.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Empresa</label>
-              <select value={fEmpresaId} onChange={e => setFEmpresaId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                <option value="">Todas</option>
-                {empresas.map(em => <option key={em.id} value={em.id}>{em.nome}</option>)}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Status</label>
-              <select value={fStatus} onChange={e => setFStatus(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                <option value="">Todos</option>
-                <option value="OK">OK</option>
-                <option value="Pendente">Pendente</option>
-                <option value="Cancelado">Cancelado</option>
-                <option value="Duplicado">Duplicado</option>
-                <option value="Verificar quantidade">Verificar quantidade</option>
-                <option value="Verificar bomba">Verificar bomba</option>
-                <option value="Erro de importação">Erro de importação</option>
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Responsável</label>
-              <input type="text" value={fResponsavel} onChange={e => setFResponsavel(e.target.value)} placeholder="Nome do responsável..." className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500" />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5 pt-1">
-            <button
-              type="button"
-              onClick={limparFiltros}
-              className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
-            >
-              <FilterX className="w-3.5 h-3.5" />
-              Limpar filtros
-            </button>
-            <button
-              type="button"
-              onClick={handleExportExcelAbastecimentos}
-              disabled={isExportingExcel}
-              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-60 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              {isExportingExcel ? 'Exportando...' : hasFiltrosAtivos ? 'Exportar Excel filtrado' : 'Exportar Excel'}
-            </button>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isParsingImport}
-              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-xs font-black text-slate-700 transition-colors hover:border-emerald-500 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              {isParsingImport ? 'Lendo planilha...' : 'Importar planilha'}
-            </button>
-          </div>
-
-          {/* Cards de resumo respeitando os filtros aplicados */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-            <div className="bg-white border border-slate-200 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
-              <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Total de Litros</p>
-              <p className="text-lg font-black text-emerald-700 font-mono mt-1">{resumoAbastecimentos.totalLitros.toLocaleString('pt-BR')} L</p>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
-              <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Registros</p>
-              <p className="text-lg font-black text-slate-800 font-mono mt-1"><CountUp value={resumoAbastecimentos.totalRegistros} /></p>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
-              <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Média por Abastecimento</p>
-              <p className="text-lg font-black text-slate-800 font-mono mt-1">{resumoAbastecimentos.mediaLitros.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L</p>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-xl p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-600/40 hover:shadow-md">
-              <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Frotas Distintas</p>
-              <p className="text-lg font-black text-slate-800 font-mono mt-1"><CountUp value={resumoAbastecimentos.frotasUnicas} /></p>
-            </div>
-          </div>
-        </div>
+        </label>
       )}
-
-      {/* Log Form Editor Card */}
+    >
       {isFormOpen && (
-        <div className="bg-white border border-emerald-500/30 p-6 rounded-lg relative" id="log-editor-card">
-          <button 
-            onClick={() => { setIsFormOpen(false); resetFormFields(); }}
-            className="absolute top-4 right-4 p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-
-          <h3 className="text-sm font-bold text-emerald-700 mb-5 flex items-center gap-2">
-            {editingId ? 'Editar lançamento' : 'Novo lançamento'} · {mode === 'abastecimentos' ? 'Abastecimento de combustível' : 'Lubrificação de máquina'}
-          </h3>
-
-          <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-5">
-            
-            {/* 1. ABASTECIMENTO FORM FIELDS */}
-            {mode === 'abastecimentos' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data de Registro *</label>
-                    <input type="date" value={date} onChange={e => { const nextDate = e.target.value; setDate(nextDate); applyPumpSuggestion(comboioId, nextDate, time); }} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Hora *</label>
-                    <input type="time" value={time} onChange={e => { const nextTime = e.target.value; setTime(nextTime); applyPumpSuggestion(comboioId, date, nextTime); }} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Frota / Equipamento *</label>
-                    <select ref={equipamentoFieldRef} value={equipamentoId} onChange={e => setEquipamentoId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer" required>
-                      <option value="">Selecione...</option>
-                      {equipamentos.map(eq => (
-                        <option key={eq.id} value={eq.id} className="bg-white text-slate-800">{eq.prefixo} — {eq.nome}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Combustível Utilizado *</label>
-                    <select value={tipoCombustivelId} onChange={e => setTipoCombustivelId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer" required>
-                      <option value="">Selecione...</option>
-                      {combustiveis.map(tc => (
-                        <option key={tc.id} value={tc.id} className="bg-white text-slate-800">{tc.nome}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Derived / Readonly Fields row */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4.5 rounded-xl border border-slate-200/60">
-                  <div className="space-y-0.5">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block font-mono">Descrição Automática da Frota</span>
-                    <span className="text-xs font-bold text-slate-700 block">{derivedEquipmentDesc || 'Aguardando seleção de frota...'}</span>
-                  </div>
-                  <div className="space-y-0.5">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block font-mono">Empresa Proprietária Automática</span>
-                    <span className="text-xs font-bold text-slate-700 block">{derivedCompany || 'Aguardando seleção de frota...'}</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Horímetro Inicial</label>
-                    <input type="number" value={horimetroInicial} onChange={e => setHorimetroInicial(Number(e.target.value))} placeholder="0" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">KM Inicial</label>
-                    <input type="number" value={kmInicial} onChange={e => setKmInicial(Number(e.target.value))} placeholder="0" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Bomba Inicial (Litros) <span className="text-emerald-500 normal-case font-semibold">— {previousPumpForForm ? 'sugerida pelo histórico' : 'informe a primeira leitura'}</span></label>
-                    <input type="number" value={bombaInicial} onChange={e => {
-                      const inicial = Number(e.target.value);
-                      pumpValuesManuallyEditedRef.current = true;
-                      setBombaInicial(inicial);
-                      setBombaFinal(inicial + Number(quantidadeLitros));
-                    }} placeholder="Leitura real da bomba" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                    <span className="text-xs text-slate-500 font-mono block">{previousPumpForForm ? `Último registro deste comboio: ${previousPumpForForm.data.split('-').reverse().join('/')} ${previousPumpForForm.hora} • ${previousPumpForForm.bombaFinal.toLocaleString('pt-BR')} L` : 'Nenhuma leitura anterior encontrada para este comboio e horário.'}</span>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade de Litros *</label>
-                    <input type="number" value={quantidadeLitros} onChange={e => {
-                      const litros = Number(e.target.value);
-                      setQuantidadeLitros(litros);
-                      setBombaFinal(Number(bombaInicial) + litros);
-                    }} placeholder="100" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                  </div>
-
-                  {/* Bomba final agora é editável: digitar aqui recalcula os litros automaticamente */}
-                  <div className="space-y-1 bg-white px-3.5 py-1.5 border border-emerald-700/40 rounded-xl">
-                    <label className="text-xs font-bold text-emerald-500 uppercase tracking-wider block font-mono">Bomba Final (Litros)</label>
-                    <input type="number" value={bombaFinal} onChange={e => {
-                      const final = Number(e.target.value);
-                      pumpValuesManuallyEditedRef.current = true;
-                      setBombaFinal(final);
-                      setQuantidadeLitros(Math.max(0, final - Number(bombaInicial)));
-                    }} placeholder="0" className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-mono focus:outline-none focus:border-emerald-500" />
-                    <span className="text-xs text-slate-500 font-mono block">Vira a Bomba Inicial do próximo abastecimento deste comboio</span>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Comboio Abastecedor</label>
-                    <select value={comboioId} onChange={e => handleComboioChange(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                      <option value="">Selecione...</option>
-                      {comboios.map(com => (
-                        <option key={com.id} value={com.id} className="bg-white text-slate-800">{com.nome}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Responsável pelo Lançamento *</label>
-                    <input type="text" value={responsavel} onChange={e => setResponsavel(e.target.value)} placeholder="Ex: José da Silva Costa" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Operador do equipamento</label>
-                    <input type="text" value={operadorNome} onChange={e => setOperadorNome(e.target.value)} placeholder="Quem estava operando" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Local / frente</label>
-                    <input type="text" value={localAbastecimento} onChange={e => setLocalAbastecimento(e.target.value)} placeholder="Ex: Ramo 200, pátio Aracaré" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Observação</label>
-                    <input type="text" value={observacao} onChange={e => setObservacao(e.target.value)} placeholder="Ex: Abastecido no canteiro de obras norte" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 2. LUBRIFICACAO FORM FIELDS */}
-            {mode === 'lubrificacoes' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Data *</label>
-                    <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Hora *</label>
-                    <input type="time" value={time} onChange={e => setTime(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Frota / Equipamento *</label>
-                    <select ref={equipamentoFieldRef} value={equipamentoId} onChange={e => setEquipamentoId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer" required>
-                      <option value="">Selecione...</option>
-                      {equipamentos.map(eq => (
-                        <option key={eq.id} value={eq.id} className="bg-white text-slate-800">{eq.prefixo} — {eq.nome}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Produto Lubrificante *</label>
-                    <select value={produtoLubrificacaoId} onChange={e => setProdutoLubrificacaoId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer" required>
-                      <option value="">Selecione...</option>
-                      {lubrificantes.map(pl => (
-                        <option key={pl.id} value={pl.id} className="bg-white text-slate-800">{pl.nome}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Derived Equipment / Company Info Row */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4.5 rounded-xl border border-slate-200/60">
-                  <div className="space-y-0.5">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block font-mono">Descrição Automática</span>
-                    <span className="text-xs font-bold text-slate-700 block">{derivedEquipmentDesc || 'Aguardando seleção de frota...'}</span>
-                  </div>
-                  <div className="space-y-0.5">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block font-mono">Empresa Proprietária</span>
-                    <span className="text-xs font-bold text-slate-700 block">{derivedCompany || 'Aguardando seleção de frota...'}</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Horímetro Atual</label>
-                    <input type="number" value={lubHorimetro} onChange={e => setLubHorimetro(Number(e.target.value))} placeholder="0" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Compartimento Aplicado *</label>
-                    <input type="text" value={compartimento} onChange={e => setCompartimento(e.target.value)} placeholder="Ex: Cárter Motor, Pinos" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Quantidade Aplicada *</label>
-                    <input type="number" step="any" value={lubQuantidade} onChange={e => setLubQuantidade(Number(e.target.value))} placeholder="1" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Responsável Técnico *</label>
-                    <input type="text" value={responsavel} onChange={e => setResponsavel(e.target.value)} placeholder="Ex: Marcos de Souza" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" required />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xxs font-bold uppercase tracking-wider text-slate-400">Observações adicionais</label>
-                  <input type="text" value={observacao} onChange={e => setObservacao(e.target.value)} placeholder="Ex: Substituído filtro de óleo na mesma intervenção" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500" />
-                </div>
-              </div>
-            )}
-
-            {validationError && (
-              <div className="text-xs font-bold text-rose-700 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl">
-                ⚠️ {validationError}
-              </div>
-            )}
-
-            {/* Form Actions */}
-            <div className="flex flex-wrap items-center gap-2.5">
-              <button
-                type="submit"
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
-              >
-                {editingId ? 'Salvar Lançamento' : 'Registrar na Obra'}
-              </button>
-              {!editingId && (
-                <button
-                  type="button"
-                  onClick={handleSaveAndNew}
-                  className="px-5 py-2.5 bg-white hover:bg-emerald-50 border border-emerald-600/40 text-emerald-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
-                >
-                  Registrar e novo
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => { setIsFormOpen(false); resetFormFields(); }}
-                className="px-5 py-2.5 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <span className="ml-auto text-xs font-semibold text-slate-500">
-                Ctrl+Enter salva · Esc cancela
-              </span>
+        <section aria-labelledby="lubrificacao-form-titulo" className={`${CARTAO} mb-2 shrink-0 p-4`} id="log-editor-card">
+          <div className="mb-3 flex items-start justify-between gap-2">
+            <h2 id="lubrificacao-form-titulo" className="text-base font-black text-slate-950">{editingId ? 'Corrigir lubrificação' : 'Nova lubrificação'}</h2>
+            <button type="button" onClick={() => { setIsFormOpen(false); resetFormFields(); }} aria-label="Fechar sem salvar" className={`grid size-10 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 ${FOCO}`}>
+              <X className="size-5" aria-hidden="true" />
+            </button>
+          </div>
+          <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {campo('Data *', <input type="date" value={date} onChange={e => setDate(e.target.value)} className={CAMPO} required />)}
+              {campo('Hora *', <input type="time" value={time} onChange={e => setTime(e.target.value)} className={CAMPO} required />)}
+              {campo('Máquina *', (
+                <select ref={equipamentoFieldRef} value={equipamentoId} onChange={e => setEquipamentoId(e.target.value)} className={CAMPO} required>
+                  <option value="">Escolha a máquina</option>
+                  {equipamentos.map(eq => <option key={eq.id} value={eq.id}>{eq.prefixo} — {eq.nome}</option>)}
+                </select>
+              ))}
+              {campo('Produto *', (
+                <select value={produtoLubrificacaoId} onChange={e => setProdutoLubrificacaoId(e.target.value)} className={CAMPO} required>
+                  <option value="">Escolha o produto</option>
+                  {lubrificantes.map(pl => <option key={pl.id} value={pl.id}>{pl.nome}</option>)}
+                </select>
+              ))}
             </div>
-
+            {selectedEquipment && (
+              <p className="text-sm text-[#5b6870]">{derivedEquipmentDesc}{derivedCompany ? ` · ${derivedCompany}` : ''}</p>
+            )}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {campo('Horímetro', <input type="number" inputMode="decimal" value={lubHorimetro || ''} onChange={e => setLubHorimetro(Number(e.target.value))} placeholder="0" className={CAMPO} />)}
+              {campo('Onde aplicou *', <input type="text" value={compartimento} onChange={e => setCompartimento(e.target.value)} placeholder="Ex.: cárter do motor, pinos" className={CAMPO} required />)}
+              {campo('Quantidade (L ou kg) *', <input type="number" inputMode="decimal" step="any" value={lubQuantidade} onChange={e => setLubQuantidade(Number(e.target.value))} className={CAMPO} required />)}
+              {campo('Responsável *', <input type="text" value={responsavel} onChange={e => setResponsavel(e.target.value)} placeholder="Quem fez" className={CAMPO} required />)}
+            </div>
+            {campo('Observação', <input type="text" value={observacao} onChange={e => setObservacao(e.target.value)} placeholder="Ex.: trocou o filtro de óleo junto" className={CAMPO} />)}
+            {validationError && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200">{validationError}</p>}
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="submit" className={BOTAO_PRIMARIO}>{editingId ? 'Salvar correção' : 'Salvar'}</button>
+              {!editingId && <button type="button" onClick={handleSaveAndNew} className={BOTAO_SECUNDARIO}>Salvar e lançar outra</button>}
+              <button type="button" onClick={() => { setIsFormOpen(false); resetFormFields(); }} className={BOTAO_SECUNDARIO}>Cancelar</button>
+              <span className="ml-auto text-xs font-semibold text-[#5b6870] max-sm:hidden">Ctrl+Enter salva · Esc cancela</span>
+            </div>
           </form>
-        </div>
+        </section>
       )}
 
-      {/* Lists of saved transactions */}
-      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden" id="transactions-viewport">
-        
-        {/* ABASTECIMENTOS TABLE */}
-        {mode === 'abastecimentos' && (
-          <div>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-3 text-xs">
-              <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={filteredAbastecimentos.length > 0 && filteredAbastecimentos.every(item => selectedAbastecimentoIds.includes(item.id))} onChange={event => setSelectedAbastecimentoIds(event.target.checked ? filteredAbastecimentos.map(item => item.id) : [])} /> Selecionar visíveis ({selectedAbastecimentoIds.length})</label>
-              {onDeleteAbastecimentos && <button type="button" disabled={selectedAbastecimentoIds.length === 0} onClick={() => setConfirmandoInativacao(true)} className="rounded-lg bg-rose-600 px-3 py-2 font-black text-white disabled:opacity-40"><Trash2 className="mr-1 inline h-4 w-4" /> Inativar selecionados</button>}
-            </div>
-            <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-400 uppercase text-xs font-bold bg-white font-mono">
-                  <th className="py-3.5 px-5">Sel.</th>
-                  <th className="py-3.5 px-5">Data / Hora</th>
-                  <th className="py-3.5 px-5">Frota</th>
-                  <th className="py-3.5 px-5">Combustível</th>
-                  <th className="py-3.5 px-5">Vol. Abastecido</th>
-                  <th className="py-3.5 px-5">Bomba Inicial/Final</th>
-                  <th className="py-3.5 px-5">Horímetro / KM</th>
-                  <th className="py-3.5 px-5">Comboio / Posto</th>
-                  <th className="py-3.5 px-5">Status</th>
-                  <th className="py-3.5 px-5 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-850">
-                {filteredAbastecimentos.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="px-5 py-12 text-center text-slate-500">
-                      {hasFiltrosAtivos ? (
-                        <p className="text-sm">Nenhum registro encontrado para os filtros selecionados.</p>
-                      ) : (
-                        <div className="mx-auto flex max-w-md flex-col items-center">
-                          <span className="grid size-11 place-items-center rounded-full bg-emerald-50 text-emerald-700"><Fuel className="size-5" /></span>
-                          <strong className="mt-3 text-sm text-slate-800">Nenhum abastecimento local</strong>
-                          <p className="mt-1 text-xs leading-5 text-slate-500">Comece um novo lançamento ou importe a planilha conferida da operação.</p>
-                          <div className="mt-4 flex flex-wrap justify-center gap-2">
-                            <button type="button" onClick={handleOpenCreate} className="inline-flex min-h-9 items-center gap-2 rounded-md bg-emerald-700 px-3 text-xs font-bold text-white hover:bg-emerald-800"><Plus className="size-4" />Novo abastecimento</button>
-                            <button type="button" onClick={() => fileInputRef.current?.click()} className="inline-flex min-h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:border-emerald-500"><Upload className="size-4" />Importar planilha</button>
-                          </div>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredAbastecimentos.map(ab => {
-                    const eq = equipamentos.find(e => e.id === ab.equipamentoId);
-                    const comb = combustiveis.find(t => t.id === ab.tipoCombustivelId);
-                    const combName = comb ? comb.nome : 'Diesel';
-                    const combVeic = comboios.find(c => c.id === ab.comboioId);
-                    const status = ab.status || 'OK';
-                    const statusStyles: Record<string, string> = {
-                      'OK': 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20',
-                      'Pendente': 'bg-amber-500/10 text-amber-700 border-amber-500/20',
-                      'Duplicado': 'bg-rose-500/10 text-rose-700 border-rose-500/20',
-                      'Verificar quantidade': 'bg-orange-500/10 text-orange-700 border-orange-500/20',
-                      'Verificar bomba': 'bg-orange-500/10 text-orange-700 border-orange-500/20',
-                      'Erro de importação': 'bg-rose-500/10 text-rose-700 border-rose-500/20',
-                    };
-
-                    return (
-                      <tr key={ab.id} data-launch-row className="hover:bg-slate-50 transition-colors">
-                        <td className="py-4 px-5"><input type="checkbox" checked={selectedAbastecimentoIds.includes(ab.id)} onChange={event => setSelectedAbastecimentoIds(current => event.target.checked ? [...current, ab.id] : current.filter(id => id !== ab.id))} /></td>
-                        <td className="py-4 px-5">
-                          <span className="font-bold text-slate-700 block">{ab.data.split('-').reverse().join('/')}</span>
-                          <span className="text-xs text-slate-500 font-mono">{ab.hora}</span>
-                        </td>
-                        <td className="py-4 px-5">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-mono text-emerald-700 font-bold bg-white border border-slate-200 px-2 py-0.5 rounded text-xxs">
-                              {eq ? eq.prefixo : 'FROTA'}
-                            </span>
-                            <span className="font-semibold text-slate-700 max-w-[130px] truncate block">{eq ? eq.nome : 'Equipamento'}</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-5 font-semibold text-slate-700">{combName}</td>
-                        <td className="py-4 px-5 font-mono text-emerald-700 font-black text-sm">
-                          {ab.quantidadeLitros.toLocaleString('pt-BR')} L
-                        </td>
-                        <td className="py-4 px-5 font-mono text-slate-400 text-xxs">
-                          {ab.bombaInicial > 0 ? <>Início: {ab.bombaInicial.toLocaleString('pt-BR')} L<br /></> : <>Início: —<br /></>}
-                          {ab.bombaFinal > 0 ? <>Final: {ab.bombaFinal.toLocaleString('pt-BR')} L</> : <>Final: —</>}
-                        </td>
-                        <td className="py-4 px-5 font-mono text-slate-700 text-xxs">
-                          {ab.horimetroInicial > 0 && <span>Horím: {ab.horimetroInicial} h<br /></span>}
-                          {ab.kmInicial > 0 && <span>Quilom: {ab.kmInicial} km</span>}
-                          {ab.horimetroInicial === 0 && ab.kmInicial === 0 && '—'}
-                        </td>
-                        <td className="py-4 px-5 text-slate-400">
-                          {combVeic ? combVeic.nome : 'Posto Fixo'}
-                        </td>
-                        <td className="py-4 px-5">
-                          <span className={`inline-block px-2 py-1 rounded-lg border text-xs font-bold ${statusStyles[status] || statusStyles['OK']}`}>
-                            {status}
-                          </span>
-                        </td>
-                        <td className="py-4 px-5 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => handleOpenEdit(ab)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
-                            {onDeleteAbastecimento && <button onClick={() => handleDeleteTrigger(ab.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-            </div>
-          </div>
-        )}
-
-        {/* LUBRIFICACOES TABLE */}
-        {mode === 'lubrificacoes' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-500 uppercase text-xs font-bold bg-slate-50 font-mono">
-                  <th className="py-3.5 px-5">Data / Hora</th>
-                  <th className="py-3.5 px-5">Frota</th>
-                  <th className="py-3.5 px-5">Produto Lubrificante</th>
-                  <th className="py-3.5 px-5">Compartimento</th>
-                  <th className="py-3.5 px-5">Quantidade</th>
-                  <th className="py-3.5 px-5">Horímetro</th>
-                  <th className="py-3.5 px-5">Responsável</th>
-                  <th className="py-3.5 px-5 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-850">
-                {filteredLubrificacoes.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-10 text-center text-slate-500 italic">Nenhum registro de lubrificação encontrado.</td>
-                  </tr>
-                ) : (
-                  filteredLubrificacoes.map(lub => {
-                    const eq = equipamentos.find(e => e.id === lub.equipamentoId);
-                    const prod = lubrificantes.find(p => p.id === lub.produtoLubrificacaoId);
-
-                    return (
-                      <tr key={lub.id} data-launch-row className="hover:bg-slate-50 transition-colors">
-                        <td className="py-4 px-5">
-                          <span className="font-bold text-slate-700 block">{lub.data.split('-').reverse().join('/')}</span>
-                          <span className="text-xs text-slate-500 font-mono">{lub.hora}</span>
-                        </td>
-                        <td className="py-4 px-5">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-mono text-emerald-700 font-bold bg-white border border-slate-200 px-2 py-0.5 rounded text-xxs">
-                              {eq ? eq.prefixo : 'FROTA'}
-                            </span>
-                            <span className="font-semibold text-slate-700 max-w-[130px] truncate block">{eq ? eq.nome : 'Equipamento'}</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-5 font-semibold text-slate-700">{prod ? prod.nome : 'Graxa / Óleo'}</td>
-                        <td className="py-4 px-5 text-slate-700">{lub.compartimento}</td>
-                        <td className="py-4 px-5 font-mono text-emerald-700 font-black text-sm">{lub.quantidade} L/kg</td>
-                        <td className="py-4 px-5 font-mono text-slate-700">{lub.horimetro > 0 ? `${lub.horimetro} h` : '—'}</td>
-                        <td className="py-4 px-5 text-slate-400">{lub.responsavel}</td>
-                        <td className="py-4 px-5 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => handleOpenEdit(lub)} className="p-1.5 bg-white text-slate-700 hover:text-emerald-700 rounded-lg cursor-pointer"><Edit className="w-3.5 h-3.5" /></button>
-                            {onDeleteLubrificacao && <button onClick={() => handleDeleteTrigger(lub.id)} className="p-1.5 bg-white text-slate-700 hover:text-rose-700 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-      </div>
-
-      {/* Deletion safe prompt confirm */}
-      {deleteConfirmId && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-sm bg-white border border-rose-500/30 rounded-lg p-6 space-y-4">
-            <div className="p-3 bg-rose-500/10 text-rose-700 rounded-lg w-fit">
-              <AlertTriangle className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-sm uppercase tracking-wider font-black text-slate-800 font-mono">Confirmar exclusão permanente?</h3>
-              <p className="text-xxs text-slate-400 mt-1 leading-relaxed">
-                O registro será apagado da base e não voltará pela sincronização. Os indicadores serão recalculados na mesma hora.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button 
-                onClick={() => executeDeletion(deleteConfirmId)}
-                className="flex-1 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
-              >
-                Sim, excluir permanentemente
-              </button>
-              <button 
-                onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 py-2 bg-white hover:bg-slate-700 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
-              >
-                Não, Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <SpreadsheetImportReview
-        open={isImportModalOpen}
-        title="Importar abastecimentos"
-        fileName={importFileName}
-        validCount={importSummary.validas}
-        ignoredCount={importSummary.duplicadas + importSummary.ignoradas + importSummary.comErro}
-        columns={['Linha', 'Aba', 'Status', 'Data', 'Frota', 'Litros', 'Hora', 'Leitura', 'Bomba', 'Combustível', 'Comboio', 'Empresa', 'Responsável']}
-        rows={importRows.map(row => ({
-          Linha: row.linha,
-          Aba: row.aba,
-          Status: row.status === 'valido' ? '✅ Válido'
-            : row.status === 'duplicado' ? '⚠ Duplicado • bloqueado'
-            : row.status === 'ignorado' ? '⚠ Ignorado • bloqueado'
-            : '❌ Erro • bloqueado',
-          Data: row.preview.Data,
-          Hora: row.preview.Hora,
-          Frota: row.preview.Frota,
-          Leitura: row.preview.Leitura,
-          Bomba: row.preview.Bomba,
-          Litros: row.preview.Litros,
-          Combustível: row.preview['Combustível'],
-          Comboio: row.preview.Comboio,
-          Empresa: row.preview.Empresa,
-          Responsável: row.preview['Responsável']
-        }))}
-        note={`${importSummary.total} linha(s) lida(s): ${importSummary.validas} válida(s), ${importSummary.duplicadas} duplicada(s), ${importSummary.ignoradas} ignorada(s) e ${importSummary.comErro} com erro. Somente ${importSummary.validas} registro(s) serão publicados.${importedFuelTypes.length ? ` Cadastros de combustível serão criados apenas quando usados por uma linha válida.` : ''}`}
-        confirming={isConfirmingImport}
-        onCancel={handleCancelImport}
-        onConfirm={handleConfirmImport}
+      <TabelaPadrao
+        titulo="Lubrificações lançadas"
+        linhas={filteredLubrificacoes}
+        colunas={colunasLubrificacao}
+        idDaLinha={lub => lub.id}
+        nomeDoItem={{ um: 'lubrificação', varios: 'lubrificações' }}
+        linhaAtivaId={editingId}
+        onAbrirLinha={handleOpenEdit}
+        acoes={lub => <>
+          <button type="button" onClick={() => handleOpenEdit(lub)} aria-label={`Corrigir lubrificação de ${equipamentos.find(e => e.id === lub.equipamentoId)?.prefixo || 'máquina'}`} className={`grid size-8 place-items-center rounded-lg text-slate-700 hover:bg-emerald-50 hover:text-[#176b4d] ${FOCO}`}><Edit className="size-4" aria-hidden="true" /></button>
+          {onDeleteLubrificacao && <button type="button" onClick={() => setDeleteConfirmId(lub.id)} aria-label={`Excluir lubrificação de ${equipamentos.find(e => e.id === lub.equipamentoId)?.prefixo || 'máquina'}`} className={`grid size-8 place-items-center rounded-lg text-slate-700 hover:bg-rose-50 hover:text-rose-700 ${FOCO}`}><Trash2 className="size-4" aria-hidden="true" /></button>}
+        </>}
+        vazio={searchQuery ? 'Nenhuma lubrificação com essa busca.' : 'Nenhuma lubrificação lançada ainda. Toque em "Nova lubrificação".'}
+        testId="lubrificacao-lista"
       />
 
       <ConfirmDialog
-        open={confirmandoInativacao}
-        tone="warning"
-        title={`Inativar ${selectedAbastecimentoIds.length} abastecimento(s)?`}
-        description="Os abastecimentos saem das telas e dos totais e vão para a Lixeira de Cadastros, de onde o administrador pode devolver."
-        confirmLabel="Inativar"
-        onConfirm={() => { onDeleteAbastecimentos?.(selectedAbastecimentoIds); setSelectedAbastecimentoIds([]); setConfirmandoInativacao(false); }}
-        onCancel={() => setConfirmandoInativacao(false)}
+        open={deleteConfirmId !== null}
+        tone="danger"
+        title="Excluir esta lubrificação?"
+        description="O registro sai da lista e dos totais e não volta pela sincronização."
+        confirmLabel="Excluir"
+        onConfirm={() => { if (deleteConfirmId) onDeleteLubrificacao?.(deleteConfirmId); setDeleteConfirmId(null); }}
+        onCancel={() => setDeleteConfirmId(null)}
       />
-
-    </div>
+    </TelaCheia>
   );
 }
