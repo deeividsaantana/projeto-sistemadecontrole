@@ -5,6 +5,8 @@ import FleetStatusBadge from './FleetStatusBadge';
 import { FOCO, TOM_SITUACAO } from '../cadastros/estilos';
 import { TabelaPadrao, type ColunaTabela } from '../../shared/ui/TabelaPadrao';
 import { useEntradaDeLista } from '../../shared/hooks/useEntradaDeLista';
+import { DesenhoMaquina } from '../quadroFrota/DesenhoMaquina';
+import { silhuetaDo } from '../../modules/frota/quadroFrota';
 
 interface Props {
   rows: FleetCurrentState[];
@@ -55,9 +57,13 @@ const colunas = (
     valorOrdenacao: row => row.equipment.normalizedPrefix,
     dica: row => [row.equipment.prefix, row.equipment.family, row.equipment.equipmentType].filter(Boolean).join(' · '),
     render: row => (
-      <span className={`${UMA_LINHA} md:max-w-[10rem] 2xl:max-w-[16rem]`}>
+      <span className="flex min-w-0 items-center gap-2">
+        {/* O mesmo desenho do Quadro: bater o olho e saber que máquina é. */}
+        <DesenhoMaquina tipo={silhuetaDo({ tipo: row.equipment.equipmentType, nome: row.equipment.equipmentName, familia: row.equipment.family } as Parameters<typeof silhuetaDo>[0])} className="h-6 w-10 shrink-0 max-md:hidden" />
+        <span className={`${UMA_LINHA} min-w-0 md:max-w-[8rem] 2xl:max-w-[16rem]`}>
         <span className="font-mono font-bold text-slate-950">{row.equipment.prefix}</span>
         <span className="text-[#5b6870]"> · {row.equipment.equipmentType || row.equipment.family || 'Sem tipo'}</span>
+        </span>
       </span>
     ),
   },

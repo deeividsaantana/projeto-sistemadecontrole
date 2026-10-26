@@ -55,7 +55,7 @@ import {
   exportWeeklyFleetExcel,
   exportWeeklyFleetPdf,
 } from '../fleet/weeklyReport';
-import FleetKpiStrip from './fleet/FleetKpiStrip';
+import PanoramaDoDia, { type CanteiroDoDia } from './fleet/PanoramaDoDia';
 import FleetFilterBar from './fleet/FleetFilterBar';
 import FleetDataTable from './fleet/FleetDataTable';
 import FleetBulkActions from './fleet/FleetBulkActions';
@@ -362,15 +362,19 @@ export default function ControleEquipamentosDiarioTab({
     .sort((left, right) => left.localeCompare(right, 'pt-BR')), [equipamentos]);
   // Canteiros do dia, independente dos outros filtros: cada chip mostra quantas
   // frotas têm lançamento ali, mesmo se a situação/tipo escolhidos escondem a máquina agora.
-  const canteirosDoDia = useMemo(() => {
-    const contagem = new Map<string, number>();
+  const canteirosDoDia = useMemo((): CanteiroDoDia[] => {
+    const contagem = new Map<string, CanteiroDoDia>();
     registros.forEach(record => {
       if (record.data !== filters.date) return;
       const local = (record as FleetPersistedRecord).local?.trim();
-      if (local) contagem.set(local, (contagem.get(local) || 0) + 1);
+      if (!local) return;
+      const atual = contagem.get(local) || { nome: local, total: 0, operando: 0, manutencao: 0 };
+      atual.total += 1;
+      if (record.status === 'Em operação') atual.operando += 1;
+      if (record.status === 'Em manutenção' || record.status === 'Aguardando manutenção') atual.manutencao += 1;
+      contagem.set(local, atual);
     });
-    return [...contagem.entries()]
-      .map(([nome, total]) => ({ nome, total }))
+    return [...contagem.values()]
       .sort((left, right) => right.total - left.total || left.nome.localeCompare(right.nome, 'pt-BR'));
   }, [registros, filters.date]);
   const escopoHistorico = useEntradaDeLista<HTMLDivElement>([activeView]);
@@ -729,8 +733,19 @@ export default function ControleEquipamentosDiarioTab({
       faixa={aviso || undefined}
     >
       {activeView === 'today' && <div data-fleet-view className="flex min-h-0 flex-1 flex-col gap-3">
-        <FleetKpiStrip metrics={viewModel.metrics} status={filters.status} onPick={status => updateFilter('status', status)}/>
-        <FleetFilterBar filters={filters} companies={empresas} groups={groups} equipmentTypes={equipmentTypes} locations={canteirosDoDia} activeFilterCount={activeFilterCount} onChange={updateFilter} onClear={clearFilters} avisos={viewModel.integrityWarnings}/>
+        <PanoramaDoDia
+          metrics={viewModel.metrics}
+          status={filters.status}
+          onStatus={status => updateFilter('status', status)}
+          canteiros={canteirosDoDia}
+          canteiro={filters.location || ''}
+          onCanteiro={nome => updateFilter('location', nome)}
+          equipamentos={{ total: conferenciaDoDia.equipamentos.total, informados: conferenciaDoDia.equipamentos.informed }}
+          operadores={{ total: conferenciaDoDia.operadores.total, informados: conferenciaDoDia.operadores.informed }}
+          onAbrirEquipamentos={() => setActiveView('equipamentos')}
+          onAbrirOperadores={() => setActiveView('operadores')}
+        />
+        <FleetFilterBar filters={filters} companies={empresas} groups={groups} equipmentTypes={equipmentTypes} activeFilterCount={activeFilterCount} onChange={updateFilter} onClear={clearFilters} avisos={viewModel.integrityWarnings}/>
         <FleetDataTable rows={viewModel.allRows} selectedIds={selectedIds} onSelectionChange={setSelectedIds} onEdit={openEdit} onDetails={setDetailState} onDelete={onDeleteMany ? state => setConfirmation({ kind: 'delete', ids: [state.recordId] }) : undefined} canApprove={canApproveFleet} onApprove={(state, status) => onApproveFleetRecord?.(state.recordId, status)}/>
       </div>}
       {activeView === 'quadro' && quadro && <div data-fleet-view>
