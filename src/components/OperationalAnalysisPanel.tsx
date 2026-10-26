@@ -2,59 +2,39 @@ import type { OperationalAnalysis } from '../utils/operationalAnalysis';
 
 interface OperationalAnalysisPanelProps {
   analysis?: OperationalAnalysis;
-  variant?: 'dark' | 'light';
 }
 
-const tone = {
-  dark: {
-    section: 'border border-cyan-500/30 bg-cyan-500/5 p-4 text-slate-700',
-    card: 'border border-slate-200 bg-white p-3',
-    nested: 'border border-slate-200 bg-white p-2',
-    title: 'text-white',
-    muted: 'text-slate-400',
-    body: 'text-slate-700',
-    metric: 'text-cyan-700',
-  },
-  light: {
-    section: 'rounded-md border border-cyan-200 bg-cyan-50 p-4 text-slate-900',
-    card: 'rounded-md border border-slate-200 bg-white p-3',
-    nested: 'rounded-md border border-slate-200 bg-slate-50 p-2',
-    title: 'text-slate-950',
-    muted: 'text-slate-500',
-    body: 'text-slate-700',
-    metric: 'text-cyan-700',
-  },
-};
+// Só a revisão de importação usa este painel, sempre no fundo claro. O tom
+// escuro antigo punha título branco em fundo quase branco e saiu (sem uso).
+const CARTAO = 'rounded-md border border-slate-200 bg-white p-3';
+const APAGADO = 'text-slate-600';
 
 const confidenceTone = (confidence: OperationalAnalysis['confianca']) => {
-  if (confidence === 'Alta') return 'border-emerald-500/40 text-emerald-600';
-  if (confidence === 'Média') return 'border-amber-500/40 text-amber-600';
-  return 'border-rose-500/40 text-rose-600';
+  if (confidence === 'Alta') return 'border-emerald-600/40 text-emerald-800';
+  if (confidence === 'Média') return 'border-amber-600/40 text-amber-800';
+  return 'border-rose-600/40 text-rose-800';
 };
 
-const AnalysisList = ({ title, items, variant }: { title: string; items: string[]; variant: 'dark' | 'light' }) => {
-  const style = tone[variant];
-  return (
-    <div className={style.card}>
-      <h3 className={`text-xs font-black uppercase ${style.muted}`}>{title}</h3>
-      <ul className={`mt-2 space-y-1 text-sm ${style.body}`}>
-        {items.map((item, index) => (
-          <li key={`${title}-${index}`} className="leading-relaxed">- {item}</li>
-        ))}
-      </ul>
-    </div>
-  );
-};
+const AnalysisList = ({ title, items }: { title: string; items: string[] }) => (
+  <div className={CARTAO}>
+    <h4 className={`text-xs font-black uppercase ${APAGADO}`}>{title}</h4>
+    <ul className="mt-2 space-y-1 text-sm text-slate-700">
+      {items.map((item, index) => (
+        <li key={`${title}-${index}`} className="leading-relaxed">- {item}</li>
+      ))}
+    </ul>
+  </div>
+);
 
-export default function OperationalAnalysisPanel({ analysis, variant = 'dark' }: OperationalAnalysisPanelProps) {
+/** Fica dentro da janela de revisão (título h2), por isso os títulos começam em h3. */
+export default function OperationalAnalysisPanel({ analysis }: OperationalAnalysisPanelProps) {
   if (!analysis) return null;
-  const style = tone[variant];
   return (
-    <section className={style.section}>
+    <section className="rounded-md border border-cyan-200 bg-cyan-50 p-4 text-slate-900" aria-labelledby="analise-operacional-titulo">
       <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className={`text-base font-black ${style.title}`}>Análise Operacional e BI</h2>
-          <span className={`text-xs ${style.muted}`}>Problemas, oportunidades, automações, KPIs e plano de ação.</span>
+          <h3 id="analise-operacional-titulo" className="text-base font-black text-slate-950">Análise da planilha</h3>
+          <span className={`text-sm ${APAGADO}`}>Problemas, oportunidades, automações, indicadores e plano de ação.</span>
         </div>
         <span className={`w-fit border px-2 py-1 text-xs font-black ${confidenceTone(analysis.confianca)}`}>
           Confiança {analysis.confianca}
@@ -62,45 +42,45 @@ export default function OperationalAnalysisPanel({ analysis, variant = 'dark' }:
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <AnalysisList title="Resumo Executivo" items={analysis.resumoExecutivo || []} variant={variant} />
-        <AnalysisList title="Principais Problemas" items={analysis.principaisProblemas || []} variant={variant} />
-        <AnalysisList title="Oportunidades de Melhoria" items={analysis.oportunidadesMelhoria || []} variant={variant} />
-        <AnalysisList title="Automações Recomendadas" items={analysis.automacoesRecomendadas || []} variant={variant} />
+        <AnalysisList title="Resumo" items={analysis.resumoExecutivo || []} />
+        <AnalysisList title="Principais problemas" items={analysis.principaisProblemas || []} />
+        <AnalysisList title="O que pode melhorar" items={analysis.oportunidadesMelhoria || []} />
+        <AnalysisList title="Automações recomendadas" items={analysis.automacoesRecomendadas || []} />
       </div>
 
       <div className="mt-3 grid gap-3 xl:grid-cols-[1fr_1.1fr]">
-        <div className={style.card}>
-          <h3 className={`text-xs font-black uppercase ${style.muted}`}>Indicadores</h3>
-          <div className="mt-2 divide-y divide-slate-200 text-sm">
+        <div className={CARTAO}>
+          <h4 className={`text-xs font-black uppercase ${APAGADO}`}>Indicadores</h4>
+          <dl className="mt-2 divide-y divide-slate-200 text-sm">
             {(analysis.indicadores || []).map(indicator => (
               <div key={indicator.nome} className="grid gap-1 py-2 sm:grid-cols-[150px_110px_1fr]">
-                <strong className={style.title}>{indicator.nome}</strong>
-                <span className={`font-mono ${style.metric}`}>{indicator.valor}</span>
-                <span className={style.muted}>{indicator.interpretacao}</span>
+                <dt className="font-bold text-slate-950">{indicator.nome}</dt>
+                <dd className="font-mono text-cyan-800">{indicator.valor}</dd>
+                <dd className={APAGADO}>{indicator.interpretacao}</dd>
               </div>
             ))}
-          </div>
+          </dl>
         </div>
-        <div className={style.card}>
-          <h3 className={`text-xs font-black uppercase ${style.muted}`}>Plano de Ação</h3>
-          <div className="mt-2 space-y-2 text-sm">
+        <div className={CARTAO}>
+          <h4 className={`text-xs font-black uppercase ${APAGADO}`}>Plano de ação</h4>
+          <ol className="mt-2 space-y-2 text-sm">
             {(analysis.planoAcao || []).map((action, index) => (
-              <div key={`${action.acao}-${index}`} className={style.nested}>
-                <strong className={style.title}>{index + 1}. {action.acao}</strong>
-                <div className={`mt-1 grid gap-1 text-xs sm:grid-cols-2 ${style.muted}`}>
+              <li key={`${action.acao}-${index}`} className="rounded-md border border-slate-200 bg-slate-50 p-2">
+                <strong className="text-slate-950">{index + 1}. {action.acao}</strong>
+                <div className={`mt-1 grid gap-1 text-xs sm:grid-cols-2 ${APAGADO}`}>
                   <span>Impacto: {action.impacto}</span>
                   <span>Dificuldade: {action.dificuldade}</span>
                   <span>Tempo: {action.tempoEstimado}</span>
                   <span>Ganho: {action.ganhoEsperado}</span>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
       </div>
 
       <div className="mt-3">
-        <AnalysisList title="Próximos Passos" items={analysis.proximosPassos || []} variant={variant} />
+        <AnalysisList title="Próximos passos" items={analysis.proximosPassos || []} />
       </div>
     </section>
   );
