@@ -6,7 +6,7 @@ import { Suspense, lazy, useDeferredValue, useEffect, useMemo, useRef, useState,
 import { locaisParaEscolher, nomesSemLocal, rotuloDoLocal } from '../modules/materials/locaisSge';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { CheckCircle2, Keyboard, Layers, MapPin, PackagePlus, Plus, Search, Undo2, X } from 'lucide-react';
+import { CheckCircle2, Layers, MapPin, PackagePlus, Plus, Search, Undo2, X } from 'lucide-react';
 import type { Empresa, EtapaServico, Material, MovimentoMaterial, PrevistoMaterial, TipoMovimentoMaterial } from '../types';
 import { posicaoEstoque, type PosicaoEstoque } from '../utils/estoque';
 import { cancelMaterialMovement } from '../modules/materials/materialFieldUse';
@@ -448,16 +448,13 @@ export default function MateriaisTab({
             eyebrow="Suprimentos"
             title="Materiais"
             abas={<AbasDaTela id="materiais" rotulo="Subtelas de materiais" abas={abas} ativa={aba} onTrocar={escolherSecao} idPainel="materiais-dados" testId="materiais-secao" />}
-            actions={podeEditar ? (
-              <>
-                <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} px-3 max-lg:hidden`} aria-label="Atalhos do teclado" title="Atalhos do teclado (?)">
-                  <Keyboard className="size-5" aria-hidden="true" />
-                </button>
-                <button type="button" onClick={() => abrirLancamento()} data-testid="materiais-acao-principal" aria-keyshortcuts="N" title="Novo lançamento (N)" className={`${BOTAO_PRIMARIO} max-sm:order-first px-4`}>
-                  <Plus className="size-5" aria-hidden="true" />
-                  Novo lançamento
-                </button>
-              </>
+            // Em Lançar o formulário já está na tela, e Viagens da jazida tem
+            // a própria ação principal (Novo ticket): um botão verde só.
+            actions={podeEditar && aba !== 'lancar' && aba !== 'viagens' ? (
+              <button type="button" onClick={() => abrirLancamento()} data-testid="materiais-acao-principal" aria-keyshortcuts="N" title="Novo lançamento (N)" className={`${BOTAO_PRIMARIO} max-sm:order-first px-4`}>
+                <Plus className="size-5" aria-hidden="true" />
+                Novo lançamento
+              </button>
             ) : undefined}
           />
         </div>
@@ -500,7 +497,7 @@ export default function MateriaisTab({
                 />
               </label>
               {aba === 'movimentos' && (
-                <div role="group" aria-label="Mostrar só" className="flex basis-full gap-2 overflow-x-auto pb-1 lg:basis-auto lg:pb-0">
+                <div role="group" aria-label="Mostrar só" className="flex basis-full flex-wrap gap-2 lg:basis-auto lg:flex-nowrap">
                   {FILTROS_TIPO.map(filtro => (
                     <button
                       key={filtro.id}
@@ -553,6 +550,7 @@ export default function MateriaisTab({
               onSalvarVarios={onSaveMovimentos}
               onEditar={movimento => abrirLancamento(movimento)}
               onVerMovimentos={() => escolherSecao('movimentos')}
+              onVerAtalhos={() => setAtalhosAberto(true)}
             />
           )}
 

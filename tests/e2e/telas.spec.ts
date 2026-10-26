@@ -268,6 +268,25 @@ test('materiais: abas agrupadas no topo, sem menu lateral, e a página não rola
   await expect(page.getByRole('heading', { name: 'Uso por ramo', level: 2 })).toBeAttached();
 });
 
+test('materiais: um botão verde por tela e o Registrar não deixa campo aparecendo embaixo', async ({ page }, info) => {
+  test.skip(info.project.name === 'celular', 'no celular a página rola e o rodapé fica preso à janela');
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto('/?screen=materiais&shell=1&secao=lancar');
+  await expect(page.getByTestId('materiais-acao-principal'), 'em Lançar o formulário já está na tela').toHaveCount(0);
+  const registrar = page.getByTestId('materiais-registrar');
+  await expect(registrar).toBeVisible();
+  const [fimDoRodape, fimDaArea] = await registrar.evaluate(botao => [
+    botao.parentElement!.parentElement!.getBoundingClientRect().bottom,
+    document.getElementById('materiais-dados')!.getBoundingClientRect().bottom,
+  ]);
+  expect(Math.abs(fimDaArea - fimDoRodape), 'o rodapé encosta no fim da área que rola').toBeLessThanOrEqual(2);
+  await page.goto('/?screen=materiais&shell=1&secao=viagens');
+  await expect(page.getByTestId('jazida-novo-ticket')).toBeVisible();
+  await expect(page.getByTestId('materiais-acao-principal'), 'na jazida a ação é Novo ticket').toHaveCount(0);
+  await page.goto('/?screen=materiais&shell=1&secao=estoque');
+  await expect(page.getByTestId('materiais-acao-principal')).toBeVisible();
+});
+
 test('abas agrupadas: 18 subtelas cabem a 1366 px e andam pelas setas', async ({ page }, info) => {
   test.skip(info.project.name === 'celular', 'no celular a faixa rola por dentro');
   await page.setViewportSize({ width: 1366, height: 768 });

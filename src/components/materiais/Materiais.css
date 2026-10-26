@@ -36,3 +36,31 @@
   .materiais-vivo,
   .materiais-vivo:hover { transform: none; transition: none; }
 }
+
+/*
+ * Viagens da jazida dentro de Materiais: o "Materiais › Viagens da jazida"
+ * já está nas abas de cima, então o título de dentro sai da vista (segue
+ * para o leitor de tela, como h2) e as partes da jazida ficam numa linha só,
+ * com as ações dela à direita.
+ */
+.erp-module--materiais .renea-tela-cheia--embutida .renea-page-header__copy {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+ * No celular as abas de Materiais quebram linha em vez de rolar para o lado:
+ * são 5 grupos, até 5 subtelas e as partes de Lançar e da jazida. O que
+ * ficava fora da tela ("Cadastrar", "Viagens da jazida") não era achado por
+ * quem não sabe que dá para arrastar.
+ */
+@media (max-width: 1023px) {
+  .erp-module--materiais .renea-abas {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+}

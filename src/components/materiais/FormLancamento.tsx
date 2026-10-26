@@ -469,7 +469,10 @@ export default function FormLancamento({ aberto, editando, hoje, materiais, movi
     return (
       <section data-materiais-reveal aria-label="Lançar" className="rounded-2xl border border-slate-200 bg-white">
         <div className="p-4 sm:p-5">{corpo}</div>
-        <div className="sticky bottom-0 rounded-b-2xl border-t border-slate-200 bg-white p-3 sm:px-5">{rodape}</div>
+        {/* No computador a área rola por dentro e tem 1 rem de respiro embaixo:
+            o rodapé desce esse respiro para cobrir os campos que passam por
+            baixo dele, em vez de deixá-los aparecendo abaixo do botão. */}
+        <div className="sticky bottom-0 rounded-b-2xl border-t border-slate-200 bg-white p-3 shadow-[0_-10px_18px_-16px_rgba(15,40,31,0.45)] sm:px-5 lg:-bottom-4 lg:pb-7">{rodape}</div>
       </section>
     );
   }

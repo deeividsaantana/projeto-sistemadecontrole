@@ -1,4 +1,4 @@
-const CACHE_NAME = 'renea-erp-shell-v345-premium-workspaces';
+const CACHE_NAME = 'renea-erp-shell-v351-fuel-direct-list';
 const SHELL = ['/manifest.webmanifest', '/favicon.png'];
 // JavaScript e CSS usam nomes versionados pelo build e devem seguir direto para a rede.
 // O Service Worker guarda somente recursos visuais estáveis.
