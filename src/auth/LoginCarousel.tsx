@@ -18,8 +18,8 @@ export function LoginCarousel({
   const trackRef = useRef<HTMLDivElement>(null);
   const dotsRef = useRef<(HTMLButtonElement | null)[]>([]);
   const currentIndexRef = useRef(0);
-  const autoplayTimeoutRef = useRef<NodeJS.Timeout>();
-  const timelineRef = useRef<gsap.core.Timeline>();
+  const autoplayTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const timelineRef = useRef<gsap.core.Timeline | undefined>(undefined);
 
   const goToSlide = (index: number) => {
     if (!trackRef.current) return;
