@@ -571,7 +571,7 @@ const createOperatorsSheet = (workbook: ExcelJS.Workbook, conferencia: Conferenc
   sheet.getCell(linha, 1).value = 'CONFERÊNCIA DA RELAÇÃO';
   sheet.getCell(linha, 1).font = { bold: true, color: { argb: 'FF176B4D' } };
   linha += 1;
-  ['Relação', 'Esperados', 'Lançados', 'A confirmar', 'Quem falta lançar'].forEach((titulo, indice) => {
+  ['Relação', 'Esperados', 'Lançados', 'Faltantes', 'Equipamentos / operadores faltantes'].forEach((titulo, indice) => {
     sheet.getCell(linha, indice + 1).value = titulo;
     sheet.getCell(linha, indice + 1).font = { bold: true };
   });
