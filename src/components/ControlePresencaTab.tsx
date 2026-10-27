@@ -53,6 +53,7 @@ import {
 } from '../utils/painelPresenca';
 import { CANTEIROS_ATIVOS, RAMOS_ATIVOS, contemTermo } from '../utils/frenteServico';
 import RelatoriosPresenca from './presenca/RelatoriosPresenca';
+import FormularioLancamentoPresenca from './presenca/FormularioLancamentoPresenca';
 import reneaLogo from '../assets/images/logo-renea-dark.svg';
 import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import { baixarPlanilhaEquipes } from '../utils/exportarEquipesExcel';
@@ -1885,111 +1886,44 @@ export default function ControlePresencaTab({
         const pessoas = (grupo.funcionarioIds || [])
           .map(id => employeeById.get(id))
           .filter((pessoa): pessoa is Funcionario => Boolean(pessoa));
-        const conferidos = pessoas.filter(pessoa => situacoesLancadas[pessoa.id]?.status).length;
 
         return (
-          <Modal
-            open
-            size="lg"
-            title={`Lançar presença · ${grupo.nome}`}
-            onClose={() => setLancamento(null)}
-            footer={(
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <span className="text-xs font-bold text-slate-500">
-                  {conferidos} de {pessoas.length} conferido(s)
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setLancamento(null)}
-                    className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    disabled={conferidos === 0}
-                    onClick={() => {
-                      onLancarPresencaManual(
-                        grupo,
-                        lancamento.data,
-                        Object.values(situacoesLancadas).filter(item => item.status),
-                        lancamento.observacaoDia,
-                      );
-                      setFeedback(`Presença de ${grupo.nome} lançada pelo painel.`);
-                      setLancamento(null);
-                    }}
-                    className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
-                  >
-                    Lançar presença
-                  </button>
-                </div>
-              </div>
-            )}
-          >
-            <div className="space-y-3">
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label className="block space-y-1.5">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Dia</span>
-                  <input
-                    type="date"
-                    max={today}
-                    value={lancamento.data}
-                    onChange={event => setLancamento(atual => atual && { ...atual, data: event.target.value })}
-                    className={FIELD}
-                  />
-                </label>
-                <label className="block space-y-1.5">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Observação do dia</span>
-                  <input
-                    value={lancamento.observacaoDia}
-                    onChange={event => setLancamento(atual => atual && { ...atual, observacaoDia: event.target.value })}
-                    placeholder="Chuva, parada de frente…"
-                    className={FIELD}
-                  />
-                </label>
-              </div>
-
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
-                O lançamento fica marcado como feito pelo painel, com o seu nome. Relançar o mesmo dia
-                corrige as situações escolhidas e não duplica ninguém.
-              </p>
-
-              <ul className="space-y-2">
-                {pessoas.map(pessoa => {
-                  const atual = situacoesLancadas[pessoa.id]?.status;
-                  return (
-                    <li key={pessoa.id} className="rounded-lg border border-slate-200 p-3">
-                      <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <strong className="text-sm font-bold text-slate-900">{pessoa.nome}</strong>
-                        <span className="text-xs text-slate-500">{pessoa.cargo}{pessoa.matricula ? ` · Mat. ${pessoa.matricula}` : ''}</span>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {STATUS_OPTIONS.map(status => (
-                          <button
-                            key={status}
-                            type="button"
-                            aria-pressed={atual === status}
-                            onClick={() => setSituacoesLancadas(atuais => ({
-                              ...atuais,
-                              [pessoa.id]: { funcionarioId: pessoa.id, status, observacao: atuais[pessoa.id]?.observacao },
-                            }))}
-                            className={`min-h-10 rounded-lg border px-3 text-xs font-bold transition ${
-                              atual === status
-                                ? 'border-emerald-700 bg-emerald-700 text-white'
-                                : 'border-slate-200 bg-white text-slate-500 hover:border-emerald-700'
-                            }`}
-                          >
-                            {status}
-                          </button>
-                        ))}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </Modal>
+          <FormularioLancamentoPresenca
+            grupo={grupo}
+            pessoas={pessoas}
+            hoje={today}
+            data={lancamento.data}
+            observacaoDia={lancamento.observacaoDia}
+            situacoes={situacoesLancadas}
+            opcoesStatus={STATUS_OPTIONS}
+            onData={data => setLancamento(atual => atual && { ...atual, data })}
+            onObservacaoDia={observacaoDia => setLancamento(atual => atual && { ...atual, observacaoDia })}
+            onSituacao={(pessoaId, status, observacao) => setSituacoesLancadas(atuais => {
+              if (!status) {
+                const { [pessoaId]: _removida, ...resto } = atuais;
+                return resto;
+              }
+              return { ...atuais, [pessoaId]: { funcionarioId: pessoaId, status, observacao } };
+            })}
+            onTodosPresentes={() => setSituacoesLancadas(atuais => {
+              const proximas = { ...atuais };
+              pessoas.forEach(pessoa => {
+                if (!proximas[pessoa.id]?.status) proximas[pessoa.id] = { funcionarioId: pessoa.id, status: 'Presente' };
+              });
+              return proximas;
+            })}
+            onSalvar={() => {
+              onLancarPresencaManual(
+                grupo,
+                lancamento.data,
+                Object.values(situacoesLancadas).filter(item => item.status),
+                lancamento.observacaoDia,
+              );
+              setFeedback(`Presença de ${grupo.nome} lançada pelo painel.`);
+              setLancamento(null);
+            }}
+            onFechar={() => setLancamento(null)}
+          />
         );
       })()}
     </TelaCheia>

@@ -82,3 +82,33 @@ export const aplicarPresencaManual = (
   ));
   return [...preservados, ...novos];
 };
+
+export interface ResumoLancamento {
+  total: number;
+  presentes: number;
+  ausentes: number;
+  justificados: number;
+  outras: number;
+  semConferencia: number;
+}
+
+/**
+ * Totais do formulário de lançamento. Os grupos não se sobrepõem e somam o
+ * total da equipe: quem ainda não foi conferido fica em "semConferencia" e
+ * nunca vira falta nem presença.
+ */
+export const resumirLancamento = (
+  pessoaIds: readonly string[],
+  situacoes: Readonly<Record<string, SituacaoLancada | undefined>>,
+): ResumoLancamento => {
+  const resumo: ResumoLancamento = { total: pessoaIds.length, presentes: 0, ausentes: 0, justificados: 0, outras: 0, semConferencia: 0 };
+  for (const id of pessoaIds) {
+    const status = situacoes[id]?.status;
+    if (!status) resumo.semConferencia += 1;
+    else if (status === 'Presente') resumo.presentes += 1;
+    else if (status === 'Ausente') resumo.ausentes += 1;
+    else if (status === 'Falta justificada' || status === 'Atestado') resumo.justificados += 1;
+    else resumo.outras += 1;
+  }
+  return resumo;
+};
