@@ -32,7 +32,7 @@ const rotuloAprovacao = (row: FleetCurrentState) => (TOM_APROVACAO[row.approvalS
 
 const seloAprovacao = (row: FleetCurrentState) => {
   const { rotulo, tom } = TOM_APROVACAO[row.approvalStatus as keyof typeof TOM_APROVACAO] ?? TOM_APROVACAO.PENDENTE;
-  return <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold ${tom}`}>{rotulo}</span>;
+  return <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-sm font-bold ${tom}`}>{rotulo}</span>;
 };
 
 /** Texto de uma linha só: o que não couber some com reticências e fica inteiro na dica. */
@@ -75,7 +75,7 @@ const colunas = (
     render: row => row.driver?.employeeName ? (
       <span className={`${UMA_LINHA} md:max-w-[10rem] 2xl:max-w-[16rem]`}>
         <span className="font-semibold text-slate-900">{row.driver.employeeName}</span>
-        {row.driver.employeeCode && <span className="font-mono text-xs text-[#5b6870]"> {row.driver.employeeCode}</span>}
+        {row.driver.employeeCode && <span className="font-mono text-sm text-[#5b6870]"> {row.driver.employeeCode}</span>}
       </span>
     ) : <span className="whitespace-nowrap text-[#5b6870]">Sem motorista</span>,
   },
