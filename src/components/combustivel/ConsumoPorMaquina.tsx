@@ -61,8 +61,8 @@ function Situacao({ linha, quebra = false }: { linha: ConsumoEquipamento; quebra
 /** A linha inteira abre a ficha, com o mouse ou com Enter (TabelaPadrao). */
 const COLUNAS_CONSUMO: ColunaTabela<ConsumoEquipamento>[] = [
   {
-    chave: 'maquina', titulo: 'Máquina', larguraMinima: 160, larguraIdeal: 140,
-    render: linha => <><span className="block font-mono font-black text-slate-950">{linha.prefixo}</span><span className="block truncate text-xs text-[#5b6870]">{linha.nome}</span></>,
+    chave: 'maquina', titulo: 'Máquina', larguraMinima: 90, larguraIdeal: 96,
+    render: linha => <span className="font-mono font-black text-slate-950">{linha.prefixo}</span>,
     valorOrdenacao: linha => linha.prefixo,
     dica: linha => `${linha.prefixo} · ${linha.nome}`,
   },
