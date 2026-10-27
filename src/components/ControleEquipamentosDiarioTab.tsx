@@ -23,6 +23,9 @@ import {
   Upload,
   Users,
   X,
+  Clock3,
+  Truck,
+  Wrench,
 } from 'lucide-react';
 import type {
   ControleEquipamentoDiario,
@@ -733,6 +736,22 @@ export default function ControleEquipamentosDiarioTab({
       faixa={aviso || undefined}
     >
       {activeView === 'today' && <div data-fleet-view className="flex min-h-0 flex-1 flex-col gap-3">
+        <section aria-label="Resumo do dia" className="grid shrink-0 gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="frota-resumo-visualizacao">
+          {[
+            { rotulo: 'Total da frota', valor: viewModel.metrics.total, Icone: Truck, tom: 'text-slate-950', fundo: 'bg-slate-100 text-slate-700' },
+            { rotulo: 'Em operação', valor: viewModel.metrics.operating, Icone: Truck, tom: 'text-emerald-700', fundo: 'bg-emerald-50 text-emerald-700' },
+            { rotulo: 'Em manutenção', valor: viewModel.metrics.maintenance + viewModel.metrics.waitingMaintenance, Icone: Wrench, tom: 'text-rose-700', fundo: 'bg-rose-50 text-rose-700' },
+            { rotulo: 'A confirmar', valor: viewModel.metrics.pending, Icone: Clock3, tom: 'text-amber-700', fundo: 'bg-amber-50 text-amber-700' },
+          ].map(({ rotulo, valor, Icone, tom, fundo }) => (
+            <article key={rotulo} className={`${CARTAO} flex items-center gap-4 p-4`}>
+              <span className={`grid size-12 shrink-0 place-items-center rounded-xl ${fundo}`}><Icone className="size-6" aria-hidden="true" /></span>
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#5b6870]">{rotulo}</p>
+                <p className={`font-mono text-3xl font-bold tabular-nums ${tom}`}>{valor}</p>
+              </div>
+            </article>
+          ))}
+        </section>
         <PanoramaDoDia
           metrics={viewModel.metrics}
           status={filters.status}
