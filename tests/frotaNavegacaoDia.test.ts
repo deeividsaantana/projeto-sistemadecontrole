@@ -37,13 +37,11 @@ test('rótulo de indicador do Quadro não quebra no meio da palavra', () => {
   assert.match(ler('src/components/quadroFrota/QuadroFrota.tsx'), /truncate whitespace-nowrap/);
 });
 
-test('a Situação do dia abre com o panorama: anel por situação, canteiros e conferência', () => {
+test('a Situação do dia abre com os cartões de resumo e a tabela logo abaixo', () => {
   const aba = ler('src/components/ControleEquipamentosDiarioTab.tsx');
-  const panorama = ler('src/components/fleet/PanoramaDoDia.tsx');
-  assert.match(aba, /<PanoramaDoDia/);
-  assert.match(panorama, /frota-fatia-/);
-  assert.match(panorama, /frota-canteiro-/);
-  assert.match(panorama, /Quem já foi lançado/);
+  assert.match(aba, /frota-resumo-visualizacao/);
+  assert.match(aba, /Em manutenção/);
+  assert.match(aba, /A confirmar/);
 });
 
 test('a tabela do dia tem uma linha por lançamento e aprova na própria coluna', () => {
