@@ -144,7 +144,7 @@ export function GradeConferencia({ itens, nomeFaltantes, nomeLancados, vazio, te
                 {item.saida && <span className="text-[#5b6870]">saída <span className="font-mono font-semibold text-slate-700">{item.saida}</span></span>}
               </span>
             ) : (
-              <span className="flex items-center justify-between gap-2">
+              <span className="flex flex-wrap items-center justify-between gap-2">
                 <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900 ring-1 ring-inset ring-amber-300">Faltante</span>
                 {item.onLancar && (
                   <button type="button" onClick={item.onLancar} aria-label={item.rotuloLancar} className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-[#176b4d] px-3 text-sm font-bold text-white transition hover:brightness-95 active:scale-[0.97] md:min-h-9 ${FOCO}`}>
