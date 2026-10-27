@@ -2218,6 +2218,21 @@ body,
    1024 px) o piso de 44 px continua valendo. */
 @media (min-width: 1024px) {
   #main-tab-viewport :is(td, th) :is(button, [role="button"]) { min-height: 2rem; }
+  #main-tab-viewport td :is(input, select):not([type="checkbox"]):not([type="radio"]):not([type="range"]) { min-height: 2rem; }
+  /* Rodapé da TabelaPadrao (meses, "Mostrar", páginas) com 32 px: sobra
+     altura para mais linhas. */
+  #main-tab-viewport [data-tabela-rodape] button,
+  #main-tab-viewport [data-tabela-rodape] select:not([type="checkbox"]):not([type="radio"]):not([type="range"]) { min-height: 2rem; }
+}
+
+/* Célula da TabelaPadrao no computador: uma linha por registro (pedido de
+   26/10/2026, ver mais linhas na tela). O que vinha empilhado (prefixo e
+   tipo, nome e e-mail) fica lado a lado, separado por "·". Bloco com flex ou
+   grid (ícone e texto) continua como está. */
+.renea-celula :is(p, div, .block):not(.flex, .grid, .inline-flex) { display: inline; }
+.renea-celula :is(p, div, .block):not(.flex, .grid, .inline-flex) ~ :is(p, div, .block):not(.flex, .grid, .inline-flex)::before {
+  content: " · ";
+  color: #94a3b8;
 }
 
 /* Tabelas montadas à mão nas abas que ainda não passaram para a TabelaPadrao

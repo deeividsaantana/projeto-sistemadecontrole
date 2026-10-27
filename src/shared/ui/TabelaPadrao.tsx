@@ -7,9 +7,13 @@
  * O que ela faz sozinha:
  * - cabeçalho preso (11 px, maiúsculas, fundo #f3f6f4) e ordenação clicando
  *   no título, com `aria-sort` no próprio <th scope="col">;
- * - linha de 40 px e letra de 13 px; coluna `alinhamento: 'direita'` vira
- *   número (à direita, algarismos de mesma largura);
- * - texto longo quebra em até 2 linhas, com o texto inteiro no `title`;
+ * - linha de 36 px e letra de 13 px, para caber o máximo de linhas na tela
+ *   (pedido de 26/10/2026); coluna `alinhamento: 'direita'` vira número (à
+ *   direita, algarismos de mesma largura);
+ * - uma linha por registro no computador: texto longo termina em "…" e o
+ *   texto inteiro fica no `title`. Quando a célula traz duas partes em
+ *   `block` (prefixo e tipo, nome e matrícula), elas ficam lado a lado
+ *   separadas por "·" em vez de uma embaixo da outra;
  * - caixa de marcar na 1ª coluna (`selecao`) e ações na última (`acoes`);
  * - linha clicável (`onAbrirLinha`) também abre com Enter ou Espaço;
  * - rodapé preso com o total, "Mostrar 25/50/100" (padrão 50) e páginas;
@@ -50,8 +54,9 @@
  * - `grupos`: faixas de grupo com subtotal que abrem e fecham (cada grupo é
  *   um <tbody> com um <th scope="rowgroup">). As linhas de um grupo chegam
  *   juntas, já na ordem que a tela quer;
- * - `densa`: muitas colunas num notebook de 1366 px. O título do cabeçalho
- *   quebra em até 2 linhas e a célula tem respiro menor;
+ * - `densa`: muitas colunas num notebook de 1366 px, como planilha. O título
+ *   do cabeçalho quebra em até 2 linhas, a linha tem 32 px e a célula tem
+ *   respiro menor;
  * - `rodapeInicio` e `resumo`: o rodapé leva também os atalhos de período
  *   (ex.: meses) e os totais da tela, numa barra só;
  * - `refArea`: a área que rola, para a tela levar a lista ao fim;
@@ -244,6 +249,20 @@ const veioDeControle = (evento: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElem
   return Boolean(controle && controle !== evento.currentTarget && evento.currentTarget.contains(controle));
 };
 
+/**
+ * Célula do computador: uma linha só, com "…" no fim. Partes empilhadas
+ * (prefixo e tipo, nome e e-mail) ficam lado a lado com "·" entre elas
+ * (regra .renea-celula no index.css).
+ */
+const CELULA_UMA_LINHA = 'renea-celula line-clamp-1 break-words';
+
+/** Sem `dica`, a célula cortada mostra no mouse o texto inteiro que está nela. */
+const dicaDoCorte = (evento: MouseEvent<HTMLDivElement>) => {
+  const celula = evento.currentTarget;
+  const cortada = celula.scrollHeight > celula.clientHeight + 1 || celula.scrollWidth > celula.clientWidth + 1;
+  if (cortada && !celula.title) celula.title = celula.innerText.replace(/\s*\n+\s*/g, ' · ').trim();
+};
+
 const textoDe = (conteudo: ReactNode) => (typeof conteudo === 'string' || typeof conteudo === 'number' ? String(conteudo) : undefined);
 
 export function TabelaPadrao<T>({
@@ -358,7 +377,7 @@ export function TabelaPadrao<T>({
   const celula = (coluna: ColunaTabela<T>, linha: T) => {
     const conteudo = coluna.render(linha);
     const dica = coluna.dica?.(linha) ?? textoDe(conteudo);
-    return <div className="line-clamp-2 break-words" title={dica || undefined}>{conteudo ?? '—'}</div>;
+    return <div className={CELULA_UMA_LINHA} title={dica || undefined} onMouseEnter={dica ? undefined : dicaDoCorte}>{conteudo ?? '—'}</div>;
   };
 
   const colunasNaTabela = colunas.length + (selecao ? 1 : 0) + (acoes ? 1 : 0);
@@ -370,11 +389,11 @@ export function TabelaPadrao<T>({
     const fechado = Boolean(grupos?.fechados?.has(chave));
     const miolo = grupos?.cabecalho(chave, linhasDoGrupo);
     return grupos?.onAlternar ? (
-      <button type="button" aria-expanded={!fechado} onClick={() => grupos.onAlternar?.(chave)} className={cn('flex min-h-10 w-full items-center gap-2 px-3 text-left', FOCO, 'focus-visible:-outline-offset-2')}>
+      <button type="button" aria-expanded={!fechado} onClick={() => grupos.onAlternar?.(chave)} className={cn('flex min-h-9 w-full items-center gap-2 px-3 text-left', FOCO, 'focus-visible:-outline-offset-2')}>
         <ChevronDown className={cn('size-4 shrink-0 text-[#176b4d] transition-transform', fechado && '-rotate-90')} aria-hidden="true" />
         {miolo}
       </button>
-    ) : <div className="flex min-h-10 items-center gap-2 px-3">{miolo}</div>;
+    ) : <div className="flex min-h-9 items-center gap-2 px-3">{miolo}</div>;
   };
 
   const tabela = (
@@ -384,7 +403,7 @@ export function TabelaPadrao<T>({
         <tr>
           {selecao && (
             <th scope="col" className="sticky top-0 z-[2] w-12 border-b border-slate-200 bg-[#f3f6f4] p-0">
-              <label className="flex min-h-10 cursor-pointer items-center justify-center">{caixaDaPagina}</label>
+              <label className="flex min-h-9 cursor-pointer items-center justify-center">{caixaDaPagina}</label>
             </th>
           )}
           {colunas.map(coluna => {
@@ -439,23 +458,24 @@ export function TabelaPadrao<T>({
                 key={id}
                 {...propsDaLinha(linha, indice)}
                 className={cn(
-                  'h-10 bg-white transition-colors hover:bg-[#f0f4f1]',
+                  densa ? 'h-8' : 'h-9',
+                  'bg-white transition-colors hover:bg-[#f0f4f1]',
                   onAbrirLinha && `cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#176b4d]`,
                   destaque(linha, id),
                 )}
               >
                 {selecao && (
                   <td className="border-b border-slate-100 p-0">
-                    <label className={cn('flex cursor-pointer items-center justify-center', densa ? 'min-h-8' : 'min-h-10')}>{caixaDaLinha(linha, id)}</label>
+                    <label className={cn('flex cursor-pointer items-center justify-center', densa ? 'min-h-8' : 'min-h-9')}>{caixaDaLinha(linha, id)}</label>
                   </td>
                 )}
                 {colunas.map(coluna => (
-                  <td key={coluna.chave} className={cn('border-b border-slate-100 align-middle leading-snug', densa ? 'px-2 py-1' : 'px-3 py-1.5', ALINHAMENTO[coluna.alinhamento ?? 'esquerda'])}>
+                  <td key={coluna.chave} className={cn('border-b border-slate-100 align-middle leading-snug', densa ? 'px-2 py-0.5' : 'px-3 py-1', ALINHAMENTO[coluna.alinhamento ?? 'esquerda'])}>
                     {celula(coluna, linha)}
                   </td>
                 ))}
                 {acoes && (
-                  <td className="border-b border-slate-100 px-3 py-1 text-right align-middle">
+                  <td className={cn('border-b border-slate-100 px-3 text-right align-middle', densa ? 'py-0' : 'py-0.5')}>
                     <div className="flex justify-end gap-1.5 whitespace-nowrap">{acoes(linha)}</div>
                   </td>
                 )}
@@ -532,7 +552,7 @@ export function TabelaPadrao<T>({
         <p className="shrink-0 border-t border-slate-200 bg-[#f3f6f4] px-3 py-2 text-[13px] font-semibold tabular-nums text-slate-700">{contagem(linhas.length, nomeDoItem)}</p>
       )}
       {mostrarRodape && (
-        <footer className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-slate-200 bg-[#f3f6f4] px-3 py-2 text-[13px] text-slate-700">
+        <footer data-tabela-rodape className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-slate-200 bg-[#f3f6f4] px-3 py-2 text-[13px] text-slate-700 lg:py-1">
           {rodapeInicio && <div className="min-w-0 flex-1 basis-72">{rodapeInicio}</div>}
           <p className="font-semibold tabular-nums">
             <span aria-live="polite">

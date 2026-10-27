@@ -1007,7 +1007,7 @@ export default function ControlePresencaTab({
     {
       chave: 'data',
       titulo: 'Data',
-      larguraMinima: 120,
+      larguraMinima: 150,
       valorOrdenacao: record => `${record.data} ${record.horaEnvio}`,
       dica: record => `${dataBr(record.data)} ${record.horaEnvio || ''}`.trim(),
       render: record => (
@@ -1049,7 +1049,7 @@ export default function ControlePresencaTab({
       larguraMinima: 130,
       valorOrdenacao: record => record.status,
       dica: record => record.status,
-      render: record => <span className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-bold ${STATUS_STYLES[record.status] || STATUS_STYLES.Outro}`}>{record.status}</span>,
+      render: record => <span className={`inline-flex whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-bold ${STATUS_STYLES[record.status] || STATUS_STYLES.Outro}`}>{record.status}</span>,
     },
     {
       chave: 'observacao',
