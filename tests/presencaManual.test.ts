@@ -4,6 +4,7 @@ import {
   MARCA_LANCAMENTO_MANUAL,
   aplicarPresencaManual,
   montarPresencaManual,
+  resumirLancamento,
   veioDoLancamentoManual,
 } from '../src/utils/presencaManual';
 import type { Funcionario, GrupoEquipe, PresencaApontamento } from '../src/types';
@@ -97,4 +98,15 @@ test('lançar outro dia não apaga o dia anterior da mesma equipe', () => {
 
   assert.equal(hoje.length, 2);
   assert.equal(hoje.find(item => item.data === '2026-09-09')?.status, 'Presente');
+});
+
+test('o resumo do lançamento soma o total e deixa quem não foi conferido à parte', () => {
+  const resumo = resumirLancamento(['a', 'b', 'c', 'd', 'e'], {
+    a: { funcionarioId: 'a', status: 'Presente' },
+    b: { funcionarioId: 'b', status: 'Ausente' },
+    c: { funcionarioId: 'c', status: 'Atestado' },
+    d: { funcionarioId: 'd', status: 'Férias' },
+  });
+  assert.deepEqual(resumo, { total: 5, presentes: 1, ausentes: 1, justificados: 1, outras: 1, semConferencia: 1 });
+  assert.equal(resumo.presentes + resumo.ausentes + resumo.justificados + resumo.outras + resumo.semConferencia, resumo.total);
 });

@@ -53,6 +53,7 @@ import {
 } from '../utils/painelPresenca';
 import { CANTEIROS_ATIVOS, RAMOS_ATIVOS, contemTermo } from '../utils/frenteServico';
 import RelatoriosPresenca from './presenca/RelatoriosPresenca';
+import FormularioLancamentoPresenca from './presenca/FormularioLancamentoPresenca';
 import reneaLogo from '../assets/images/logo-renea-dark.svg';
 import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import { baixarPlanilhaEquipes } from '../utils/exportarEquipesExcel';
@@ -286,6 +287,8 @@ export default function ControlePresencaTab({
     () => typeof window !== 'undefined' && window.innerWidth >= 1024,
   );
   const [recordDate, setRecordDate] = useState(today);
+  /** Fim do período: vazio significa só o dia de "De". */
+  const [recordDateEnd, setRecordDateEnd] = useState('');
   const [recordGroup, setRecordGroup] = useState('todos');
   const [recordStatus, setRecordStatus] = useState<'todos' | PresencaStatus>('todos');
   const [recordSearch, setRecordSearch] = useState('');
@@ -662,13 +665,19 @@ export default function ControlePresencaTab({
   const filteredRecords = useMemo(() => {
     const query = recordSearch.trim().toLocaleLowerCase('pt-BR');
     return (verInativos ? inativos : safeRecords)
-      .filter(record => !recordDate || record.data === recordDate)
+      .filter(record => !recordDate || (recordDateEnd ? record.data >= recordDate && record.data <= recordDateEnd : record.data === recordDate))
       .filter(record => recordGroup === 'todos' || record.grupoId === recordGroup)
       .filter(record => recordStatus === 'todos' || record.status === recordStatus)
       .filter(record => !query || [record.funcionarioNome, record.funcao, record.responsavel, record.frenteServico]
         .some(value => value.toLocaleLowerCase('pt-BR').includes(query)))
       .sort((a, b) => `${b.data} ${b.horaEnvio}`.localeCompare(`${a.data} ${a.horaEnvio}`));
-  }, [inativos, recordDate, recordGroup, recordSearch, recordStatus, safeRecords, verInativos]);
+  }, [inativos, recordDate, recordDateEnd, recordGroup, recordSearch, recordStatus, safeRecords, verInativos]);
+
+  const resumoRegistros = useMemo(() => ({
+    registros: filteredRecords.length,
+    pessoas: new Set(filteredRecords.map(record => record.funcionarioId || record.funcionarioNome)).size,
+    equipes: new Set(filteredRecords.map(record => record.grupoId || record.grupoNome)).size,
+  }), [filteredRecords]);
 
   const exportRows = filteredRecords.map(record => [
     record.data,
@@ -998,10 +1007,56 @@ export default function ControlePresencaTab({
   // Registros e Histórico são tabelas: a área de dados fica do tamanho da tela
   // e só as linhas rolam. O resto (painel, relatório, cartões de equipe) é
   // aba longa, que rola por dentro.
-  const telaDeTabela = view === 'registros' || view === 'historico';
+  const telaDeTabela = view === 'registros' || view === 'historico' || view === 'equipes';
   const nomeDoHistorico = (item: HistoricoPresenca) => safeText(employeeById.get(item.funcionarioId)?.nome) || item.funcionarioId;
   const todosFiltradosMarcados = filteredRecords.length > 0 && filteredRecords.every(record => selectedRecordIds.includes(record.id));
   const marcados = useMemo(() => new Set(selectedRecordIds), [selectedRecordIds]);
+
+  const equipesQueEnviaramHoje = useMemo(
+    () => new Set(safeGroups.filter(group => safeRecords.some(record => record.data === today && teamRecordMatches(group, record))).map(group => group.id)),
+    [safeGroups, safeRecords, today],
+  );
+  const colunasEquipes: ColunaTabela<GrupoEquipe>[] = [
+    {
+      chave: 'equipe',
+      titulo: 'Equipe',
+      larguraMinima: 220,
+      valorOrdenacao: group => group.nome,
+      dica: group => group.nome,
+      render: group => {
+        const ativa = group.status === 'ativo' && group.linkAtivo;
+        return (
+          <span className="flex flex-wrap items-center gap-2">
+            <strong className="font-bold text-slate-900">{group.nome || 'Equipe sem nome'}</strong>
+            <span className={`rounded-md px-1.5 py-0.5 text-xs font-bold uppercase ${ativa ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-700'}`}>{ativa ? 'Ativa' : 'Inativa'}</span>
+          </span>
+        );
+      },
+    },
+    {
+      chave: 'responsavel',
+      titulo: 'Responsável · Frente',
+      larguraMinima: 180,
+      valorOrdenacao: group => group.responsavel,
+      dica: group => `${group.responsavel || 'Sem responsável'} · ${group.frenteServico || 'Sem frente'}`,
+      render: group => `${group.responsavel || 'Sem responsável'} · ${group.frenteServico || 'Sem frente'}`,
+    },
+    {
+      chave: 'colaboradores',
+      titulo: 'Pessoas',
+      alinhamento: 'direita',
+      valorOrdenacao: group => group.funcionarioIds.filter(id => employeeById.has(id)).length,
+      render: group => group.funcionarioIds.filter(id => employeeById.has(id)).length,
+    },
+    {
+      chave: 'hoje',
+      titulo: 'Hoje',
+      valorOrdenacao: group => (equipesQueEnviaramHoje.has(group.id) ? 1 : 0),
+      render: group => (equipesQueEnviaramHoje.has(group.id)
+        ? <span className="font-bold text-emerald-800">Enviada</span>
+        : <span className="font-bold text-amber-800">Pendente</span>),
+    },
+  ];
 
   const colunasRegistros: ColunaTabela<PresencaApontamento>[] = [
     {
@@ -1177,12 +1232,33 @@ export default function ControlePresencaTab({
     </div>
   );
 
+  const cartoesRegistros = [
+    { rotulo: 'Total de registros', valor: resumoRegistros.registros, unidade: 'registros', icone: FileText, classe: 'bg-sky-50 text-sky-800' },
+    { rotulo: 'Pessoas no período', valor: resumoRegistros.pessoas, unidade: 'pessoas', icone: Users, classe: 'bg-emerald-50 text-emerald-800' },
+    { rotulo: 'Equipes com registro', valor: resumoRegistros.equipes, unidade: 'equipes', icone: Radio, classe: 'bg-violet-50 text-violet-800' },
+  ];
+
   const faixaRegistros = (
     <div className={`${PANEL} space-y-3 p-3`}>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[170px_minmax(0,220px)_minmax(0,200px)_minmax(0,1fr)]">
+      <div className="grid grid-cols-3 gap-2" aria-live="polite" data-testid="presenca-registros-resumo">
+        {cartoesRegistros.map(({ rotulo, valor, unidade, icone: Icone, classe }) => (
+          <div key={rotulo} className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-1.5">
+            <span className={`hidden h-8 w-8 shrink-0 place-items-center rounded-lg sm:grid ${classe}`}><Icone className="h-4 w-4" aria-hidden="true" /></span>
+            <div className="min-w-0">
+              <p className="text-xs font-bold leading-tight text-[#5b6870]">{rotulo}</p>
+              <p className="text-base font-black leading-tight text-slate-900 sm:text-lg"><span className="tabular-nums">{valor.toLocaleString('pt-BR')}</span> <span className="text-xs font-bold text-[#5b6870]">{unidade}</span></p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[150px_150px_minmax(0,200px)_minmax(0,180px)_minmax(0,1fr)]">
         <label className="space-y-1">
-          <span className={ROTULO_CAMPO}>Dia</span>
+          <span className={ROTULO_CAMPO}>De</span>
           <input type="date" value={recordDate} onChange={event => setRecordDate(event.target.value)} className={FIELD} aria-describedby="presenca-dia-dica" />
+        </label>
+        <label className="space-y-1">
+          <span className={ROTULO_CAMPO}>Até</span>
+          <input type="date" value={recordDateEnd} min={recordDate || undefined} onChange={event => setRecordDateEnd(event.target.value)} className={FIELD} aria-describedby="presenca-dia-dica" />
         </label>
         <label className="space-y-1">
           <span className={ROTULO_CAMPO}>Equipe</span>
@@ -1200,7 +1276,7 @@ export default function ControlePresencaTab({
           </span>
         </label>
       </div>
-      <p id="presenca-dia-dica" className="sr-only">Apague o dia para ver todos os dias.</p>
+      <p id="presenca-dia-dica" className="sr-only">Escolha só o primeiro dia para ver aquele dia, ou os dois para ver o período. Apague o primeiro dia para ver todos os dias.</p>
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => setSelectedRecordIds(todosFiltradosMarcados ? [] : filteredRecords.map(record => record.id))} disabled={filteredRecords.length === 0} className={SECONDARY_BUTTON} aria-pressed={todosFiltradosMarcados} data-testid="presenca-marcar-filtrados">
           <Check className="h-4 w-4" aria-hidden="true" />
@@ -1619,23 +1695,27 @@ export default function ControlePresencaTab({
       )}
 
       {view === 'equipes' && (
-        filteredGroups.length === 0 ? (
-          <div className={`${PANEL} px-5 py-14 text-center text-sm text-[#5b6870]`}>{teamSearch.trim() ? 'Nenhuma equipe com esse nome.' : 'Nenhuma equipe cadastrada. Toque em Nova equipe para começar.'}</div>
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-            {filteredGroups.map(group => {
-              const members = group.funcionarioIds.map(id => safeFuncionarios.find(employee => employee.id === id)).filter(Boolean) as Funcionario[];
-              return (
-                <article key={group.id} className={`${PANEL} p-5`}>
-                  <div className="flex items-start gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-900"><Users className="h-5 w-5" aria-hidden="true" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-black text-slate-900">{group.nome || 'Equipe sem nome'}</h2><span className={`rounded-md px-2 py-1 text-xs font-bold uppercase tracking-[0.1em] ${group.status === 'ativo' && group.linkAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-700'}`}>{group.status === 'ativo' && group.linkAtivo ? 'Ativa' : 'Inativa'}</span></div><p className="mt-1 text-sm text-[#5b6870]">{group.responsavel || 'Sem responsável'} · {group.frenteServico || 'Sem frente'}</p></div><button type="button" onClick={() => openGroup(group)} className={`grid size-11 shrink-0 place-items-center rounded-xl border border-slate-200 text-[#5b6870] hover:border-emerald-700 hover:text-emerald-800 ${FOCO}`} aria-label={`Editar ${group.nome}`}><Edit3 className="h-4 w-4" aria-hidden="true" /></button></div>
-                  <div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-slate-50 p-3"><strong className="text-2xl font-black text-slate-900">{members.length}</strong><span className="ml-2 text-xs text-[#5b6870]">colaboradores</span></div><div className="rounded-xl bg-slate-50 p-3"><strong className="text-sm font-black text-slate-900">{group.linkAtivo ? 'Disponível' : 'Pausado'}</strong><span className="mt-1 block text-xs text-[#5b6870]">link da equipe</span></div></div>
-                  {group.token && <div className="mt-4 flex gap-2"><button type="button" onClick={() => copyLink(group.token, `Link de ${group.nome}`)} className={`${SECONDARY_BUTTON} flex-1`}><ClipboardCopy className="h-4 w-4" aria-hidden="true" /> Copiar link</button><button type="button" onClick={() => shareOnWhatsApp(group)} className={`${PRIMARY_BUTTON} flex-1`}><MessageCircle className="h-4 w-4" aria-hidden="true" /> Enviar no WhatsApp</button></div>}
-                  <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4">{onDeleteGrupoEquipe && <button type="button" onClick={() => setEquipeExcluindo(group)} className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-bold text-rose-700 hover:text-rose-900 lg:min-h-9 ${FOCO}`}><Trash2 className="h-4 w-4" aria-hidden="true" /> Excluir</button>}<button type="button" onClick={() => openGroup({ ...group, token: generateToken() })} className={`ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-bold text-emerald-800 hover:text-emerald-950 lg:min-h-9 ${FOCO}`}><RotateCcw className="h-4 w-4" aria-hidden="true" /> Renovar link</button></div>
-                </article>
-              );
-            })}
-          </div>
-        )
+        <TabelaPadrao
+          titulo="Equipes de presença"
+          linhas={filteredGroups}
+          colunas={colunasEquipes}
+          idDaLinha={group => group.id}
+          nomeDoItem={{ um: 'equipe', varios: 'equipes' }}
+          ordenacaoInicial={{ chave: 'equipe', direcao: 'asc' }}
+          vazio={teamSearch.trim() ? 'Nenhuma equipe com esse nome.' : 'Nenhuma equipe cadastrada. Toque em Nova equipe para começar.'}
+          tituloAcoes="Ações"
+          acoes={group => (
+            <span className="flex flex-wrap items-center gap-2 md:flex-nowrap md:gap-1.5">
+              <button type="button" onClick={() => openGroup(group)} className={`${SECONDARY_BUTTON} min-h-11 px-2.5 md:min-h-8 md:px-2`} aria-label={`Editar ${group.nome}`}><Edit3 className="h-4 w-4" aria-hidden="true" /> Editar</button>
+              {group.token && <button type="button" onClick={() => copyLink(group.token, `Link de ${group.nome}`)} className={`${SECONDARY_BUTTON} min-h-11 px-2.5 md:min-h-8 md:px-2`} aria-label={`Copiar link de ${group.nome}`}><ClipboardCopy className="h-4 w-4" aria-hidden="true" /> Copiar<span className="md:sr-only"> link</span></button>}
+              {group.token && <button type="button" onClick={() => shareOnWhatsApp(group)} className={`${PRIMARY_BUTTON} min-h-11 px-2.5 md:min-h-8 md:px-2`} aria-label={`Enviar link de ${group.nome} no WhatsApp`}><MessageCircle className="h-4 w-4" aria-hidden="true" /> WhatsApp</button>}
+              <button type="button" onClick={() => openGroup({ ...group, token: generateToken() })} className={`${SECONDARY_BUTTON} min-h-11 px-2.5 md:min-h-8 md:px-2`} aria-label={`Renovar link de ${group.nome}`} title="Renovar link"><RotateCcw className="h-4 w-4" aria-hidden="true" /><span className="md:sr-only"> Renovar link</span></button>
+              {onDeleteGrupoEquipe && <button type="button" onClick={() => setEquipeExcluindo(group)} className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-bold text-rose-700 hover:text-rose-900 md:min-h-8 ${FOCO}`} aria-label={`Excluir ${group.nome}`} title="Excluir equipe"><Trash2 className="h-4 w-4" aria-hidden="true" /><span className="md:sr-only"> Excluir</span></button>}
+            </span>
+          )}
+          className="flex-1"
+          testId="presenca-equipes"
+        />
       )}
 
       {view === 'registros' && (
@@ -1835,111 +1915,44 @@ export default function ControlePresencaTab({
         const pessoas = (grupo.funcionarioIds || [])
           .map(id => employeeById.get(id))
           .filter((pessoa): pessoa is Funcionario => Boolean(pessoa));
-        const conferidos = pessoas.filter(pessoa => situacoesLancadas[pessoa.id]?.status).length;
 
         return (
-          <Modal
-            open
-            size="lg"
-            title={`Lançar presença · ${grupo.nome}`}
-            onClose={() => setLancamento(null)}
-            footer={(
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <span className="text-xs font-bold text-slate-500">
-                  {conferidos} de {pessoas.length} conferido(s)
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setLancamento(null)}
-                    className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    disabled={conferidos === 0}
-                    onClick={() => {
-                      onLancarPresencaManual(
-                        grupo,
-                        lancamento.data,
-                        Object.values(situacoesLancadas).filter(item => item.status),
-                        lancamento.observacaoDia,
-                      );
-                      setFeedback(`Presença de ${grupo.nome} lançada pelo painel.`);
-                      setLancamento(null);
-                    }}
-                    className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
-                  >
-                    Lançar presença
-                  </button>
-                </div>
-              </div>
-            )}
-          >
-            <div className="space-y-3">
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label className="block space-y-1.5">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Dia</span>
-                  <input
-                    type="date"
-                    max={today}
-                    value={lancamento.data}
-                    onChange={event => setLancamento(atual => atual && { ...atual, data: event.target.value })}
-                    className={FIELD}
-                  />
-                </label>
-                <label className="block space-y-1.5">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Observação do dia</span>
-                  <input
-                    value={lancamento.observacaoDia}
-                    onChange={event => setLancamento(atual => atual && { ...atual, observacaoDia: event.target.value })}
-                    placeholder="Chuva, parada de frente…"
-                    className={FIELD}
-                  />
-                </label>
-              </div>
-
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
-                O lançamento fica marcado como feito pelo painel, com o seu nome. Relançar o mesmo dia
-                corrige as situações escolhidas e não duplica ninguém.
-              </p>
-
-              <ul className="space-y-2">
-                {pessoas.map(pessoa => {
-                  const atual = situacoesLancadas[pessoa.id]?.status;
-                  return (
-                    <li key={pessoa.id} className="rounded-lg border border-slate-200 p-3">
-                      <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <strong className="text-sm font-bold text-slate-900">{pessoa.nome}</strong>
-                        <span className="text-xs text-slate-500">{pessoa.cargo}{pessoa.matricula ? ` · Mat. ${pessoa.matricula}` : ''}</span>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {STATUS_OPTIONS.map(status => (
-                          <button
-                            key={status}
-                            type="button"
-                            aria-pressed={atual === status}
-                            onClick={() => setSituacoesLancadas(atuais => ({
-                              ...atuais,
-                              [pessoa.id]: { funcionarioId: pessoa.id, status, observacao: atuais[pessoa.id]?.observacao },
-                            }))}
-                            className={`min-h-10 rounded-lg border px-3 text-xs font-bold transition ${
-                              atual === status
-                                ? 'border-emerald-700 bg-emerald-700 text-white'
-                                : 'border-slate-200 bg-white text-slate-500 hover:border-emerald-700'
-                            }`}
-                          >
-                            {status}
-                          </button>
-                        ))}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </Modal>
+          <FormularioLancamentoPresenca
+            grupo={grupo}
+            pessoas={pessoas}
+            hoje={today}
+            data={lancamento.data}
+            observacaoDia={lancamento.observacaoDia}
+            situacoes={situacoesLancadas}
+            opcoesStatus={STATUS_OPTIONS}
+            onData={data => setLancamento(atual => atual && { ...atual, data })}
+            onObservacaoDia={observacaoDia => setLancamento(atual => atual && { ...atual, observacaoDia })}
+            onSituacao={(pessoaId, status, observacao) => setSituacoesLancadas(atuais => {
+              if (!status) {
+                const { [pessoaId]: _removida, ...resto } = atuais;
+                return resto;
+              }
+              return { ...atuais, [pessoaId]: { funcionarioId: pessoaId, status, observacao } };
+            })}
+            onTodosPresentes={() => setSituacoesLancadas(atuais => {
+              const proximas = { ...atuais };
+              pessoas.forEach(pessoa => {
+                if (!proximas[pessoa.id]?.status) proximas[pessoa.id] = { funcionarioId: pessoa.id, status: 'Presente' };
+              });
+              return proximas;
+            })}
+            onSalvar={() => {
+              onLancarPresencaManual(
+                grupo,
+                lancamento.data,
+                Object.values(situacoesLancadas).filter(item => item.status),
+                lancamento.observacaoDia,
+              );
+              setFeedback(`Presença de ${grupo.nome} lançada pelo painel.`);
+              setLancamento(null);
+            }}
+            onFechar={() => setLancamento(null)}
+          />
         );
       })()}
     </TelaCheia>
