@@ -771,6 +771,18 @@ export default function ControleEquipamentosDiarioTab({
             </article>
           ))}
         </section>
+        <nav aria-label="Canteiros do dia" className="flex shrink-0 flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2" data-testid="frota-faixa-canteiros">
+          <span className="px-2 text-xs font-bold uppercase tracking-[0.12em] text-[#5b6870]">Canteiro</span>
+          <button type="button" aria-pressed={!filters.location} onClick={() => updateFilter('location', '')} className={`${BOTAO_SECUNDARIO} min-h-9 px-3 text-sm ${!filters.location ? 'border-[#176b4d] text-[#176b4d]' : ''}`}>Todos</button>
+          {canteirosDoDia.map(item => (
+            <button key={item.nome} type="button" aria-pressed={filters.location === item.nome} onClick={() => updateFilter('location', filters.location === item.nome ? '' : item.nome)} className={`${BOTAO_SECUNDARIO} min-h-9 px-3 text-sm ${filters.location === item.nome ? 'border-[#176b4d] text-[#176b4d]' : ''}`}>
+              {item.nome} <span className="font-mono tabular-nums">{item.total}</span>
+            </button>
+          ))}
+          <span className="ml-auto whitespace-nowrap px-2 text-sm font-semibold text-slate-600">
+            Equipamentos {conferenciaDoDia.equipamentos.informed}/{conferenciaDoDia.equipamentos.total} · Operadores {conferenciaDoDia.operadores.informed}/{conferenciaDoDia.operadores.total}
+          </span>
+        </nav>
         <FleetFilterBar filters={filters} companies={empresas} groups={groups} equipmentTypes={equipmentTypes} activeFilterCount={activeFilterCount} onChange={updateFilter} onClear={clearFilters} avisos={viewModel.integrityWarnings}/>
         <FleetDataTable rows={viewModel.allRows} selectedIds={selectedIds} onSelectionChange={setSelectedIds} onEdit={openEdit} onDetails={setDetailState} onDelete={onDeleteMany ? state => setConfirmation({ kind: 'delete', ids: [state.recordId] }) : undefined} canApprove={canApproveFleet} onApprove={(state, status) => onApproveFleetRecord?.(state.recordId, status)}/>
       </div>}
