@@ -220,3 +220,5 @@ import './moldeDemaisTelas.test';
 import './guardaDeMovimento.test';
 import './frotaTabelaPadrao.test';
 import './tabelaMaisLinhas.test';
+import './frotaNavegacaoDia.test';
+import './faltantesPdf.test';

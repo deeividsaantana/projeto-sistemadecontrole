@@ -503,11 +503,12 @@ export default function DailyRecordForm({
         <form ref={formRef} onSubmit={handleSubmit} className="lg:grid lg:grid-cols-[minmax(0,1fr)_330px] lg:gap-6">
           <div className="space-y-5">
             <div className="mx-auto max-w-3xl space-y-5">
-              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_14px_38px_rgba(15,23,42,0.05)] sm:p-5">
-                <div className="mb-4 flex items-start justify-between gap-3">
+              <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3">
                   <div><span className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700">Etapa 1</span><h3 className="mt-1 text-base font-black text-slate-950">Quem está operando?</h3></div>
                   <span className="hidden rounded-md bg-slate-100 px-2 py-1 font-mono text-xs font-bold text-slate-500 sm:inline">Alt + M</span>
                 </div>
+                <div className="p-4 sm:p-5">
                 <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
                   <label className="text-xs font-bold text-slate-700">Matrícula / código<div className="relative mt-1"><UserRound className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16}/><input ref={employeeCodeFieldRef} value={form.employeeCode} onChange={event => update('employeeCode', event.target.value)} onBlur={lookupEmployeeCode} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); lookupEmployeeCode(); prefixFieldRef.current?.focus(); } }} placeholder="Ex.: 103206" className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 font-mono text-sm font-bold outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"/></div></label>
                   <label className="text-xs font-bold text-slate-700">Motorista<select value={form.employeeId} onChange={event => applyEmployee(event.target.value)} className="mt-1 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"><option value="">Selecione ou use a matrícula</option>{[...activeEmployees].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(employee=><option key={employee.id} value={employee.id}>{employee.matricula ? `${employee.matricula} · ` : ''}{employee.nome}</option>)}</select></label>
@@ -522,10 +523,12 @@ export default function DailyRecordForm({
                     <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-2 rounded-lg bg-white px-3 font-bold ring-1 ring-inset ring-amber-200"><input type="checkbox" checked={confirmouOperador} onChange={event => setConfirmouOperador(event.target.checked)} className="size-4 accent-[#176b4d]"/>Ele trocou de caminhão, lançar mesmo assim</label>
                   </div>
                 )}
+              </div>
               </section>
 
-              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_14px_38px_rgba(15,23,42,0.05)] sm:p-5">
-                <div className="mb-4 flex items-start justify-between gap-3"><div><span className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700">Etapa 2</span><h3 className="mt-1 text-base font-black text-slate-950">Qual equipamento?</h3></div><span className="hidden rounded-md bg-slate-100 px-2 py-1 font-mono text-xs font-bold text-slate-500 sm:inline">Alt + P</span></div>
+              <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3"><div><span className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700">Etapa 2</span><h3 className="mt-1 text-base font-black text-slate-950">Qual equipamento?</h3></div><span className="hidden rounded-md bg-slate-100 px-2 py-1 font-mono text-xs font-bold text-slate-500 sm:inline">Alt + P</span></div>
+                <div className="p-4 sm:p-5">
                 <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
                   <label className="text-xs font-bold text-slate-700">Prefixo<div className="relative mt-1"><Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16}/><input ref={prefixFieldRef} value={form.prefix} onChange={event => update('prefix', event.target.value.toUpperCase())} onBlur={lookupPrefix} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); lookupPrefix(); } }} placeholder="Ex.: CB929" className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 font-mono text-base font-black uppercase outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"/></div></label>
                   <label className="text-xs font-bold text-slate-700">Frota / equipamento<select value={form.equipmentId} onChange={event => applyEquipment(event.target.value)} className="mt-1 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"><option value="">Selecione ou use o prefixo</option>{[...operationalFleet].sort((a,b)=>a.prefixo.localeCompare(b.prefixo,'pt-BR',{numeric:true})).map(item=>{const classification=classifyOperationalFleet(item);return <option key={item.id} value={item.id}>{item.prefixo} · {classification.equipmentType}</option>})}</select></label>
@@ -541,10 +544,12 @@ export default function DailyRecordForm({
                     </span>
                   </div>
                 )}
+              </div>
               </section>
 
-              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_14px_38px_rgba(15,23,42,0.05)] sm:p-5">
-                <div className="mb-4"><span className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700">Etapa 3</span><h3 className="mt-1 text-base font-black text-slate-950">Qual é a situação agora?</h3><p className="mt-1 text-xs text-slate-500">Use os botões principais ou escolha uma situação adicional.</p></div>
+              <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="border-b border-slate-200 bg-slate-50 px-5 py-3"><span className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700">Etapa 3</span><h3 className="mt-1 text-base font-black text-slate-950">Qual é a situação agora?</h3><p className="mt-1 text-xs text-slate-500">Use os botões principais ou escolha uma situação adicional.</p></div>
+                <div className="p-4 sm:p-5">
                 <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{QUICK_STATUSES.map(({value,label,hint,icon:Icon,active})=><button key={value} type="button" onClick={()=>update('operationalStatus',value)} className={`group flex min-h-[76px] items-start gap-3 rounded-xl border p-3 text-left transition hover:-translate-y-0.5 hover:border-slate-400 active:translate-y-0 ${form.operationalStatus===value?active:'border-slate-200 bg-white text-slate-700'}`}><span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm"><Icon size={17}/></span><span><strong className="block text-sm">{label}</strong><small className="mt-1 block font-mono text-xs opacity-60">{hint}</small></span></button>)}</div>
                 <label className="mt-3 block text-xs font-bold text-slate-700">Outras situações<select value={form.operationalStatus} onChange={event => update('operationalStatus', event.target.value as FleetOperationalStatus)} className="mt-1 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold sm:max-w-sm">{FLEET_STATUS_DEFINITIONS.filter(item=>item.value!==FLEET_OPERATIONAL_STATUS.unclassified).map(item=><option key={item.value}>{item.value}</option>)}</select></label>
 
@@ -558,6 +563,7 @@ export default function DailyRecordForm({
 
                 {isMaintenanceFlow && <div className="mt-4 grid gap-3 rounded-xl border border-rose-100 bg-rose-50/60 p-3 sm:grid-cols-2"><label className="text-xs font-bold text-rose-900">OS vinculada<select value={form.maintenanceOrderId} onChange={event=>update('maintenanceOrderId',event.target.value)} className="mt-1 h-11 w-full rounded-lg border border-rose-200 bg-white px-3"><option value="">Sem OS</option>{relevantOrders.map(order=><option key={order.id} value={order.id}>{order.numero} · {order.status}</option>)}</select></label><label className="text-xs font-bold text-rose-900 sm:col-span-2">Ocorrência / motivo<textarea value={form.maintenanceReason} onChange={event => update('maintenanceReason', event.target.value)} rows={3} className="mt-1 w-full rounded-lg border border-rose-200 bg-white p-3" placeholder="Quebra, preventiva, pneu, elétrica..."/></label>{onOpenMaintenance&&<button type="button" onClick={onOpenMaintenance} className="min-h-11 justify-self-start text-xs font-black text-rose-800 hover:underline sm:min-h-9">Abrir área de manutenção</button>}</div>}
                 <label className="mt-4 block text-xs font-bold text-slate-700">Observação operacional <span className="font-normal text-slate-400">(opcional)</span><textarea value={form.note} onChange={event => update('note', event.target.value)} rows={3} className="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="Registre somente informações importantes para o próximo turno."/></label>
+              </div>
               </section>
               {submitError && <p role="alert" className="flex gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800"><AlertCircle size={18} className="shrink-0"/>{submitError}</p>}
             </div>

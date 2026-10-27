@@ -8,11 +8,10 @@ import {
   OPERATIONAL_FLEET_REFERENCE_STORAGE_KEY,
   type OperationalFleetReferenceGroup,
   type OperationalFleetReferenceItem,
-  type OperationalFleetReferenceStatus,
 } from '../../fleet/operationalFleetReference';
 import { TabelaPadrao, type ColunaTabela } from '../../shared/ui/TabelaPadrao';
 import { useEntradaDeLista } from '../../shared/hooks/useEntradaDeLista';
-import { AvisoRecolhivel, ResumoConferencia, SituacaoConferencia, type FiltroConferencia } from './ConferenciaDoDia';
+import { AvisoRecolhivel, GradeConferencia, ResumoConferencia, type CartaoConferencia, type FiltroConferencia } from './ConferenciaDoDia';
 
 interface Props {
   records: ControleEquipamentoDiario[];
@@ -24,26 +23,6 @@ interface Props {
 }
 
 const GROUPS: readonly OperationalFleetReferenceGroup[] = ['Basculantes', 'Apoio'];
-
-const tomDaSituacao = (item: OperationalFleetReferenceStatus): string => {
-  if (!item.informed) return 'text-amber-700';
-  if (item.operationalStatus === 'Em manutenção' || item.operationalStatus === 'Aguardando manutenção') return 'text-rose-700';
-  return 'text-emerald-700';
-};
-
-const COLUNAS: readonly ColunaTabela<OperationalFleetReferenceStatus>[] = [
-  { chave: 'prefix', titulo: 'Prefixo', valorOrdenacao: item => item.prefix, render: item => <span className="font-mono font-bold text-slate-950">{item.prefix}</span> },
-  { chave: 'group', titulo: 'Grupo', valorOrdenacao: item => item.group, render: item => item.group },
-  { chave: 'type', titulo: 'Tipo', valorOrdenacao: item => item.equipmentType, render: item => item.equipmentType },
-  {
-    chave: 'status',
-    titulo: 'Situação',
-    valorOrdenacao: item => (item.informed ? item.operationalStatus || 'Informado' : ''),
-    dica: item => (item.informed ? item.operationalStatus || 'Informado' : 'A confirmar'),
-    render: item => <SituacaoConferencia informado={item.informed} tom={tomDaSituacao(item)} texto={item.informed ? item.operationalStatus || 'Informado' : 'A confirmar'} />,
-  },
-  { chave: 'departure', titulo: 'Saída', valorOrdenacao: item => item.departureTime || '', render: item => <span className="font-mono">{item.departureTime || '—'}</span> },
-];
 
 const COLUNAS_EDITOR = (
   mudar: (indice: number, parcial: Partial<OperationalFleetReferenceItem>) => void,
@@ -63,8 +42,8 @@ const COLUNAS_EDITOR = (
 
 /**
  * Aba Equipamentos do Controle de Frotas: a relação escolhida à mão (os
- * basculantes e o apoio) conferida contra os lançamentos do dia, na tabela
- * padrão. Quem falta tem o botão Lançar na própria linha.
+ * basculantes e o apoio) conferida contra os lançamentos do dia. Os faltantes
+ * aparecem primeiro, em cartões de destaque, com o botão Lançar.
  */
 export default function FleetDailyReference({ records, date, onLancar, onRelacaoChange }: Props) {
   const [visibility, setVisibility] = useState<FiltroConferencia>('pending');
@@ -89,6 +68,17 @@ export default function FleetDailyReference({ records, date, onLancar, onRelacao
   const visibleItems = visibility === 'all'
     ? reconciliation.items
     : reconciliation.items.filter(item => visibility === 'informed' ? item.informed : !item.informed);
+  const cartoes: CartaoConferencia[] = visibleItems.map(item => ({
+    id: `${item.group}-${item.prefix}`,
+    titulo: item.prefix,
+    detalhe: item.equipmentType,
+    grupo: item.group,
+    informado: item.informed,
+    situacao: item.operationalStatus,
+    saida: item.departureTime,
+    rotuloLancar: `Lançar ${item.prefix}`,
+    onLancar: onLancar ? () => onLancar({ prefixo: item.prefix }) : undefined,
+  }));
   const porGrupo = GROUPS.map(grupo => {
     const itens = reconciliation.items.filter(item => item.group === grupo);
     return `${grupo} ${itens.filter(item => item.informed).length}/${itens.length}`;
@@ -105,12 +95,12 @@ export default function FleetDailyReference({ records, date, onLancar, onRelacao
         Icone={ClipboardCheck}
         data={date}
         titulo="Relação operacional do dia"
-        descricao={<>{reference.length} equipamentos esperados ({porGrupo}). Quem não foi lançado aparece como “A confirmar”.</>}
+        descricao={<>{reference.length} equipamentos esperados ({porGrupo}). Quem não foi lançado aparece como faltante.</>}
         contadores={[
           { rotulo: 'Esperados', valor: reconciliation.total },
           { rotulo: 'Em operação', valor: reconciliation.operating, tom: 'text-emerald-700' },
           { rotulo: 'Manutenção', valor: reconciliation.maintenance, tom: 'text-rose-700' },
-          { rotulo: 'A confirmar', valor: reconciliation.missing, tom: 'text-amber-700' },
+          { rotulo: 'Faltantes', valor: reconciliation.missing, tom: 'text-amber-700' },
         ]}
         rotuloProgresso="Preenchimento do dia"
         progresso={progress}
@@ -118,9 +108,9 @@ export default function FleetDailyReference({ records, date, onLancar, onRelacao
         onFiltro={setVisibility}
         rotuloFiltro="Filtrar relação operacional"
         opcoesFiltro={[
-          ['pending', `A confirmar ${reconciliation.missing}`],
+          ['pending', `Faltantes ${reconciliation.missing}`],
           ['all', `Todos ${reconciliation.total}`],
-          ['informed', `Informados ${reconciliation.informed}`],
+          ['informed', `Lançados ${reconciliation.informed}`],
         ]}
         acao={<button type="button" onClick={() => setEditing(value => !value)} className={BOTAO_SECUNDARIO}>{editing ? <Save className="size-4" aria-hidden="true" /> : <Pencil className="size-4" aria-hidden="true" />} {editing ? 'Concluir edição' : 'Editar relação'}</button>}
       />
@@ -151,20 +141,13 @@ export default function FleetDailyReference({ records, date, onLancar, onRelacao
         </section>
       )}
 
-      {onLancar && reconciliation.missing > 0 && visibility !== 'informed' && <p className="shrink-0 text-sm font-semibold text-[#5b6870]">Use “Lançar” na linha de quem está “A confirmar” para lançar direto.</p>}
-
       <div ref={escopo} className="flex min-h-[16rem] flex-1 flex-col">
-        <TabelaPadrao
-          titulo="Equipamentos esperados no dia"
+        <GradeConferencia
           testId="frota-equipamentos-lista"
-          linhas={visibleItems}
-          colunas={COLUNAS}
-          idDaLinha={item => `${item.group}-${item.prefix}`}
-          nomeDoItem={{ um: 'equipamento', varios: 'equipamentos' }}
-          acoes={onLancar ? item => (!item.informed
-            ? <button type="button" onClick={() => onLancar({ prefixo: item.prefix })} aria-label={`Lançar ${item.prefix}`} className={`${BOTAO_PRIMARIO} min-h-11 px-3 md:min-h-8`}><Plus className="size-4" aria-hidden="true" />Lançar</button>
-            : null) : undefined}
-          tituloAcoes="Lançar"
+          itens={cartoes}
+          nomeFaltantes="Equipamentos faltantes"
+          nomeLancados="Equipamentos lançados"
+          colunas="grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
           vazio={reconciliation.missing === 0 && visibility === 'pending' ? (
             <div className="m-4 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900"><CheckCircle2 className="size-5" aria-hidden="true" /><div><strong className="block text-sm">Relação completa</strong><span className="text-sm">Os {reconciliation.total} equipamentos foram informados nesta data.</span></div></div>
           ) : 'Nenhum equipamento nesta lista.'}

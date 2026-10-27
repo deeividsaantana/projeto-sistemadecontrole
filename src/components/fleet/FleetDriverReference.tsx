@@ -14,7 +14,7 @@ import {
 } from '../../fleet/operationalDriverReference';
 import { TabelaPadrao, type ColunaTabela } from '../../shared/ui/TabelaPadrao';
 import { useEntradaDeLista } from '../../shared/hooks/useEntradaDeLista';
-import { AvisoRecolhivel, ResumoConferencia, SituacaoConferencia, type FiltroConferencia } from './ConferenciaDoDia';
+import { AvisoRecolhivel, GradeConferencia, ResumoConferencia, type CartaoConferencia, type FiltroConferencia } from './ConferenciaDoDia';
 
 interface Props {
   records: ControleEquipamentoDiario[];
@@ -42,29 +42,6 @@ const guardarRelacao = (relacao: OperationalDriverReferenceItem[] | null) => {
     // Sem memória do aparelho a relação vale só nesta visita.
   }
 };
-
-const tomDaSituacao = (item: OperationalDriverReferenceStatus): string => {
-  if (!item.informed) return 'text-amber-700';
-  if (item.prefixes.length > 1) return 'text-rose-700';
-  if (item.operationalStatus === 'Em manutenção' || item.operationalStatus === 'Aguardando manutenção') return 'text-rose-700';
-  return 'text-emerald-700';
-};
-
-const situacaoDe = (item: OperationalDriverReferenceStatus) => (item.informed ? item.operationalStatus || 'Lançado' : 'A confirmar');
-
-const COLUNAS: readonly ColunaTabela<OperationalDriverReferenceStatus>[] = [
-  { chave: 'nome', titulo: 'Operador', larguraMinima: 180, valorOrdenacao: item => item.nome, render: item => <span className="font-semibold text-slate-950">{item.nome}</span> },
-  { chave: 'matricula', titulo: 'Matrícula', valorOrdenacao: item => item.matricula, render: item => <span className="font-mono">{item.matricula}</span> },
-  {
-    chave: 'situacao',
-    titulo: 'Situação',
-    valorOrdenacao: item => (item.informed ? situacaoDe(item) : ''),
-    dica: situacaoDe,
-    render: item => <SituacaoConferencia informado={item.informed} tom={tomDaSituacao(item)} texto={situacaoDe(item)} detalhe={item.prefixes.length > 1 ? `Em ${item.prefixes.length} caminhões` : undefined} />,
-  },
-  { chave: 'prefixos', titulo: 'Caminhão', valorOrdenacao: item => item.prefixes.join(' '), render: item => <span className="font-mono font-bold">{item.prefixes.join(' + ') || '—'}</span> },
-  { chave: 'saida', titulo: 'Saída', valorOrdenacao: item => item.departureTime || '', render: item => <span className="font-mono">{item.departureTime || '—'}</span> },
-];
 
 const COLUNAS_EDITOR: readonly ColunaTabela<OperationalDriverReferenceItem>[] = [
   { chave: 'matricula', titulo: 'Matrícula', render: item => <span className="font-mono font-bold">{item.matricula}</span> },
@@ -95,6 +72,17 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
   const visibleItems = visibility === 'all'
     ? reconciliation.items
     : reconciliation.items.filter(item => visibility === 'informed' ? item.informed : !item.informed);
+  const cartoes: CartaoConferencia[] = visibleItems.map(item => ({
+    id: item.matricula,
+    titulo: item.nome,
+    detalhe: item.matricula,
+    informado: item.informed,
+    situacao: item.operationalStatus,
+    saida: item.departureTime,
+    onde: item.prefixes.join(' + ') || undefined,
+    rotuloLancar: `Lançar ${item.nome}`,
+    onLancar: onLancar ? () => onLancar({ codigoFuncionario: item.matricula }) : undefined,
+  }));
   const escopo = useEntradaDeLista<HTMLDivElement>([visibility, date]);
 
   const codigosNaRelacao = new Set(reference.map(item => normalizeDriverCode(item.matricula)));
@@ -143,7 +131,7 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
           { rotulo: 'Esperados', valor: reconciliation.total },
           { rotulo: 'Em operação', valor: reconciliation.operating, tom: 'text-emerald-700' },
           { rotulo: 'Lançados', valor: reconciliation.informed },
-          { rotulo: 'A confirmar', valor: reconciliation.missing, tom: 'text-amber-700' },
+          { rotulo: 'Faltantes', valor: reconciliation.missing, tom: 'text-amber-700' },
         ]}
         rotuloProgresso="Operadores lançados"
         progresso={progress}
@@ -151,7 +139,7 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
         onFiltro={setVisibility}
         rotuloFiltro="Filtrar operadores"
         opcoesFiltro={[
-          ['pending', `A confirmar ${reconciliation.missing}`],
+          ['pending', `Faltantes ${reconciliation.missing}`],
           ['all', `Todos ${reconciliation.total}`],
           ['informed', `Lançados ${reconciliation.informed}`],
         ]}
@@ -165,8 +153,8 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
 
       {faltamEmMotoristas.length > 0 && onAddDrivers && (
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="frota-operadores-faltam">
-          <p><strong>{faltamEmMotoristas.length} operador(es) da relação não estão em Motoristas</strong> e por isso não aparecem no lançamento: {faltamEmMotoristas.map(item => nomeCurto(item.nome)).join(', ')}.</p>
-          <button type="button" onClick={() => incluirEmMotoristas(faltamEmMotoristas)} className={BOTAO_PRIMARIO}>Incluir em Motoristas</button>
+          <p className="min-w-0 flex-1 lg:truncate" title={faltamEmMotoristas.map(item => item.nome).join(', ')}><strong>{faltamEmMotoristas.length} operador(es) da relação não estão em Motoristas</strong> e por isso não aparecem no lançamento: {faltamEmMotoristas.map(item => nomeCurto(item.nome)).join(', ')}.</p>
+          <button type="button" onClick={() => incluirEmMotoristas(faltamEmMotoristas)} className={`${BOTAO_PRIMARIO} shrink-0 lg:min-h-9`}>Incluir em Motoristas</button>
         </div>
       )}
 
@@ -233,20 +221,14 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
         </section>
       )}
 
-      {onLancar && reconciliation.missing > 0 && visibility !== 'informed' && <p className="shrink-0 text-sm font-semibold text-[#5b6870]">Use “Lançar” na linha de quem está “A confirmar” para lançar direto.</p>}
 
       <div ref={escopo} className="flex min-h-[16rem] flex-1 flex-col">
-        <TabelaPadrao
-          titulo="Operadores de basculante do dia"
+        <GradeConferencia
           testId="frota-operadores-lista"
-          linhas={visibleItems}
-          colunas={COLUNAS}
-          idDaLinha={item => item.matricula}
-          nomeDoItem={{ um: 'operador', varios: 'operadores' }}
-          acoes={onLancar ? item => (!item.informed
-            ? <button type="button" onClick={() => onLancar({ codigoFuncionario: item.matricula })} aria-label={`Lançar ${item.nome}`} className={`${BOTAO_PRIMARIO} min-h-11 px-3 md:min-h-8`}><Plus className="size-4" aria-hidden="true" />Lançar</button>
-            : null) : undefined}
-          tituloAcoes="Lançar"
+          itens={cartoes}
+          nomeFaltantes="Operadores faltantes"
+          nomeLancados="Operadores lançados"
+          colunas="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
           vazio={reconciliation.missing === 0 && visibility === 'pending' ? (
             <div className="m-4 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900"><CheckCircle2 className="size-5" aria-hidden="true" /><div><strong className="block text-sm">Todos os operadores lançados</strong><span className="text-sm">Os {reconciliation.total} operadores esperados aparecem em algum lançamento nesta data.</span></div></div>
           ) : 'Nenhum operador nesta lista.'}

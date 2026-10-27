@@ -469,7 +469,7 @@ const drawConferenceTable = (
   autoTable(document, {
     ...commonTableOptions,
     startY: titleEnd,
-    head: [['RELAÇÃO', 'ESPERADOS', 'LANÇADOS', 'A CONFIRMAR', 'QUEM FALTA LANÇAR']],
+    head: [['RELAÇÃO', 'ESPERADOS', 'LANÇADOS', 'FALTANTES', 'EQUIPAMENTOS / OPERADORES FALTANTES']],
     body,
     columnStyles: {
       0: { cellWidth: 28, fontStyle: 'bold' },
