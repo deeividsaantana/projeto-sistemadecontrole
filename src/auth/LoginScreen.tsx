@@ -3,6 +3,7 @@ import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { reduzMovimento } from '../shared/motion/reduzMovimento';
 import { Eye, EyeOff, LogIn, ShieldCheck } from 'lucide-react';
+import { LoginCarousel } from './LoginCarousel';
 
 interface LoginScreenProps {
   logoSrc: string;
@@ -12,6 +13,7 @@ interface LoginScreenProps {
   isAuthenticating: boolean;
   loginError: string;
   loginNotice: string;
+  carouselImages?: string[];
   onUsernameChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
   onTogglePasswordVisibility: () => void;
@@ -38,6 +40,7 @@ export function LoginScreen({
   isAuthenticating,
   loginError,
   loginNotice,
+  carouselImages = [],
   onUsernameChange,
   onPasswordChange,
   onTogglePasswordVisibility,
@@ -137,29 +140,36 @@ export function LoginScreen({
       <div className="login-frame">
         <section
           ref={storyRef}
-          className="login-story"
-          aria-label="Operação RENEA"
+          className="login-story relative"
+          aria-label="Carrossel de fotos da obra"
         >
-          <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_0_5px_rgb(52_211_153_/_0.16)]" />
+          {carouselImages.length > 0 ? (
+            <LoginCarousel images={carouselImages} autoplay interval={5000} />
+          ) : (
+            <div className="absolute inset-0 bg-slate-800" />
+          )}
+
+          {/* Content overlay */}
+          <div className="relative z-10 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-white">
+            <span className="h-2 w-2 rounded-full bg-white shadow-[0_0_0_5px_rgb(255_255_255_/_0.25)]" />
             Operação conectada
           </div>
-          <div className="max-w-lg">
-            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">RENEA Infraestrutura</p>
+          <div className="relative z-10 max-w-lg">
+            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-white/80">RENEA Infraestrutura</p>
             <h1
               ref={headingRef}
-              className="max-w-xl text-4xl font-black leading-[.98] tracking-[-0.055em] text-slate-950 md:text-6xl"
+              className="max-w-xl text-4xl font-black leading-[.98] tracking-[-0.055em] text-white md:text-6xl"
             >
               Decisões de campo com informação confiável.
             </h1>
             <p
               ref={subtextRef}
-              className="mt-5 max-w-md text-sm leading-6 text-slate-600"
+              className="mt-5 max-w-md text-sm leading-6 text-white/70"
             >
               Frota, equipes, combustível e produção reunidos em um ambiente operacional seguro.
             </p>
           </div>
-          <p className="text-xs font-semibold text-slate-500">Ambiente corporativo · acesso monitorado</p>
+          <p className="relative z-10 text-xs font-semibold text-white/60">Ambiente corporativo · acesso monitorado</p>
         </section>
 
         <section
