@@ -42,7 +42,7 @@ export const COLUNAS_HISTORICO: ReadonlyArray<{ id: ColunaHistorico; rotulo: str
   { id: 'horimetro', rotulo: 'Horímetro', padrao: true, ordenavel: true },
   { id: 'litros', rotulo: 'Litros', padrao: true, fixa: true, ordenavel: true },
   { id: 'hora', rotulo: 'Hora', padrao: false },
-  { id: 'comboio', rotulo: 'Comboio', padrao: true, ordenavel: true },
+  { id: 'comboio', rotulo: 'Comboio', padrao: false, ordenavel: true },
   { id: 'combustivel', rotulo: 'Tipo de combustível', padrao: true },
   { id: 'empresa', rotulo: 'Empresa', padrao: true, ordenavel: true },
   { id: 'bombaInicial', rotulo: 'Bomba inicial', padrao: false },
