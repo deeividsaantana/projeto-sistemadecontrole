@@ -4,11 +4,13 @@
  */
 
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { HistoryLog, PeriodoArquivado } from '../types';
 import { isSnapshotIntact } from '../utils/snapshotIntegrity';
 import { loadUsageSummary, type UsageSummary } from '../usageTelemetry';
 import { loadMasterDataGatewayStatus, type MasterDataGatewayStatus } from '../services/masterDataApi';
-import { CountUp } from '../shared/ui';
+import { CountUp, PageHeader } from '../shared/ui';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 import { 
   Settings, 
@@ -292,11 +294,24 @@ export default function ConfiguracoesTab({
 
   const escopoMotion = useEntradaDeLista<HTMLDivElement>();
 
+  const escopo = useRef<HTMLDivElement>(null);
+  const jaEntrou = useRef(false);
+
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = raiz.querySelectorAll('[data-configuracoes-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 8 }, { opacity: 1, y: 0, duration: primeira ? 0.45 : 0.3, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [section] });
+
   return (
+    <div ref={escopo}>
     <div ref={escopoMotion} className="space-y-6" id="configuracoes-tab">
       
       {/* Upper header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+      <div data-configuracoes-reveal className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           <h1 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
             <Settings className="w-5 h-5 text-emerald-500" />
@@ -332,7 +347,7 @@ export default function ConfiguracoesTab({
       )}
 
       {section === 'geral' && (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div data-configuracoes-reveal className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Left 2 Columns: Credentials, Manuals and Backup actions */}
         <div className="lg:col-span-2 space-y-6">
@@ -877,6 +892,7 @@ export default function ConfiguracoesTab({
       </div>
       )}
 
+    </div>
     </div>
   );
 }

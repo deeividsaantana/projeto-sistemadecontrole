@@ -1,5 +1,7 @@
 /** Horas paradas: onde a frota perdeu tempo no período, e por quê. */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { AlertTriangle, TimerOff } from 'lucide-react';
 import type { ControleEquipamentoDiario, Equipamento, OrdemServico } from '../types';
 import { listarParadas, paradasSemHorario, somarPor, type Parada } from '../utils/horasParadas';
@@ -41,6 +43,8 @@ const Ranking = ({ titulo, dados }: { titulo: string; dados: ReturnType<typeof s
 };
 
 export default function HorasParadasTab({ controlesEquipamentos, ordensServico, equipamentos }: HorasParadasTabProps) {
+  const escopo = useRef<HTMLDivElement>(null);
+  const jaEntrou = useRef(false);
   const [periodo, setPeriodo] = useState<PeriodValue>(() => buildPeriod('mes'));
 
   const { paradas, semHorario } = useMemo(() => {
@@ -55,16 +59,25 @@ export default function HorasParadasTab({ controlesEquipamentos, ordensServico, 
   const porDia = somarPor(paradas, parada => parada.data);
   const dias = porDia.length || 1;
 
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = raiz.querySelectorAll('[data-horas-paradas-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 8 }, { opacity: 1, y: 0, duration: primeira ? 0.45 : 0.3, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [paradas] });
+
   return (
-    <div id="horas-paradas-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopo} id="horas-paradas-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader title="Horas Paradas" description="Indisponibilidade medida no controle diário, da entrada em manutenção até a liberação." />
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+      <div data-horas-paradas-reveal className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <PeriodFilter value={periodo} onChange={setPeriodo} />
         <span className="text-xs font-medium text-slate-500">{formatarData(periodo.from)} a {formatarData(periodo.to)}</span>
       </div>
 
-      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      <section data-horas-paradas-reveal className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
           { label: 'Total parado', valor: horas(total) },
           { label: 'Paradas registradas', valor: String(paradas.length) },
@@ -85,13 +98,13 @@ export default function HorasParadasTab({ controlesEquipamentos, ordensServico, 
         </p>
       )}
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-3">
+      <div data-horas-paradas-reveal className="mt-4 grid gap-4 xl:grid-cols-3">
         <Ranking titulo="Por equipamento" dados={somarPor(paradas, parada => parada.prefixo)} />
         <Ranking titulo="Por categoria" dados={somarPor(paradas, parada => parada.categoria)} />
         <Ranking titulo="Por dia" dados={porDia.map(item => ({ ...item, chave: formatarData(item.chave) }))} />
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div data-horas-paradas-reveal className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {paradas.length === 0 ? (
           <EmptyState icon={TimerOff} title="Nenhuma parada no período" description="As paradas aparecem quando o controle diário registra entrada em manutenção." />
         ) : (

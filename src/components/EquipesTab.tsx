@@ -2,7 +2,9 @@
  * Equipes: como cada equipe está hoje — efetivo, presença, frota relacionada e
  * pendências — e a realocação de colaborador entre equipes.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { ArrowLeft, ArrowRightLeft, HardHat, Truck, Users } from 'lucide-react';
 import type {
   ControleEquipamentoDiario,
@@ -44,6 +46,17 @@ export default function EquipesTab({
   const [dia, setDia] = useState(hoje);
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [realocacao, setRealocacao] = useState<{ funcionario: Funcionario; destinoId: string } | null>(null);
+  const escopo = useRef<HTMLDivElement>(null);
+  const jaEntrou = useRef(false);
+
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = raiz.querySelectorAll('[data-equipes-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 8 }, { opacity: 1, y: 0, duration: primeira ? 0.45 : 0.3, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [selecionadoId] });
   const recoveredGroups = useMemo(
     () => recoverTeamGroups(gruposEquipe, presencasLink, funcionarios),
     [funcionarios, gruposEquipe, presencasLink],
@@ -115,7 +128,7 @@ export default function EquipesTab({
     ].filter((item): item is string => Boolean(item));
 
     return (
-      <div id="equipe-ficha" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <div ref={escopo} id="equipe-ficha" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
         <button
           type="button"
           onClick={() => setSelecionadoId(null)}
@@ -125,6 +138,7 @@ export default function EquipesTab({
         </button>
 
         <PageHeader
+          data-equipes-reveal
           title={selecionada.nome}
           description={[selecionada.responsavel && `Encarregado ${selecionada.responsavel}`, selecionada.frenteServico, resumo.obra].filter(Boolean).join(' · ')}
           actions={(
@@ -138,7 +152,7 @@ export default function EquipesTab({
           )}
         />
 
-        <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+        <section data-equipes-reveal className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
           {[
             { label: 'Efetivo', valor: resumo.efetivo },
             { label: 'Presentes', valor: resumo.presentes },
@@ -160,7 +174,7 @@ export default function EquipesTab({
           </ul>
         )}
 
-        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+        <div data-equipes-reveal className="mt-4 grid gap-4 xl:grid-cols-2">
           <Card
             className="min-w-0"
             title="Colaboradores"
@@ -243,8 +257,9 @@ export default function EquipesTab({
   }
 
   return (
-    <div id="equipes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopo} id="equipes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        data-equipes-reveal
         title="Equipes"
         description="Como cada equipe está no dia: efetivo, presença, frota e pendências."
         actions={(

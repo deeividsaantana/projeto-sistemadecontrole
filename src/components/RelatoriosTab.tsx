@@ -4,7 +4,9 @@
  * o módulo mostra. Exporta em Excel pelo formato corporativo já usado no
  * sistema, carregado só quando alguém exporta de fato.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { Download, FileBarChart, FileText, Printer } from 'lucide-react';
 import { montarRelatorios, type ContextoRelatorios, type Relatorio } from '../utils/relatorios';
 import { EmptyState, PageHeader, PeriodFilter, TableBody, TableHead, TableShell, buildPeriod, type PeriodValue } from '../shared/ui';
@@ -28,6 +30,17 @@ export default function RelatoriosTab({ dados }: RelatoriosTabProps) {
   const [exportando, setExportando] = useState(false);
   const [exportandoPdf, setExportandoPdf] = useState(false);
   const [erro, setErro] = useState('');
+  const escopo = useRef<HTMLDivElement>(null);
+  const jaEntrou = useRef(false);
+
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = raiz.querySelectorAll('[data-relatorios-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 8 }, { opacity: 1, y: 0, duration: primeira ? 0.45 : 0.3, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [selecionado] });
 
   const relatorios = useMemo(() => {
     const dias = diasEntre(period.from, period.to);
@@ -105,8 +118,9 @@ export default function RelatoriosTab({ dados }: RelatoriosTabProps) {
   };
 
   return (
-    <div id="relatorios-tab" className="reports-workspace min-h-full w-full px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopo} id="relatorios-tab" className="reports-workspace min-h-full w-full px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        data-relatorios-reveal
         title="Relatórios"
         description="Leitura consolidada dos módulos, com os mesmos números das telas de origem."
         actions={(
@@ -139,7 +153,7 @@ export default function RelatoriosTab({ dados }: RelatoriosTabProps) {
         )}
       />
 
-      <section className="reports-command mt-4 print:hidden" aria-label="Escolha do relatório">
+      <section data-relatorios-reveal className="reports-command mt-4 print:hidden" aria-label="Escolha do relatório">
         <div>
           <span>Biblioteca de relatórios</span>
           <strong>{relatorios.length} leituras disponíveis</strong>
@@ -147,7 +161,7 @@ export default function RelatoriosTab({ dados }: RelatoriosTabProps) {
         <p>Os números são montados a partir dos registros operacionais, sem bases paralelas.</p>
       </section>
 
-      <div className="reports-catalog mt-3 flex flex-wrap gap-1.5 print:hidden">
+      <div data-relatorios-reveal className="reports-catalog mt-3 flex flex-wrap gap-1.5 print:hidden">
         {relatorios.map(item => (
           <button
             key={item.id}
@@ -163,7 +177,7 @@ export default function RelatoriosTab({ dados }: RelatoriosTabProps) {
         ))}
       </div>
 
-      <section className="reports-preview mt-4 rounded-lg border border-slate-200 bg-white">
+      <section data-relatorios-reveal className="reports-preview mt-4 rounded-lg border border-slate-200 bg-white">
         <header className="border-b border-slate-100 px-4 py-3">
           <h2 className="text-sm font-bold text-slate-800">{relatorio.titulo}</h2>
           <p className="text-[11px] text-slate-500">

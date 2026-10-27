@@ -4,6 +4,8 @@
  * dos próprios módulos, para o diário nunca divergir da operação.
  */
 import { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { Camera, CloudRain, NotebookPen, Users } from 'lucide-react';
 import MapaChuva from './MapaChuva';
 import type {
@@ -51,6 +53,8 @@ export default function DiarioObraTab({
   podeEditar,
   onSave,
 }: DiarioObraTabProps) {
+  const escopo = useRef<HTMLDivElement>(null);
+  const jaEntrou = useRef(false);
   const hoje = isoDay(new Date());
   const [dia, setDia] = useState(hoje);
   const [obraId, setObraId] = useState('');
@@ -133,9 +137,20 @@ export default function DiarioObraTab({
     setRascunho({});
   };
 
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = raiz.querySelectorAll('[data-diario-obra-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 8 }, { opacity: 1, y: 0, duration: primeira ? 0.45 : 0.3, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [dia, obraId] });
+
   return (
+    <div ref={escopo}>
     <div ref={escopoMotion} id="diario-obra-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        data-diario-obra-reveal
         title="Diário de Obra"
         description="O dia consolidado. Clima, visitas e fotos são registrados aqui; o resto vem dos módulos."
         actions={(
@@ -149,7 +164,7 @@ export default function DiarioObraTab({
         )}
       />
 
-      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      <section data-diario-obra-reveal className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
           { label: 'Presentes', valor: String(resumo.presentes) },
           { label: 'Equipes com apontamento', valor: String(resumo.equipes) },
@@ -165,7 +180,7 @@ export default function DiarioObraTab({
 
       <input ref={inputFoto} type="file" accept="image/*" capture="environment" hidden onChange={event => void receberFoto(event.target.files?.[0])} />
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+      <div data-diario-obra-reveal className="mt-4 grid gap-4 xl:grid-cols-2">
         <Card
           className="min-w-0"
           title={`Registro do dia · ${formatarData(dia)}`}
@@ -278,7 +293,7 @@ export default function DiarioObraTab({
         </Card>
       </div>
 
-      <Card className="mt-4" title="Diários registrados" flush>
+      <Card data-diario-obra-reveal className="mt-4" title="Diários registrados" flush>
         {ativos.length === 0 ? (
           <EmptyState icon={NotebookPen} title="Nenhum diário registrado" description="Registre o clima e as observações do dia." />
         ) : (
@@ -312,6 +327,7 @@ export default function DiarioObraTab({
           lança o pluviômetro é quem consulta o acumulado. A sidebar é aprovada
           e não ganha item novo. */}
       <MapaChuva diarios={diarios} responsavel={responsavel} />
+    </div>
     </div>
   );
 }

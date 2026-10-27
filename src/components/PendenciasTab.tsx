@@ -3,7 +3,9 @@
  * registros e some sozinha quando a origem é resolvida. Por isso a tela sempre
  * leva para onde a pendência se resolve, em vez de virar uma segunda lista.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { ArrowUpRight, CheckCircle2, ChevronRight, ListChecks } from 'lucide-react';
 import { listarPendencias, resumoPendencias, type ContextoPendencias, type GravidadePendencia } from '../utils/pendencias';
 import { Badge, EmptyState, PageHeader, PeriodFilter, buildPeriod, type PeriodValue } from '../shared/ui';
@@ -27,6 +29,8 @@ const ROTULO: Record<GravidadePendencia, string> = {
 };
 
 export default function PendenciasTab({ dados, onNavigate }: PendenciasTabProps) {
+  const escopo = useRef<HTMLDivElement>(null);
+  const jaEntrou = useRef(false);
   const [period, setPeriod] = useState<PeriodValue>(() => buildPeriod('mes'));
   const [selectedId, setSelectedId] = useState('');
   const hoje = new Date().toISOString().slice(0, 10);
@@ -46,7 +50,17 @@ export default function PendenciasTab({ dados, onNavigate }: PendenciasTabProps)
 
   const escopoMotion = useEntradaDeLista<HTMLDivElement>();
 
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = raiz.querySelectorAll('[data-pendencias-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 8 }, { opacity: 1, y: 0, duration: primeira ? 0.45 : 0.3, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [pendencias] });
+
   return (
+    <div ref={escopo}>
     <div ref={escopoMotion} id="pendencias-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
         title="Pendências"
@@ -54,7 +68,7 @@ export default function PendenciasTab({ dados, onNavigate }: PendenciasTabProps)
         actions={<PeriodFilter value={period} onChange={setPeriod} />}
       />
 
-      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      <section data-pendencias-reveal className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
           { label: 'Tipos de pendência', valor: String(resumo.itens) },
           { label: 'Registros pendentes', valor: String(resumo.registros) },
@@ -139,6 +153,7 @@ export default function PendenciasTab({ dados, onNavigate }: PendenciasTabProps)
           )}
         </div>
       )}
+    </div>
     </div>
   );
 }

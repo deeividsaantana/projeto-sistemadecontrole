@@ -4,6 +4,8 @@
  */
 
 import React, { useState, useMemo, useRef } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import {
   Truck,
   Search,
@@ -30,7 +32,7 @@ import {
   Download,
   Layers3
 } from 'lucide-react';
-import { ConfirmDialog, CountUp } from '../shared/ui';
+import { ConfirmDialog, CountUp, PageHeader } from '../shared/ui';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 import type ExcelJS from 'exceljs';
 import { listarMateriais } from '../utils/materiaisJazida';
@@ -1698,7 +1700,20 @@ export default function TicketsJazidaTab({
 
   const escopoMotion = useEntradaDeLista<HTMLDivElement>();
 
+  const escopo = useRef<HTMLDivElement>(null);
+  const jaEntrou = useRef(false);
+
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = raiz.querySelectorAll('[data-tickets-jazida-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 8 }, { opacity: 1, y: 0, duration: primeira ? 0.45 : 0.3, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [ticketTab] });
+
   return (
+    <div ref={escopo}>
     <div ref={escopoMotion} className="space-y-6" id="tickets-jazida-tab">
       <datalist id="ticket-equipment-prefixes">
         {equipmentOptions.map(item => (
@@ -1728,7 +1743,7 @@ export default function TicketsJazidaTab({
       />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e2e8e4] pb-4">
+      <div data-tickets-jazida-reveal className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e2e8e4] pb-4">
         <div>
           <h2 className="text-xl font-extrabold text-[#14231e] flex items-center gap-2">
             <Truck className="w-5 h-5 text-emerald-500" />
@@ -2628,6 +2643,7 @@ export default function TicketsJazidaTab({
         onCancel={() => setConfirmandoInativacao(false)}
       />
 
+    </div>
     </div>
   );
 }

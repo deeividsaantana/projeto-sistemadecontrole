@@ -3,6 +3,8 @@
  * com aviso de vencimento antes de virar problema.
  */
 import { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { AlertTriangle, GraduationCap, Paperclip, Plus, ShieldCheck } from 'lucide-react';
 import type { Funcionario, RegistroDDS, Treinamento } from '../types';
 import { DIAS_ALERTA_VENCIMENTO, situacaoTreinamento, treinamentosParaAlertar } from '../utils/treinamentos';
@@ -36,6 +38,8 @@ export default function DdsTreinamentosTab({
   onSaveDds,
   onSaveTreinamento,
 }: DdsTreinamentosTabProps) {
+  const escopo = useRef<HTMLDivElement>(null);
+  const jaEntrou = useRef(false);
   const hoje = isoDay(new Date());
   const [aba, setAba] = useState<'dds' | 'treinamentos'>('dds');
   const [formDds, setFormDds] = useState(false);
@@ -119,9 +123,19 @@ export default function DdsTreinamentosTab({
     setFormTreinamento(false);
   };
 
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = raiz.querySelectorAll('[data-dds-treinamentos-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 8 }, { opacity: 1, y: 0, duration: primeira ? 0.45 : 0.3, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [aba] });
+
   return (
-    <div id="dds-treinamentos-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopo} id="dds-treinamentos-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        data-dds-treinamentos-reveal
         title="DDS e Treinamentos"
         description="Diálogos de segurança em campo e validade das formações do efetivo."
         actions={podeEditar ? (
@@ -136,7 +150,7 @@ export default function DdsTreinamentosTab({
       />
 
       {alertas.length > 0 && (
-        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+        <div data-dds-treinamentos-reveal className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
           <p className="flex items-center gap-2 text-xs font-bold text-amber-900">
             <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
             {alertas.length} treinamento(s) vencido(s) ou vencendo em até {DIAS_ALERTA_VENCIMENTO} dias
@@ -151,7 +165,7 @@ export default function DdsTreinamentosTab({
         </div>
       )}
 
-      <div className="mt-4 flex gap-1 rounded-lg border border-slate-200 bg-white p-1">
+      <div data-dds-treinamentos-reveal className="mt-4 flex gap-1 rounded-lg border border-slate-200 bg-white p-1">
         {([['dds', 'DDS'], ['treinamentos', 'Treinamentos']] as const).map(([id, rotulo]) => (
           <button
             key={id}
@@ -166,7 +180,7 @@ export default function DdsTreinamentosTab({
       </div>
 
       {aba === 'dds' ? (
-        <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div data-dds-treinamentos-reveal className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
           {ddsOrdenados.length === 0 ? (
             <EmptyState icon={ShieldCheck} title="Nenhum DDS registrado" description="Registre o diálogo de segurança feito com a equipe." />
           ) : (
@@ -187,7 +201,7 @@ export default function DdsTreinamentosTab({
           )}
         </div>
       ) : (
-        <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div data-dds-treinamentos-reveal className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
           {treinamentosOrdenados.length === 0 ? (
             <EmptyState icon={GraduationCap} title="Nenhum treinamento registrado" description="Cadastre as formações e a validade de cada uma." />
           ) : (

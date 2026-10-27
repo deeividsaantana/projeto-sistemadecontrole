@@ -2,7 +2,9 @@
  * Planejamento: meta de produção por período, frente e equipe. O realizado nunca
  * é digitado — vem dos lançamentos de produção que atendem ao plano.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { AlertTriangle, CalendarRange, Plus, Search } from 'lucide-react';
 import type { FrenteServico, GrupoEquipe, ObraLocal, PlanejamentoItem, RegistroProducao, ServicoObra, SituacaoPlano } from '../types';
 import { aderenciaDosPlanos, planosNoPeriodo, validarPlano } from '../utils/planejamento';
@@ -57,6 +59,8 @@ export default function PlanejamentoTab({
   podeEditar,
   onSave,
 }: PlanejamentoTabProps) {
+  const escopo = useRef<HTMLDivElement>(null);
+  const jaEntrou = useRef(false);
   const hoje = isoDay(new Date());
   const [inicio, setInicio] = useState(somarDias(hoje, -7));
   const [fim, setFim] = useState(somarDias(hoje, 21));
@@ -155,9 +159,19 @@ export default function PlanejamentoTab({
     setAberto(false);
   };
 
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = raiz.querySelectorAll('[data-planejamento-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 8 }, { opacity: 1, y: 0, duration: primeira ? 0.45 : 0.3, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [inicio, fim] });
+
   return (
-    <div id="planejamento-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopo} id="planejamento-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        data-planejamento-reveal
         title="Planejamento"
         description="Metas por período, frente e equipe. O realizado vem da produção lançada."
         actions={podeEditar ? (
@@ -168,7 +182,7 @@ export default function PlanejamentoTab({
       />
 
       {atrasados.length > 0 && (
-        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+        <div data-planejamento-reveal className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
           <p className="flex items-center gap-2 text-xs font-bold text-amber-900">
             <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
             {atrasados.length} plano(s) com prazo vencido e meta não atingida
@@ -179,7 +193,7 @@ export default function PlanejamentoTab({
         </div>
       )}
 
-      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      <section data-planejamento-reveal className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
           { label: 'Planos no período', valor: String(linhas.length) },
           { label: 'Planejado', valor: numero(totalPlanejado) },
@@ -193,7 +207,7 @@ export default function PlanejamentoTab({
         ))}
       </section>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div data-planejamento-reveal className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-xs font-bold text-slate-600">
           De
           <input type="date" value={inicio} onChange={event => setInicio(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500" />
@@ -214,7 +228,7 @@ export default function PlanejamentoTab({
         </label>
       </div>
 
-      <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div data-planejamento-reveal className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {filtradas.length === 0 ? (
           <EmptyState icon={CalendarRange} title="Nenhum plano no período" description="Crie metas por serviço e período para acompanhar a aderência." />
         ) : (

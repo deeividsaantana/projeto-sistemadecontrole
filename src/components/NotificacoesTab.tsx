@@ -6,7 +6,9 @@
  * A preferência é do navegador, não da conta: silenciar uma categoria no celular
  * do encarregado não pode apagar o alerta da tela do gestor.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { ArrowUpRight, Bell, BellOff, CheckCheck } from 'lucide-react';
 import type { AppNotification } from '../types';
 import type { Alerta } from '../utils/alertas';
@@ -48,6 +50,17 @@ export default function NotificacoesTab({
   const hoje = new Date().toISOString().slice(0, 10);
   const [somenteNaoLidas, setSomenteNaoLidas] = useState(false);
   const [selectedId, setSelectedId] = useState('');
+  const escopo = useRef<HTMLDivElement>(null);
+  const jaEntrou = useRef(false);
+
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = raiz.querySelectorAll('[data-notificacoes-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 8 }, { opacity: 1, y: 0, duration: primeira ? 0.45 : 0.3, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [somenteNaoLidas] });
 
   const visiveis = useMemo(() => {
     const base = notificacoesVisiveis(notificacoes, preferencias);
@@ -70,8 +83,9 @@ export default function NotificacoesTab({
   };
 
   return (
-    <div id="notificacoes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopo} id="notificacoes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        data-notificacoes-reveal
         title="Notificações"
         description="Histórico do que chegou e o que você quer ser avisado neste dispositivo."
         actions={(
@@ -97,7 +111,7 @@ export default function NotificacoesTab({
         )}
       />
 
-      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      <section data-notificacoes-reveal className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
           { label: 'Notificações', valor: String(notificacoes.length) },
           { label: 'Não lidas', valor: String(contarNaoLidas(notificacoes)) },
@@ -111,7 +125,7 @@ export default function NotificacoesTab({
         ))}
       </section>
 
-      <section className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
+      <section data-notificacoes-reveal className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
         <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">Alertas por categoria</h2>
         {categorias.length === 0 ? (
           <p className="mt-2 text-xs text-slate-500">Nenhum alerta ativo agora — nada para silenciar.</p>
@@ -170,7 +184,7 @@ export default function NotificacoesTab({
         </section>
       )}
 
-      <div className="mt-4 grid items-start gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(23rem,.95fr)]">
+      <div data-notificacoes-reveal className="mt-4 grid items-start gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(23rem,.95fr)]">
         {grupos.length === 0 ? (
           <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
             <EmptyState icon={Bell} title="Sem notificações" description="Avisos de sincronização e de cadastro aparecem aqui." />

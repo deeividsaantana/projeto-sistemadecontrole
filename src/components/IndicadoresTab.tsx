@@ -4,7 +4,9 @@
  * período anterior de mesmo tamanho, e sem base anterior não há variação
  * inventada.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { Activity, ArrowUpRight, Gauge, Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import { calcularIndicadores, type ContextoIndicadores, type Indicador } from '../utils/indicadores';
 import { CountUp, PageHeader, PeriodFilter, buildPeriod, type PeriodValue } from '../shared/ui';
@@ -32,6 +34,8 @@ const corDoValor = (indicador: Indicador) => {
 };
 
 export default function IndicadoresTab({ dados }: IndicadoresTabProps) {
+  const escopo = useRef<HTMLDivElement>(null);
+  const jaEntrou = useRef(false);
   const [period, setPeriod] = useState<PeriodValue>(() => buildPeriod('mes'));
   const [grupoAtivo, setGrupoAtivo] = useState('Todos');
   const [indicadorAtivo, setIndicadorAtivo] = useState<string>('disponibilidade-frota');
@@ -70,15 +74,24 @@ export default function IndicadoresTab({ dados }: IndicadoresTabProps) {
     ? Math.max(0, Math.min(100, item.valor))
     : Math.max(8, Math.min(100, (item.valor / Math.max(1, ...visiveis.map(value => value.valor))) * 100));
 
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = raiz.querySelectorAll('[data-indicadores-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 8 }, { opacity: 1, y: 0, duration: primeira ? 0.45 : 0.3, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [visiveis] });
+
   return (
-    <div id="indicadores-tab" className="min-h-full w-full bg-white px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopo} id="indicadores-tab" className="min-h-full w-full bg-white px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
         title="Indicadores"
         description="KPIs calculados sobre os registros dos módulos, comparados com o período anterior."
         actions={<PeriodFilter value={period} onChange={setPeriod} />}
       />
 
-      <section className="mt-5 grid overflow-hidden border border-slate-200 bg-white xl:grid-cols-[minmax(0,1.45fr)_minmax(20rem,.55fr)]">
+      <section data-indicadores-reveal className="mt-5 grid overflow-hidden border border-slate-200 bg-white xl:grid-cols-[minmax(0,1.45fr)_minmax(20rem,.55fr)]">
         <div className="min-w-0 p-5 md:p-7">
           <div className="flex flex-col gap-5 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between">
             <div>

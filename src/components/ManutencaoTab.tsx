@@ -3,6 +3,8 @@
  * As horas paradas saem da própria ordem — abertura até liberação.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { Clock3, FileSpreadsheet, Gauge, History, Plus, Search, TriangleAlert, Wrench } from 'lucide-react';
 import type { ControleEquipamentoDiario, Equipamento, HistoryLog, OrdemServico } from '../types';
 import { historicoDaManutencao } from '../utils/manutencaoHistorico';
@@ -110,6 +112,18 @@ export default function ManutencaoTab({
   const [avisoExport, setAvisoExport] = useState('');
   const [historicoAberto, setHistoricoAberto] = useState(false);
   const equipamentoFieldRef = useRef<HTMLSelectElement>(null);
+
+  const escopo = useRef<HTMLDivElement>(null);
+  const jaEntrou = useRef(false);
+
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = raiz.querySelectorAll('[data-manutencao-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 8 }, { opacity: 1, y: 0, duration: primeira ? 0.45 : 0.3, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [filtroStatus] });
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
@@ -322,7 +336,7 @@ export default function ManutencaoTab({
   };
 
   return (
-    <div id="manutencao-tab" className="min-h-full w-full space-y-3 bg-white px-3 pb-12 sm:px-4">
+    <div ref={escopo} id="manutencao-tab" className="min-h-full w-full space-y-3 bg-white px-3 pb-12 sm:px-4">
       <PageHeader
         title="Manutenção"
         description="Ordens de serviço da frota, do chamado até a liberação."
@@ -366,7 +380,7 @@ export default function ManutencaoTab({
       />
 
       {/* KPIs do recorte atual */}
-      <section className="grid grid-cols-2 gap-2.5 lg:grid-cols-5">
+      <section data-manutencao-reveal className="grid grid-cols-2 gap-2.5 lg:grid-cols-5">
         {[
           { icon: Wrench, label: 'OS em aberto', valor: String(resumo.abertas) },
           { icon: TriangleAlert, label: 'Alta ou urgente', valor: String(resumo.criticas) },
@@ -391,7 +405,7 @@ export default function ManutencaoTab({
       )}
 
       {/* Filtros */}
-      <div className="mt-4 space-y-3">
+      <div data-manutencao-reveal className="mt-4 space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <label className="relative min-w-0 flex-1">
             <span className="sr-only">Buscar ordem de serviço</span>
@@ -545,7 +559,7 @@ export default function ManutencaoTab({
       )}
 
       {/* Tabela de Ordens */}
-      <section className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <section data-manutencao-reveal className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
         <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-3 sm:px-5">
           <span className="text-xs font-bold text-slate-600">{lista.length} Ordem(ns) de Serviço</span>
         </div>

@@ -6,7 +6,9 @@
  * A tela deixa explícito que esconder botão não é segurança: quem recusa a
  * gravação é a regra do Firestore, pela claim de papel do usuário.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { Check, KeyRound, Minus, ShieldAlert } from 'lucide-react';
 import { ALL_NAVIGATION_ITEMS, ROLE_ACCESS, type UserRole } from '../app/navigation/navigation';
 import { CAPACIDADES_CONHECIDAS, pode } from '../utils/permissoes';
@@ -29,6 +31,8 @@ const ROTULO_CAPACIDADE: Record<string, string> = {
 };
 
 export default function PermissoesTab() {
+  const escopo = useRef<HTMLDivElement>(null);
+  const jaEntrou = useRef(false);
   const [papel, setPapel] = useState<UserRole>('gestor');
 
   const modulos = useMemo(
@@ -37,14 +41,23 @@ export default function PermissoesTab() {
   );
   const semAcesso = ALL_NAVIGATION_ITEMS.length - modulos.length;
 
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = raiz.querySelectorAll('[data-permissoes-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 8 }, { opacity: 1, y: 0, duration: primeira ? 0.45 : 0.3, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [papel] });
+
   return (
-    <div id="permissoes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopo} id="permissoes-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
         title="Permissões"
         description="O que cada papel enxerga e pode fazer, pela mesma regra que as telas usam."
       />
 
-      <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+      <div data-permissoes-reveal className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
         <p className="flex items-start gap-2 text-xs font-bold text-amber-900">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
           Interface não é segurança: esconder um botão só evita erro de operação. Quem recusa a gravação é a regra do
@@ -52,7 +65,7 @@ export default function PermissoesTab() {
         </p>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-1.5">
+      <div data-permissoes-reveal className="mt-4 flex flex-wrap gap-1.5">
         {PAPEIS.map(item => (
           <button
             key={item}
@@ -68,7 +81,7 @@ export default function PermissoesTab() {
         ))}
       </div>
 
-      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      <section data-permissoes-reveal className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
           { label: 'Telas visíveis', valor: String(modulos.length) },
           { label: 'Telas ocultas', valor: String(semAcesso) },
@@ -82,7 +95,7 @@ export default function PermissoesTab() {
         ))}
       </section>
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div data-permissoes-reveal className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
         <TableShell minWidth={720}>
           <TableHead>
             <tr>

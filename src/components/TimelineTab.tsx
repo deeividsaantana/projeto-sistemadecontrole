@@ -3,7 +3,9 @@
  * eventos: cada linha é lida do módulo de origem, então um registro corrigido
  * ou apagado lá some daqui sem reprocessamento nenhum.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { History } from 'lucide-react';
 import type { Equipamento } from '../types';
 import {
@@ -23,6 +25,8 @@ interface TimelineTabProps {
 
 
 export default function TimelineTab({ fontes, equipamentos, onNavigate }: TimelineTabProps) {
+  const escopo = useRef<HTMLDivElement>(null);
+  const jaEntrou = useRef(false);
   const [period, setPeriod] = useState<PeriodValue>(() => buildPeriod('semana'));
   const [equipamentoId, setEquipamentoId] = useState('');
   const [tipo, setTipo] = useState('');
@@ -35,15 +39,24 @@ export default function TimelineTab({ fontes, equipamentos, onNavigate }: Timeli
   const eventos = useMemo(() => tipo ? todos.filter(item => item.tipo === tipo) : todos, [todos, tipo]);
   const dias = useMemo(() => agruparPorDia(eventos), [eventos]);
 
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = raiz.querySelectorAll('[data-timeline-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 8 }, { opacity: 1, y: 0, duration: primeira ? 0.45 : 0.3, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [dias] });
+
   return (
-    <div id="timeline-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopo} id="timeline-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
         title="Timeline"
         description="Tudo que aconteceu no período, na ordem em que aconteceu, lido dos módulos de origem."
         actions={<PeriodFilter value={period} onChange={setPeriod} />}
       />
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div data-timeline-reveal className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-xs font-bold text-slate-600">
           Equipamento
           <select
@@ -72,7 +85,7 @@ export default function TimelineTab({ fontes, equipamentos, onNavigate }: Timeli
         </div>
       </div>
 
-      <div className="mt-4">
+      <div data-timeline-reveal className="mt-4">
         {dias.length === 0 ? (
           <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
             <EmptyState icon={History} title="Nada aconteceu no período" description="Ajuste o período ou os filtros." />

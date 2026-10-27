@@ -4,7 +4,9 @@
  * aparece com orçado zero, porque gasto sem previsão é o que mais precisa ser
  * visto.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { AlertTriangle, Plus, Scale } from 'lucide-react';
 import type { Abastecimento, CategoriaCusto, LancamentoCusto, ObraLocal, OrcamentoItem, OrdemServico } from '../types';
 import { consolidarCustos, custosDeOutrosModulos } from '../utils/custos';
@@ -55,6 +57,17 @@ export default function OrcamentoTab({
   const [aberto, setAberto] = useState(false);
   const [editado, setEditado] = useState<OrcamentoItem | null>(null);
   const [form, setForm] = useState({ competencia: competenciaAtual(), categoria: 'Locação' as CategoriaCusto, valorOrcado: 0, obraId: '', observacao: '' });
+  const escopo = useRef<HTMLDivElement>(null);
+  const jaEntrou = useRef(false);
+
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = raiz.querySelectorAll('[data-orcamento-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 8 }, { opacity: 1, y: 0, duration: primeira ? 0.45 : 0.3, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [competencia] });
 
   // O mês inteiro da competência escolhida: o comparativo é sempre mensal.
   const custos = useMemo(() => {
@@ -110,8 +123,9 @@ export default function OrcamentoTab({
   };
 
   return (
-    <div id="orcamento-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopo} id="orcamento-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
+        data-orcamento-reveal
         title="Orçado x Realizado"
         description="Comparativo mensal por categoria. O realizado vem do consolidado de custos, não é digitado."
         actions={(
@@ -143,7 +157,7 @@ export default function OrcamentoTab({
         </div>
       )}
 
-      <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      <section data-orcamento-reveal className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
           { label: 'Orçado', valor: moeda(resumo.orcado) },
           { label: 'Realizado', valor: moeda(resumo.realizado) },
@@ -157,7 +171,7 @@ export default function OrcamentoTab({
         ))}
       </section>
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div data-orcamento-reveal className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {linhas.length === 0 ? (
           <EmptyState icon={Scale} title="Sem orçamento nem custo na competência" description={`Nada registrado em ${rotuloCompetencia(competencia)}.`} />
         ) : (

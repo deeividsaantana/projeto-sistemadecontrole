@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import {
   Download,
   Droplets,
@@ -82,6 +84,8 @@ export default function PeriodoTab({
   ticketsJazida = [],
   equipamentos = [],
 }: PeriodoTabProps) {
+  const escopo = useRef<HTMLDivElement>(null);
+  const jaEntrou = useRef(false);
   const hoje = localToday();
   const [from, setFrom] = useState(() => shiftDays(hoje, -6));
   const [to, setTo] = useState(hoje);
@@ -188,20 +192,31 @@ export default function PeriodoTab({
   }, [periodo.fim, periodo.inicio, registros]);
 
   const maiorRitmo = Math.max(1, ...ritmoDiario.map(day => day.total));
+
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = raiz.querySelectorAll('[data-periodo-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 8 }, { opacity: 1, y: 0, duration: primeira ? 0.45 : 0.3, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [from, to] });
+
   const distribuicao = (['Presença', 'Frota', 'Combustível', 'Tickets'] as TipoRegistro[]).map(tipo => ({
     tipo,
     total: registros.filter(item => item.tipo === tipo).length,
   }));
 
   return (
-    <section className="space-y-5 text-[#14231e]">
+    <section ref={escopo} className="space-y-5 text-[#14231e]">
       <PageHeader
+        data-periodo-reveal
         title={`Registros de ${formatDay(periodo.inicio)} a ${formatDay(periodo.fim)}`}
         description="Presença, frota, combustível e jazida no mesmo intervalo."
         actions={<button type="button" onClick={exportarResumo} className={CHIP}><Download className="mr-2 h-4 w-4" /> Exportar</button>}
       />
 
-      <div className={`${PANEL} p-5 sm:p-6`}>
+      <div data-periodo-reveal className={`${PANEL} p-5 sm:p-6`}>
         <div className="grid gap-3 md:grid-cols-[repeat(2,minmax(0,180px))_1fr]">
           <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#65716b]">
             Do dia
@@ -238,13 +253,13 @@ export default function PeriodoTab({
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div data-periodo-reveal className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map(card => (
           <StatCard key={card.label} label={card.label} value={card.valor} icon={card.icone} trend={card.apoio} />
         ))}
       </div>
 
-      <section className="grid gap-3 xl:grid-cols-[minmax(0,1.6fr)_minmax(19rem,.8fr)]" aria-label="Análise interativa do período">
+      <section data-periodo-reveal className="grid gap-3 xl:grid-cols-[minmax(0,1.6fr)_minmax(19rem,.8fr)]" aria-label="Análise interativa do período">
         <article className={`${PANEL} overflow-hidden`}>
           <header className="flex items-end justify-between gap-4 border-b border-[#e2e8e4] px-5 py-4">
             <div>
@@ -305,7 +320,7 @@ export default function PeriodoTab({
         </article>
       </section>
 
-      <article className={`${PANEL} overflow-hidden`}>
+      <article data-periodo-reveal className={`${PANEL} overflow-hidden`}>
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e2e8e4] px-5 py-4">
           <div>
             <h2 className="text-sm font-black">Registros</h2>

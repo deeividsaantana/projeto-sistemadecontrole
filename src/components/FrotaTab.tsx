@@ -2,7 +2,9 @@
  * Frota: lista o cadastro de equipamentos e abre a ficha individual, reunindo
  * o que os outros módulos já registraram sobre aquele prefixo.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { ArrowLeft, Building2, ClipboardList, Droplets, Gauge, Search, Truck, UserRound, Wrench } from 'lucide-react';
 import type {
   Abastecimento,
@@ -64,6 +66,18 @@ export default function FrotaTab({
   const [busca, setBusca] = useState('');
   const [categoria, setCategoria] = useState<(typeof CATEGORIAS)[number]>('Todas');
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
+
+  const escopo = useRef<HTMLDivElement>(null);
+  const jaEntrou = useRef(false);
+
+  useGSAP(() => {
+    const raiz = escopo.current;
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const primeira = !jaEntrou.current;
+    jaEntrou.current = true;
+    const blocos = raiz.querySelectorAll('[data-frota-reveal]');
+    gsap.fromTo(blocos, { opacity: 0, y: primeira ? 14 : 8 }, { opacity: 1, y: 0, duration: primeira ? 0.45 : 0.3, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }, { scope: escopo, dependencies: [selecionadoId] });
 
   const resumos = useMemo(
     () => new Map(buildEquipmentOperationalSummaries(equipamentos, ordensServico).map(item => [item.equipment.id, item])),
@@ -137,7 +151,7 @@ export default function FrotaTab({
     ];
 
     return (
-      <div id="frota-ficha" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+      <div ref={escopo} id="frota-ficha" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
         <button
           type="button"
           onClick={() => setSelecionadoId(null)}
@@ -159,7 +173,7 @@ export default function FrotaTab({
           )}
         />
 
-        <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+        <section data-frota-reveal className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
           {indicadores.map(item => (
             <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4">
               <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
@@ -169,7 +183,7 @@ export default function FrotaTab({
           ))}
         </section>
 
-        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+        <div data-frota-reveal className="mt-4 grid gap-4 xl:grid-cols-2">
           <Card title="Identificação">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
               {[
@@ -331,14 +345,14 @@ export default function FrotaTab({
   }
 
   return (
-    <div id="frota-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
+    <div ref={escopo} id="frota-tab" className="min-h-full w-full bg-[#f7f8f6] px-4 pb-12 pt-6 sm:px-7 lg:px-9">
       <PageHeader
         title="Frota"
         description="Cadastro de equipamentos, veículos e implementos. Abra um prefixo para ver a ficha completa."
         actions={<button type="button" onClick={() => onNavigate('cadastros')} className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-emerald-500 hover:text-emerald-700">Cadastrar equipamento</button>}
       />
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+      <div data-frota-reveal className="mt-4 flex flex-col gap-2 sm:flex-row">
         <label className="relative min-w-0 flex-1">
           <span className="sr-only">Buscar frota</span>
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
