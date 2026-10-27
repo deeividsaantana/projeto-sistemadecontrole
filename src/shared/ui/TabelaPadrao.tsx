@@ -80,7 +80,7 @@ export interface ColunaTabela<T> {
   alinhamento?: 'esquerda' | 'direita' | 'centro';
   /** Largura mínima em px. Sem ela a coluna divide o espaço com as outras. */
   larguraMinima?: number;
-  /** Largura ideal em px no modo `densa`: a tabela vira de largura fixa e cabe na tela, sem rolar para o lado. */
+  /** Largura ideal em px no modo `densa`. Com ela em alguma coluna, a tabela vira de largura fixa e cabe na tela (sem rolar para o lado, o texto que não cabe corta). */
   larguraIdeal?: number;
   /** O que aparece na célula e no cartão. */
   render: (linha: T) => ReactNode;
@@ -399,7 +399,7 @@ export function TabelaPadrao<T>({
   };
 
   const tabela = (
-    <table className={cn('w-full border-separate border-spacing-0 text-left text-[13px] text-slate-800', densa && 'table-fixed')}>
+    <table className={cn('w-full border-separate border-spacing-0 text-left text-[13px] text-slate-800', densa && colunas.some(coluna => coluna.larguraIdeal) && 'table-fixed')}>
       <caption className="sr-only">{titulo}</caption>
       <thead>
         <tr>
