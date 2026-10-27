@@ -39,7 +39,7 @@ const seloAprovacao = (row: FleetCurrentState) => {
 // Só na tabela (768 px ou mais): no cartão do celular o texto quebra inteiro.
 const UMA_LINHA = 'block md:truncate md:whitespace-nowrap';
 
-const ICONE = `inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-bold transition duration-200 active:scale-[0.96] md:size-8 md:min-h-0 md:min-w-0 md:px-0 ${FOCO}`;
+const ICONE = `inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-bold transition duration-200 active:scale-[0.96] md:size-7 md:min-h-0 md:min-w-0 md:px-0 ${FOCO}`;
 
 /**
  * Colunas da Situação do dia. Cada lançamento ocupa uma linha de 40 px: o
@@ -170,6 +170,7 @@ export default function FleetDataTable({
       <TabelaPadrao
         titulo="Lançamentos do dia"
         testId="frota-tabela"
+        densa
         linhas={rows}
         colunas={colunasDaTabela}
         idDaLinha={row => row.recordId}
