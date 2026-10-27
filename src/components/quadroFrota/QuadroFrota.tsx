@@ -207,7 +207,7 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
     { id: 'disponibilidade', titulo: 'Disponível', valor: indicadores.disponibilidade ?? 0, sufixo: '%', texto: indicadores.disponibilidade === null ? '—' : undefined, detalhe: indicadores.disponibilidade === null ? 'nada lançado no dia' : 'fora da manutenção', Icone: Gauge, tom: 'bg-sky-50 text-sky-700' },
     { id: 'com-operador', titulo: 'Com operador', valor: indicadores.comOperador, detalhe: 'operadores no dia', Icone: UserCheck, tom: 'bg-emerald-50 text-[#176b4d]', filtro: { operador: 'com' } },
     { id: 'sem-operador', titulo: 'Sem operador', valor: indicadores.semOperador, detalhe: 'aguardando', Icone: UserX, tom: 'bg-orange-50 text-[#c2410c]', filtro: { operador: 'sem' } },
-    { id: 'abasteceu-sem-lancar', titulo: 'Abasteceu sem lançar', valor: abastecidasSemLancar.length, detalhe: 'confira no Combustível', Icone: Fuel, tom: 'bg-amber-50 text-amber-700', aoClicar: abastecidasSemLancar.length && podeAbrir('lancamentos') ? () => onNavigate('lancamentos') : undefined },
+    { id: 'abasteceu-sem-lancar', titulo: 'Abastecidas', valor: abastecidasSemLancar.length, detalhe: 'sem lançamento no dia', Icone: Fuel, tom: 'bg-amber-50 text-amber-700', aoClicar: abastecidasSemLancar.length && podeAbrir('lancamentos') ? () => onNavigate('lancamentos') : undefined },
   ];
 
   const mudar = (parcial: Partial<FiltrosQuadro>) => setFiltros(atual => ({ ...atual, ...parcial }));
@@ -393,7 +393,7 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
           const conteudo = (
             <>
               <span className="flex items-start justify-between gap-1.5">
-                <span className="min-w-0 text-xs font-bold leading-tight text-slate-500 [hyphens:none] sm:uppercase sm:tracking-[0.02em]">{item.titulo}</span>
+                <span className="min-w-0 truncate whitespace-nowrap text-xs font-bold leading-tight text-slate-500" title={item.titulo}>{item.titulo}</span>
                 <span className={`grid size-6 shrink-0 place-items-center rounded-full max-2xl:hidden ${item.tom}`}><item.Icone className="size-3.5" aria-hidden="true" /></span>
               </span>
               {item.texto !== undefined
