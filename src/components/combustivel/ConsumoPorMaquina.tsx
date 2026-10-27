@@ -61,17 +61,17 @@ function Situacao({ linha, quebra = false }: { linha: ConsumoEquipamento; quebra
 /** A linha inteira abre a ficha, com o mouse ou com Enter (TabelaPadrao). */
 const COLUNAS_CONSUMO: ColunaTabela<ConsumoEquipamento>[] = [
   {
-    chave: 'maquina', titulo: 'Máquina', larguraMinima: 160,
-    render: linha => <><span className="block font-mono font-black text-slate-950">{linha.prefixo}</span><span className="block truncate text-xs text-[#5b6870]">{linha.nome}</span></>,
+    chave: 'maquina', titulo: 'Máquina', larguraMinima: 90, larguraIdeal: 96,
+    render: linha => <span className="font-mono font-black text-slate-950">{linha.prefixo}</span>,
     valorOrdenacao: linha => linha.prefixo,
     dica: linha => `${linha.prefixo} · ${linha.nome}`,
   },
-  { chave: 'abastecimentos', titulo: 'Abast.', alinhamento: 'direita', render: linha => linha.abastecimentos, valorOrdenacao: linha => linha.abastecimentos },
-  { chave: 'litros', titulo: 'Litros', alinhamento: 'direita', render: linha => <span className="font-semibold">{litros(linha.litros)}</span>, valorOrdenacao: linha => linha.litros },
-  { chave: 'trabalhou', titulo: 'Trabalhou', alinhamento: 'direita', render: trabalhou, valorOrdenacao: linha => linha.percorrido || null },
-  { chave: 'consumo', titulo: 'Consumo', alinhamento: 'direita', render: linha => <span className="font-bold text-slate-950">{textoConsumo(linha.consumoPeriodo, linha.unidade)}</span>, valorOrdenacao: linha => linha.consumoPeriodo ?? null },
-  { chave: 'habitual', titulo: 'Habitual', alinhamento: 'direita', render: linha => textoConsumo(linha.consumoHabitual, linha.unidade), valorOrdenacao: linha => linha.consumoHabitual ?? null },
-  { chave: 'situacao', titulo: 'Situação', render: linha => <Situacao linha={linha} quebra />, valorOrdenacao: linha => linha.desvio ?? null, dica: linha => SITUACAO[linha.situacao].rotulo },
+  { chave: 'abastecimentos', titulo: 'Abast.', alinhamento: 'direita', larguraIdeal: 84, render: linha => linha.abastecimentos, valorOrdenacao: linha => linha.abastecimentos },
+  { chave: 'litros', titulo: 'Litros', alinhamento: 'direita', larguraIdeal: 80, render: linha => <span className="font-semibold">{litros(linha.litros)}</span>, valorOrdenacao: linha => linha.litros },
+  { chave: 'trabalhou', titulo: 'Trabalhou', alinhamento: 'direita', larguraIdeal: 106, render: trabalhou, valorOrdenacao: linha => linha.percorrido || null },
+  { chave: 'consumo', titulo: 'Consumo', alinhamento: 'direita', larguraIdeal: 90, render: linha => <span className="font-bold text-slate-950">{textoConsumo(linha.consumoPeriodo, linha.unidade)}</span>, valorOrdenacao: linha => linha.consumoPeriodo ?? null },
+  { chave: 'habitual', titulo: 'Habitual', alinhamento: 'direita', larguraIdeal: 90, render: linha => textoConsumo(linha.consumoHabitual, linha.unidade), valorOrdenacao: linha => linha.consumoHabitual ?? null },
+  { chave: 'situacao', titulo: 'Situação', larguraIdeal: 134, render: linha => <Situacao linha={linha} quebra />, valorOrdenacao: linha => linha.desvio ?? null, dica: linha => SITUACAO[linha.situacao].rotulo },
 ];
 
 export default function ConsumoPorMaquina({ abastecimentos, equipamentos, empresas, onErro, onAviso }: Props) {

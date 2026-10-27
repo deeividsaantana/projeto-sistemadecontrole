@@ -352,6 +352,11 @@ export default function HistoricoCombustivel({
   const numeroCelula = (valor: number) => (valor > 0 ? numeroTexto(valor) : '');
   const naoCadastrado = <span className="font-bold text-rose-700">NÃO CADASTRADO</span>;
   /** O que cada coluna da planilha mostra; a ordem e a escolha vêm de COLUNAS_HISTORICO. */
+  /** Largura de cada coluna no notebook de 1366 px (cabe em 1280 px; as bombas ficam fora do padrão e abrem em Colunas). */
+  const LARGURA_IDEAL: Record<ColunaHistorico, number> = {
+    data: 92, prefixo: 80, descricao: 150, km: 72, horimetro: 104, litros: 70, hora: 54, comboio: 92,
+    combustivel: 104, empresa: 205, bombaInicial: 84, bombaFinal: 84, responsavel: 120, observacao: 180,
+  };
   const CELULA: Record<ColunaHistorico, Pick<ColunaTabela<Abastecimento>, 'render' | 'valorOrdenacao' | 'dica' | 'larguraMinima'>> = {
     data: { render: item => <span className="font-bold text-slate-900">{dataCurta(item.data)}</span>, valorOrdenacao: item => `${item.data}${item.hora || ''}` },
     prefixo: {
@@ -384,6 +389,7 @@ export default function HistoricoCombustivel({
       chave: coluna.id,
       titulo: coluna.rotulo,
       alinhamento: NUMERICAS.has(coluna.id) ? 'direita' : 'esquerda',
+      larguraIdeal: LARGURA_IDEAL[coluna.id],
       noCartao: !FORA_DO_CARTAO.has(coluna.id),
       // A ordem é a da planilha (ordenarHistorico); a tabela só mostra a seta.
       ...(coluna.ordenavel ? { valorOrdenacao } : {}),

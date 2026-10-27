@@ -80,6 +80,8 @@ export interface ColunaTabela<T> {
   alinhamento?: 'esquerda' | 'direita' | 'centro';
   /** Largura mínima em px. Sem ela a coluna divide o espaço com as outras. */
   larguraMinima?: number;
+  /** Largura ideal em px no modo `densa`. Com ela em alguma coluna, a tabela vira de largura fixa e cabe na tela (sem rolar para o lado, o texto que não cabe corta). */
+  larguraIdeal?: number;
   /** O que aparece na célula e no cartão. */
   render: (linha: T) => ReactNode;
   /** Com ele o título vira botão de ordenar. */
@@ -397,7 +399,7 @@ export function TabelaPadrao<T>({
   };
 
   const tabela = (
-    <table className="w-full border-separate border-spacing-0 text-left text-[13px] text-slate-800">
+    <table className={cn('w-full border-separate border-spacing-0 text-left text-[13px] text-slate-800', densa && colunas.some(coluna => coluna.larguraIdeal) && 'table-fixed')}>
       <caption className="sr-only">{titulo}</caption>
       <thead>
         <tr>
@@ -414,7 +416,11 @@ export function TabelaPadrao<T>({
                 key={coluna.chave}
                 scope="col"
                 aria-sort={coluna.valorOrdenacao ? (ativa ? (ordenacao!.direcao === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}
-                style={{ ...(coluna.larguraMinima ? { minWidth: coluna.larguraMinima } : {}), ...(densa ? { whiteSpace: 'normal' as const } : {}) }}
+                style={{
+                  ...(coluna.larguraMinima ? { minWidth: coluna.larguraMinima } : {}),
+                  ...(densa && coluna.larguraIdeal ? { width: coluna.larguraIdeal } : {}),
+                  ...(densa ? { whiteSpace: 'normal' as const } : {}),
+                }}
                 className={cn(
                   'sticky top-0 z-[1] h-9 border-b border-slate-200 bg-[#f3f6f4] text-xs font-bold uppercase tracking-wide text-[#53635c]',
                   densa ? 'px-2 leading-tight' : 'whitespace-nowrap px-3',
@@ -470,7 +476,7 @@ export function TabelaPadrao<T>({
                   </td>
                 )}
                 {colunas.map(coluna => (
-                  <td key={coluna.chave} className={cn('border-b border-slate-100 align-middle leading-snug', densa ? 'px-2 py-0.5' : 'px-3 py-1', ALINHAMENTO[coluna.alinhamento ?? 'esquerda'])}>
+                  <td key={coluna.chave} className={cn('border-b border-slate-100 align-middle leading-snug', densa ? 'overflow-hidden px-2 py-0.5' : 'px-3 py-1', ALINHAMENTO[coluna.alinhamento ?? 'esquerda'])}>
                     {celula(coluna, linha)}
                   </td>
                 ))}
