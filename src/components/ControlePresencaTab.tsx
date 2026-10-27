@@ -287,6 +287,8 @@ export default function ControlePresencaTab({
     () => typeof window !== 'undefined' && window.innerWidth >= 1024,
   );
   const [recordDate, setRecordDate] = useState(today);
+  /** Fim do período: vazio significa só o dia de "De". */
+  const [recordDateEnd, setRecordDateEnd] = useState('');
   const [recordGroup, setRecordGroup] = useState('todos');
   const [recordStatus, setRecordStatus] = useState<'todos' | PresencaStatus>('todos');
   const [recordSearch, setRecordSearch] = useState('');
@@ -663,13 +665,19 @@ export default function ControlePresencaTab({
   const filteredRecords = useMemo(() => {
     const query = recordSearch.trim().toLocaleLowerCase('pt-BR');
     return (verInativos ? inativos : safeRecords)
-      .filter(record => !recordDate || record.data === recordDate)
+      .filter(record => !recordDate || (recordDateEnd ? record.data >= recordDate && record.data <= recordDateEnd : record.data === recordDate))
       .filter(record => recordGroup === 'todos' || record.grupoId === recordGroup)
       .filter(record => recordStatus === 'todos' || record.status === recordStatus)
       .filter(record => !query || [record.funcionarioNome, record.funcao, record.responsavel, record.frenteServico]
         .some(value => value.toLocaleLowerCase('pt-BR').includes(query)))
       .sort((a, b) => `${b.data} ${b.horaEnvio}`.localeCompare(`${a.data} ${a.horaEnvio}`));
-  }, [inativos, recordDate, recordGroup, recordSearch, recordStatus, safeRecords, verInativos]);
+  }, [inativos, recordDate, recordDateEnd, recordGroup, recordSearch, recordStatus, safeRecords, verInativos]);
+
+  const resumoRegistros = useMemo(() => ({
+    registros: filteredRecords.length,
+    pessoas: new Set(filteredRecords.map(record => record.funcionarioId || record.funcionarioNome)).size,
+    equipes: new Set(filteredRecords.map(record => record.grupoId || record.grupoNome)).size,
+  }), [filteredRecords]);
 
   const exportRows = filteredRecords.map(record => [
     record.data,
@@ -1224,12 +1232,33 @@ export default function ControlePresencaTab({
     </div>
   );
 
+  const cartoesRegistros = [
+    { rotulo: 'Total de registros', valor: resumoRegistros.registros, unidade: 'registros', icone: FileText, classe: 'bg-sky-50 text-sky-800' },
+    { rotulo: 'Pessoas no período', valor: resumoRegistros.pessoas, unidade: 'pessoas', icone: Users, classe: 'bg-emerald-50 text-emerald-800' },
+    { rotulo: 'Equipes com registro', valor: resumoRegistros.equipes, unidade: 'equipes', icone: Radio, classe: 'bg-violet-50 text-violet-800' },
+  ];
+
   const faixaRegistros = (
     <div className={`${PANEL} space-y-3 p-3`}>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[170px_minmax(0,220px)_minmax(0,200px)_minmax(0,1fr)]">
+      <div className="grid grid-cols-3 gap-2" aria-live="polite" data-testid="presenca-registros-resumo">
+        {cartoesRegistros.map(({ rotulo, valor, unidade, icone: Icone, classe }) => (
+          <div key={rotulo} className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-1.5">
+            <span className={`hidden h-8 w-8 shrink-0 place-items-center rounded-lg sm:grid ${classe}`}><Icone className="h-4 w-4" aria-hidden="true" /></span>
+            <div className="min-w-0">
+              <p className="text-xs font-bold leading-tight text-[#5b6870]">{rotulo}</p>
+              <p className="text-base font-black leading-tight text-slate-900 sm:text-lg"><span className="tabular-nums">{valor.toLocaleString('pt-BR')}</span> <span className="text-xs font-bold text-[#5b6870]">{unidade}</span></p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[150px_150px_minmax(0,200px)_minmax(0,180px)_minmax(0,1fr)]">
         <label className="space-y-1">
-          <span className={ROTULO_CAMPO}>Dia</span>
+          <span className={ROTULO_CAMPO}>De</span>
           <input type="date" value={recordDate} onChange={event => setRecordDate(event.target.value)} className={FIELD} aria-describedby="presenca-dia-dica" />
+        </label>
+        <label className="space-y-1">
+          <span className={ROTULO_CAMPO}>Até</span>
+          <input type="date" value={recordDateEnd} min={recordDate || undefined} onChange={event => setRecordDateEnd(event.target.value)} className={FIELD} aria-describedby="presenca-dia-dica" />
         </label>
         <label className="space-y-1">
           <span className={ROTULO_CAMPO}>Equipe</span>
@@ -1247,7 +1276,7 @@ export default function ControlePresencaTab({
           </span>
         </label>
       </div>
-      <p id="presenca-dia-dica" className="sr-only">Apague o dia para ver todos os dias.</p>
+      <p id="presenca-dia-dica" className="sr-only">Escolha só o primeiro dia para ver aquele dia, ou os dois para ver o período. Apague o primeiro dia para ver todos os dias.</p>
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => setSelectedRecordIds(todosFiltradosMarcados ? [] : filteredRecords.map(record => record.id))} disabled={filteredRecords.length === 0} className={SECONDARY_BUTTON} aria-pressed={todosFiltradosMarcados} data-testid="presenca-marcar-filtrados">
           <Check className="h-4 w-4" aria-hidden="true" />
