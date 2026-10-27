@@ -23,6 +23,9 @@ import {
   Upload,
   Users,
   X,
+  Clock3,
+  Truck,
+  Wrench,
 } from 'lucide-react';
 import type {
   ControleEquipamentoDiario,
@@ -73,6 +76,7 @@ import FleetDailyReference from './fleet/FleetDailyReference';
 import FleetDriverReference from './fleet/FleetDriverReference';
 import { repetidosPorDia } from '../fleet/duplicidadeDiaria';
 import { montarConferenciaDoDia } from '../fleet/conferenciaDoDia';
+import { gerarPdfFaltantes, montarListaFaltantes } from '../fleet/faltantesPdf';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO, TOM_SITUACAO } from './cadastros/estilos';
 
 interface Props {
@@ -478,6 +482,23 @@ export default function ControleEquipamentosDiarioTab({
     setMessageTone('info');
     setMessage(`Visão atualizada às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.`);
   };
+  const handleFaltantesPdf = async () => {
+    if (exporting) return;
+    setExporting('pdf');
+    setMessageTone('info');
+    setMessage('Gerando PDF dos faltantes...');
+    try {
+      const lista = montarListaFaltantes(montarConferenciaDoDia(registros, filters.date), filters.date);
+      const nome = await gerarPdfFaltantes(lista);
+      setMessageTone('success');
+      setMessage(`${nome} gerado com ${lista.equipamentos.length} equipamento(s) e ${lista.operadores.length} operador(es) faltantes.`);
+    } catch (error) {
+      setMessageTone('error');
+      setMessage(error instanceof Error ? error.message : 'Não foi possível gerar o PDF dos faltantes.');
+    } finally {
+      setExporting('');
+    }
+  };
   const handlePdf = async () => {
     if (exporting) return;
     setExporting('pdf');
@@ -702,6 +723,7 @@ export default function ControleEquipamentosDiarioTab({
                 <p className={ROTULO_GRUPO_MENU}>Exportar</p>
                 <button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className={ITEM_MENU}><Printer className="size-4" aria-hidden="true" />{exporting === 'pdf' ? 'Gerando PDF…' : 'Relatório do dia em PDF'}</button>
                 <button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className={ITEM_MENU}><FileSpreadsheet className="size-4" aria-hidden="true" />{exporting === 'excel' ? 'Gerando Excel…' : 'Relatório do dia em Excel'}</button>
+                <button type="button" disabled={Boolean(exporting)} onClick={() => void handleFaltantesPdf()} className={ITEM_MENU} data-testid="frota-faltantes-pdf"><Printer className="size-4" aria-hidden="true" />Faltantes do dia em PDF</button>
                 <hr className="my-1 border-slate-100" />
                 <p className={ROTULO_GRUPO_MENU}>Importar</p>
                 <button type="button" onClick={() => inputRef.current?.click()} className={ITEM_MENU}><Upload className="size-4" aria-hidden="true" />Importar planilha</button>
@@ -733,18 +755,34 @@ export default function ControleEquipamentosDiarioTab({
       faixa={aviso || undefined}
     >
       {activeView === 'today' && <div data-fleet-view className="flex min-h-0 flex-1 flex-col gap-3">
-        <PanoramaDoDia
-          metrics={viewModel.metrics}
-          status={filters.status}
-          onStatus={status => updateFilter('status', status)}
-          canteiros={canteirosDoDia}
-          canteiro={filters.location || ''}
-          onCanteiro={nome => updateFilter('location', nome)}
-          equipamentos={{ total: conferenciaDoDia.equipamentos.total, informados: conferenciaDoDia.equipamentos.informed }}
-          operadores={{ total: conferenciaDoDia.operadores.total, informados: conferenciaDoDia.operadores.informed }}
-          onAbrirEquipamentos={() => setActiveView('equipamentos')}
-          onAbrirOperadores={() => setActiveView('operadores')}
-        />
+        <section aria-label="Resumo do dia" className="grid shrink-0 grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4" data-testid="frota-resumo-visualizacao">
+          {[
+            { rotulo: 'Total da frota', valor: viewModel.metrics.total, Icone: Truck, tom: 'text-slate-950', fundo: 'bg-slate-100 text-slate-700' },
+            { rotulo: 'Em operação', valor: viewModel.metrics.operating, Icone: Truck, tom: 'text-emerald-700', fundo: 'bg-emerald-50 text-emerald-700' },
+            { rotulo: 'Em manutenção', valor: viewModel.metrics.maintenance + viewModel.metrics.waitingMaintenance, Icone: Wrench, tom: 'text-rose-700', fundo: 'bg-rose-50 text-rose-700' },
+            { rotulo: 'A confirmar', valor: viewModel.metrics.pending, Icone: Clock3, tom: 'text-amber-700', fundo: 'bg-amber-50 text-amber-700' },
+          ].map(({ rotulo, valor, Icone, tom, fundo }) => (
+            <article key={rotulo} className={`${CARTAO} flex items-center gap-3 p-3 sm:gap-4 sm:p-4`}>
+              <span className={`hidden size-12 shrink-0 place-items-center rounded-xl sm:grid ${fundo}`}><Icone className="size-6" aria-hidden="true" /></span>
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#5b6870]">{rotulo}</p>
+                <p className={`font-mono text-3xl font-bold tabular-nums ${tom}`}>{valor}</p>
+              </div>
+            </article>
+          ))}
+        </section>
+        <nav aria-label="Canteiros do dia" className="flex shrink-0 flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2" data-testid="frota-faixa-canteiros">
+          <span className="px-2 text-xs font-bold uppercase tracking-[0.12em] text-[#5b6870]">Canteiro</span>
+          <button type="button" aria-pressed={!filters.location} onClick={() => updateFilter('location', '')} className={`${BOTAO_SECUNDARIO} min-h-9 px-3 text-sm ${!filters.location ? 'border-[#176b4d] text-[#176b4d]' : ''}`}>Todos</button>
+          {canteirosDoDia.map(item => (
+            <button key={item.nome} type="button" aria-pressed={filters.location === item.nome} onClick={() => updateFilter('location', filters.location === item.nome ? '' : item.nome)} className={`${BOTAO_SECUNDARIO} min-h-9 px-3 text-sm ${filters.location === item.nome ? 'border-[#176b4d] text-[#176b4d]' : ''}`}>
+              {item.nome} <span className="font-mono tabular-nums">{item.total}</span>
+            </button>
+          ))}
+          <span className="ml-auto whitespace-nowrap px-2 text-sm font-semibold text-slate-600">
+            Equipamentos {conferenciaDoDia.equipamentos.informed}/{conferenciaDoDia.equipamentos.total} · Operadores {conferenciaDoDia.operadores.informed}/{conferenciaDoDia.operadores.total}
+          </span>
+        </nav>
         <FleetFilterBar filters={filters} companies={empresas} groups={groups} equipmentTypes={equipmentTypes} activeFilterCount={activeFilterCount} onChange={updateFilter} onClear={clearFilters} avisos={viewModel.integrityWarnings}/>
         <FleetDataTable rows={viewModel.allRows} selectedIds={selectedIds} onSelectionChange={setSelectedIds} onEdit={openEdit} onDetails={setDetailState} onDelete={onDeleteMany ? state => setConfirmation({ kind: 'delete', ids: [state.recordId] }) : undefined} canApprove={canApproveFleet} onApprove={(state, status) => onApproveFleetRecord?.(state.recordId, status)}/>
       </div>}

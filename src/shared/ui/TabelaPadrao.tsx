@@ -446,11 +446,11 @@ export function TabelaPadrao<T>({
               >
                 {selecao && (
                   <td className="border-b border-slate-100 p-0">
-                    <label className="flex min-h-10 cursor-pointer items-center justify-center">{caixaDaLinha(linha, id)}</label>
+                    <label className={cn('flex cursor-pointer items-center justify-center', densa ? 'min-h-8' : 'min-h-10')}>{caixaDaLinha(linha, id)}</label>
                   </td>
                 )}
                 {colunas.map(coluna => (
-                  <td key={coluna.chave} className={cn('border-b border-slate-100 py-1.5 align-middle leading-snug', densa ? 'px-2' : 'px-3', ALINHAMENTO[coluna.alinhamento ?? 'esquerda'])}>
+                  <td key={coluna.chave} className={cn('border-b border-slate-100 align-middle leading-snug', densa ? 'px-2 py-1' : 'px-3 py-1.5', ALINHAMENTO[coluna.alinhamento ?? 'esquerda'])}>
                     {celula(coluna, linha)}
                   </td>
                 ))}

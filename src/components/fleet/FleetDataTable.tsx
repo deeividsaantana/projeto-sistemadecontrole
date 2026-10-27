@@ -32,14 +32,14 @@ const rotuloAprovacao = (row: FleetCurrentState) => (TOM_APROVACAO[row.approvalS
 
 const seloAprovacao = (row: FleetCurrentState) => {
   const { rotulo, tom } = TOM_APROVACAO[row.approvalStatus as keyof typeof TOM_APROVACAO] ?? TOM_APROVACAO.PENDENTE;
-  return <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold ${tom}`}>{rotulo}</span>;
+  return <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-sm font-bold ${tom}`}>{rotulo}</span>;
 };
 
 /** Texto de uma linha só: o que não couber some com reticências e fica inteiro na dica. */
 // Só na tabela (768 px ou mais): no cartão do celular o texto quebra inteiro.
 const UMA_LINHA = 'block md:truncate md:whitespace-nowrap';
 
-const ICONE = `inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-bold transition duration-200 active:scale-[0.96] md:size-8 md:min-h-0 md:min-w-0 md:px-0 ${FOCO}`;
+const ICONE = `inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-bold transition duration-200 active:scale-[0.96] md:size-7 md:min-h-0 md:min-w-0 md:px-0 ${FOCO}`;
 
 /**
  * Colunas da Situação do dia. Cada lançamento ocupa uma linha de 40 px: o
@@ -59,7 +59,7 @@ const colunas = (
     render: row => (
       <span className="flex min-w-0 items-center gap-2">
         {/* O mesmo desenho do Quadro: bater o olho e saber que máquina é. */}
-        <DesenhoMaquina tipo={silhuetaDo({ tipo: row.equipment.equipmentType, nome: row.equipment.equipmentName, familia: row.equipment.family } as Parameters<typeof silhuetaDo>[0])} className="h-6 w-10 shrink-0 max-md:hidden" />
+        <DesenhoMaquina tipo={silhuetaDo({ tipo: row.equipment.equipmentType, nome: row.equipment.equipmentName, familia: row.equipment.family } as Parameters<typeof silhuetaDo>[0])} className="h-5 w-8 shrink-0 max-md:hidden" />
         <span className={`${UMA_LINHA} min-w-0 md:max-w-[8rem] 2xl:max-w-[16rem]`}>
         <span className="font-mono font-bold text-slate-950">{row.equipment.prefix}</span>
         <span className="text-[#5b6870]"> · {row.equipment.equipmentType || row.equipment.family || 'Sem tipo'}</span>
@@ -75,7 +75,7 @@ const colunas = (
     render: row => row.driver?.employeeName ? (
       <span className={`${UMA_LINHA} md:max-w-[10rem] 2xl:max-w-[16rem]`}>
         <span className="font-semibold text-slate-900">{row.driver.employeeName}</span>
-        {row.driver.employeeCode && <span className="font-mono text-xs text-[#5b6870]"> {row.driver.employeeCode}</span>}
+        {row.driver.employeeCode && <span className="font-mono text-sm text-[#5b6870]"> {row.driver.employeeCode}</span>}
       </span>
     ) : <span className="whitespace-nowrap text-[#5b6870]">Sem motorista</span>,
   },
@@ -170,6 +170,7 @@ export default function FleetDataTable({
       <TabelaPadrao
         titulo="Lançamentos do dia"
         testId="frota-tabela"
+        densa
         linhas={rows}
         colunas={colunasDaTabela}
         idDaLinha={row => row.recordId}
