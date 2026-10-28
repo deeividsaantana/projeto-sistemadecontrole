@@ -615,6 +615,7 @@ export default function ColaboradoresView({
           )}
         </div>
         </>
-        )}
+      )}
+    </div>
   );
 }

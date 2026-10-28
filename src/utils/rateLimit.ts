@@ -27,6 +27,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
+import type { ComponentType } from 'react';
 
 /**
  * Mapa global de cooldowns (compartilhado entre componentes)
@@ -182,7 +183,7 @@ export function rateLimit(actionId: string, cooldownMs: number = 3000) {
  * (especialmente útil para forms)
  */
 export function withRateLimit<P extends object>(
-  Component: React.ComponentType<P>,
+  Component: ComponentType<P>,
   actionId: string,
   cooldownMs: number = 3000
 ) {
