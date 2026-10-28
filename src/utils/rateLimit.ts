@@ -181,7 +181,11 @@ export function rateLimit(actionId: string, cooldownMs: number = 3000) {
 /**
  * HOC para aplicar rate limiting a um componente
  * (especialmente útil para forms)
+ * 
+ * @experimental - Requer configuração adicional de JSX
+ * Comentado temporariamente - use useRateLimit() diretamente
  */
+/*
 export function withRateLimit<P extends object>(
   Component: ComponentType<P>,
   actionId: string,
@@ -197,3 +201,4 @@ export function withRateLimit<P extends object>(
     );
   };
 }
+*/
