@@ -79,7 +79,7 @@ export function RelatorioManutencaoDia({ relatorio, hoje, onData, motivos }: Pro
         <div className="flex flex-wrap items-end gap-2">
           <label className={`${ROTULO} block`}>
             Dia
-            <input type="date" value={relatorio.data} max={hoje} onChange={event => event.target.value && onData(event.target.value)} className={`${CAMPO} mt-1 sm:w-48`} />
+            <input type="date" value={relatorio.data} max={hoje} onChange={event => event.target.value && onData(event.target.value)} className={`${CAMPO} mt-1 block sm:w-48`} />
           </label>
           <button type="button" onClick={() => onData(hoje)} aria-pressed={relatorio.data === hoje} className={atalho(relatorio.data === hoje)}>Hoje</button>
           <button type="button" onClick={() => onData(ontem)} aria-pressed={relatorio.data === ontem} className={atalho(relatorio.data === ontem)}>Ontem</button>
@@ -101,7 +101,7 @@ export function RelatorioManutencaoDia({ relatorio, hoje, onData, motivos }: Pro
           idDaLinha={linha => linha.registroId}
           nomeDoItem={{ um: 'equipamento', varios: 'equipamentos' }}
           testIdLinha="relatorio-manutencao-linha"
-          resumo={<span className="tabular-nums">· {formatarMinutos(relatorio.totalMin)} paradas · {relatorio.conferidos} de {relatorio.equipamentos} conferidos</span>}
+          resumo={<span className="tabular-nums"> · {formatarMinutos(relatorio.totalMin)} paradas · {relatorio.conferidos} de {relatorio.equipamentos} conferidos</span>}
           vazio={<EmptyState icon={ClipboardList} title={`Nenhuma parada em ${dataBr(relatorio.data)}`} description="Nenhum equipamento entrou em manutenção neste dia." />}
         />
       </div>

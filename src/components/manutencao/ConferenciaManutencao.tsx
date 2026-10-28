@@ -47,7 +47,7 @@ export function ConferenciaManutencao({ registros, ordens, agora, podeEditar, po
         <div className="flex flex-wrap items-end gap-3">
           <label className={`${ROTULO} block`}>
             Dia
-            <input type="date" value={data} max={hoje} onChange={event => event.target.value && setData(event.target.value)} className={`${CAMPO} mt-1 sm:w-48`} />
+            <input type="date" value={data} max={hoje} onChange={event => event.target.value && setData(event.target.value)} className={`${CAMPO} mt-1 block sm:w-48`} />
           </label>
           <p className="pb-2.5 text-sm font-semibold text-slate-700" aria-live="polite">
             <strong className="tabular-nums">{relatorio.conferidos} de {relatorio.equipamentos}</strong> conferidos
@@ -157,7 +157,7 @@ function ItemConferencia({ linha, registro, registros, agora, podeEditar, podeRe
               </li>
             ))}
           </ul>
-          {parada.limiteAtingidoAs && <p className="mt-1 text-sm text-[#5b6870]">Bateu 10 h às {parada.limiteAtingidoAs}.</p>}
+          {parada.limiteAtingidoAs && <p className="mt-1 text-sm text-[#5b6870]">Bateu 10 h às {parada.limiteAtingidoAs}. O dia conta no máximo 10 h.</p>}
         </div>
       )}
 

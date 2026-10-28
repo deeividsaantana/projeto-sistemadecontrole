@@ -48,6 +48,32 @@ const noopImportAbastecimentos = (items: unknown[] = []) => ({
   totalAfter: 0,
 });
 
+/** Manutenção com estado: liberar, entrar e conferir voltam para a tela, como no app. */
+function ManutencaoPreview() {
+  const [registros, setRegistros] = React.useState(fx.controlesManutencao);
+  const [ordens, setOrdens] = React.useState(fx.ordensServico);
+  const [logs, setLogs] = React.useState<HistoryLog[]>([]);
+  const salvar = (registro: (typeof registros)[number], descricao = `Editou o controle de ${registro.prefixo}.`) => {
+    setRegistros(atual => atual.some(item => item.id === registro.id) ? atual.map(item => item.id === registro.id ? registro : item) : [registro, ...atual]);
+    setLogs(atual => [{ id: `log-${Date.now()}`, timestamp: new Date().toLocaleString('pt-BR'), usuario: 'Deivid Santana', acao: 'Editou', tela: 'Manutenção', descricao }, ...atual]);
+  };
+  return (
+    <ManutencaoTab
+      ordensServico={ordens}
+      equipamentos={fx.equipamentosManutencao}
+      controlesEquipamentos={registros}
+      responsavel="Deivid Santana"
+      podeEditar
+      podeReabrirConferencia
+      historyLogs={logs}
+      onSave={(ordem, novo) => setOrdens(atual => novo ? [ordem, ...atual] : atual.map(item => item.id === ordem.id ? ordem : item))}
+      onSaveControle={registro => salvar(registro)}
+      onSalvarConferencia={salvar}
+      onDelete={noop}
+    />
+  );
+}
+
 /** Quadro com estado: o que se salva no painel volta para o quadro, como no app. */
 function QuadroFrotaPreview({ dia, onAbrirSituacao }: { dia: string; onAbrirSituacao: () => void }) {
   const [registros, setRegistros] = React.useState(fx.controlesQuadro);
@@ -749,17 +775,7 @@ const screens: Record<string, React.ReactNode> = {
       onNavigate={noop}
     />
   ),
-  manutencao: (
-    <ManutencaoTab
-      ordensServico={fx.ordensServico}
-      equipamentos={fx.equipamentos}
-      controlesEquipamentos={fx.controlesEquipamentos}
-      responsavel="Deivid Santana"
-      podeEditar
-      onSave={noop}
-      onDelete={noop}
-    />
-  ),
+  manutencao: <ManutencaoPreview />,
   painel: (
     <Dashboard
       empresas={fx.empresas}
