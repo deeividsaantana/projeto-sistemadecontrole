@@ -151,43 +151,44 @@ export default function EquipesView({
   };
   
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header - responsivo */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Equipes</h2>
-          <p className="text-sm text-slate-600 mt-1">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900">Equipes</h2>
+          <p className="text-xs sm:text-sm text-slate-600 mt-1">
             {equipesFiltradas.length} {equipesFiltradas.length === 1 ? 'equipe' : 'equipes'}
           </p>
         </div>
         
         <button
           onClick={handleNova}
-          className="inline-flex items-center gap-2 rounded-lg border border-emerald-600 bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-600 bg-emerald-600 px-3 sm:px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
         >
           <Plus className="h-4 w-4" />
-          Nova equipe
+          <span className="hidden sm:inline">Nova equipe</span>
+          <span className="sm:hidden">Nova</span>
         </button>
       </div>
       
-      {/* Lista de equipes */}
-      <div className="space-y-3">
+      {/* Lista de equipes - responsivo */}
+      <div className="space-y-2 sm:space-y-3">
         {equipesFiltradas.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
-            <Users className="mx-auto h-12 w-12 text-slate-400" />
-            <h3 className="mt-4 font-bold text-slate-900">Nenhuma equipe encontrada</h3>
-            <p className="mt-1 text-sm text-slate-600">
+          <div className="rounded-lg sm:rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-8 sm:p-12 text-center">
+            <Users className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-slate-400" />
+            <h3 className="mt-3 sm:mt-4 text-sm sm:text-base font-bold text-slate-900">Nenhuma equipe encontrada</h3>
+            <p className="mt-1 text-xs sm:text-sm text-slate-600">
               Ajuste os filtros ou crie uma nova equipe
             </p>
           </div>
         ) : (
           equipesFiltradas.map(equipe => (
-            <div key={equipe.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-lg font-bold text-slate-900">{equipe.nome}</h3>
-                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${
+            <div key={equipe.id} className="rounded-lg sm:rounded-xl border border-slate-200 bg-white p-3 sm:p-5 shadow-sm transition-shadow hover:shadow-md">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900">{equipe.nome}</h3>
+                    <span className={`inline-flex rounded-full px-2 sm:px-2.5 py-0.5 text-xs font-bold ${
                       equipe.status === 'ativo'
                         ? 'bg-emerald-100 text-emerald-800'
                         : 'bg-slate-100 text-slate-600'
@@ -196,37 +197,37 @@ export default function EquipesView({
                     </span>
                   </div>
                   
-                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600">
-                    <span>
+                  <div className="mt-1.5 sm:mt-2 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1 sm:gap-x-4 sm:gap-y-1 text-xs sm:text-sm text-slate-600">
+                    <span className="truncate">
                       <strong className="font-medium text-slate-900">Encarregado:</strong> {equipe.responsavel}
                     </span>
                     <span>
                       <strong className="font-medium text-slate-900">Membros:</strong> {equipe.funcionarioIds.length}
                     </span>
                     {equipe.frenteServico && (
-                      <span>
+                      <span className="truncate">
                         <strong className="font-medium text-slate-900">Frente:</strong> {equipe.frenteServico}
                       </span>
                     )}
                   </div>
                 </div>
                 
-                <div className="flex gap-2">
+                <div className="flex gap-1.5 sm:gap-2 shrink-0">
                   <button
                     onClick={() => handleEditar(equipe)}
-                    className="rounded-lg border border-slate-300 bg-white p-2 text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400/50"
+                    className="rounded-lg border border-slate-300 bg-white p-1.5 sm:p-2 text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400/50"
                     title="Editar equipe"
                   >
-                    <Edit3 className="h-4 w-4" />
+                    <Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </button>
                   
                   {onDeleteGrupoEquipe && (
                     <button
                       onClick={() => handleDeletar(equipe)}
-                      className="rounded-lg border border-rose-300 bg-white p-2 text-rose-700 transition-colors hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-400/50"
+                      className="rounded-lg border border-rose-300 bg-white p-1.5 sm:p-2 text-rose-700 transition-colors hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-400/50"
                       title="Excluir equipe"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </button>
                   )}
                 </div>
@@ -236,30 +237,30 @@ export default function EquipesView({
         )}
       </div>
       
-      {/* Modal de edição */}
+      {/* Modal de edição - responsivo */}
       {equipeEditando && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 sm:p-4">
+          <div className="w-full h-full sm:h-auto sm:max-w-3xl sm:max-h-[90vh] overflow-y-auto sm:rounded-xl bg-white shadow-2xl">
             {/* Header do modal */}
-            <div className="sticky top-0 border-b border-slate-200 bg-white px-6 py-4">
+            <div className="sticky top-0 border-b border-slate-200 bg-white px-4 sm:px-6 py-3 sm:py-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-slate-900">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900">
                   {equipeEditando === 'nova' ? 'Nova Equipe' : 'Editar Equipe'}
                 </h3>
                 <button
                   onClick={handleFechar}
-                  className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                  className="rounded-lg p-1.5 sm:p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
               </div>
             </div>
             
-            {/* Corpo do modal */}
-            <div className="p-6 space-y-5">
+            {/* Corpo do modal - responsivo */}
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
               {/* Nome */}
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5">
+                <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">
                   Nome da equipe *
                 </label>
                 <input
@@ -267,13 +268,13 @@ export default function EquipesView({
                   value={formData.nome || ''}
                   onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                   placeholder="Ex: Equipe 01 - Terraplenagem"
-                  className="w-full rounded-lg border border-slate-300 px-4 py-2.5 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full rounded-lg border border-slate-300 px-3 sm:px-4 py-2 sm:py-2.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
               
               {/* Encarregado */}
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5">
+                <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">
                   Encarregado *
                 </label>
                 <input
@@ -281,13 +282,13 @@ export default function EquipesView({
                   value={formData.responsavel || ''}
                   onChange={(e) => setFormData({ ...formData, responsavel: e.target.value })}
                   placeholder="Nome do encarregado"
-                  className="w-full rounded-lg border border-slate-300 px-4 py-2.5 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full rounded-lg border border-slate-300 px-3 sm:px-4 py-2 sm:py-2.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
               
               {/* Frente de Serviço */}
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5">
+                <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">
                   Frente de Serviço
                 </label>
                 <input
@@ -295,7 +296,7 @@ export default function EquipesView({
                   value={formData.frenteServico || ''}
                   onChange={(e) => setFormData({ ...formData, frenteServico: e.target.value })}
                   placeholder="Ex: Terraplenagem, Drenagem, Pavimentação"
-                  className="w-full rounded-lg border border-slate-300 px-4 py-2.5 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full rounded-lg border border-slate-300 px-3 sm:px-4 py-2 sm:py-2.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
               

@@ -118,102 +118,105 @@ export default function PessoasPresenca(props: PessoasPresencaProps) {
   ]);
   
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      {/* Header fixo */}
-      <div className="mb-6">
-        <div className="mb-4 flex items-center justify-between">
+    <div className="min-h-screen bg-slate-50 p-3 sm:p-4 lg:p-6">
+      {/* Header fixo - responsivo */}
+      <div className="mb-4 lg:mb-6">
+        <div className="mb-3 lg:mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Pessoas & Presença</h1>
-            <p className="mt-1 text-sm text-slate-600">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Pessoas & Presença</h1>
+            <p className="mt-1 text-xs sm:text-sm text-slate-600">
               Gestão unificada de equipes, colaboradores e presença
             </p>
           </div>
         </div>
         
-        {/* Navegação com URL routing */}
-        <nav className="flex gap-2 border-b border-slate-200">
+        {/* Navegação com URL routing - scroll horizontal em mobile */}
+        <nav className="flex gap-1 sm:gap-2 border-b border-slate-200 overflow-x-auto scrollbar-hide">
           <NavLink
             to="/pessoas/painel"
             end
             className={({ isActive }) =>
-              `px-4 py-2.5 font-medium transition-colors ${
+              `px-3 sm:px-4 py-2 sm:py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
                 isActive
                   ? 'border-b-2 border-emerald-600 text-emerald-600'
                   : 'text-slate-600 hover:text-slate-900'
               }`
             }
           >
-            📊 Painel
+            <span className="hidden sm:inline">📊 </span>Painel
           </NavLink>
           <NavLink
             to="/pessoas/equipes"
             className={({ isActive }) =>
-              `px-4 py-2.5 font-medium transition-colors ${
+              `px-3 sm:px-4 py-2 sm:py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
                 isActive
                   ? 'border-b-2 border-emerald-600 text-emerald-600'
                   : 'text-slate-600 hover:text-slate-900'
               }`
             }
           >
-            👥 Equipes
+            <span className="hidden sm:inline">👥 </span>Equipes
           </NavLink>
           <NavLink
             to="/pessoas/colaboradores"
             className={({ isActive }) =>
-              `px-4 py-2.5 font-medium transition-colors ${
+              `px-3 sm:px-4 py-2 sm:py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
                 isActive
                   ? 'border-b-2 border-emerald-600 text-emerald-600'
                   : 'text-slate-600 hover:text-slate-900'
               }`
             }
           >
-            📋 Colaboradores
+            <span className="hidden sm:inline">📋 </span>Colaboradores
           </NavLink>
         </nav>
       </div>
       
-      {/* Filtros globais (compartilhados entre todas visões) */}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        {/* Busca */}
-        <div className="relative flex-1 min-w-[300px]">
+      {/* Filtros globais - stack vertical em mobile, horizontal em desktop */}
+      <div className="mb-4 lg:mb-6 flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3">
+        {/* Busca - 100% width em mobile */}
+        <div className="relative w-full sm:flex-1 sm:min-w-[250px] lg:min-w-[300px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="🔍 Buscar por nome, matrícula, função..."
+            placeholder="🔍 Buscar..."
             value={globalSearch}
             onChange={(e) => setGlobalSearch(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 py-2.5 pl-10 pr-4 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            className="w-full rounded-lg border border-slate-300 py-2 sm:py-2.5 pl-10 pr-4 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
           />
         </div>
         
-        {/* Filtro por empresa */}
-        <div className="relative">
-          <Filter className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        {/* Filtros em linha em mobile, lado a lado */}
+        <div className="flex gap-2 sm:gap-3">
+          {/* Filtro por empresa */}
+          <div className="relative flex-1 sm:flex-initial">
+            <Filter className="absolute left-2 sm:left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <select
+              value={globalEmpresa}
+              onChange={(e) => setGlobalEmpresa(e.target.value)}
+              className="w-full appearance-none rounded-lg border border-slate-300 py-2 sm:py-2.5 pl-8 sm:pl-10 pr-8 sm:pr-10 text-xs sm:text-sm font-medium focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            >
+              <option value="todas">Todas</option>
+              {props.empresas.map(emp => (
+                <option key={emp.id} value={emp.id}>{emp.nome}</option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Filtro por situação */}
           <select
-            value={globalEmpresa}
-            onChange={(e) => setGlobalEmpresa(e.target.value)}
-            className="appearance-none rounded-lg border border-slate-300 py-2.5 pl-10 pr-10 text-sm font-medium focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            value={globalSituacao}
+            onChange={(e) => setGlobalSituacao(e.target.value as typeof globalSituacao)}
+            className="appearance-none rounded-lg border border-slate-300 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
           >
-            <option value="todas">Todas empresas</option>
-            {props.empresas.map(emp => (
-              <option key={emp.id} value={emp.id}>{emp.nome}</option>
-            ))}
+            <option value="Todas">Todas</option>
+            <option value="ATIVO">Ativos</option>
+            <option value="INATIVO">Inativos</option>
+            <option value="FÉRIAS">Férias</option>
+            <option value="AFASTADO">Afastados</option>
+            <option value="DESMOBILIZADO">Desmob.</option>
           </select>
         </div>
-        
-        {/* Filtro por situação */}
-        <select
-          value={globalSituacao}
-          onChange={(e) => setGlobalSituacao(e.target.value as typeof globalSituacao)}
-          className="appearance-none rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-        >
-          <option value="Todas">Todas situações</option>
-          <option value="ATIVO">Ativos</option>
-          <option value="INATIVO">Inativos</option>
-          <option value="FÉRIAS">Férias</option>
-          <option value="AFASTADO">Afastados</option>
-          <option value="DESMOBILIZADO">Desmobilizados</option>
-        </select>
         
         {/* Limpar filtros */}
         {(globalSearch || globalEmpresa !== 'todas' || globalSituacao !== 'Todas') && (
@@ -223,9 +226,9 @@ export default function PessoasPresenca(props: PessoasPresencaProps) {
               setGlobalEmpresa('todas');
               setGlobalSituacao('Todas');
             }}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
           >
-            Limpar filtros
+            Limpar
           </button>
         )}
       </div>
