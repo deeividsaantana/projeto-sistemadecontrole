@@ -1,8 +1,12 @@
 import type { ConferenciaManutencao, ControleEquipamentoDiario, EventoControleEquipamentoDiario, OrdemServico } from '../types';
-import { horasParadasDoDia } from './horasParadasDoDia';
+import { horasParadasDoDia, type ParadaDoDia } from './horasParadasDoDia';
 import { isOrdemEncerrada } from './manutencao';
 
 export const OBSERVACAO_LIMITE = 'Encerrada pelo limite de 10 h paradas no dia.';
+
+export type ResultadoConferencia = { ok: true; registro: ControleEquipamentoDiario } | { ok: false; erro: string };
+
+const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const diaAnterior = (data: string) => {
   const d = new Date(`${data}T12:00:00Z`);
@@ -17,22 +21,26 @@ export const vemParadoDeOntem = (registros: readonly ControleEquipamentoDiario[]
 };
 
 /**
- * OS aberta cujo dia bateu 10 h fecha na hora do limite. O cálculo é o mesmo em
- * qualquer aparelho, então quem chegar primeiro grava e o resultado não muda.
+ * Fecha OS aberta cujo dia bateu 10 h, na hora do limite. Quem chama grava no histórico
+ * quem disparou o fechamento.
  */
 export const encerrarOrdensNoLimite = (
   registros: readonly ControleEquipamentoDiario[],
   ordens: readonly OrdemServico[],
   agora: Date,
-  responsavel: string,
 ): { ordens: OrdemServico[]; encerradas: OrdemServico[] } => {
   const encerradas: OrdemServico[] = [];
   const proximas = ordens.map(ordem => {
     if (isOrdemEncerrada(ordem.status)) return ordem;
-    const registro = registros.find(item => item.ordemServicoId === ordem.id
-      && horasParadasDoDia(item, agora, { vemParadoDeOntem: vemParadoDeOntem(registros, item) }).situacao === 'LIMITE_ATINGIDO');
-    if (!registro) return ordem;
-    const parada = horasParadasDoDia(registro, agora, { vemParadoDeOntem: vemParadoDeOntem(registros, registro) });
+    // Mais de um dia da mesma OS pode bater o limite: vale o primeiro dia, independente da ordem do array.
+    const limites = registros
+      .filter(item => item.ordemServicoId === ordem.id)
+      .map(item => ({ registro: item, parada: horasParadasDoDia(item, agora, { vemParadoDeOntem: vemParadoDeOntem(registros, item) }) }))
+      .filter(({ parada }) => parada.situacao === 'LIMITE_ATINGIDO')
+      .sort((a, b) => a.registro.data.localeCompare(b.registro.data) || a.registro.id.localeCompare(b.registro.id));
+    const primeiro = limites[0];
+    if (!primeiro) return ordem;
+    const { registro, parada } = primeiro;
     const fechada: OrdemServico = {
       ...ordem,
       status: 'Concluída',
@@ -40,7 +48,7 @@ export const encerrarOrdensNoLimite = (
       horaConclusao: parada.limiteAtingidoAs || undefined,
       horasParadas: parada.totalMin / 60,
       observacao: [ordem.observacao, OBSERVACAO_LIMITE].filter(Boolean).join(' '),
-      atualizadoEm: agora.toISOString(),
+      atualizadoEm: new Date(`${registro.data}T${parada.limiteAtingidoAs}:00-03:00`).toISOString(),
     };
     encerradas.push(fechada);
     return fechada;
@@ -70,7 +78,8 @@ export const informarLiberacaoReal = (
   hora: string,
   responsavel: string,
   agoraIso: string,
-): ControleEquipamentoDiario => {
+): ResultadoConferencia => {
+  if (!HORA.test(hora)) return { ok: false, erro: 'Informe a hora no formato HH:MM.' };
   const evento: EventoControleEquipamentoDiario = {
     id: `evt-${agoraIso}-${registro.equipamentoId}-conferencia`,
     ocorridoEm: agoraIso,
@@ -81,10 +90,13 @@ export const informarLiberacaoReal = (
     observacao: 'Liberação informada na conferência.',
     responsavel,
   };
-  return decidir({
+  const candidato = decidir({
     ...registro,
     status: 'Disponível',
     horaLiberacao: hora,
     eventos: [...(registro.eventos || []), evento],
   }, 'LIBERACAO_INFORMADA', responsavel, agoraIso);
+  const parada: ParadaDoDia = horasParadasDoDia(candidato, new Date(agoraIso));
+  if (parada.situacao === 'INCONSISTENTE') return { ok: false, erro: parada.motivoInconsistencia || 'Horário inconsistente.' };
+  return { ok: true, registro: candidato };
 };
