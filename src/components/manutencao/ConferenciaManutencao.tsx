@@ -121,7 +121,7 @@ function ItemConferencia({ linha, registro, registros, agora, podeEditar, podeRe
   };
   const informar = () => {
     const resultado = informarLiberacaoReal(registro, hora, responsavel, new Date().toISOString());
-    if (!resultado.ok) {
+    if ('erro' in resultado) {
       setErro(resultado.erro);
       return;
     }

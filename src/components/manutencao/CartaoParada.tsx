@@ -49,10 +49,10 @@ interface ItemLinhaDoTempo { id: string; hora: string; texto: string; detalhe?: 
 export const linhaDoTempo = (registro: ControleEquipamentoDiario): ItemLinhaDoTempo[] => {
   const eventos = registro.eventos || [];
   if (eventos.length === 0) {
-    return [
-      registro.horaEntradaManutencao ? { id: 'entrada', hora: registro.horaEntradaManutencao, texto: 'Entrou em manutenção', detalhe: registro.motivoManutencao } : null,
-      registro.horaLiberacao ? { id: 'liberacao', hora: registro.horaLiberacao, texto: 'Liberado' } : null,
-    ].filter((item): item is ItemLinhaDoTempo => item !== null);
+    const itens: ItemLinhaDoTempo[] = [];
+    if (registro.horaEntradaManutencao) itens.push({ id: 'entrada', hora: registro.horaEntradaManutencao, texto: 'Entrou em manutenção', detalhe: registro.motivoManutencao });
+    if (registro.horaLiberacao) itens.push({ id: 'liberacao', hora: registro.horaLiberacao, texto: 'Liberado' });
+    return itens;
   }
   return eventos.map(evento => ({
     id: evento.id,
