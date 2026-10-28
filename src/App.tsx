@@ -114,6 +114,8 @@ const ControleEquipamentosDiarioTab = lazy(() => import('./components/ControleEq
 const QuadroFrota = lazy(() => import('./components/quadroFrota/QuadroFrota'));
 const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
+// NOVO: Módulo unificado Pessoas & Presença (Beta paralela - Fases 0-3 completas)
+const PessoasPresencaBeta = lazy(() => import('./components/PessoasPresenca/PessoasPresencaWrapper'));
 const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
 const MeuDiaTab = lazy(() => import('./components/MeuDiaTab'));
 const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
@@ -4703,6 +4705,37 @@ export default function App() {
                   handleSaveFuncionario(proximo, false);
                   addNotification('Situação atualizada', descricao, 'info', 'Sistema Local');
                 }}
+              />
+            )}
+
+            {activeTab === 'pessoas-beta' && (
+              <PessoasPresencaBeta
+                empresas={empresas}
+                funcionarios={funcionarios}
+                obras={obras}
+                canteiros={canteirosNomes}
+                gruposEquipe={gruposEquipe}
+                presencasLink={presencasLinkAtivas}
+                historicoPresencas={historicoPresencas}
+                controlesEquipamentos={controleEquipamentosDiario}
+                ticketsJazida={ticketsJazidaAtivos}
+                checklists={checklists}
+                onSaveGrupoEquipe={handleSaveGrupoEquipe}
+                onDeleteGrupoEquipe={podeExcluirCadastro ? handleDeleteGrupoEquipe : undefined}
+                onUpdatePresencaLink={handleUpdatePresencaLink}
+                onLancarPresencaManual={handleLancarPresencaManual}
+                onInativarPresencaLink={handleInativarPresencaLink}
+                onReativarPresencaLink={handleReativarPresencaLink}
+                onResetPresencaDia={handleResetPresencaDia}
+                onSyncEquipesPlanilha={handleSyncEquipesPlanilha}
+                onRestorePresenceHistory={handleRestorePresenceHistory}
+                onAlterarSituacao={(proximo, descricao) => {
+                  handleSaveFuncionario(proximo, false);
+                  addNotification('Situação atualizada', descricao, 'info', 'Sistema Local');
+                }}
+                onNavigate={navigateTo}
+                podeAbrir={podeAbrir}
+                responsavel={activeUserName}
               />
             )}
 

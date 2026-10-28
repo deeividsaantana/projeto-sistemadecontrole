@@ -14,6 +14,7 @@ import {
   NotebookPen,
   FileBarChart,
   Database,
+  TestTubeDiagonal,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -54,6 +55,7 @@ export const NAVIGATION_GROUPS = [
     items: [
       { id: 'colaboradores', label: 'Colaboradores', icon: UserRound },
       { id: 'presenca', label: 'Presença e Controle', icon: Users },
+      { id: 'pessoas-beta', label: 'Pessoas & Presença 🧪', icon: TestTubeDiagonal },
     ],
   },
   {
@@ -98,6 +100,7 @@ export const PRIMARY_MODULE_IDS = [
   'lancamentos',
   'colaboradores',
   'presenca',
+  'pessoas-beta',
   'materiais',
   'relatorios',
   // Cadastros ficou sem caminho na limpeza de 2026-09-24: o atalho dentro de
