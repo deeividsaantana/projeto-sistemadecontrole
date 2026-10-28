@@ -92,6 +92,29 @@ test('vem parado de ontem: começa às 07:00', () => {
   assert.equal(r.totalMin, 105);
 });
 
+test('entrada sem hora (legado) e liberação com hora: usa horaEntradaManutencao, 104 min', () => {
+  const misto = registro([{ id: 'x', ocorridoEm: `${DIA}T12:12:00.000Z`, tipo: E, statusNovo: 'Em manutenção' }, ev(L, '11:00', 2)], {
+    horaEntradaManutencao: '09:16',
+  });
+  const r = horasParadasDoDia(misto, agoraEm('18:00'));
+  assert.equal(r.totalMin, 104);
+  assert.equal(r.situacao, 'LIBERADO');
+});
+
+test('entrada com hora e liberação sem hora (legado): usa horaLiberacao, 150 min', () => {
+  const misto = registro([ev(E, '07:30', 1), { id: 'y', ocorridoEm: `${DIA}T13:00:00.000Z`, tipo: L, statusNovo: 'Disponível' }], {
+    horaLiberacao: '10:00',
+  });
+  const r = horasParadasDoDia(misto, agoraEm('18:00'));
+  assert.equal(r.totalMin, 150);
+  assert.equal(r.situacao, 'LIBERADO');
+});
+
+test('campo do dia com hora inválida (legado) é inconsistente', () => {
+  const r = horasParadasDoDia(registro([], { horaEntradaManutencao: '9:16' }), agoraEm('18:00'));
+  assert.equal(r.situacao, 'INCONSISTENTE');
+});
+
 test('equipamento que não parou no dia dá zero e liberado', () => {
   const r = horasParadasDoDia(registro([], { status: 'Em operação' }), agoraEm('18:00'));
   assert.equal(r.totalMin, 0);

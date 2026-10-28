@@ -61,23 +61,49 @@ const descontoDoPeriodo = (inicio: number, fim: number) => PAUSAS_DO_DIA.reduce(
 
 type Marco = { tipo: 'entrada' | 'liberacao'; hora: string };
 
-/** Eventos com hora informada; registro antigo sem hora usa os campos do dia. */
+/**
+ * Resolve a hora de cada evento de manutenção, na ordem do histórico.
+ * Evento com hora informada usa essa hora. Evento sem hora é lançamento antigo:
+ * a primeira entrada sem hora usa horaEntradaManutencao e a última liberação sem hora
+ * usa horaLiberacao (escritores antigos sobrescrevem o campo com a liberação mais recente).
+ * Os demais eventos sem hora usam o horário em que foram registrados.
+ * Sem nenhum evento de manutenção, usa só os campos do dia.
+ */
 const marcosDoRegistro = (registro: ControleEquipamentoDiario): Marco[] | string => {
   const relevantes = (registro.eventos || []).filter(evento =>
     evento.tipo === 'ENTRADA_MANUTENCAO' || evento.tipo === 'LIBERACAO_MANUTENCAO');
-  const comHora = relevantes.filter((evento): evento is EventoControleEquipamentoDiario & { hora: string } => Boolean(evento.hora));
-  if (comHora.length === 0) {
-    const marcos: Marco[] = [];
+  const marcos: Marco[] = [];
+
+  if (relevantes.length === 0) {
     if (registro.horaEntradaManutencao) marcos.push({ tipo: 'entrada', hora: registro.horaEntradaManutencao });
     if (registro.horaLiberacao) marcos.push({ tipo: 'liberacao', hora: registro.horaLiberacao });
-    return marcos;
+  } else {
+    const indiceUltimaLiberacaoSemHora = relevantes.reduce(
+      (ultimo, evento, indice) => (evento.tipo === 'LIBERACAO_MANUTENCAO' && !evento.hora ? indice : ultimo), -1);
+    let entradaSemHoraUsada = false;
+    relevantes.forEach((evento, indice) => {
+      const tipo = evento.tipo === 'ENTRADA_MANUTENCAO' ? 'entrada' as const : 'liberacao' as const;
+      let hora = evento.hora;
+      if (!hora) {
+        if (tipo === 'entrada' && !entradaSemHoraUsada) {
+          entradaSemHoraUsada = true;
+          hora = registro.horaEntradaManutencao;
+        } else if (tipo === 'liberacao' && indice === indiceUltimaLiberacaoSemHora) {
+          hora = registro.horaLiberacao;
+        }
+        hora = hora || horaLocal(evento.ocorridoEm);
+      }
+      marcos.push({ tipo, hora });
+    });
+    // Registro antigo com liberação só no campo do dia, sem evento de liberação.
+    if (registro.horaLiberacao && !relevantes.some(evento => evento.tipo === 'LIBERACAO_MANUTENCAO')) {
+      marcos.push({ tipo: 'liberacao', hora: registro.horaLiberacao });
+    }
   }
-  const invalida = comHora.find(evento => !HORA.test(evento.hora));
+
+  const invalida = marcos.find(marco => !HORA.test(marco.hora));
   if (invalida) return `Hora inválida no lançamento: "${invalida.hora}".`;
-  return comHora.map(evento => ({
-    tipo: evento.tipo === 'ENTRADA_MANUTENCAO' ? 'entrada' as const : 'liberacao' as const,
-    hora: evento.hora,
-  }));
+  return marcos;
 };
 
 export const horasParadasDoDia = (
