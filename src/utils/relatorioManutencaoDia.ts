@@ -22,10 +22,16 @@ export interface RelatorioManutencaoDia {
   conferidos: number;
   aConferir: number;
   porTipo: Array<{ tipo: string; totalMin: number; equipamentos: number }>;
+  /** Paradas de hoje ainda abertas: não entram na conferência, mas impedem fechar o dia. */
+  parados: number;
   fechado: boolean;
 }
 
 const ORDEM_GRUPO = { LIMITE: 0, INCONSISTENTE: 1, OK: 2 } as const;
+
+const dataHoje = (agora: Date): string => new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+}).format(agora);
 
 export const montarRelatorioManutencaoDia = (
   data: string,
@@ -34,12 +40,16 @@ export const montarRelatorioManutencaoDia = (
   agora: Date,
 ): RelatorioManutencaoDia => {
   const numeroDa = new Map(ordens.map(ordem => [ordem.id, ordem.numero]));
+  const hoje = dataHoje(agora);
   const linhas = registros
     .filter(registro => registro.data === data)
     .map(registro => {
       const parada = horasParadasDoDia(registro, agora, { vemParadoDeOntem: vemParadoDeOntem(registros, registro) });
+      // Dia passado ainda aberto (sem liberação, abaixo de 10 h) precisa de decisão: liberação real ou continua amanhã.
+      const passado = registro.data < hoje;
       const grupo: LinhaRelatorioManutencao['grupo'] = parada.situacao === 'LIMITE_ATINGIDO'
-        ? 'LIMITE' : parada.situacao === 'INCONSISTENTE' ? 'INCONSISTENTE' : 'OK';
+        || (passado && parada.situacao === 'PARADO') ? 'LIMITE'
+        : parada.situacao === 'INCONSISTENTE' ? 'INCONSISTENTE' : 'OK';
       return {
         registroId: registro.id,
         equipamentoId: registro.equipamentoId,
@@ -48,7 +58,8 @@ export const montarRelatorioManutencaoDia = (
         ordemNumero: (registro.ordemServicoId && numeroDa.get(registro.ordemServicoId)) || '',
         parada,
         grupo,
-        conferido: grupo === 'OK' || Boolean(registro.conferenciaManutencao),
+        // Inconsistente só sai do grupo quando a liberação informada corrige o dado, então nunca conta como conferido.
+        conferido: grupo === 'OK' || (grupo === 'LIMITE' && Boolean(registro.conferenciaManutencao)),
       };
     })
     .filter(linha => linha.parada.periodos.length > 0 || linha.grupo === 'INCONSISTENTE')
@@ -64,6 +75,7 @@ export const montarRelatorioManutencaoDia = (
 
   const emConferencia = linhas.filter(linha => linha.grupo !== 'OK').length;
   const aConferir = linhas.filter(linha => !linha.conferido).length;
+  const parados = linhas.filter(linha => linha.grupo === 'OK' && linha.parada.situacao === 'PARADO').length;
   return {
     data,
     linhas,
@@ -73,7 +85,8 @@ export const montarRelatorioManutencaoDia = (
     conferidos: linhas.length - aConferir,
     aConferir,
     porTipo: [...porTipoMapa.values()].sort((a, b) => b.totalMin - a.totalMin),
-    fechado: aConferir === 0,
+    parados,
+    fechado: aConferir === 0 && parados === 0 && data < hoje,
   };
 };
 
