@@ -131,3 +131,9 @@ test('evento substituído na conferência fica no histórico e sai da conta', ()
   assert.equal(r.situacao, 'LIBERADO');
   assert.equal(r.totalMin, 60);
 });
+
+test('lançamento antigo com entrada só no campo e liberação em evento: a entrada do campo vale', () => {
+  const r = horasParadasDoDia(registro([ev(L, '11:00', 1)], { horaEntradaManutencao: '10:00' }), agoraEm('18:00'));
+  assert.equal(r.situacao, 'LIBERADO');
+  assert.equal(r.totalMin, 60);
+});

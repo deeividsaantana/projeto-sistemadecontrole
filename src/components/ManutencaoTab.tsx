@@ -26,7 +26,7 @@ import {
   type EquipmentFamily,
 } from '../utils/equipmentPresentation';
 import { downloadManutencaoWorkbook, downloadRelatorioManutencaoDia } from '../utils/manutencaoExport';
-import { OBSERVACAO_LIMITE, horasDaOrdem as somarHorasDaOrdem } from '../utils/manutencaoLimite';
+import { OBSERVACAO_LIMITE, horasMedidasDaOrdem } from '../utils/manutencaoLimite';
 import { montarRelatorioManutencaoDia } from '../utils/relatorioManutencaoDia';
 import { dataDeHoje, diasParaConferir, motivosDoDia, registrosDeManutencao } from '../utils/conferenciaManutencao';
 import { buildMaintenanceQueue } from '../utils/maintenanceQueue';
@@ -164,8 +164,7 @@ export default function ManutencaoTab({
   const registrosManutencao = useMemo(() => registrosDeManutencao(controlesEquipamentos), [controlesEquipamentos]);
   // Horas da OS = soma dos dias dela no controle da frota, cada dia até 10 h.
   // OS sem nenhum dia lançado não tem hora parada medida: fica vazio, não zero.
-  const ordensComDias = useMemo(() => new Set(registrosManutencao.map(registro => registro.ordemServicoId).filter(Boolean)), [registrosManutencao]);
-  const horasDaOrdem = (ordem: Pick<OrdemServico, 'id'>) => (ordensComDias.has(ordem.id) ? somarHorasDaOrdem(ordem, registrosManutencao, agora) : undefined);
+  const horasDaOrdem = (ordem: Pick<OrdemServico, 'id'>) => horasMedidasDaOrdem(ordem, registrosManutencao, agora);
   const relatorioHoje = useMemo(() => montarRelatorioManutencaoDia(hoje, registrosManutencao, ordensServico, agora), [hoje, registrosManutencao, ordensServico, agora]);
   const relatorioDoDia = useMemo(
     () => (dataRelatorio === hoje ? relatorioHoje : montarRelatorioManutencaoDia(dataRelatorio, registrosManutencao, ordensServico, agora)),
@@ -258,6 +257,7 @@ export default function ManutencaoTab({
       if (subtela === 'relatorio') await downloadRelatorioManutencaoDia(relatorioDoDia);
       else await downloadManutencaoWorkbook({
         ordens: lista,
+        registros: registrosManutencao,
         equipamentos,
         filtros: filtrosAtivos,
         periodo: usarPeriodo ? { from: periodo.from, to: periodo.to } : undefined,

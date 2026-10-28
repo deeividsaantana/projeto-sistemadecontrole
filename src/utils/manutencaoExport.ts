@@ -1,5 +1,5 @@
 import { getOperationalToday } from '../fleet/time';
-import type { Equipamento, OrdemServico } from '../types';
+import type { ControleEquipamentoDiario, Equipamento, OrdemServico } from '../types';
 import {
   addCorporateSummarySheet,
   autoFitCorporateColumns,
@@ -8,7 +8,8 @@ import {
   downloadCorporateWorkbook,
   styleCorporateWorksheet,
 } from './excelCorporate';
-import { calcularHorasParadas, isOrdemEncerrada } from './manutencao';
+import { isOrdemEncerrada } from './manutencao';
+import { horasMedidasDaOrdem } from './manutencaoLimite';
 import { EQUIPMENT_FAMILY_LABELS, classifyEquipment } from './equipmentPresentation';
 import { formatarMinutos } from './horasParadasDoDia';
 import { linhasExcelManutencaoDia, type RelatorioManutencaoDia } from './relatorioManutencaoDia';
@@ -16,6 +17,8 @@ import { linhasExcelManutencaoDia, type RelatorioManutencaoDia } from './relator
 export interface ManutencaoExportInput {
   ordens: OrdemServico[];
   equipamentos: Equipamento[];
+  /** Controle diário da frota: as horas da OS são a soma dos dias dela, cada um até 10 h. */
+  registros: ControleEquipamentoDiario[];
   /** Filtros ativos no momento da exportação, para constar no cabeçalho. */
   filtros: string[];
   periodo?: { from: string; to: string };
@@ -32,16 +35,18 @@ const COLUNAS = [
 
 /**
  * Planilha da manutenção: uma linha por ordem, mais abas de ranking por
- * equipamento e por motivo. O horímetro de cada OS é recalculado na hora da
- * exportação — ordens abertas continuam correndo, e congelar o número no
- * arquivo seria informação vencida no momento em que alguém abrisse.
+ * equipamento e por motivo. As horas de cada OS são as mesmas da tela: soma
+ * dos dias dela no controle da frota, cada dia até 10 h, recalculada na hora
+ * da exportação. OS sem nenhum dia lançado sai com a célula vazia.
  */
 export const downloadManutencaoWorkbook = async ({
   ordens,
   equipamentos,
+  registros,
   filtros,
   periodo,
 }: ManutencaoExportInput) => {
+  const agora = new Date();
   const workbook = await createCorporateWorkbook();
   configureCorporateWorkbook(workbook, 'Manutenção — ordens de serviço e horas paradas');
 
@@ -49,7 +54,7 @@ export const downloadManutencaoWorkbook = async ({
 
   const linhas = ordens.map(ordem => {
     const equipamento = equipamentoPorId.get(ordem.equipamentoId);
-    const horas = calcularHorasParadas(ordem);
+    const horas = horasMedidasDaOrdem(ordem, registros, agora);
     const aberta = !isOrdemEncerrada(ordem.status);
     return {
       ordem,

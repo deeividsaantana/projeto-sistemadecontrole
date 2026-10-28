@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  LIMITE_10H_DESDE, OBSERVACAO_LIMITE, confirmarDezHoras, continuaParadoAmanha, encerrarOrdensNoLimite, horasDaOrdem, informarLiberacaoReal,
+  LIMITE_10H_DESDE, OBSERVACAO_LIMITE, confirmarDezHoras, continuaParadoAmanha, encerrarOrdensNoLimite, horasDaOrdem, horasMedidasDaOrdem, informarLiberacaoReal,
   pendentesDeContinuidade, recalcularOrdemDoLimite, vemParadoDeOntem,
 } from '../src/utils/manutencaoLimite';
 import { horasParadasDoDia } from '../src/utils/horasParadasDoDia';
@@ -111,7 +111,7 @@ test('horas da OS somam os dias dela, cada um já limitado a 10 h', () => {
     { id: 'b1', ocorridoEm: '2026-10-30T10:00:00.000Z', hora: '07:00', tipo: 'ENTRADA_MANUTENCAO', statusNovo: 'Em manutenção' },
     { id: 'b2', ocorridoEm: '2026-10-30T17:00:00.000Z', hora: '14:00', tipo: 'LIBERACAO_MANUTENCAO', statusNovo: 'Disponível' },
   ] });
-  const inconsistente = registro({ id: 'c', data: '2026-10-31', eventos: [
+  const inconsistente = registro({ id: 'c', data: '2026-10-31', horaEntradaManutencao: '', eventos: [
     { id: 'c1', ocorridoEm: '2026-10-31T10:00:00.000Z', hora: '08:00', tipo: 'LIBERACAO_MANUTENCAO', statusNovo: 'Disponível' },
   ] });
   const outra = registro({ id: 'd', ordemServicoId: 'os2' });
@@ -163,4 +163,30 @@ test('OS fechada no limite é recalculada quando a conferência informa a libera
   assert.match(recalculada.observacao, /Concluída na conferência\./);
   assert.equal(recalcularOrdemDoLimite(fechada, [registro()], new Date('2026-10-31T11:00:00-03:00')), null);
   assert.equal(recalcularOrdemDoLimite(ordem, [res.registro], new Date('2026-10-31T11:00:00-03:00')), null);
+});
+
+test('informar liberação real em lançamento antigo sem eventos usa a entrada do campo', () => {
+  const antigo = registro({ eventos: [], horaEntradaManutencao: '10:00' });
+  const res = informarLiberacaoReal(antigo, '11:00', 'deivid', '2026-10-31T11:00:00.000Z');
+  assert.equal(res.ok, true);
+  if (!res.ok) return;
+  assert.equal(horasParadasDoDia(res.registro, new Date('2026-10-31T08:00:00-03:00')).totalMin, 60);
+});
+
+test('liberação antiga errada no campo (antes da entrada) não impede informar a real', () => {
+  const antigo = registro({ eventos: [], horaEntradaManutencao: '10:00', horaLiberacao: '07:00' });
+  const res = informarLiberacaoReal(antigo, '11:00', 'deivid', '2026-10-31T11:00:00.000Z');
+  assert.equal(res.ok, true);
+  if (!res.ok) return;
+  assert.equal(horasParadasDoDia(res.registro, new Date('2026-10-31T08:00:00-03:00')).totalMin, 60);
+});
+
+test('continuidade trata lançamento excluído do dia seguinte como existente', () => {
+  const excluido = { ...registro({ id: 'r2', data: '2026-10-31', chave: '2026-10-31|eq1', eventos: [] }), excluido: { em: 'x' } } as ControleEquipamentoDiario;
+  assert.deepEqual(pendentesDeContinuidade([continua('2026-10-30'), excluido], new Date('2026-10-31T09:00:00-03:00')), []);
+});
+
+test('OS sem nenhum dia lançado não tem hora medida: vazio, não zero', () => {
+  assert.equal(horasMedidasDaOrdem({ id: 'sem-dias' }, [registro()], new Date('2026-10-31T08:00:00-03:00')), undefined);
+  assert.equal(horasMedidasDaOrdem(ordem, [registro()], new Date('2026-10-31T08:00:00-03:00')), 10);
 });

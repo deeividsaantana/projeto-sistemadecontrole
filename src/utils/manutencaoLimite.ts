@@ -135,6 +135,13 @@ export const horasDaOrdem = (
   return Number((minutos / 60).toFixed(2));
 };
 
+/** Como horasDaOrdem, mas OS sem nenhum dia lançado fica sem número (ausência não vira zero). */
+export const horasMedidasDaOrdem = (
+  ordem: Pick<OrdemServico, 'id'>,
+  registros: readonly ControleEquipamentoDiario[],
+  agora: Date,
+): number | undefined => (registros.some(item => item.ordemServicoId === ordem.id) ? horasDaOrdem(ordem, registros, agora) : undefined);
+
 /**
  * Dias decididos como "continua parado amanhã" cujo dia seguinte já começou
  * e ainda não tem lançamento do equipamento: quem chama cria a entrada das
@@ -149,7 +156,8 @@ export const pendentesDeContinuidade = (
   return ativos.filter(item => {
     if (item.conferenciaManutencao?.decisao !== 'CONTINUA_AMANHA' || item.data < LIMITE_10H_DESDE) return false;
     const seguinte = somarDias(item.data, 1);
-    return seguinte <= hoje && !ativos.some(outro => outro.equipamentoId === item.equipamentoId && outro.data === seguinte);
+    // Lançamento excluído do dia seguinte conta como existente: a continuidade nunca ressuscita o que alguém apagou.
+    return seguinte <= hoje && !registros.some(outro => outro.equipamentoId === item.equipamentoId && outro.data === seguinte);
   });
 };
 

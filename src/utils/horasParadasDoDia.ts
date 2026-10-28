@@ -81,6 +81,11 @@ export const marcosDoRegistro = (registro: ControleEquipamentoDiario): Marco[] |
     if (registro.horaEntradaManutencao) marcos.push({ tipo: 'entrada', hora: registro.horaEntradaManutencao });
     if (registro.horaLiberacao) marcos.push({ tipo: 'liberacao', hora: registro.horaLiberacao });
   } else {
+    // Lançamento antigo: a entrada ficou só no campo do dia e a liberação veio
+    // depois como evento (Quadro, conferência). A entrada do campo abre o dia.
+    if (registro.horaEntradaManutencao && !relevantes.some(evento => evento.tipo === 'ENTRADA_MANUTENCAO')) {
+      marcos.push({ tipo: 'entrada', hora: registro.horaEntradaManutencao });
+    }
     const indiceUltimaLiberacaoSemHora = relevantes.reduce(
       (ultimo, evento, indice) => (evento.tipo === 'LIBERACAO_MANUTENCAO' && !evento.hora ? indice : ultimo), -1);
     let entradaSemHoraUsada = false;
