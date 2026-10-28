@@ -3467,6 +3467,7 @@ export default function App() {
       () => {
         setGruposEquipe(updated);
         writeStorageValue(localStorage, 'renea_grupos_equipes', JSON.stringify(updated));
+        void handleUploadToSupabase();
       }
     );
   };
