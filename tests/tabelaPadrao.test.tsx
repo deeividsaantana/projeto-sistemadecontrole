@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   OPCOES_POR_PAGINA,
@@ -209,7 +210,7 @@ test('o padrão antigo de tabela não volta: só a TabelaPadrao desenha tabela c
     if (statSync(caminho).isDirectory()) andar(caminho);
     else if (/\.tsx?$/.test(nome)) fontes.push(readFileSync(caminho, 'utf8'));
   });
-  andar(new URL('../src/', import.meta.url).pathname);
+  andar(join(fileURLToPath(new URL('.', import.meta.url)), '..', 'src'));
   assert.equal(fontes.some(fonte => /\b(TableShell|DataTable|usePaginacao)\b/.test(fonte)), false);
 });
 
