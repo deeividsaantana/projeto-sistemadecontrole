@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RENEA — Login Redesign</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --renea-green: #176b4d;
+    --renea-green-dark: #0f4e38;
+    --renea-green-light: #1a8a63;
+    --renea-orange: #f26a2e;
+    --renea-slate: #718087;
+    --surface: #fafcfb;
+    --ink: #0f1b15;
+    --ink-muted: #4a5a52;
+    --ink-faint: #8a9690;
+    --border: #d4ddd8;
+    --card-bg: rgba(255, 255, 255, 0.92);
+    --card-border: rgba(255, 255, 255, 0.6);
+    --radius: 1rem;
+    --radius-sm: 0.75rem;
+  }
+
+  html { font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  body { min-height: 100dvh; overflow: hidden; }
+
+  /* ═══ FULL-BLEED BACKGROUND ═══ */
+  .login-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+  }
+  .login-bg__img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: center 40%;
+    filter: brightness(0.45) saturate(1.1);
+  }
+  .login-bg__overlay {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(135deg, rgba(15,78,56,0.85) 0%, rgba(15,78,56,0.5) 40%, transparent 70%),
+      linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%);
+  }
+  .login-bg__noise {
+    position: absolute; inset: 0;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 128px;
+  }
+
+  /* ═══ LAYOUT ═══ */
+  .login-viewport {
+    position: relative; z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr minmax(0, 28rem);
+    min-height: 100dvh;
+    align-items: center;
+  }
+
+  /* ═══ LEFT: BRAND STORY ═══ */
+  .brand-side {
+    padding: clamp(2rem, 5vw, 5rem);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 100dvh;
+    gap: 2rem;
+  }
+  .brand-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.7);
+  }
+  .brand-badge__dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #34d399;
+    box-shadow: 0 0 0 4px rgba(52,211,153,0.2);
+    animation: pulse-dot 2.5s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(52,211,153,0.2); }
+    50% { box-shadow: 0 0 0 8px rgba(52,211,153,0.08); }
+  }
+  .brand-headline {
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 900;
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    color: #fff;
+    max-width: 16ch;
+  }
+  .brand-headline em {
+    font-style: normal;
+    color: #34d399;
+  }
+  .brand-sub {
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: rgba(255,255,255,0.55);
+    max-width: 38ch;
+  }
+  .brand-stats {
+    display: flex;
+    gap: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+  .brand-stat__value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.03em;
+  }
+  .brand-stat__label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 0.15rem;
+  }
+
+  /* ═══ RIGHT: FORM CARD ═══ */
+  .form-side {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    min-height: 100dvh;
+  }
+  .form-card {
+    width: 100%;
+    max-width: 24rem;
+    background: var(--card-bg);
+    backdrop-filter: blur(40px) saturate(1.4);
+    -webkit-backdrop-filter: blur(40px) saturate(1.4);
+    border: 1px solid var(--card-border);
+    border-radius: 1.5rem;
+    padding: 2.5rem 2rem 2rem;
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,0.03),
+      0 8px 40px rgba(0,0,0,0.12),
+      0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  .form-logo {
+    height: 2rem;
+    width: auto;
+    object-fit: contain;
+    margin-bottom: 2rem;
+  }
+  .form-eyebrow {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--renea-green);
+    margin-bottom: 0.5rem;
+  }
+  .form-title {
+    font-size: 1.625rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+    line-height: 1.15;
+  }
+  .form-subtitle {
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+    margin-top: 0.5rem;
+    line-height: 1.5;
+  }
+
+  .form-fields {
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.125rem;
+  }
+  .field-group { display: flex; flex-direction: column; gap: 0.375rem; }
+  .field-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: 0.01em;
+  }
+  .field-input {
+    height: 2.875rem;
+    width: 100%;
+    padding: 0 1rem;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: #fff;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .field-input::placeholder { color: var(--ink-faint); font-weight: 400; }
+  .field-input:focus {
+    border-color: var(--renea-green);
+    box-shadow: 0 0 0 4px rgba(23,107,77,0.08);
+  }
+  .field-password-wrap {
+    position: relative;
+  }
+  .field-password-wrap .field-input { padding-right: 3rem; }
+  .field-toggle-pw {
+    position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);
+    width: 2rem; height: 2rem;
+    display: flex; align-items: center; justify-content: center;
+    background: none; border: none; cursor: pointer;
+    color: var(--ink-faint);
+    border-radius: 0.5rem;
+    transition: background 0.15s, color 0.15s;
+  }
+  .field-toggle-pw:hover { background: rgba(0,0,0,0.04); color: var(--ink); }
+  .field-toggle-pw svg { width: 16px; height: 16px; }
+
+  /* alert */
+  .form-alert {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .form-alert--error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #9f1239;
+  }
+
+  /* submit */
+  .form-submit {
+    height: 2.875rem;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--renea-green);
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+    box-shadow: 0 2px 8px rgba(23,107,77,0.25), 0 1px 2px rgba(0,0,0,0.08);
+    margin-top: 0.25rem;
+  }
+  .form-submit:hover {
+    background: var(--renea-green-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(23,107,77,0.3), 0 2px 4px rgba(0,0,0,0.1);
+  }
+  .form-submit:active { transform: scale(0.985); }
+  .form-submit svg { width: 16px; height: 16px; }
+
+  .form-recovery {
+    display: block;
+    width: 100%;
+    text-align: center;
+    margin-top: 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--renea-green);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    transition: background 0.15s, color 0.15s;
+  }
+  .form-recovery:hover { background: rgba(23,107,77,0.06); color: var(--renea-green-dark); }
+
+  .form-footer {
+    margin-top: 1.75rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid rgba(0,0,0,0.06);
+    text-align: center;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--ink-faint);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+  }
+  .form-footer svg { width: 13px; height: 13px; color: var(--renea-green); }
+
+  /* ═══ ANIMATIONS ═══ */
+  @media (prefers-reduced-motion: no-preference) {
+    .brand-side > * {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .brand-side > :nth-child(1) { animation-delay: 0.1s; }
+    .brand-side > :nth-child(2) { animation-delay: 0.2s; }
+    .brand-side > :nth-child(3) { animation-delay: 0.3s; }
+    .brand-side > :nth-child(4) { animation-delay: 0.4s; }
+
+    .form-card {
+      opacity: 0;
+      transform: translateY(16px) scale(0.98);
+      animation: card-in 0.8s 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes fade-up {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes card-in {
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+  }
+
+  /* ═══ RESPONSIVE ═══ */
+  @media (max-width: 768px) {
+    .login-viewport {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr;
+    }
+    .brand-side {
+      min-height: auto;
+      padding: 2rem 1.5rem 1.5rem;
+      gap: 1rem;
+    }
+    .brand-headline { font-size: 2rem; }
+    .brand-sub { display: none; }
+    .brand-stats { display: none; }
+    .form-side {
+      min-height: auto;
+      padding: 0 1rem 2rem;
+      align-items: flex-start;
+    }
+    .form-card {
+      border-radius: 1.25rem;
+      padding: 2rem 1.5rem 1.5rem;
+    }
+  }
+
+  @media (max-width: 390px) {
+    .brand-side { padding: 1.5rem 1.25rem 1rem; }
+    .brand-headline { font-size: 1.75rem; }
+    .form-side { padding: 0 0.75rem 1.5rem; }
+    .form-card { padding: 1.75rem 1.25rem 1.25rem; }
+  }
+
+  /* ═══ TWEAKS PANEL ═══ */
+  .tweaks-toggle {
+    position: fixed; bottom: 1rem; right: 1rem; z-index: 100;
+    width: 2.5rem; height: 2.5rem;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.7);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    backdrop-filter: blur(8px);
+    transition: transform 0.2s;
+  }
+  .tweaks-toggle:hover { transform: scale(1.1); }
+  .tweaks-panel {
+    position: fixed; bottom: 4rem; right: 1rem; z-index: 100;
+    background: rgba(15,27,21,0.95);
+    backdrop-filter: blur(20px);
+    color: #fff;
+    padding: 1.25rem;
+    border-radius: 1rem;
+    font-size: 0.7rem;
+    min-width: 14rem;
+    display: none;
+    flex-direction: column;
+    gap: 0.75rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .tweaks-panel.open { display: flex; }
+  .tweaks-panel label { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; font-weight: 600; }
+  .tweaks-panel select {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    padding: 0.3rem 0.5rem;
+    border-radius: 0.4rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<!-- BACKGROUND -->
+<div class="login-bg">
+  <img
+    class="login-bg__img"
+    src="src/assets/renea-editorial/rodovia-duplicada-1600.webp"
+    alt=""
+    aria-hidden="true"
+  />
+  <div class="login-bg__overlay"></div>
+  <div class="login-bg__noise"></div>
+</div>
+
+<!-- LAYOUT -->
+<main class="login-viewport">
+
+  <!-- LEFT: BRAND -->
+  <div class="brand-side">
+    <div class="brand-badge">
+      <span class="brand-badge__dot"></span>
+      Operação conectada
+    </div>
+
+    <h1 class="brand-headline">
+      Decisões de campo com <em>informação confiável.</em>
+    </h1>
+
+    <p class="brand-sub">
+      Frota, equipes, combustível e produção reunidos em um ambiente operacional seguro.
+    </p>
+
+    <div class="brand-stats">
+      <div>
+        <div class="brand-stat__value">142</div>
+        <div class="brand-stat__label">Equipamentos</div>
+      </div>
+      <div>
+        <div class="brand-stat__value">38</div>
+        <div class="brand-stat__label">Equipes ativas</div>
+      </div>
+      <div>
+        <div class="brand-stat__value">99.7%</div>
+        <div class="brand-stat__label">Uptime</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: FORM -->
+  <div class="form-side">
+    <div class="form-card">
+      <img
+        class="form-logo"
+        src="src/assets/images/renea_logo_new.png"
+        alt="RENEA Infraestrutura"
+      />
+
+      <div class="form-eyebrow">Sistema integrado</div>
+      <h2 class="form-title">Acesse sua operação</h2>
+      <p class="form-subtitle">Entre com as credenciais autorizadas pela administração.</p>
+
+      <form class="form-fields" onsubmit="event.preventDefault()">
+        <div class="field-group">
+          <label class="field-label" for="email">E-mail corporativo</label>
+          <input
+            class="field-input"
+            id="email"
+            type="email"
+            placeholder="nome@renea.com.br"
+            autocomplete="email"
+            value="deivid.brandao@renea.com.br"
+          />
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="password">Senha de acesso</label>
+          <div class="field-password-wrap">
+            <input
+              class="field-input"
+              id="password"
+              type="password"
+              placeholder="Senha corporativa"
+              autocomplete="current-password"
+            />
+            <button type="button" class="field-toggle-pw" title="Mostrar senha" onclick="togglePw()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="form-submit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          Entrar no sistema
+        </button>
+
+        <button type="button" class="form-recovery">Recuperar senha</button>
+      </form>
+
+      <div class="form-footer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/></svg>
+        Acesso restrito a contas autorizadas
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- TWEAKS -->
+<button class="tweaks-toggle" onclick="document.querySelector('.tweaks-panel').classList.toggle('open')" title="Tweaks">⚙</button>
+<div class="tweaks-panel">
+  <strong style="font-size:0.75rem">Tweaks</strong>
+  <label>
+    Foto
+    <select onchange="changeBg(this.value)">
+      <option value="rodovia-duplicada">Rodovia duplicada</option>
+      <option value="ponte-construcao">Ponte construção</option>
+      <option value="rodovia-serra">Rodovia serra</option>
+    </select>
+  </label>
+  <label>
+    Overlay
+    <select onchange="changeOverlay(this.value)">
+      <option value="green">Verde RENEA</option>
+      <option value="dark">Escuro neutro</option>
+      <option value="warm">Quente</option>
+    </select>
+  </label>
+</div>
+
+<script>
+function togglePw() {
+  const input = document.getElementById('password');
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+function changeBg(name) {
+  document.querySelector('.login-bg__img').src = `src/assets/renea-editorial/${name}-1600.webp`;
+}
+function changeOverlay(mode) {
+  const el = document.querySelector('.login-bg__overlay');
+  const maps = {
+    green: 'linear-gradient(135deg, rgba(15,78,56,0.85) 0%, rgba(15,78,56,0.5) 40%, transparent 70%), linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%)',
+    dark: 'linear-gradient(135deg, rgba(10,10,10,0.85) 0%, rgba(10,10,10,0.5) 40%, transparent 70%), linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%)',
+    warm: 'linear-gradient(135deg, rgba(100,50,20,0.8) 0%, rgba(80,30,10,0.4) 40%, transparent 70%), linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%)',
+  };
+  el.style.background = maps[mode] || maps.green;
+}
+</script>
+</body>
+</html>
