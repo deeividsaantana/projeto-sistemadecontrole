@@ -178,39 +178,128 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 #mobile-drawer nav button[aria-current="page"] { background: #0d8a65 !important; color: #fff !important; box-shadow: none; }
 #mobile-drawer nav button svg { color: currentColor !important; }
 
-.login-shell { min-height: 100dvh; background: #fff; }
-.login-frame {
+/* ═══ LOGIN REDESIGN — full-bleed photo background ═══ */
+.login-redesign { position: relative; min-height: 100dvh; overflow: hidden; }
+.login-bg { position: fixed; inset: 0; z-index: 0; }
+.login-bg__img { 
+  width: 100%; height: 100%; object-fit: cover; object-position: center 40%; 
+  filter: brightness(0.45) saturate(1.1);
+  animation: login-bg-zoom 20s ease-in-out infinite alternate;
+}
+@keyframes login-bg-zoom {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.05); }
+}
+.login-bg__overlay {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(135deg, rgba(15,78,56,0.85) 0%, rgba(15,78,56,0.5) 40%, transparent 70%),
+    linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%);
+}
+.login-grid {
+  position: relative; z-index: 1;
   display: grid;
-  width: min(70rem, 100%);
-  min-height: min(45rem, calc(100dvh - 3rem));
-  grid-template-columns: minmax(0,1.08fr) minmax(24rem,.92fr);
-  overflow: hidden;
-  border: 1px solid #dbe4df;
-  border-radius: .35rem;
+  grid-template-columns: 1fr minmax(0, 28rem);
+  min-height: 100dvh;
+  align-items: center;
+}
+.login-brand {
+  padding: clamp(2rem, 5vw, 5rem);
+  display: flex; flex-direction: column; justify-content: flex-end;
+  min-height: 100dvh; gap: 2rem;
+}
+.login-brand-stats {
+  display: flex; gap: 2.5rem;
+  padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);
+}
+.login-pulse-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: #34d399;
+  box-shadow: 0 0 0 4px rgba(52,211,153,0.2);
+  animation: login-pulse 2.5s ease-in-out infinite;
+}
+@keyframes login-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(52,211,153,0.2); }
+  50% { box-shadow: 0 0 0 8px rgba(52,211,153,0.08); }
+}
+.login-form-side {
+  display: flex; align-items: center; justify-content: center;
+  padding: 0; min-height: 100dvh;
   background: #fff;
-  box-shadow: 0 30px 80px rgb(2 43 36 / .1);
-}
-.login-story {
   position: relative;
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: clamp(2rem,5vw,4.5rem);
-  overflow: hidden;
-  color: #10211c;
-  /* Enquadramento no vale e na pista, não no céu: sob o véu branco o céu
-     esbranquiçado da foto virava uma lavagem azul-clara, que briga com o verde
-     da marca e é justamente a cara de template que se quer evitar. */
-  background: linear-gradient(90deg, rgb(255 255 255 / .98) 0%, rgb(255 255 255 / .88) 46%, rgb(255 255 255 / .1) 100%), url("./assets/renea-editorial/rodovia-serra-1600.webp") 50% 68% / cover;
 }
-.login-story::after { position: absolute; inset: 0; content: ""; background: linear-gradient(120deg, rgb(15 143 100 / .1), rgb(15 143 100 / .02) 60%, transparent 82%); }
-.login-story > * { position: relative; z-index: 1; }
-.login-panel { display: flex; flex-direction: column; justify-content: center; padding: clamp(2rem,5vw,4.5rem); border-left: 1px solid #e2e8e4; background: #fbfdfb; }
-.login-story > * { animation: renea-white-reveal .65s cubic-bezier(.18,.8,.2,1) both; }
-.login-story > :nth-child(2) { animation-delay: 90ms; }
-.login-story > :nth-child(3) { animation-delay: 160ms; }
-.login-panel > * { animation: renea-white-reveal .65s .12s cubic-bezier(.18,.8,.2,1) both; }
+.login-form-side::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(16,185,129,0.03), transparent);
+  animation: login-shimmer 8s ease-in-out infinite;
+}
+@keyframes login-shimmer {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(200%); }
+}
+.login-card {
+  width: 100%; height: 100%;
+  min-height: 100dvh;
+  display: flex; flex-direction: column; justify-content: center;
+  background: #fff;
+  border: none;
+  border-radius: 0;
+  padding: clamp(2rem, 5vw, 4rem) clamp(2rem, 5vw, 3.5rem);
+  box-shadow: none;
+  position: relative;
+  z-index: 1;
+}
+.login-input {
+  height: 2.875rem; width: 100%; padding: 0 1rem;
+  border: 1.5px solid #d4ddd8; border-radius: 0.75rem;
+  background: #fff; font-size: 0.85rem; font-weight: 500;
+  color: #0f1b15; outline: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.login-input::placeholder { color: #8a9690; font-weight: 400; }
+.login-input:focus { 
+  border-color: #176b4d; 
+  box-shadow: 0 0 0 4px rgba(23,107,77,0.08); 
+  transform: translateY(-1px);
+}
+.login-submit {
+  height: 2.875rem; width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  border: none; border-radius: 0.75rem;
+  background: linear-gradient(135deg, #176b4d 0%, #0f5a3d 100%);
+  color: #fff;
+  font-size: 0.85rem; font-weight: 700; cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  box-shadow: 0 2px 8px rgba(23,107,77,0.25), 0 1px 2px rgba(0,0,0,0.08);
+  margin-top: 0.25rem;
+  position: relative;
+  overflow: hidden;
+}
+.login-submit::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+.login-submit:hover::before {
+  width: 300px;
+  height: 300px;
+}
+.login-submit:hover { 
+  background: linear-gradient(135deg, #0f5a3d 0%, #0a4530 100%);
+  transform: translateY(-2px); 
+  box-shadow: 0 8px 24px rgba(23,107,77,0.35), 0 4px 8px rgba(0,0,0,0.12); 
+}
+.login-submit:active { transform: scale(0.98) translateY(-1px); }
+.login-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
 @utility ticket-input {
   width: 100%;
@@ -226,11 +315,13 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .ticket-input:focus { border-color: #10b981; box-shadow: 0 0 0 3px rgb(16 185 129 / .12); }
 
 @media (max-width: 820px) {
-  .login-frame { min-height: auto; grid-template-columns: 1fr; border-radius: .35rem; }
-  .login-story { display: flex; min-height: 15rem; padding: 1.75rem; }
-  .login-story > div:first-child, .login-story > p:last-child { display: none; }
-  .login-story h1 { max-width: 12ch; font-size: 2.25rem; }
-  .login-panel { padding: 2rem 1.25rem; border-left: 0; border-top: 1px solid #e2e8e4; }
+  .login-grid { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .login-brand { min-height: auto; padding: 2rem 1.5rem 1.5rem; gap: 1rem; }
+  .login-brand h1 { font-size: 2rem !important; }
+  .login-brand-stats { display: none; }
+  .login-brand p.text-sm { display: none; }
+  .login-form-side { min-height: auto; padding: 0; align-items: flex-start; }
+  .login-card { border-radius: 0; padding: 2rem 1.5rem 1.5rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
