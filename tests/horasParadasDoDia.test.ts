@@ -120,3 +120,14 @@ test('equipamento que não parou no dia dá zero e liberado', () => {
   assert.equal(r.totalMin, 0);
   assert.equal(r.periodos.length, 0);
 });
+
+test('evento substituído na conferência fica no histórico e sai da conta', () => {
+  const corrigido = registro([
+    ev(E, '10:00', 1),
+    { ...ev(L, '08:30', 2), substituidoPor: 'novo' },
+    { ...ev(L, '11:00', 3), id: 'novo' },
+  ]);
+  const r = horasParadasDoDia(corrigido, agoraEm('18:00'));
+  assert.equal(r.situacao, 'LIBERADO');
+  assert.equal(r.totalMin, 60);
+});

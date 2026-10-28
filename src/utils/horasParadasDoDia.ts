@@ -59,7 +59,8 @@ const descontoDoPeriodo = (inicio: number, fim: number) => PAUSAS_DO_DIA.reduce(
   return total + Math.max(0, sobreposto);
 }, 0);
 
-type Marco = { tipo: 'entrada' | 'liberacao'; hora: string };
+/** Entrada ou liberação já com a hora resolvida; `eventoId` falta quando veio só dos campos do dia. */
+export type Marco = { tipo: 'entrada' | 'liberacao'; hora: string; eventoId?: string };
 
 /**
  * Resolve a hora de cada evento de manutenção, na ordem do histórico.
@@ -68,10 +69,12 @@ type Marco = { tipo: 'entrada' | 'liberacao'; hora: string };
  * usa horaLiberacao (escritores antigos sobrescrevem o campo com a liberação mais recente).
  * Os demais eventos sem hora usam o horário em que foram registrados.
  * Sem nenhum evento de manutenção, usa só os campos do dia.
+ * Evento marcado com `substituidoPor` (corrigido na conferência) fica no
+ * histórico, mas não entra na conta.
  */
-const marcosDoRegistro = (registro: ControleEquipamentoDiario): Marco[] | string => {
-  const relevantes = (registro.eventos || []).filter(evento =>
-    evento.tipo === 'ENTRADA_MANUTENCAO' || evento.tipo === 'LIBERACAO_MANUTENCAO');
+export const marcosDoRegistro = (registro: ControleEquipamentoDiario): Marco[] | string => {
+  const relevantes = (registro.eventos || []).filter(evento => !evento.substituidoPor
+    && (evento.tipo === 'ENTRADA_MANUTENCAO' || evento.tipo === 'LIBERACAO_MANUTENCAO'));
   const marcos: Marco[] = [];
 
   if (relevantes.length === 0) {
@@ -93,7 +96,7 @@ const marcosDoRegistro = (registro: ControleEquipamentoDiario): Marco[] | string
         }
         hora = hora || horaLocal(evento.ocorridoEm);
       }
-      marcos.push({ tipo, hora });
+      marcos.push({ tipo, hora, eventoId: evento.id });
     });
     // Registro antigo com liberação só no campo do dia, sem evento de liberação.
     if (registro.horaLiberacao && !relevantes.some(evento => evento.tipo === 'LIBERACAO_MANUTENCAO')) {

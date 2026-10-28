@@ -16,14 +16,35 @@ const ordem = (overrides: Partial<OrdemServico> = {}): OrdemServico => ({
   ...overrides,
 });
 
-test('fila de manutenção resume uma OS aberta por equipamento', () => {
-  const queue = buildMaintenanceQueue([ordem()], equipamentos, new Date('2026-09-18T12:00:00'));
+const controleDoDia = (overrides: Partial<ControleEquipamentoDiario> = {}): ControleEquipamentoDiario => ({
+  id: 'controle-hoje', chave: '2026-09-18|cb-01', data: '2026-09-18', funcionarioId: '', codigoFuncionario: '', nomeMotorista: '',
+  equipamentoId: 'cb-01', prefixo: 'CB701', familia: 'Basculantes', status: 'Em manutenção',
+  horaSaida: '', horaEntradaManutencao: '08:00', horaLiberacao: '', observacao: '', origem: 'SISTEMA', revisao: [],
+  criadoEm: '', atualizadoEm: '', ordemServicoId: 'os-1', ...overrides,
+});
+
+test('fila de manutenção resume uma OS aberta por equipamento, com as horas paradas de hoje', () => {
+  const queue = buildMaintenanceQueue([ordem()], equipamentos, new Date('2026-09-18T12:00:00-03:00'), [controleDoDia()]);
 
   assert.equal(queue.length, 1);
   assert.equal(queue[0].prefixo, 'CB701');
   assert.equal(queue[0].ordemId, 'os-1');
-  assert.equal(queue[0].horasParadas, 4);
+  assert.equal(queue[0].paradoHojeMin, 240);
   assert.equal(queue[0].motivo, 'Hidráulica');
+});
+
+test('fila sem lançamento de hoje não inventa horas', () => {
+  const queue = buildMaintenanceQueue([ordem()], equipamentos, new Date('2026-09-20T12:00:00-03:00'), [controleDoDia()]);
+  assert.equal(queue[0].paradoHojeMin, undefined);
+});
+
+test('fila vem da OS mais antiga para a mais nova, sem número que cresce sem fim', () => {
+  const queue = buildMaintenanceQueue([
+    ordem({ id: 'nova', dataAbertura: '2026-09-18' }),
+    ordem({ id: 'velha', dataAbertura: '2026-09-01' }),
+    ordem({ id: 'meio', dataAbertura: '2026-09-10' }),
+  ], equipamentos, new Date('2026-09-18T12:00:00-03:00'));
+  assert.deepEqual(queue.map(item => item.ordemId), ['velha', 'meio', 'nova']);
 });
 
 test('fila não mostra OS concluídas como parada em curso', () => {

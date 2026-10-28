@@ -1,5 +1,6 @@
 import type { ControleEquipamentoDiario, Equipamento, OrdemServico } from '../types';
-import { calcularHorasParadas, isOrdemEncerrada } from './manutencao';
+import { isOrdemEncerrada } from './manutencao';
+import { horasParadasDoDia } from './horasParadasDoDia';
 import { classifyEquipment, type EquipmentFamily } from './equipmentPresentation';
 
 export interface MaintenanceQueueItem {
@@ -13,7 +14,8 @@ export interface MaintenanceQueueItem {
   prioridade: OrdemServico['prioridade'];
   motivo: string;
   desde: string;
-  horasParadas: number | undefined;
+  /** Minutos parados hoje (já com pausas e o limite de 10 h); sem lançamento de hoje, vazio. */
+  paradoHojeMin: number | undefined;
   /** Indica a fonte do identificador exibido sem alterar o histórico original. */
   identificacaoOrigem: 'cadastro' | 'controle' | 'registro' | 'ausente';
 }
@@ -40,6 +42,8 @@ export const buildMaintenanceQueue = (
   controlesEquipamentos: ControleEquipamentoDiario[] = [],
 ): MaintenanceQueueItem[] => {
   const equipamentoPorId = new Map(equipamentos.map(item => [item.id, item]));
+  const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(agora);
+  const doDia = controlesEquipamentos.filter(item => item.data === hoje);
   const controlePorOrdem = new Map(
     controlesEquipamentos
       .filter(item => Boolean(item.ordemServicoId))
@@ -94,9 +98,13 @@ export const buildMaintenanceQueue = (
         prioridade: ordem.prioridade,
         motivo: (ordem.motivo || ordem.descricao || 'Sem motivo informado').trim(),
         desde: ordem.dataAbertura,
-        horasParadas: calcularHorasParadas(ordem, agora),
+        paradoHojeMin: (() => {
+          const registro = doDia.find(item => item.ordemServicoId === ordem.id) || doDia.find(item => item.equipamentoId === ordem.equipamentoId);
+          return registro ? horasParadasDoDia(registro, agora).totalMin : undefined;
+        })(),
         identificacaoOrigem,
       };
     })
-    .sort((a, b) => (b.horasParadas || 0) - (a.horasParadas || 0) || a.desde.localeCompare(b.desde));
+    // Da OS mais antiga para a mais nova; o sort do JS é estável no empate.
+    .sort((a, b) => a.desde.localeCompare(b.desde));
 };

@@ -7,11 +7,11 @@ import type { OrdemServico } from '../../types';
 import type { MaintenanceQueueItem } from '../../utils/maintenanceQueue';
 import { EQUIPMENT_FAMILY_LABELS, equipmentFamilyIcon } from '../../utils/equipmentPresentation';
 import { proximoStatusManutencao } from '../../utils/manutencao';
+import { formatarMinutos } from '../../utils/horasParadasDoDia';
 import { EmptyState, statusTone } from '../../shared/ui';
 import { CARTAO, FOCO } from '../cadastros/estilos';
 
 const formatarData = (valor?: string) => (valor ? valor.slice(0, 10).split('-').reverse().join('/') : '—');
-const formatarHoras = (valor?: number) => (valor === undefined ? '—' : `${valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`);
 
 interface Props {
   fila: readonly MaintenanceQueueItem[];
@@ -27,7 +27,7 @@ export function FilaOficina({ fila, ordensServico, podeEditar, onAvancar, onEdit
       <div className="flex items-end justify-between gap-4">
         <div>
           <h2 id="manutencao-fila-titulo" className="text-base font-black text-slate-900">Fila de oficina</h2>
-          <p className="text-sm text-slate-600">OS em curso, da que está parada há mais tempo para a mais nova.</p>
+          <p className="text-sm text-slate-600">OS em curso, da aberta há mais tempo para a mais nova.</p>
         </div>
         <span className="shrink-0 text-sm font-bold tabular-nums text-slate-600">{fila.length} em curso</span>
       </div>
@@ -56,7 +56,7 @@ export function FilaOficina({ fila, ordensServico, podeEditar, onAvancar, onEdit
                   <p className="mt-3 line-clamp-2 text-sm font-semibold text-slate-700" title={item.motivo}>{item.motivo}</p>
                   <dl className="mt-3 grid grid-cols-2 gap-x-3 border-y border-slate-100 py-2.5 text-xs">
                     <div><dt className="text-[#5b6870]">Desde</dt><dd className="mt-0.5 font-bold text-slate-700">{formatarData(item.desde)}</dd></div>
-                    <div className="text-right"><dt className="text-[#5b6870]">Tempo da OS</dt><dd className="mt-0.5 font-black tabular-nums text-rose-700">{formatarHoras(item.horasParadas)}</dd></div>
+                    <div className="text-right"><dt className="text-[#5b6870]">Parado hoje</dt><dd className="mt-0.5 font-black tabular-nums text-slate-900">{item.paradoHojeMin === undefined ? 'Sem lançamento hoje' : formatarMinutos(item.paradoHojeMin)}</dd></div>
                   </dl>
                   <footer className="mt-3 flex items-center justify-between gap-2">
                     <span className="text-xs font-bold text-[#5b6870]">{item.numero}</span>

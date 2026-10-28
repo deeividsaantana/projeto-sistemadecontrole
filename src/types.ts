@@ -1317,6 +1317,8 @@ export interface EventoControleEquipamentoDiario {
   ordemServicoId?: string;
   /** Quem informou a mudança. Sem isso o histórico não responde "quem alterou". */
   responsavel?: string;
+  /** Id do evento que corrigiu este na conferência. Fica no histórico, fora da conta. */
+  substituidoPor?: string;
 }
 
 export interface AprovacaoOperacional {
