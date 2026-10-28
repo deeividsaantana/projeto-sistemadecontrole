@@ -18,7 +18,7 @@ import type {
   TicketJazida,
   ChecklistEquipamento,
   ObraLocal
-} from '../types';
+} from '../../types';
 
 // ==================== TYPES ====================
 
