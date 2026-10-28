@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { locaisParaEscolher, rotuloDoLocal } from '../../modules/materials/locaisSge';
-import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, CheckCircle2, RotateCcw, SlidersHorizontal, type LucideIcon } from 'lucide-react';
+import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, CalendarDays, CheckCircle2, MapPin, Receipt, RotateCcw, Save, SlidersHorizontal, Truck, type LucideIcon } from 'lucide-react';
 import type { Empresa, EtapaServico, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../../types';
 import { saldoDoMaterial, validarMovimento } from '../../utils/estoque';
 import { formatarData, numero } from '../../utils/formato';
 import { lerNumeroBR, recentes } from '../../modules/materials/lancamentoRapido';
 import { Modal } from '../../shared/ui';
-import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO, ROTULO } from '../cadastros/estilos';
+import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO } from '../cadastros/estilos';
 import CampoEscolha from './CampoEscolha';
 
 const TIPOS: ReadonlyArray<{ id: TipoMovimentoMaterial; nome: string; ajuda: string; Icone: LucideIcon }> = [
@@ -74,6 +74,41 @@ const proximoFormulario = (atual: Formulario): Formulario => ({
   ...atual, quantidade: '', notaFiscal: '', quantidadeNota: '', placa: '', ticket: '', valorTotal: '', solicitacaoCompra: '', observacao: '',
 });
 
+
+/*
+ * Molde de formulário do SGE (Nova Apropriação), pedido em 27/10/2026: o
+ * lançamento em seções com título e ícone, rótulo curto em caixa alta com *
+ * no obrigatório, o que o sistema preenche sozinho em cinza e o que ele
+ * calcula em verde-claro. As colunas seguem a largura do formulário (container
+ * query), então a mesma grade serve na tela de lançar e na janela de corrigir.
+ */
+const RotuloSge = ({ children, obrigatorio = false, htmlFor }: { children: ReactNode; obrigatorio?: boolean; htmlFor?: string }) => (
+  <label htmlFor={htmlFor} className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-600">
+    {children}
+    {obrigatorio && <span className="text-rose-700" aria-hidden="true"> *</span>}
+  </label>
+);
+
+/** Campo que o sistema preenche (cinza) ou calcula (verde-claro): só leitura. */
+const CampoAutomatico = ({ id, valor, vazio, calculado = false, tom }: { id: string; valor?: ReactNode; vazio: string; calculado?: boolean; tom?: string }) => (
+  <output id={id} className={`flex min-h-11 w-full items-center rounded-xl border px-3 text-sm lg:min-h-10 ${calculado ? 'border-emerald-100 bg-emerald-50/70 font-bold tabular-nums' : 'border-slate-200 bg-slate-50'} ${valor ? (tom ?? 'text-slate-900') : 'text-slate-500'}`}>
+    {valor || vazio}
+  </output>
+);
+
+const SecaoSge = ({ titulo, Icone, children }: { titulo: string; Icone: LucideIcon; children: ReactNode }) => (
+  <section aria-label={titulo} className="rounded-2xl border border-slate-200 bg-white">
+    <h3 className="flex items-center gap-2 rounded-t-2xl border-b border-slate-200 bg-slate-50/70 px-4 py-3 text-sm font-bold text-slate-900">
+      <Icone className="size-4 text-[#176b4d]" aria-hidden="true" />
+      {titulo}
+    </h3>
+    <div className="grid grid-cols-1 gap-x-4 gap-y-3 p-4 @xl:grid-cols-6 @3xl:grid-cols-12">{children}</div>
+  </section>
+);
+
+/** Campos do formulário na ordem da tela, para o Enter andar de um para o outro. */
+const SELETOR_CAMPOS = 'input:not([type="checkbox"]):not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])';
+
 interface Props {
   aberto: boolean;
   /** Com um movimento, a janela edita; sem, lança um novo. */
@@ -104,10 +139,10 @@ export default function FormLancamento({ aberto, editando, hoje, materiais, movi
   const prefixo = pagina ? 'lancar' : 'lancamento';
   const [form, setForm] = useState<Formulario>(() => formularioNovo(hoje));
   const [voltarAValer, setVoltarAValer] = useState(false);
-  const [maisCampos, setMaisCampos] = useState(false);
   const [erro, setErro] = useState('');
   const [lancado, setLancado] = useState('');
   const quantidadeRef = useRef<HTMLInputElement>(null);
+  const corpoRef = useRef<HTMLDivElement>(null);
 
   // Ao abrir: editar carrega o movimento; lançar novo mantém o que ficou da última vez.
   useEffect(() => {
@@ -117,7 +152,6 @@ export default function FormLancamento({ aberto, editando, hoje, materiais, movi
     setVoltarAValer(false);
     if (editando) {
       setForm(formularioDe(editando));
-      setMaisCampos(Boolean(editando.fatorConversao || editando.valorUnitario || editando.valorTotal || editando.solicitacaoCompra || editando.observacao));
     } else {
       setForm(atual => (atual.materialId ? proximoFormulario(atual) : formularioNovo(hoje)));
     }
@@ -214,14 +248,37 @@ export default function FormLancamento({ aberto, editando, hoje, materiais, movi
     quantidadeRef.current?.focus();
   };
 
-  // Shift+Enter salva e já deixa pronto para a próxima viagem.
-  // Na tela de lançar, o Enter sozinho já registra e deixa pronto para a próxima.
+  /** Leva o foco para o campo seguinte; no último, registra. */
+  const avancar = (de: Element | null) => {
+    const campos = Array.from(corpoRef.current?.querySelectorAll<HTMLElement>(SELETOR_CAMPOS) ?? []);
+    const indice = de ? campos.indexOf(de as HTMLElement) : -1;
+    const proximo = campos[indice + 1];
+    if (proximo) proximo.focus();
+    else if (pagina && !editando) registrarEOutro();
+  };
+
+  // Como no SGE: Enter passa para o próximo campo, Ctrl+S ou F2 salvam.
+  // Shift+Enter continua salvando e deixando pronto para a próxima viagem.
   const teclar = (event: KeyboardEvent<HTMLDivElement>) => {
-    const alvo = (event.target as HTMLElement).tagName;
-    if (event.key === 'Enter' && (event.shiftKey || pagina) && !editando && alvo !== 'TEXTAREA' && alvo !== 'BUTTON' && alvo !== 'SUMMARY') {
+    const alvo = event.target as HTMLElement;
+    const salvarAgora = event.key === 'F2' || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's');
+    if (salvarAgora) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (pagina && !editando) registrarEOutro(); else registrar();
+      return;
+    }
+    if (event.key !== 'Enter' || alvo.tagName === 'TEXTAREA' || alvo.tagName === 'BUTTON' || alvo.tagName === 'SUMMARY') return;
+    if (event.shiftKey && !editando) {
       event.preventDefault();
       event.stopPropagation();
       registrarEOutro();
+      return;
+    }
+    if (pagina && alvo.matches(SELETOR_CAMPOS)) {
+      event.preventDefault();
+      event.stopPropagation();
+      avancar(alvo);
     }
   };
 
@@ -233,19 +290,7 @@ export default function FormLancamento({ aberto, editando, hoje, materiais, movi
     setLancado('');
   };
 
-  const rodape = pagina ? (
-    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
-      <button type="button" onClick={limpar} className={BOTAO_SECUNDARIO}>
-        <RotateCcw className="size-4" aria-hidden="true" />
-        Começar de novo
-      </button>
-      <button type="button" onClick={registrarEOutro} className={`${BOTAO_PRIMARIO} px-6 text-base`} data-testid="materiais-registrar">
-        <CheckCircle2 className="size-5" aria-hidden="true" />
-        Registrar
-        <kbd className="hidden rounded border border-white/40 px-1.5 text-xs font-semibold text-white/80 lg:inline">Enter</kbd>
-      </button>
-    </div>
-  ) : (
+  const rodape = (
     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <button type="button" onClick={onFechar} className={BOTAO_SECUNDARIO}>Cancelar</button>
       {!editando && (
@@ -260,8 +305,11 @@ export default function FormLancamento({ aberto, editando, hoje, materiais, movi
     </div>
   );
 
+  const unidade = material?.unidade;
+  const comTransporte = form.tipo !== 'Ajuste';
+
   const corpo = (
-    <div className="space-y-4" onKeyDown={teclar}>
+    <div ref={corpoRef} className="@container space-y-4" onKeyDown={teclar}>
       {lancado && (
         <p role="status" className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">
           <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#176b4d]" aria-hidden="true" />
@@ -285,33 +333,39 @@ export default function FormLancamento({ aberto, editando, hoje, materiais, movi
         </div>
       )}
 
-      <fieldset>
-        <legend className={ROTULO}>O que aconteceu?</legend>
-        <div role="radiogroup" className="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {TIPOS.map(({ id, nome, ajuda, Icone }) => {
-            const ativo = form.tipo === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                role="radio"
-                aria-checked={ativo}
-                onClick={() => setForm(atual => ({ ...atual, tipo: id, consumo: id === 'Saída' ? atual.consumo : false }))}
-                className={`flex ${pagina ? 'min-h-20 px-4' : 'min-h-16 px-3'} flex-col items-start justify-center gap-0.5 rounded-xl border py-2 text-left transition duration-200 ${FOCO} ${ativo
-                  ? 'border-[#176b4d] bg-[#176b4d] text-white'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-500'}`}
-              >
-                <span className={`flex items-center gap-1.5 font-bold ${pagina ? 'text-base' : 'text-sm'}`}><Icone className={pagina ? 'size-5' : 'size-4'} aria-hidden="true" />{nome}</span>
-                <span className={`text-xs ${ativo ? 'text-white/80' : 'text-slate-500'}`}>{ajuda}</span>
-              </button>
-            );
-          })}
+      <SecaoSge titulo="Dados do lançamento" Icone={CalendarDays}>
+        <div className="@xl:col-span-2 @3xl:col-span-3">
+          <RotuloSge htmlFor={`${prefixo}-data`} obrigatorio>Data</RotuloSge>
+          <input id={`${prefixo}-data`} type="date" value={form.data} onChange={event => mudar('data', event.target.value)} className={`${CAMPO} lg:min-h-10`} />
         </div>
-      </fieldset>
+        <fieldset className="@xl:col-span-4 @3xl:col-span-9">
+          <legend className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-600">O que aconteceu<span className="text-rose-700" aria-hidden="true"> *</span></legend>
+          <div role="radiogroup" className="grid grid-cols-2 gap-2 @lg:grid-cols-4">
+            {TIPOS.map(({ id, nome, ajuda, Icone }) => {
+              const ativo = form.tipo === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={ativo}
+                  title={ajuda}
+                  onClick={() => setForm(atual => ({ ...atual, tipo: id, consumo: id === 'Saída' ? atual.consumo : false }))}
+                  className={`flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-2 text-sm font-bold transition duration-200 lg:min-h-10 ${FOCO} ${ativo
+                    ? 'border-[#176b4d] bg-[#176b4d] text-white'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-500'}`}
+                >
+                  <Icone className="size-4 shrink-0" aria-hidden="true" />
+                  {nome}
+                  <span className="sr-only">: {ajuda}</span>
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
 
-      <div>
-        <label htmlFor={`${prefixo}-material`} className={ROTULO}>Material</label>
-        <div className="mt-1">
+        <div className="@xl:col-span-3 @3xl:col-span-5">
+          <RotuloSge htmlFor={`${prefixo}-material`} obrigatorio>Material (nome ou código)</RotuloSge>
           <CampoEscolha
             id={`${prefixo}-material`}
             testId="lancamento-material"
@@ -323,153 +377,196 @@ export default function FormLancamento({ aberto, editando, hoje, materiais, movi
             onEnter={() => quantidadeRef.current?.focus()}
           />
         </div>
-        {material && (
-          <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600" aria-live="polite">
-            <span>Saldo agora: <strong className="tabular-nums text-slate-900">{numero(saldoAgora)} {material.unidade}</strong></span>
-            {quantidade !== 0 && form.tipo !== 'Transferência' && (
-              <span>Depois deste lançamento: <strong className={`tabular-nums ${tomSaldo}`}>{numero(saldoDepois)} {material.unidade}</strong></span>
-            )}
-            {minimo > 0 && <span>Mínimo: <span className="tabular-nums">{numero(minimo)}</span></span>}
-          </p>
-        )}
-      </div>
+        <div className="@xl:col-span-3 @3xl:col-span-7">
+          <RotuloSge htmlFor={`${prefixo}-descricao`}>Descrição do material</RotuloSge>
+          <CampoAutomatico
+            id={`${prefixo}-descricao`}
+            valor={material && [material.codigo, material.categoria, material.unidade].filter(Boolean).join(' · ')}
+            vazio="Preenchido ao escolher o material"
+          />
+        </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className={`block ${ROTULO}`}>
-          Quantidade{material ? ` (${material.unidade})` : ''}
+        <div className="@xl:col-span-2 @3xl:col-span-3">
+          <RotuloSge htmlFor={`${prefixo}-quantidade`} obrigatorio>Quantidade{unidade ? ` (${unidade})` : ''}</RotuloSge>
           <input
+            id={`${prefixo}-quantidade`}
             ref={quantidadeRef}
             inputMode="decimal"
             value={form.quantidade}
             onChange={event => mudar('quantidade', event.target.value)}
             placeholder={form.tipo === 'Ajuste' ? 'Use - para baixar' : 'Ex: 12,5'}
             data-testid="lancamento-quantidade"
-            className={`mt-1 ${CAMPO} text-lg font-bold tabular-nums`}
+            className={`${CAMPO} text-lg font-bold tabular-nums lg:min-h-10`}
           />
-        </label>
-        <label className={`block ${ROTULO}`}>
-          Data
-          <input type="date" value={form.data} onChange={event => mudar('data', event.target.value)} className={`mt-1 ${CAMPO}`} />
-        </label>
-
-        {form.tipo === 'Entrada' && (
-          <>
-            <div className="sm:col-span-2">
-              <label htmlFor={`${prefixo}-fornecedor`} className={ROTULO}>Fornecedor</label>
-              <div className="mt-1">
-                <CampoEscolha id={`${prefixo}-fornecedor`} opcoes={opcoesFornecedor} recentes={fornecedoresRecentes} valor={form.fornecedorId} onEscolher={id => mudar('fornecedorId', id)} vazio="Sem fornecedor informado" placeholder="Digite o nome do fornecedor" />
-              </div>
-            </div>
-            <label className={`block ${ROTULO}`}>
-              Nota fiscal
-              <input value={form.notaFiscal} onChange={event => mudar('notaFiscal', event.target.value)} inputMode="numeric" className={`mt-1 ${CAMPO}`} />
-            </label>
-            <label className={`block ${ROTULO}`}>
-              Quantidade na nota
-              <input inputMode="decimal" value={form.quantidadeNota} onChange={event => mudar('quantidadeNota', event.target.value)} placeholder="Se for diferente do que chegou" className={`mt-1 ${CAMPO}`} />
-            </label>
-          </>
-        )}
-
-        {form.tipo !== 'Ajuste' && (
-          <>
-            <label className={`block ${ROTULO}`}>
-              Placa
-              <input value={form.placa} onChange={event => mudar('placa', event.target.value.toUpperCase())} placeholder="ABC1D23" className={`mt-1 ${CAMPO} uppercase`} />
-            </label>
-            <label className={`block ${ROTULO}`}>
-              Ticket ou vale
-              <input value={form.ticket} onChange={event => mudar('ticket', event.target.value)} className={`mt-1 ${CAMPO}`} />
-            </label>
-          </>
-        )}
-
-        {form.tipo === 'Transferência' && (
-          <label className={`block ${ROTULO} sm:col-span-2`}>
-            De onde saiu
-            <input value={form.origem} onChange={event => mudar('origem', event.target.value)} list={`${prefixo}-destinos`} className={`mt-1 ${CAMPO}`} />
-          </label>
-        )}
-
-        {form.tipo !== 'Ajuste' && (
-          <>
-            <label className={`block ${ROTULO}`}>
-              {form.tipo === 'Transferência' ? 'Para onde foi' : 'Local ou frente'}
-              <input value={form.destino} onChange={event => mudar('destino', event.target.value)} list={`${prefixo}-destinos`} placeholder="Ex: Ramo 700" className={`mt-1 ${CAMPO}`} />
-              <datalist id={`${prefixo}-destinos`}>{destinosRecentes.map(item => <option key={item} value={item} />)}</datalist>
-            </label>
-            <label className={`block ${ROTULO}`}>
-              Ramo ou trecho
-              <select
-                value={form.etapaServicoId}
-                onChange={event => {
-                  const etapa = etapas.find(item => item.id === event.target.value);
-                  setForm(atual => ({ ...atual, etapaServicoId: event.target.value, destino: atual.destino || etapa?.nome || '' }));
-                }}
-                className={`mt-1 ${CAMPO}`}
-              >
-                <option value="">Sem ramo</option>
-                {locaisParaEscolher(etapas, form.etapaServicoId).map(([grupo, itens]) => (
-                  <optgroup key={grupo} label={grupo}>{itens.map(item => <option key={item.id} value={item.id}>{rotuloDoLocal(item)}</option>)}</optgroup>
-                ))}
-              </select>
-            </label>
-          </>
-        )}
-
-        {form.tipo === 'Saída' && (
-          <>
-            <label className={`block ${ROTULO}`}>
-              Serviço
-              <input value={form.servico} onChange={event => mudar('servico', event.target.value)} className={`mt-1 ${CAMPO}`} />
-            </label>
-            <label className="flex min-h-11 items-center gap-3 self-end rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700">
-              <input type="checkbox" checked={form.consumo} onChange={event => mudar('consumo', event.target.checked)} className="size-5 accent-[#176b4d]" />
-              Conta como uso do ramo
-            </label>
-          </>
-        )}
-      </div>
-
-      <details open={maisCampos} onToggle={event => setMaisCampos(event.currentTarget.open)} className="rounded-xl border border-slate-200">
-        <summary className={`min-h-11 cursor-pointer rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 ${FOCO}`}>
-          Mais campos: valor, fator, solicitação de compra e observação
-        </summary>
-        <div className="grid gap-3 border-t border-slate-200 p-3 sm:grid-cols-2">
-          <label className={`block ${ROTULO}`}>
-            Valor unitário (R$)
-            <input inputMode="decimal" value={form.valorUnitario} onChange={event => mudar('valorUnitario', event.target.value)} className={`mt-1 ${CAMPO}`} />
-          </label>
-          <label className={`block ${ROTULO}`}>
-            Valor total (R$)
-            <input inputMode="decimal" value={form.valorTotal} onChange={event => mudar('valorTotal', event.target.value)} placeholder={totalCalculado ? totalCalculado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''} className={`mt-1 ${CAMPO}`} />
-          </label>
-          <label className={`block ${ROTULO}`}>
-            Fator ou densidade
-            <input inputMode="decimal" value={form.fatorConversao} onChange={event => mudar('fatorConversao', event.target.value)} placeholder="Ex: 1,6" className={`mt-1 ${CAMPO}`} />
-          </label>
-          {form.tipo === 'Entrada' && (
-            <label className={`block ${ROTULO}`}>
-              Solicitação de compra
-              <input value={form.solicitacaoCompra} onChange={event => mudar('solicitacaoCompra', event.target.value)} placeholder="SC 93011249" className={`mt-1 ${CAMPO}`} />
-            </label>
-          )}
-          <label className={`block ${ROTULO} sm:col-span-2`}>
-            Observação
-            <textarea value={form.observacao} onChange={event => mudar('observacao', event.target.value)} rows={2} className={`mt-1 ${CAMPO} py-2`} />
-          </label>
         </div>
-      </details>
+        <div className="@xl:col-span-2 @3xl:col-span-3">
+          <RotuloSge htmlFor={`${prefixo}-saldo-agora`}>Saldo agora</RotuloSge>
+          <CampoAutomatico id={`${prefixo}-saldo-agora`} calculado valor={material && `${numero(saldoAgora)} ${material.unidade}`} vazio="—" />
+        </div>
+        <div className="@xl:col-span-2 @3xl:col-span-3">
+          <RotuloSge htmlFor={`${prefixo}-saldo-depois`}>Saldo depois</RotuloSge>
+          <CampoAutomatico
+            id={`${prefixo}-saldo-depois`}
+            calculado
+            tom={tomSaldo}
+            valor={material && quantidade !== 0 && form.tipo !== 'Transferência' ? `${numero(saldoDepois)} ${material.unidade}` : undefined}
+            vazio={form.tipo === 'Transferência' ? 'Transporte não muda o saldo' : '—'}
+          />
+        </div>
+        <div className="@xl:col-span-6 @3xl:col-span-3">
+          <RotuloSge htmlFor={`${prefixo}-minimo`}>Estoque mínimo</RotuloSge>
+          <CampoAutomatico id={`${prefixo}-minimo`} valor={minimo > 0 && material ? `${numero(minimo)} ${material.unidade}` : undefined} vazio="Sem mínimo" />
+        </div>
+      </SecaoSge>
+
+      {comTransporte && (
+        <SecaoSge titulo={form.tipo === 'Entrada' ? 'Nota e transporte' : 'Transporte'} Icone={Truck}>
+          {form.tipo === 'Entrada' && (
+            <>
+              <div className="@xl:col-span-6 @3xl:col-span-6">
+                <RotuloSge htmlFor={`${prefixo}-fornecedor`}>Fornecedor</RotuloSge>
+                <CampoEscolha id={`${prefixo}-fornecedor`} opcoes={opcoesFornecedor} recentes={fornecedoresRecentes} valor={form.fornecedorId} onEscolher={id => mudar('fornecedorId', id)} vazio="Sem fornecedor informado" placeholder="Digite o nome do fornecedor" onEnter={() => avancar(document.getElementById(`${prefixo}-fornecedor`))} />
+              </div>
+              <div className="@xl:col-span-3 @3xl:col-span-3">
+                <RotuloSge htmlFor={`${prefixo}-nota`}>Nota fiscal</RotuloSge>
+                <input id={`${prefixo}-nota`} value={form.notaFiscal} onChange={event => mudar('notaFiscal', event.target.value)} inputMode="numeric" className={`${CAMPO} lg:min-h-10`} />
+              </div>
+              <div className="@xl:col-span-3 @3xl:col-span-3">
+                <RotuloSge htmlFor={`${prefixo}-quantidade-nota`}>Quantidade na nota</RotuloSge>
+                <input id={`${prefixo}-quantidade-nota`} inputMode="decimal" value={form.quantidadeNota} onChange={event => mudar('quantidadeNota', event.target.value)} placeholder="Se diferente" className={`${CAMPO} lg:min-h-10`} />
+              </div>
+            </>
+          )}
+          <div className="@xl:col-span-3 @3xl:col-span-3">
+            <RotuloSge htmlFor={`${prefixo}-placa`}>Placa</RotuloSge>
+            <input id={`${prefixo}-placa`} value={form.placa} onChange={event => mudar('placa', event.target.value.toUpperCase())} placeholder="ABC1D23" className={`${CAMPO} uppercase lg:min-h-10`} />
+          </div>
+          <div className="@xl:col-span-3 @3xl:col-span-3">
+            <RotuloSge htmlFor={`${prefixo}-ticket`}>Ticket ou vale</RotuloSge>
+            <input id={`${prefixo}-ticket`} value={form.ticket} onChange={event => mudar('ticket', event.target.value)} className={`${CAMPO} lg:min-h-10`} />
+          </div>
+          {form.tipo === 'Entrada' && (
+            <div className="@xl:col-span-6 @3xl:col-span-6">
+              <RotuloSge htmlFor={`${prefixo}-sc`}>Solicitação de compra</RotuloSge>
+              <input id={`${prefixo}-sc`} value={form.solicitacaoCompra} onChange={event => mudar('solicitacaoCompra', event.target.value)} placeholder="SC 93011249" className={`${CAMPO} lg:min-h-10`} />
+            </div>
+          )}
+        </SecaoSge>
+      )}
+
+      {comTransporte && (
+        <SecaoSge titulo="Local de aplicação" Icone={MapPin}>
+          {form.tipo === 'Transferência' && (
+            <div className="@xl:col-span-3 @3xl:col-span-4">
+              <RotuloSge htmlFor={`${prefixo}-origem`}>De onde saiu</RotuloSge>
+              <input id={`${prefixo}-origem`} value={form.origem} onChange={event => mudar('origem', event.target.value)} list={`${prefixo}-destinos`} className={`${CAMPO} lg:min-h-10`} />
+            </div>
+          )}
+          <div className="@xl:col-span-3 @3xl:col-span-4">
+            <RotuloSge htmlFor={`${prefixo}-destino`}>{form.tipo === 'Transferência' ? 'Para onde foi' : 'Local ou frente'}</RotuloSge>
+            <input id={`${prefixo}-destino`} value={form.destino} onChange={event => mudar('destino', event.target.value)} list={`${prefixo}-destinos`} placeholder="Ex: Ramo 700" className={`${CAMPO} lg:min-h-10`} />
+            <datalist id={`${prefixo}-destinos`}>{destinosRecentes.map(item => <option key={item} value={item} />)}</datalist>
+          </div>
+          <div className="@xl:col-span-3 @3xl:col-span-4">
+            <RotuloSge htmlFor={`${prefixo}-ramo`}>Ramo ou trecho</RotuloSge>
+            <select
+              id={`${prefixo}-ramo`}
+              value={form.etapaServicoId}
+              onChange={event => {
+                const etapa = etapas.find(item => item.id === event.target.value);
+                setForm(atual => ({ ...atual, etapaServicoId: event.target.value, destino: atual.destino || etapa?.nome || '' }));
+              }}
+              className={`${CAMPO} lg:min-h-10`}
+            >
+              <option value="">Sem ramo</option>
+              {locaisParaEscolher(etapas, form.etapaServicoId).map(([grupo, itens]) => (
+                <optgroup key={grupo} label={grupo}>{itens.map(item => <option key={item.id} value={item.id}>{rotuloDoLocal(item)}</option>)}</optgroup>
+              ))}
+            </select>
+          </div>
+          {form.tipo === 'Saída' && (
+            <>
+              <div className="@xl:col-span-3 @3xl:col-span-4">
+                <RotuloSge htmlFor={`${prefixo}-servico`}>Serviço</RotuloSge>
+                <input id={`${prefixo}-servico`} value={form.servico} onChange={event => mudar('servico', event.target.value)} className={`${CAMPO} lg:min-h-10`} />
+              </div>
+              <label className="flex min-h-11 items-center gap-3 self-end rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700 @xl:col-span-3 @3xl:col-span-4 lg:min-h-10">
+                <input type="checkbox" checked={form.consumo} onChange={event => mudar('consumo', event.target.checked)} className="size-5 accent-[#176b4d]" />
+                Conta como uso do ramo
+              </label>
+            </>
+          )}
+        </SecaoSge>
+      )}
+
+      <SecaoSge titulo="Valores e observações" Icone={Receipt}>
+        <div className="@xl:col-span-2 @3xl:col-span-3">
+          <RotuloSge htmlFor={`${prefixo}-valor-unitario`}>Valor unitário (R$)</RotuloSge>
+          <input id={`${prefixo}-valor-unitario`} inputMode="decimal" value={form.valorUnitario} onChange={event => mudar('valorUnitario', event.target.value)} className={`${CAMPO} tabular-nums lg:min-h-10`} />
+        </div>
+        <div className="@xl:col-span-2 @3xl:col-span-3">
+          <RotuloSge htmlFor={`${prefixo}-valor-total`}>Valor total (R$)</RotuloSge>
+          <input id={`${prefixo}-valor-total`} inputMode="decimal" value={form.valorTotal} onChange={event => mudar('valorTotal', event.target.value)} placeholder={totalCalculado ? totalCalculado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''} className={`${CAMPO} tabular-nums lg:min-h-10`} />
+        </div>
+        <div className="@xl:col-span-2 @3xl:col-span-2">
+          <RotuloSge htmlFor={`${prefixo}-fator`}>Fator</RotuloSge>
+          <input id={`${prefixo}-fator`} inputMode="decimal" value={form.fatorConversao} onChange={event => mudar('fatorConversao', event.target.value)} placeholder="Ex: 1,6" className={`${CAMPO} tabular-nums lg:min-h-10`} />
+        </div>
+        <div className="@xl:col-span-6 @3xl:col-span-4">
+          <RotuloSge htmlFor={`${prefixo}-observacao`}>Observações</RotuloSge>
+          <textarea id={`${prefixo}-observacao`} value={form.observacao} onChange={event => mudar('observacao', event.target.value)} rows={1} placeholder="Anotações adicionais…" className={`${CAMPO} min-h-11 py-2 lg:min-h-10`} />
+        </div>
+      </SecaoSge>
 
       {erro && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">{erro}</p>}
+
+      {/* Como o "Total geral apontado" do SGE: o resultado do lançamento em destaque. */}
+      <div className="flex justify-center">
+        <p className="inline-flex flex-wrap items-baseline justify-center gap-x-3 rounded-2xl border-2 border-[#176b4d]/30 bg-white px-6 py-3 text-center" aria-live="polite" data-testid="lancamento-saldo-final">
+          <span className="text-xs font-bold uppercase tracking-wide text-slate-700">{form.tipo === 'Transferência' ? 'Saldo (transporte não muda)' : 'Saldo depois deste lançamento'}</span>
+          <strong className={`text-xl tabular-nums ${material ? tomSaldo : 'text-slate-500'}`}>
+            {material ? `${numero(form.tipo === 'Transferência' ? saldoAgora : saldoDepois)} ${material.unidade}` : '—'}
+          </strong>
+        </p>
+      </div>
+
+      {/* No celular o botão do topo sai da vista com a rolagem: repete aqui embaixo. */}
+      {pagina && !editando && (
+        <button type="button" onClick={registrarEOutro} className={`${BOTAO_PRIMARIO} w-full lg:hidden`}>
+          <Save className="size-5" aria-hidden="true" />
+          Registrar
+        </button>
+      )}
     </div>
   );
 
   if (pagina) {
     return (
-      <section data-materiais-reveal aria-label="Lançar" className="rounded-2xl border border-slate-200 bg-white">
-        <div className="p-4 sm:p-5">{corpo}</div>
-        <div className="sticky bottom-0 rounded-b-2xl border-t border-slate-200 bg-white p-3 sm:px-5">{rodape}</div>
+      <section data-materiais-reveal aria-labelledby={`${prefixo}-titulo`} className="flex flex-col gap-4">
+        {/* Cabeçalho do formulário no molde do SGE: título, dica do teclado e o
+            salvar à direita. Fica preso no topo enquanto o formulário rola. */}
+        {/* A faixa em volta tem a cor do fundo da página: o que rola por baixo
+            não aparece nos cantos arredondados nem no respiro de cima. */}
+        <div className="z-10 bg-(--renea-v3-paper) lg:sticky lg:-top-0.5 lg:pt-0.5">
+        <header className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-[0_8px_18px_-16px_rgba(15,40,31,0.45)] sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h2 id={`${prefixo}-titulo`} className="text-lg font-bold text-slate-900">Novo lançamento de material</h2>
+            <p className="text-sm text-slate-600 max-lg:hidden">Dica: <kbd className="font-semibold">Enter</kbd> passa para o próximo campo; <kbd className="font-semibold">Ctrl+S</kbd> ou <kbd className="font-semibold">F2</kbd> registra.</p>
+          </div>
+          <div className="flex shrink-0 flex-col-reverse gap-2 sm:flex-row">
+            <button type="button" onClick={limpar} className={BOTAO_SECUNDARIO}>
+              <RotateCcw className="size-4" aria-hidden="true" />
+              Começar de novo
+            </button>
+            <button type="button" onClick={registrarEOutro} aria-keyshortcuts="Control+S F2" className={`${BOTAO_PRIMARIO} px-5`} data-testid="materiais-registrar">
+              <Save className="size-5" aria-hidden="true" />
+              Registrar
+              <span className="hidden text-sm font-semibold text-white/85 lg:inline">(Ctrl+S / F2)</span>
+            </button>
+          </div>
+        </header>
+        </div>
+        {corpo}
       </section>
     );
   }
@@ -478,7 +575,7 @@ export default function FormLancamento({ aberto, editando, hoje, materiais, movi
     <Modal
       open={aberto}
       title={editando ? 'Editar lançamento' : 'Novo lançamento'}
-      size="md"
+      size="lg"
       telaCheia="materiais-lancamento"
       onSubmit={registrar}
       onClose={onFechar}

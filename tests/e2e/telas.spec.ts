@@ -268,6 +268,34 @@ test('materiais: abas agrupadas no topo, sem menu lateral, e a página não rola
   await expect(page.getByRole('heading', { name: 'Uso por ramo', level: 2 })).toBeAttached();
 });
 
+test('materiais: um botão verde por tela e o Registrar no topo do lançamento, como no SGE', async ({ page }, info) => {
+  test.skip(info.project.name === 'celular', 'no celular a página rola e o Registrar se repete embaixo');
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto('/?screen=materiais&shell=1&secao=lancar');
+  await expect(page.getByTestId('materiais-acao-principal'), 'em Lançar o formulário já está na tela').toHaveCount(0);
+  const registrar = page.getByTestId('materiais-registrar');
+  await expect(registrar).toBeVisible();
+  await page.locator('#materiais-dados').evaluate(area => { area.scrollTop = area.scrollHeight; });
+  await expect(registrar, 'o cabeçalho do formulário fica preso no topo').toBeInViewport();
+  await expect(page.getByTestId('lancamento-saldo-final')).toBeInViewport();
+  await page.goto('/?screen=materiais&shell=1&secao=viagens');
+  await expect(page.getByTestId('jazida-novo-ticket')).toBeVisible();
+  await expect(page.getByTestId('materiais-acao-principal'), 'na jazida a ação é Novo ticket').toHaveCount(0);
+  await page.goto('/?screen=materiais&shell=1&secao=estoque');
+  await expect(page.getByTestId('materiais-acao-principal')).toBeVisible();
+});
+
+test('materiais: movimentos com totais, período e visão agrupada por material', async ({ page }) => {
+  await page.goto('/?screen=materiais&shell=1&secao=movimentos');
+  await expect(page.getByRole('region', { name: 'Totais dos movimentos' })).toBeVisible();
+  await page.getByRole('button', { name: 'Últimos 45 dias' }).click();
+  await expect(page.locator('#movimentos-de')).not.toHaveValue('');
+  await page.getByRole('button', { name: 'Todo o período' }).click();
+  await page.getByTestId('movimentos-agrupado').click();
+  await expect(page.getByText('Entrou − saiu').first(), 'coluna (ou campo do cartão) da visão agrupada').toBeAttached();
+  await expect(page.getByRole('group', { name: 'Mostrar só' }), 'tipo de movimento só na visão detalhada').toHaveCount(0);
+});
+
 test('abas agrupadas: 18 subtelas cabem a 1366 px e andam pelas setas', async ({ page }, info) => {
   test.skip(info.project.name === 'celular', 'no celular a faixa rola por dentro');
   await page.setViewportSize({ width: 1366, height: 768 });

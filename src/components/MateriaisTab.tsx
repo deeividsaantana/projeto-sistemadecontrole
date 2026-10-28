@@ -6,7 +6,7 @@ import { Suspense, lazy, useDeferredValue, useEffect, useMemo, useRef, useState,
 import { locaisParaEscolher, nomesSemLocal, rotuloDoLocal } from '../modules/materials/locaisSge';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { CheckCircle2, Keyboard, Layers, MapPin, PackagePlus, Plus, Search, Undo2, X } from 'lucide-react';
+import { CalendarDays, CheckCircle2, MapPin, PackagePlus, Plus, Search, Undo2, X } from 'lucide-react';
 import type { Empresa, EtapaServico, Material, MovimentoMaterial, PrevistoMaterial, TipoMovimentoMaterial } from '../types';
 import { posicaoEstoque, type PosicaoEstoque } from '../utils/estoque';
 import { cancelMaterialMovement } from '../modules/materials/materialFieldUse';
@@ -18,7 +18,7 @@ import MateriaisImportacoesPanel from './MateriaisImportacoesPanel';
 import MateriaisUtilizacaoPanel from './MateriaisUtilizacaoPanel';
 import { ORDEM_SECOES, abasDeMateriais, nomeDaSecao, type SecaoMateriais } from './materiais/MateriaisSecoes';
 import MateriaisVisaoGeral from './materiais/MateriaisVisaoGeral';
-import { ListaMovimentos } from './materiais/MateriaisListas';
+import { ListaAgrupada, ListaMovimentos, ResumoMovimentos, agruparPorMaterial } from './materiais/MateriaisListas';
 import FormLancamento from './materiais/FormLancamento';
 import GradeViagens from './materiais/GradeViagens';
 import LancarMateriais from './materiais/LancarMateriais';
@@ -134,6 +134,10 @@ export default function MateriaisTab({
   const [editandoMovimento, setEditandoMovimento] = useState<MovimentoMaterial | null>(null);
   const [viagensAberto, setViagensAberto] = useState(false);
   const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>('todos');
+  // Período e visão de Movimentos, como a Apropriação de Viagens do SGE.
+  const [dataDe, setDataDe] = useState('');
+  const [dataAte, setDataAte] = useState('');
+  const [agrupado, setAgrupado] = useState(false);
   const [marcados, setMarcados] = useState<ReadonlySet<string>>(() => new Set());
   const [trocarRamoAberto, setTrocarRamoAberto] = useState(false);
   const [trocaRamo, setTrocaRamo] = useState({ etapaServicoId: '', destino: '' });
@@ -162,8 +166,16 @@ export default function MateriaisTab({
     || normalizeComparable(`${item.material.codigo} ${item.material.descricao} ${item.material.categoria}`).includes(termo));
   const movimentosFiltrados = useMemo(() => [...movimentos]
     .filter(item => (filtroTipo === 'todos' || (filtroTipo === 'desfeitos' ? Boolean(item.canceladoEm) : item.tipo === filtroTipo && !item.canceladoEm))
+      && (!dataDe || item.data >= dataDe) && (!dataAte || item.data <= dataAte)
       && (!termo || normalizeComparable(`${item.materialDescricao} ${item.tipo} ${item.destino || ''} ${item.fornecedorNome || ''} ${item.notaFiscal || ''} ${item.placa || ''} ${item.ticket || ''}`).includes(termo)))
-    .sort((a, b) => b.data.localeCompare(a.data) || b.criadoEm.localeCompare(a.criadoEm)), [filtroTipo, movimentos, termo]);
+    .sort((a, b) => b.data.localeCompare(a.data) || b.criadoEm.localeCompare(a.criadoEm)), [dataAte, dataDe, filtroTipo, movimentos, termo]);
+  const materiaisPorId = useMemo(() => new Map(materiais.map(item => [item.id, item])), [materiais]);
+  const ultimos45Dias = () => {
+    const inicio = new Date();
+    inicio.setDate(inicio.getDate() - 44);
+    setDataDe(isoDay(inicio));
+    setDataAte(hoje);
+  };
 
   const abrirCadastro = (material?: Material) => {
     setFormMaterial(material || null);
@@ -448,16 +460,13 @@ export default function MateriaisTab({
             eyebrow="Suprimentos"
             title="Materiais"
             abas={<AbasDaTela id="materiais" rotulo="Subtelas de materiais" abas={abas} ativa={aba} onTrocar={escolherSecao} idPainel="materiais-dados" testId="materiais-secao" />}
-            actions={podeEditar ? (
-              <>
-                <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} px-3 max-lg:hidden`} aria-label="Atalhos do teclado" title="Atalhos do teclado (?)">
-                  <Keyboard className="size-5" aria-hidden="true" />
-                </button>
-                <button type="button" onClick={() => abrirLancamento()} data-testid="materiais-acao-principal" aria-keyshortcuts="N" title="Novo lançamento (N)" className={`${BOTAO_PRIMARIO} max-sm:order-first px-4`}>
-                  <Plus className="size-5" aria-hidden="true" />
-                  Novo lançamento
-                </button>
-              </>
+            // Em Lançar o formulário já está na tela, e Viagens da jazida tem
+            // a própria ação principal (Novo ticket): um botão verde só.
+            actions={podeEditar && aba !== 'lancar' && aba !== 'viagens' ? (
+              <button type="button" onClick={() => abrirLancamento()} data-testid="materiais-acao-principal" aria-keyshortcuts="N" title="Novo lançamento (N)" className={`${BOTAO_PRIMARIO} max-sm:order-first px-4`}>
+                <Plus className="size-5" aria-hidden="true" />
+                Novo lançamento
+              </button>
             ) : undefined}
           />
         </div>
@@ -470,6 +479,7 @@ export default function MateriaisTab({
               <button type="button" onClick={() => setErro('')} className={`grid size-8 shrink-0 place-items-center rounded-lg text-rose-700 hover:bg-rose-100 ${FOCO}`} aria-label="Fechar aviso"><X className="size-5" aria-hidden="true" /></button>
             </div>
           )}
+          {aba === 'movimentos' && <ResumoMovimentos movimentos={movimentosFiltrados} />}
           {comBusca && (
             <FilterBar
               label="Filtros de materiais"
@@ -479,14 +489,9 @@ export default function MateriaisTab({
                   <PackagePlus className="size-5" aria-hidden="true" />
                   Novo material
                 </button>
-              ) : podeEditar && aba === 'movimentos' ? (
-                <button type="button" onClick={abrirViagens} className={`${BOTAO_SECUNDARIO} max-sm:w-full`} aria-keyshortcuts="V" title="Atalho: V" data-testid="materiais-varias-viagens">
-                  <Layers className="size-5" aria-hidden="true" />
-                  Várias viagens
-                </button>
               ) : undefined}
             >
-              <label className="relative block min-w-0 flex-1">
+              <label className="relative block min-w-0 flex-1 basis-64">
                 <span className="sr-only">Buscar material</span>
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                 <input
@@ -500,16 +505,43 @@ export default function MateriaisTab({
                 />
               </label>
               {aba === 'movimentos' && (
-                <div role="group" aria-label="Mostrar só" className="flex basis-full gap-2 overflow-x-auto pb-1 lg:basis-auto lg:pb-0">
+                <>
+                  <div role="group" aria-label="Como mostrar" className="inline-flex shrink-0 rounded-xl border border-slate-200 bg-white p-1">
+                    {([['detalhado', 'Detalhado', false], ['agrupado', 'Agrupado (material)', true]] as const).map(([id, nome, valor]) => (
+                      <button key={id} type="button" aria-pressed={agrupado === valor} onClick={() => setAgrupado(valor)} data-testid={`movimentos-${id}`}
+                        className={`min-h-9 rounded-lg px-3 text-sm font-semibold transition duration-200 ${FOCO} ${agrupado === valor ? 'bg-emerald-50 text-[#176b4d] ring-1 ring-inset ring-emerald-200' : 'text-slate-600 hover:text-slate-900'}`}>
+                        {nome}
+                      </button>
+                    ))}
+                  </div>
+                  <div role="group" aria-label="Período" className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+                    <CalendarDays className="hidden size-5 text-slate-500 sm:block" aria-hidden="true" />
+                    <label className="sr-only" htmlFor="movimentos-de">De</label>
+                    <input id="movimentos-de" type="date" value={dataDe} max={dataAte || undefined} onChange={event => setDataDe(event.target.value)} className={`${CAMPO} w-40! lg:min-h-10`} />
+                    <span className="text-sm text-slate-600">até</span>
+                    <label className="sr-only" htmlFor="movimentos-ate">Até</label>
+                    <input id="movimentos-ate" type="date" value={dataAte} min={dataDe || undefined} onChange={event => setDataAte(event.target.value)} className={`${CAMPO} w-40! lg:min-h-10`} />
+                    <button type="button" onClick={ultimos45Dias} className={`${BOTAO_SECUNDARIO} px-3 lg:min-h-10`}>Últimos 45 dias</button>
+                    {(dataDe || dataAte) && (
+                      <button type="button" onClick={() => { setDataDe(''); setDataAte(''); }} className={`${BOTAO_SECUNDARIO} px-3 lg:min-h-10`}>
+                        <X className="size-4" aria-hidden="true" />
+                        Todo o período
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+              {aba === 'movimentos' && !agrupado && (
+                <div role="group" aria-label="Mostrar só" className="inline-flex flex-wrap rounded-xl border border-slate-200 bg-white p-1">
                   {FILTROS_TIPO.map(filtro => (
                     <button
                       key={filtro.id}
                       type="button"
                       aria-pressed={filtroTipo === filtro.id}
                       onClick={() => setFiltroTipo(filtro.id)}
-                      className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold transition duration-200 ${FOCO} ${filtroTipo === filtro.id
-                        ? 'border-[#176b4d] bg-[#176b4d] text-white'
-                        : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-500'}`}
+                      className={`min-h-9 shrink-0 rounded-lg px-3 text-sm font-semibold transition duration-200 ${FOCO} ${filtroTipo === filtro.id
+                        ? 'bg-[#176b4d] text-white'
+                        : 'text-slate-600 hover:bg-emerald-50 hover:text-slate-900'}`}
                     >
                       {filtro.nome}
                     </button>
@@ -553,6 +585,7 @@ export default function MateriaisTab({
               onSalvarVarios={onSaveMovimentos}
               onEditar={movimento => abrirLancamento(movimento)}
               onVerMovimentos={() => escolherSecao('movimentos')}
+              onVerAtalhos={() => setAtalhosAberto(true)}
             />
           )}
 
@@ -624,12 +657,19 @@ export default function MateriaisTab({
 
           {aba === 'movimentos' && (
             <div data-materiais-reveal className="flex min-h-0 flex-1 flex-col">
-              <ListaMovimentos
-                movimentos={movimentosFiltrados}
-                chave={`${termo}|${filtroTipo}`}
-                selecao={podeEditar ? { marcados, onAlternar: alternarMarcado, onAlternarVarios: alternarVarios } : undefined}
-                onAbrir={podeEditar ? abrirLancamento : undefined}
-              />
+              {agrupado ? (
+                <ListaAgrupada linhas={agruparPorMaterial(movimentosFiltrados, materiaisPorId)} chave={`${termo}|${dataDe}|${dataAte}`} onVer={setFichaMaterialId} />
+              ) : (
+                <ListaMovimentos
+                  movimentos={movimentosFiltrados}
+                  materiaisPorId={materiaisPorId}
+                  chave={`${termo}|${filtroTipo}|${dataDe}|${dataAte}`}
+                  selecao={podeEditar ? { marcados, onAlternar: alternarMarcado, onAlternarVarios: alternarVarios } : undefined}
+                  onAbrir={podeEditar ? abrirLancamento : undefined}
+                  onVer={item => setFichaMaterialId(item.materialId)}
+                  onDesfazer={podeEditar ? item => { setMarcados(new Set([item.id])); setDesfazerAberto(true); } : undefined}
+                />
+              )}
             </div>
           )}
 
