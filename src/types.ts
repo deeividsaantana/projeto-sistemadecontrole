@@ -1328,6 +1328,13 @@ export interface AprovacaoOperacional {
   observacao?: string;
 }
 
+export interface ConferenciaManutencao {
+  decisao: 'CONFIRMADO_10H' | 'LIBERACAO_INFORMADA' | 'CONTINUA_AMANHA';
+  decididoEm: string;
+  decididoPor: string;
+  observacao?: string;
+}
+
 export interface ControleEquipamentoDiario {
   id: string;
   chave: string;
@@ -1350,6 +1357,8 @@ export interface ControleEquipamentoDiario {
   origem: 'SISTEMA' | 'PLANILHA';
   revisao: string[];
   aprovacao?: AprovacaoOperacional;
+  /** Decisão da conferência quando o dia bateu 10 h ou ficou inconsistente. */
+  conferenciaManutencao?: ConferenciaManutencao;
   criadoEm: string;
   atualizadoEm: string;
 }
