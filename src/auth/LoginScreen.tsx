@@ -29,7 +29,7 @@ interface LoginScreenProps {
 export function AuthLoadingScreen() {
   return (
     <div className="login-redesign flex items-center justify-center p-4 text-slate-700">
-      <div className="flex items-center gap-3 rounded-2xl border border-white/80 bg-white/80 px-5 py-4 text-sm font-semibold shadow-xl backdrop-blur-lg">
+      <div className="flex items-center gap-3 rounded-2xl border border-white/80 bg-white/90 px-5 py-4 text-sm font-semibold shadow-xl">
         <span className="w-5 h-5 border-2 border-slate-300 border-t-emerald-700 rounded-full animate-spin" />
         Validando acesso seguro
       </div>
