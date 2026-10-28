@@ -82,6 +82,11 @@ cálculo é determinístico, então todos os aparelhos chegam ao mesmo resultado
 a tela mostra o número certo mesmo antes da gravação. A gravação usa o envio de
 mudanças de sempre (`apply_erp_snapshot_changes`), uma vez por OS.
 
+Só entram dias a partir de `LIMITE_10H_DESDE` (`src/utils/manutencaoLimite.ts`,
+hoje `2026-10-29`). Os dias anteriores esperam a lista aprovada pelo Deivid;
+depois da aprovação, a data baixa num commit só dela. O fechamento só roda
+depois que a sessão baixou da nuvem pelo menos uma vez.
+
 ## Conferência
 
 Lista os equipamentos com `LIMITE_ATINGIDO` ou `INCONSISTENTE` no dia. Ações:
@@ -90,7 +95,13 @@ Lista os equipamentos com `LIMITE_ATINGIDO` ou `INCONSISTENTE` no dia. Ações:
 - **Informar liberação real**: grava o evento de liberação com a hora informada
   e recalcula.
 - **Continua parado amanhã**: confirma o dia e, no dia seguinte, o período
-  começa às 07:00 com uma OS nova.
+  começa às 07:00 com uma OS nova. Continuidade automática: quando o dia
+  seguinte começa e o equipamento ainda não tem lançamento nele, o primeiro
+  aparelho de quem edita a manutenção cria a entrada "Em manutenção" às 07:00
+  pelo mesmo caminho do Quadro, e a OS nova abre ali (`pendentesDeContinuidade`).
+  Vale para dias a partir de `LIMITE_10H_DESDE`.
+- Informar a liberação real não apaga nada: a liberação lançada antes da
+  entrada fica no histórico marcada `substituidoPor` e sai da conta.
 
 A conferência fica no registro do dia (`aprovacao`, que já existe em
 `ControleEquipamentoDiario`), com quem decidiu e quando.
@@ -103,8 +114,8 @@ Segue o padrão do Painel de Controle e `docs/superpowers/CHECKLIST_REDESIGN_ABA
   destaque quando > 0), Liberados hoje.
 - Um cartão por equipamento parado ou que parou hoje: prefixo, situação com
   cor, horas do dia com barra até 10 h, linha do tempo do dia (hora, evento,
-  OS, quem lançou) e dois botões: "Liberar agora" (hora atual já preenchida) e
-  "Entrou em manutenção".
+  OS, quem lançou) e o botão que faz sentido no momento (Liberar agora quando
+  parado; Entrou em manutenção quando liberado), com a hora atual já preenchida.
 - Aba Conferência com as três ações acima.
 - Abas que continuam: Ordens de serviço (com a marca "Encerrada pelo limite de
   10 h") e Histórico.

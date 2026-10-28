@@ -400,13 +400,13 @@ export default function ManutencaoTab({
     {
       chave: 'situacao',
       titulo: 'Situação',
-      larguraMinima: 150,
       dica: ordem => [ordem.status, (ordem.observacao || '').includes(OBSERVACAO_LIMITE) ? 'Pelo limite de 10 h' : ''].filter(Boolean).join(' · '),
       valorOrdenacao: ordem => ordem.status,
       render: ordem => (
         <span className="flex flex-wrap items-center gap-1.5 lg:flex-nowrap">
-          <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold ${statusTone(ordem.status)}`}>{ordem.status}</span>
-          {(ordem.observacao || '').includes(OBSERVACAO_LIMITE) && <Badge tone="warning" className="whitespace-nowrap">Pelo limite de 10 h</Badge>}
+          {/* Concluída pelo limite mostra só o selo do limite: os dois juntos empurravam as ações para fora da tela. */}
+          {!(ordem.status === 'Concluída' && (ordem.observacao || '').includes(OBSERVACAO_LIMITE)) && <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold ${statusTone(ordem.status)}`}>{ordem.status}</span>}
+          {(ordem.observacao || '').includes(OBSERVACAO_LIMITE) && <span className="inline-flex whitespace-nowrap rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-900">Pelo limite de 10 h</span>}
         </span>
       ),
     },
