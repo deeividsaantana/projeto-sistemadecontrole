@@ -129,14 +129,7 @@ import OfflineStatusV29 from './components/OfflineStatusV29';
 import reneaLogo from './assets/images/logo-renea-transparent.png';
 import reneaLogoWhite from './assets/images/logo-renea-branco.png';
 
-// Carousel images for login screen (obra project photos)
-const loginCarouselImages = [
-  '/images/login/1.jpg',
-  '/images/login/2.jpg',
-  '/images/login/3.jpg',
-  '/images/login/4.jpg',
-  '/images/login/5.jpg',
-];
+
 
 // Supabase is authoritative for authentication and synchronization.
 const db = undefined;
@@ -4258,7 +4251,6 @@ export default function App() {
         isAuthenticating={isAuthenticating}
         loginError={loginError}
         loginNotice={loginNotice}
-        carouselImages={loginCarouselImages}
         onUsernameChange={setUsername}
         onPasswordChange={setPassword}
         onTogglePasswordVisibility={() => setShowPassword(value => !value)}
