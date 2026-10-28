@@ -94,6 +94,8 @@ import { filterNovelFuelImports } from './utils/fuelImportIdentity';
 import type { FuelImportedMasterData } from './utils/fuelMasterDataImport';
 import { mergeImportedRecords } from './utils/importMerge';
 import { garantirOrdemAutomaticaDaFrota, liberarMaquinasDaOrdemConcluida, reconciliarHistoricoManutencaoDaFrota } from './utils/manutencao';
+import { encerrarOrdensNoLimite } from './utils/manutencaoLimite';
+import { descricaoDoEncerramento } from './utils/conferenciaManutencao';
 import {
   LOCAL_FUEL_RESET_STORAGE_KEY,
   LOCAL_FUEL_RESET_VERSION,
@@ -4085,6 +4087,58 @@ export default function App() {
     }
   }, [controleEquipamentosDiario, ordensServico, activeUserName]);
 
+  // Conferência da manutenção: grava só a decisão no lançamento do dia, sem
+  // passar pela OS automática (o equipamento já tem a OS que fechou no limite).
+  const handleSalvarConferenciaManutencao = (registro: ControleEquipamentoDiario, descricao: string) => {
+    const anterior = controleEquipamentosDiario.find(item => item.id === registro.id);
+    if (!anterior) return;
+    const updated = controleEquipamentosDiario.map(item => item.id === registro.id ? registro : item);
+    saveAndLog('Manutenção', 'Editou', descricao, historyLogs, () => {
+      setControleEquipamentosDiario(updated);
+      writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(updated));
+    }, { registroId: registro.id, valorAnterior: anterior, valorNovo: registro, tipoOperacao: 'UPDATE' });
+  };
+
+  // OS aberta cujo dia bateu 10 h paradas fecha sozinha, na hora do limite. Não
+  // há servidor rodando: o primeiro aparelho aberto de quem edita a manutenção
+  // grava. A conta é a mesma em todo aparelho, então não briga com os outros.
+  // Não usa handleSaveOrdemServico: ele liberaria a máquina na hora de agora
+  // (o que mudaria as horas do dia) e, chamado várias vezes seguidas, cada
+  // gravação apagaria a anterior. Aqui vai uma gravação só, um log por OS.
+  const podeEditarManutencao = pode(currentUserRole, 'manutencao', 'editar');
+  const encerrarPeloLimiteRef = useRef<() => void>(() => {});
+  encerrarPeloLimiteRef.current = () => {
+    if (uploadsInFlightRef.current > 0) return;
+    const { ordens, encerradas } = encerrarOrdensNoLimite(controleEquipamentosDiario, ordensServico, new Date());
+    if (!encerradas.length) return;
+    const antes = new Map(ordensServico.map(ordem => [ordem.id, ordem]));
+    const prefixoDe = (equipamentoId: string) => equipamentos.find(item => item.id === equipamentoId)?.prefixo || 'frota não localizada';
+    const logs: HistoryLog[] = encerradas.map((ordem, indice) => ({
+      id: `log-${Date.now()}-${indice}-${Math.floor(Math.random() * 1000)}`,
+      timestamp: new Date().toLocaleString('pt-BR'),
+      usuario: activeUserName,
+      acao: 'Editou',
+      tela: 'Manutenção',
+      descricao: descricaoDoEncerramento(antes.get(ordem.id) || ordem, ordem, prefixoDe(ordem.equipamentoId)),
+      registroId: ordem.id,
+      valorAnterior: antes.get(ordem.id),
+      valorNovo: ordem,
+      tipoOperacao: 'UPDATE',
+    }));
+    // saveAndLog grava o log da primeira OS; os das outras entram logo abaixo dele.
+    const [primeiro, ...outros] = logs;
+    saveAndLog('Manutenção', 'Editou', primeiro.descricao, [...outros, ...historyLogs], () => {
+      setOrdensServico(ordens);
+      writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(ordens));
+    }, { registroId: primeiro.registroId, valorAnterior: primeiro.valorAnterior, valorNovo: primeiro.valorNovo, tipoOperacao: 'UPDATE' });
+  };
+  useEffect(() => {
+    if (!isLoggedIn || !podeEditarManutencao) return;
+    encerrarPeloLimiteRef.current();
+    const relogio = window.setInterval(() => encerrarPeloLimiteRef.current(), 60_000);
+    return () => window.clearInterval(relogio);
+  }, [isLoggedIn, podeEditarManutencao, controleEquipamentosDiario, ordensServico]);
+
   const handleApproveControleEquipamentoDiario = (id: string, status: 'APROVADO' | 'REJEITADO') => {
     if (!['admin', 'gestor'].includes(currentUserRole)) return;
     const current = controleEquipamentosDiario.find(item => item.id === id);
@@ -4745,10 +4799,14 @@ export default function App() {
                 ordensServico={ordensServico}
                 equipamentos={equipamentos}
                 controlesEquipamentos={controleEquipamentosDiario}
+                motoristas={motoristasOperacionais}
                 responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'manutencao', 'editar')}
+                podeEditar={podeEditarManutencao}
+                podeReabrirConferencia={currentUserRole === 'admin'}
                 historyLogs={historyLogs}
                 onSave={handleSaveOrdemServico}
+                onSaveControle={registro => handleSaveControleEquipamentoDiario(registro, !controleEquipamentosDiario.some(item => item.id === registro.id))}
+                onSalvarConferencia={handleSalvarConferenciaManutencao}
                 onDelete={podeExcluirLancamento ? handleDeleteOrdemServico : undefined}
               />
             )}
