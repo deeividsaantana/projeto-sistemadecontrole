@@ -4127,7 +4127,7 @@ export default function App() {
     if (uploadsInFlightRef.current > 0) return;
     const { ordens, encerradas } = encerrarOrdensNoLimite(controleEquipamentosDiario, ordensServico, new Date());
     if (!encerradas.length) {
-      abrirContinuidade();
+      abrirContinuidadeRef.current();
       return;
     }
     const antes = new Map(ordensServico.map(ordem => [ordem.id, ordem]));
@@ -4153,27 +4153,62 @@ export default function App() {
   };
   // "Continua parado amanhã": no dia seguinte o equipamento entra sozinho em
   // manutenção às 07:00, pelo mesmo caminho do Quadro (a OS nova abre ali).
-  // Um por rodada: cada gravação parte do estado já salvo pela anterior.
-  const continuidadesEmAndamentoRef = useRef(new Set<string>());
-  const abrirContinuidade = () => {
+  // O módulo do Quadro carrega sob demanda (importar direto passava o App do
+  // limite de peso). Depois do import, os lançamentos e o salvamento vêm de
+  // refs atualizadas a cada render: um download da nuvem, uma edição ou um
+  // fechamento no meio não é sobrescrito por um estado antigo.
+  // Um por rodada: a próxima parte do estado já salvo por esta.
+  const controleAtualRef = useRef(controleEquipamentosDiario);
+  controleAtualRef.current = controleEquipamentosDiario;
+  const salvarControleRef = useRef(handleSaveControleEquipamentoDiario);
+  salvarControleRef.current = handleSaveControleEquipamentoDiario;
+  const continuidadesComFalhaRef = useRef(new Set<string>());
+  const continuidadeEmCursoRef = useRef(false);
+  const abrirContinuidadeRef = useRef<() => void>(() => {});
+  abrirContinuidadeRef.current = () => {
+    if (continuidadeEmCursoRef.current) return;
     const pendente = pendentesDeContinuidade(controleEquipamentosDiario, new Date())
-      .find(item => !continuidadesEmAndamentoRef.current.has(item.id));
+      .find(item => !continuidadesComFalhaRef.current.has(item.id));
     if (!pendente) return;
-    // Evita a mesma entrada duas vezes enquanto o import e a gravação terminam.
-    continuidadesEmAndamentoRef.current.add(pendente.id);
+    // Falha fica registrada uma vez por sessão e por lançamento, e não trava os outros.
+    const falhou = (motivo: string) => {
+      continuidadesComFalhaRef.current.add(pendente.id);
+      const descricao = `Continuidade não aberta: ${pendente.prefixo} — ${motivo}`;
+      console.warn(descricao);
+      setHistoryLogs(atual => {
+        const proximo = [{
+          id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          timestamp: new Date().toLocaleString('pt-BR'),
+          usuario: activeUserName,
+          acao: 'Editou' as const,
+          tela: 'Manutenção',
+          descricao,
+          registroId: pendente.id,
+        }, ...atual].slice(0, 2_000);
+        writeStorageValue(localStorage, 'renea_history_logs', JSON.stringify(proximo));
+        return proximo;
+      });
+    };
     const equipamento = equipamentos.find(item => item.id === pendente.equipamentoId);
-    if (!equipamento) return;
+    if (!equipamento) {
+      falhou('o equipamento não está mais no cadastro.');
+      return;
+    }
     const seguinte = new Date(`${pendente.data}T12:00:00Z`);
     seguinte.setUTCDate(seguinte.getUTCDate() + 1);
     const anteriorFleet = pendente as ControleEquipamentoDiario & { local?: string; frenteServico?: string };
+    continuidadeEmCursoRef.current = true;
     void import('./modules/frota/quadroFrota').then(({ registroDaEdicao }) => {
+      const registros = controleAtualRef.current;
+      // Alguém pode ter lançado o dia seguinte enquanto o módulo carregava.
+      if (!pendentesDeContinuidade(registros, new Date()).some(item => item.id === pendente.id)) return;
       const resultado = registroDaEdicao({
         dia: seguinte.toISOString().slice(0, 10),
         hora: '07:00',
         agora: new Date().toISOString(),
         usuario: activeUserName,
         equipamento,
-        registros: controleEquipamentosDiario,
+        registros,
         funcionarios: motoristasOperacionais,
         edicao: {
           status: 'Em manutenção',
@@ -4184,9 +4219,13 @@ export default function App() {
           observacao: `Continua parado desde ${pendente.data.split('-').reverse().join('/')} (decisão da conferência).`,
         },
       });
-      if ('erro' in resultado) return;
-      handleSaveControleEquipamentoDiario(resultado.registro, resultado.novo);
-    });
+      if ('erro' in resultado) {
+        falhou(resultado.erro);
+        return;
+      }
+      salvarControleRef.current(resultado.registro, resultado.novo);
+    }).catch(error => falhou(error instanceof Error ? error.message : 'não foi possível carregar o Quadro.'))
+      .finally(() => { continuidadeEmCursoRef.current = false; });
   };
   useEffect(() => {
     if (!isLoggedIn || !podeEditarManutencao || !baixouDaNuvemNestaSessao) return;

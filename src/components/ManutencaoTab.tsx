@@ -371,7 +371,7 @@ export default function ManutencaoTab({
     {
       chave: 'equipamento',
       titulo: 'Equipamento',
-      larguraMinima: 150,
+      larguraMinima: 110,
       valorOrdenacao: ordem => prefixoDe(ordem.equipamentoId),
       dica: ordem => [prefixoDe(ordem.equipamentoId), presentEquipment(equipamentoPorId.get(ordem.equipamentoId)).label].filter(Boolean).join(' · '),
       render: ordem => {
@@ -383,7 +383,8 @@ export default function ManutencaoTab({
             </span>
             <span className="min-w-0 lg:truncate">
               <strong className="text-slate-800">{prefixoDe(ordem.equipamentoId)}</strong>
-              <small className="text-xs text-slate-500"> · {equipmentLabel}</small>
+              {/* O tipo fica no cartão do celular e na dica: na tabela, a coluna estreita deixa as ações à vista a 1366 px. */}
+              <small className="text-xs text-slate-500 md:hidden"> · {equipmentLabel}</small>
             </span>
           </span>
         );
@@ -392,7 +393,7 @@ export default function ManutencaoTab({
     {
       chave: 'problema',
       titulo: 'Problema',
-      larguraMinima: 160,
+      larguraMinima: 100,
       valorOrdenacao: ordem => ordem.descricao || ordem.motivo,
       dica: ordem => ordem.descricao || ordem.motivo,
       render: ordem => ordem.descricao || ordem.motivo || '—',
@@ -403,10 +404,9 @@ export default function ManutencaoTab({
       dica: ordem => [ordem.status, (ordem.observacao || '').includes(OBSERVACAO_LIMITE) ? 'Pelo limite de 10 h' : ''].filter(Boolean).join(' · '),
       valorOrdenacao: ordem => ordem.status,
       render: ordem => (
-        <span className="flex flex-wrap items-center gap-1.5 lg:flex-nowrap">
-          {/* Concluída pelo limite mostra só o selo do limite: os dois juntos empurravam as ações para fora da tela. */}
-          {!(ordem.status === 'Concluída' && (ordem.observacao || '').includes(OBSERVACAO_LIMITE)) && <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold ${statusTone(ordem.status)}`}>{ordem.status}</span>}
-          {(ordem.observacao || '').includes(OBSERVACAO_LIMITE) && <span className="inline-flex whitespace-nowrap rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-900">Pelo limite de 10 h</span>}
+        <span className="flex flex-wrap items-center gap-1 lg:flex-nowrap">
+          <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold ${statusTone(ordem.status)}`}>{ordem.status}</span>
+          {(ordem.observacao || '').includes(OBSERVACAO_LIMITE) && <span className="inline-flex whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900">Pelo limite de 10 h</span>}
         </span>
       ),
     },
@@ -414,26 +414,26 @@ export default function ManutencaoTab({
       chave: 'abertura',
       titulo: 'Abertura',
       valorOrdenacao: ordem => `${ordem.dataAbertura} ${ordem.horaAbertura || ''}`,
-      render: ordem => <span className="whitespace-nowrap tabular-nums">{formatarData(ordem.dataAbertura)}{ordem.horaAbertura ? ` ${ordem.horaAbertura}` : ''}</span>,
+      dica: ordem => `${formatarData(ordem.dataAbertura)}${ordem.horaAbertura ? ` às ${ordem.horaAbertura}` : ''}`,
+      // Dia e mês na linha (o ano fica na dica): a coluna estreita deixa as ações à vista a 1366 px.
+      render: ordem => <span className="whitespace-nowrap tabular-nums">{formatarData(ordem.dataAbertura).slice(0, 5)}{ordem.horaAbertura ? ` ${ordem.horaAbertura}` : ''}</span>,
     },
     {
       chave: 'horas',
-      titulo: 'Horas paradas',
+      titulo: 'Horas',
       alinhamento: 'direita',
       valorOrdenacao: ordem => horasDaOrdem(ordem),
+      dica: ordem => (isOrdemEncerrada(ordem.status) ? undefined : 'Em curso: conta até agora, no máximo 10 h por dia.'),
       render: ordem => {
         const horas = horasDaOrdem(ordem);
         if (horas === undefined) return '—';
         return (
-          <>
-            <span className="whitespace-nowrap">{`${horas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`}</span>
-            {!isOrdemEncerrada(ordem.status) && <span className="whitespace-nowrap text-xs text-slate-500"> · em curso</span>}
-          </>
+          <span className="whitespace-nowrap">{`${horas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`}</span>
         );
       },
     },
   ];
-  const BOTAO_LINHA = 'min-h-11 rounded-lg border bg-white px-2.5 text-[13px] font-bold transition-colors md:min-h-8';
+  const BOTAO_LINHA = 'min-h-11 rounded-lg border bg-white px-2 text-[13px] font-bold transition-colors md:min-h-8';
   const acoesDaOrdem = podeEditar
     ? (ordem: OrdemServico) => {
       const proximo = proximoStatusManutencao(ordem.status);
@@ -469,7 +469,7 @@ export default function ManutencaoTab({
       cabecalho={<PageHeader
         eyebrow="Frota"
         title="Manutenção"
-        abas={<AbasDaTela<Subtela> id="manutencao" rotulo="Subtelas da manutenção" abas={subtelas} ativa={subtela} onTrocar={setSubtela} idPainel="manutencao-dados" testId="manutencao-aba" />}
+        abas={<AbasDaTela<Subtela> id="manutencao" rotulo="Subtelas da manutenção" abas={subtelas} ativa={subtela} onTrocar={setSubtela} idPainel="manutencao-dados" testId="manutencao-aba" gradeNoCelular />}
         actions={<>
           {exportaExcel && (
             <button type="button" onClick={() => void exportarExcel()} disabled={exportando || semNadaParaExportar} className={BOTAO_SECUNDARIO}>

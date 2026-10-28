@@ -447,6 +447,7 @@ const lancamentoManutencao = (id: string, data: string, prefixo: string, equipam
 export const equipamentosManutencao: Equipamento[] = [
   ...equipamentos,
   { id: 'eq-3', prefixo: 'EH010', nome: 'Escavadeira', tipo: 'Escavadeira hidráulica', marca: 'Komatsu', modelo: 'PC200', seriePlaca: 'X3', empresaId: 'emp-1', status: 'Ativo', observacao: '' } as Equipamento,
+  { id: 'eq-5', prefixo: 'PC090', nome: 'Pá carregadeira', tipo: 'Pá carregadeira', marca: 'CAT', modelo: '924', seriePlaca: 'X5', empresaId: 'emp-1', status: 'Ativo', observacao: '' } as Equipamento,
   { id: 'eq-4', prefixo: 'RC044', nome: 'Rolo compactador', tipo: 'Rolo compactador', marca: 'Dynapac', modelo: 'CA250', seriePlaca: 'X4', empresaId: 'emp-1', status: 'Ativo', observacao: '' } as Equipamento,
 ];
 export const controlesManutencao: ControleEquipamentoDiario[] = [
@@ -460,6 +461,8 @@ export const controlesManutencao: ControleEquipamentoDiario[] = [
     eventoManutencao(ontemManutencao, 'ENTRADA_MANUTENCAO', '10:00', '5', 'Correia'),
     eventoManutencao(ontemManutencao, 'LIBERACAO_MANUTENCAO', '08:30', '6'),
   ]),
+  // Lançamento antigo: sem eventos, entrada e liberação só nos campos, com a liberação errada.
+  lancamentoManutencao('man-6', ontemManutencao, 'PC090', 'eq-5', 'Carregadeiras', 'Disponível', [], { horaEntradaManutencao: '10:00', horaLiberacao: '07:00', motivoManutencao: 'Hidráulica' }),
   lancamentoManutencao('man-5', ontemManutencao, 'CB1005', 'eq-2', 'Basculantes', 'Disponível', [
     eventoManutencao(ontemManutencao, 'ENTRADA_MANUTENCAO', '13:00', '7', 'Freio'),
     eventoManutencao(ontemManutencao, 'LIBERACAO_MANUTENCAO', '15:20', '8'),
