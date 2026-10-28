@@ -436,6 +436,7 @@ export const registroDaEdicao = ({ dia, hora, agora, usuario, equipamento, regis
     eventos: [...(existente?.eventos || []), {
       id: `evt-${agora}-${equipamento.id}`,
       ocorridoEm: agora,
+      hora: tipo === 'ENTRADA_MANUTENCAO' || tipo === 'LIBERACAO_MANUTENCAO' ? hora : undefined,
       tipo,
       statusAnterior: anterior,
       statusNovo: edicao.status,

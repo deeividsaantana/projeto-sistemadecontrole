@@ -196,6 +196,26 @@ test('lançar no quadro grava o dia no formato do Controle de Frotas', () => {
   assert.equal(liberada.registro.funcionarioId, '');
 });
 
+test('eventos de manutenção do quadro guardam a hora informada', () => {
+  const base = { dia, hora: '07:15', agora: `${dia}T10:15:00.000Z`, usuario: 'Deivid', equipamento: equipamento('D1'), funcionarios: [] };
+  const edicao = { status: 'Em operação' as const, canteiro: 'IBAR', frente: 'Ramo 900', operador: 'Fulano', motivoManutencao: '', observacao: '' };
+  const novo = registroDaEdicao({ ...base, registros: [], edicao });
+  assert.ok(novo.ok);
+  if (!novo.ok) return;
+  const entrada = registroDaEdicao({ ...base, hora: '09:00', agora: `${dia}T12:00:00.000Z`, registros: [novo.registro], edicao: { ...edicao, status: 'Em manutenção', motivoManutencao: 'Mangueira' } });
+  assert.ok(entrada.ok);
+  if (!entrada.ok) return;
+  const eventoEntrada = entrada.registro.eventos?.at(-1);
+  assert.equal(eventoEntrada?.tipo, 'ENTRADA_MANUTENCAO');
+  assert.equal(eventoEntrada?.hora, '09:00');
+  const saida = registroDaEdicao({ ...base, hora: '11:30', agora: `${dia}T14:30:00.000Z`, registros: [entrada.registro], edicao });
+  assert.ok(saida.ok);
+  if (!saida.ok) return;
+  const eventoSaida = saida.registro.eventos?.at(-1);
+  assert.equal(eventoSaida?.tipo, 'LIBERACAO_MANUTENCAO');
+  assert.equal(eventoSaida?.hora, '11:30');
+});
+
 test('lançamento em lote grava as prontas e aponta o erro de cada linha', () => {
   const base = { dia, hora: '07:00', agora: `${dia}T10:00:00.000Z`, usuario: 'Deivid', registros: [] as ControleEquipamentoDiario[], funcionarios: [] };
   const vazio = { canteiro: 'IBAR', frente: '', operador: 'Ana', motivoManutencao: '', observacao: '' };

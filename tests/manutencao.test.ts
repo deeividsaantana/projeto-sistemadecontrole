@@ -164,12 +164,23 @@ test('OS concluída libera a máquina que ficou marcada em manutenção por caus
 
   assert.equal(resultado.liberados, 1);
   assert.equal(resultado.registros[0].status, 'Disponível');
-  assert.equal(resultado.registros[0].horaLiberacao, '15:40');
+  assert.equal(resultado.registros[0].horaLiberacao, '12:40');
   assert.equal(resultado.registros[0].ordemServicoId, ordem.id);
   const ultimoEvento = resultado.registros[0].eventos?.at(-1);
   assert.equal(ultimoEvento?.tipo, 'LIBERACAO_MANUTENCAO');
   assert.equal(ultimoEvento?.statusAnterior, 'Em manutenção');
   assert.match(ultimoEvento?.observacao || '', /OS-0007/);
+});
+
+test('liberação pela OS concluída grava a hora de Brasília no evento', () => {
+  const ordem: OrdemServico = {
+    id: 'os-hora', numero: 'OS-0009', equipamentoId: 'equipamento-cb-770',
+    tipo: 'Corretiva', prioridade: 'Alta', descricao: 'Reparo', status: 'Concluída',
+    dataAbertura: '2026-09-18', responsavel: 'Oficina', observacao: '',
+  };
+  const { registros } = liberarMaquinasDaOrdemConcluida(ordem, [registroBasculante({ ordemServicoId: ordem.id })], 'oficina', '2026-09-18T17:40:00.000Z');
+  assert.equal(registros[0].eventos?.at(-1)?.hora, '14:40');
+  assert.equal(registros[0].horaLiberacao, '14:40');
 });
 
 test('OS cancelada também libera a máquina', () => {
