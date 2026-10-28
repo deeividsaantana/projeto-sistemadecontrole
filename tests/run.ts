@@ -103,6 +103,7 @@ import './manutencaoHistorico.test';
 import './horasParadasDoDia.test';
 import './manutencaoLimite.test';
 import './relatorioManutencaoDia.test';
+import './conferenciaManutencao.test';
 import './navigationCleanup.test';
 import './presencaStatus.test';
 import './observability.test';

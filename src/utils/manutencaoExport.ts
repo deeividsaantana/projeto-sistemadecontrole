@@ -10,6 +10,8 @@ import {
 } from './excelCorporate';
 import { calcularHorasParadas, isOrdemEncerrada } from './manutencao';
 import { EQUIPMENT_FAMILY_LABELS, classifyEquipment } from './equipmentPresentation';
+import { formatarMinutos } from './horasParadasDoDia';
+import { linhasExcelManutencaoDia, type RelatorioManutencaoDia } from './relatorioManutencaoDia';
 
 export interface ManutencaoExportInput {
   ordens: OrdemServico[];
@@ -179,4 +181,43 @@ export const downloadManutencaoWorkbook = async ({
 
   const carimbo = getOperationalToday();
   await downloadCorporateWorkbook(workbook, `MANUTENCAO_${carimbo}.xlsx`);
+};
+
+/**
+ * Planilha do relatório do dia: um período parado por linha (o mesmo que a
+ * tela mostra), o total por tipo e o resumo da conferência.
+ */
+export const downloadRelatorioManutencaoDia = async (relatorio: RelatorioManutencaoDia) => {
+  const workbook = await createCorporateWorkbook();
+  const titulo = `Manutenção — horas paradas de ${formatarData(relatorio.data)}`;
+  configureCorporateWorkbook(workbook, titulo);
+
+  const linhas = linhasExcelManutencaoDia(relatorio);
+  const colunas = ['Data', 'Prefixo', 'Tipo', 'OS', 'Entrada', 'Liberação', 'Descontos', 'Horas do período', 'Horas paradas', 'Situação', 'Conferido', 'Observação'];
+  const periodos = workbook.addWorksheet('Períodos do dia');
+  periodos.addRow([`MANUTENÇÃO — PERÍODOS PARADOS DE ${formatarData(relatorio.data)}`]);
+  periodos.addRow(['Limite de 10 h por dia, sem DDS (07:00-07:15) e almoço (12:00-13:00).']);
+  periodos.addRow([]);
+  periodos.addRow(colunas);
+  linhas.forEach(linha => periodos.addRow(colunas.map(coluna => (coluna === 'Data' ? formatarData(String(linha.Data)) : linha[coluna] ?? ''))));
+  styleCorporateWorksheet(periodos, { title: 'Períodos do dia', headerRow: 4, lastColumn: colunas.length, freezeRows: 4, recordCount: linhas.length });
+  autoFitCorporateColumns(periodos);
+
+  const porTipo = workbook.addWorksheet('Por tipo');
+  porTipo.addRow(['HORAS PARADAS POR TIPO DE EQUIPAMENTO']);
+  porTipo.addRow([]);
+  porTipo.addRow(['Tipo', 'Equipamentos', 'Horas paradas']);
+  relatorio.porTipo.forEach(item => porTipo.addRow([item.tipo, item.equipamentos, formatarMinutos(item.totalMin)]));
+  styleCorporateWorksheet(porTipo, { title: 'Por tipo', headerRow: 3, lastColumn: 3, freezeRows: 3, recordCount: relatorio.porTipo.length });
+  autoFitCorporateColumns(porTipo);
+
+  addCorporateSummarySheet(workbook, titulo, [
+    ['Horas paradas no dia', formatarMinutos(relatorio.totalMin)],
+    ['Equipamentos que pararam', relatorio.equipamentos],
+    ['Em conferência', relatorio.emConferencia],
+    ['Conferidos', `${relatorio.conferidos} de ${relatorio.equipamentos}`],
+    ['Dia fechado', relatorio.fechado ? 'Sim' : 'Não'],
+  ]);
+
+  await downloadCorporateWorkbook(workbook, `MANUTENCAO_DIA_${relatorio.data}.xlsx`);
 };
