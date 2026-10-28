@@ -11,7 +11,7 @@ import { formatarMinutos } from '../../utils/horasParadasDoDia';
 import { EmptyState, statusTone } from '../../shared/ui';
 import { CARTAO, FOCO } from '../cadastros/estilos';
 
-const formatarData = (valor?: string) => (valor ? valor.slice(0, 10).split('-').reverse().join('/') : '—');
+const formatarData = (valor?: string) => (valor ? valor.slice(5, 10).split('-').reverse().join('/') : '—');
 
 interface Props {
   fila: readonly MaintenanceQueueItem[];

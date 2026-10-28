@@ -94,7 +94,7 @@ import { filterNovelFuelImports } from './utils/fuelImportIdentity';
 import type { FuelImportedMasterData } from './utils/fuelMasterDataImport';
 import { mergeImportedRecords } from './utils/importMerge';
 import { garantirOrdemAutomaticaDaFrota, liberarMaquinasDaOrdemConcluida, reconciliarHistoricoManutencaoDaFrota } from './utils/manutencao';
-import { encerrarOrdensNoLimite } from './utils/manutencaoLimite';
+import { encerrarOrdensNoLimite, pendentesDeContinuidade, recalcularOrdemDoLimite } from './utils/manutencaoLimite';
 import { descricaoDoEncerramento } from './utils/conferenciaManutencao';
 import {
   LOCAL_FUEL_RESET_STORAGE_KEY,
@@ -624,6 +624,9 @@ export default function App() {
   const presencasLinkInativas = useMemo(() => presencasLink.filter(item => !estaAtivo(item)), [presencasLink]);
   const [historicoPresencas, setHistoricoPresencas] = useState<HistoricoPresenca[]>([]);
   const [controleEquipamentosDiario, setControleEquipamentosDiario] = useState<ControleEquipamentoDiario[]>([]);
+  // As regras automáticas da manutenção (fechar no limite, continuidade) só
+  // gravam depois que esta sessão igualou com a nuvem pelo menos uma vez.
+  const [baixouDaNuvemNestaSessao, setBaixouDaNuvemNestaSessao] = useState(false);
   const [controleEstacas, setControleEstacas] = useState<ControleEstacas>(INITIAL_CONTROLE_ESTACAS);
   const [periodosArquivados, setPeriodosArquivados] = useState<PeriodoArquivado[]>([]);
   const [vinculosOperadorEquipamento, setVinculosOperadorEquipamento] = useState<VinculoOperadorEquipamento[]>([]);
@@ -1424,6 +1427,7 @@ export default function App() {
         // Acabou de igualar com a nuvem: este é o retrato que serve de base
         // para diferenciar exclusões locais de novidades dos colegas depois.
         cloudBaselineRef.current = downloadedBaseline;
+        setBaixouDaNuvemNestaSessao(true);
         if (edicoesLocais.length && !devolverParaNuvem.length && !novidadesLocais.length) {
           queueMicrotask(() => { void handleUploadToSupabase(); });
           const editados = edicoesLocais.reduce((total, item) => total + item.editados, 0);
@@ -4093,10 +4097,22 @@ export default function App() {
     const anterior = controleEquipamentosDiario.find(item => item.id === registro.id);
     if (!anterior) return;
     const updated = controleEquipamentosDiario.map(item => item.id === registro.id ? registro : item);
-    saveAndLog('Manutenção', 'Editou', descricao, historyLogs, () => {
+    // OS que fechou pelo limite neste dia é refeita com a decisão (horas e, se saiu do limite, a conclusão).
+    const ordem = registro.ordemServicoId ? ordensServico.find(item => item.id === registro.ordemServicoId) : undefined;
+    const recalculada = ordem ? recalcularOrdemDoLimite(ordem, updated, new Date()) : null;
+    const ordemNova = recalculada && ordem ? { ...recalculada, atualizadoEm: new Date().toISOString() } : null;
+    const ordensAtualizadas = ordemNova ? ordensServico.map(item => item.id === ordemNova.id ? ordemNova : item) : ordensServico;
+    const textoOrdem = ordemNova && ordem
+      ? ` ${ordem.numero} refeita: horas ${ordem.horasParadas ?? '—'} → ${ordemNova.horasParadas} h; conclusão ${ordem.horaConclusao || '—'} → ${ordemNova.horaConclusao || '—'}${ordemNova.observacao !== ordem.observacao ? '; agora "Concluída na conferência."' : ''}.`
+      : '';
+    saveAndLog('Manutenção', 'Editou', `${descricao}${textoOrdem}`, historyLogs, () => {
       setControleEquipamentosDiario(updated);
       writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(updated));
-    }, { registroId: registro.id, valorAnterior: anterior, valorNovo: registro, tipoOperacao: 'UPDATE' });
+      if (ordemNova) {
+        setOrdensServico(ordensAtualizadas);
+        writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(ordensAtualizadas));
+      }
+    }, { registroId: registro.id, valorAnterior: ordem && ordemNova ? { registro: anterior, ordem } : anterior, valorNovo: ordemNova ? { registro, ordem: ordemNova } : registro, tipoOperacao: 'UPDATE' });
   };
 
   // OS aberta cujo dia bateu 10 h paradas fecha sozinha, na hora do limite. Não
@@ -4110,7 +4126,10 @@ export default function App() {
   encerrarPeloLimiteRef.current = () => {
     if (uploadsInFlightRef.current > 0) return;
     const { ordens, encerradas } = encerrarOrdensNoLimite(controleEquipamentosDiario, ordensServico, new Date());
-    if (!encerradas.length) return;
+    if (!encerradas.length) {
+      abrirContinuidade();
+      return;
+    }
     const antes = new Map(ordensServico.map(ordem => [ordem.id, ordem]));
     const prefixoDe = (equipamentoId: string) => equipamentos.find(item => item.id === equipamentoId)?.prefixo || 'frota não localizada';
     const logs: HistoryLog[] = encerradas.map((ordem, indice) => ({
@@ -4132,12 +4151,49 @@ export default function App() {
       writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(ordens));
     }, { registroId: primeiro.registroId, valorAnterior: primeiro.valorAnterior, valorNovo: primeiro.valorNovo, tipoOperacao: 'UPDATE' });
   };
+  // "Continua parado amanhã": no dia seguinte o equipamento entra sozinho em
+  // manutenção às 07:00, pelo mesmo caminho do Quadro (a OS nova abre ali).
+  // Um por rodada: cada gravação parte do estado já salvo pela anterior.
+  const continuidadesEmAndamentoRef = useRef(new Set<string>());
+  const abrirContinuidade = () => {
+    const pendente = pendentesDeContinuidade(controleEquipamentosDiario, new Date())
+      .find(item => !continuidadesEmAndamentoRef.current.has(item.id));
+    if (!pendente) return;
+    // Evita a mesma entrada duas vezes enquanto o import e a gravação terminam.
+    continuidadesEmAndamentoRef.current.add(pendente.id);
+    const equipamento = equipamentos.find(item => item.id === pendente.equipamentoId);
+    if (!equipamento) return;
+    const seguinte = new Date(`${pendente.data}T12:00:00Z`);
+    seguinte.setUTCDate(seguinte.getUTCDate() + 1);
+    const anteriorFleet = pendente as ControleEquipamentoDiario & { local?: string; frenteServico?: string };
+    void import('./modules/frota/quadroFrota').then(({ registroDaEdicao }) => {
+      const resultado = registroDaEdicao({
+        dia: seguinte.toISOString().slice(0, 10),
+        hora: '07:00',
+        agora: new Date().toISOString(),
+        usuario: activeUserName,
+        equipamento,
+        registros: controleEquipamentosDiario,
+        funcionarios: motoristasOperacionais,
+        edicao: {
+          status: 'Em manutenção',
+          canteiro: anteriorFleet.local || '',
+          frente: anteriorFleet.frenteServico || '',
+          operador: pendente.nomeMotorista || '',
+          motivoManutencao: pendente.motivoManutencao?.trim() || 'Continua em manutenção',
+          observacao: `Continua parado desde ${pendente.data.split('-').reverse().join('/')} (decisão da conferência).`,
+        },
+      });
+      if ('erro' in resultado) return;
+      handleSaveControleEquipamentoDiario(resultado.registro, resultado.novo);
+    });
+  };
   useEffect(() => {
-    if (!isLoggedIn || !podeEditarManutencao) return;
+    if (!isLoggedIn || !podeEditarManutencao || !baixouDaNuvemNestaSessao) return;
     encerrarPeloLimiteRef.current();
     const relogio = window.setInterval(() => encerrarPeloLimiteRef.current(), 60_000);
     return () => window.clearInterval(relogio);
-  }, [isLoggedIn, podeEditarManutencao, controleEquipamentosDiario, ordensServico]);
+  }, [isLoggedIn, podeEditarManutencao, baixouDaNuvemNestaSessao, controleEquipamentosDiario, ordensServico]);
 
   const handleApproveControleEquipamentoDiario = (id: string, status: 'APROVADO' | 'REJEITADO') => {
     if (!['admin', 'gestor'].includes(currentUserRole)) return;

@@ -12,7 +12,6 @@ import type { ControleEquipamentoDiario, Equipamento, Funcionario, HistoryLog, O
 import { historicoDaManutencao } from '../utils/manutencaoHistorico';
 import {
   FLUXO_MANUTENCAO,
-  calcularHorasParadas,
   isOrdemEncerrada,
   proximoNumeroOrdemServico,
   proximoStatusManutencao,
@@ -27,7 +26,7 @@ import {
   type EquipmentFamily,
 } from '../utils/equipmentPresentation';
 import { downloadManutencaoWorkbook, downloadRelatorioManutencaoDia } from '../utils/manutencaoExport';
-import { OBSERVACAO_LIMITE } from '../utils/manutencaoLimite';
+import { OBSERVACAO_LIMITE, horasDaOrdem as somarHorasDaOrdem } from '../utils/manutencaoLimite';
 import { montarRelatorioManutencaoDia } from '../utils/relatorioManutencaoDia';
 import { dataDeHoje, diasParaConferir, motivosDoDia, registrosDeManutencao } from '../utils/conferenciaManutencao';
 import { buildMaintenanceQueue } from '../utils/maintenanceQueue';
@@ -163,6 +162,10 @@ export default function ManutencaoTab({
   const historico = useMemo(() => historicoDaManutencao(historyLogs), [historyLogs]);
 
   const registrosManutencao = useMemo(() => registrosDeManutencao(controlesEquipamentos), [controlesEquipamentos]);
+  // Horas da OS = soma dos dias dela no controle da frota, cada dia até 10 h.
+  // OS sem nenhum dia lançado não tem hora parada medida: fica vazio, não zero.
+  const ordensComDias = useMemo(() => new Set(registrosManutencao.map(registro => registro.ordemServicoId).filter(Boolean)), [registrosManutencao]);
+  const horasDaOrdem = (ordem: Pick<OrdemServico, 'id'>) => (ordensComDias.has(ordem.id) ? somarHorasDaOrdem(ordem, registrosManutencao, agora) : undefined);
   const relatorioHoje = useMemo(() => montarRelatorioManutencaoDia(hoje, registrosManutencao, ordensServico, agora), [hoje, registrosManutencao, ordensServico, agora]);
   const relatorioDoDia = useMemo(
     () => (dataRelatorio === hoje ? relatorioHoje : montarRelatorioManutencaoDia(dataRelatorio, registrosManutencao, ordensServico, agora)),
@@ -332,7 +335,7 @@ export default function ManutencaoTab({
     // número é corrente e seria mentira gravar.
     const ordem: OrdemServico = {
       ...base,
-      horasParadas: base.dataConclusao ? calcularHorasParadas(base) : undefined,
+      horasParadas: base.dataConclusao ? horasDaOrdem(base) : undefined,
     };
     onSave(ordem, !editando);
     setFormAberto(false);
@@ -350,12 +353,8 @@ export default function ManutencaoTab({
       dataConclusao: concluindo ? (ordem.dataConclusao || isoDay(hoje)) : ordem.dataConclusao,
       horaConclusao: concluindo ? (ordem.horaConclusao || hoje.toTimeString().slice(0, 5)) : ordem.horaConclusao,
     };
-    onSave({ ...atualizada, horasParadas: atualizada.dataConclusao ? calcularHorasParadas(atualizada) : undefined }, false);
+    onSave({ ...atualizada, horasParadas: atualizada.dataConclusao ? horasDaOrdem(atualizada) : undefined }, false);
   };
-
-  // OS encerrada mostra as horas gravadas no fechamento (a do limite fica em 10 h),
-  // não a distância entre abertura e liberação, que atravessa noites.
-  const horasDaOrdem = (ordem: OrdemServico) => (isOrdemEncerrada(ordem.status) && ordem.horasParadas !== undefined ? ordem.horasParadas : calcularHorasParadas(ordem));
 
   const colunasOrdens: ColunaTabela<OrdemServico>[] = [
     {
@@ -401,11 +400,13 @@ export default function ManutencaoTab({
     {
       chave: 'situacao',
       titulo: 'Situação',
+      larguraMinima: 150,
+      dica: ordem => [ordem.status, (ordem.observacao || '').includes(OBSERVACAO_LIMITE) ? 'Pelo limite de 10 h' : ''].filter(Boolean).join(' · '),
       valorOrdenacao: ordem => ordem.status,
       render: ordem => (
         <span className="flex flex-wrap items-center gap-1.5 lg:flex-nowrap">
           <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold ${statusTone(ordem.status)}`}>{ordem.status}</span>
-          {(ordem.observacao || '').includes(OBSERVACAO_LIMITE) && <Badge tone="warning">Pelo limite de 10 h</Badge>}
+          {(ordem.observacao || '').includes(OBSERVACAO_LIMITE) && <Badge tone="warning" className="whitespace-nowrap">Pelo limite de 10 h</Badge>}
         </span>
       ),
     },
@@ -453,11 +454,11 @@ export default function ManutencaoTab({
   }, { scope: escopo, dependencies: [subtela] });
 
   const subtelas = [
-    { id: 'hoje' as const, rotulo: 'Hoje', icone: Timer, contador: relatorioHoje.linhas.filter(linha => linha.parada.periodos.some(periodo => periodo.fim === null)).length, contadorRotulo: 'parados agora', tom: 'neutro' as const },
-    { id: 'conferencia' as const, rotulo: 'Conferência', icone: ClipboardCheck, contador: paraConferir, contadorRotulo: 'para conferir' },
+    { id: 'hoje' as const, rotulo: 'Hoje', curto: 'Hoje', icone: Timer, contador: relatorioHoje.linhas.filter(linha => linha.parada.periodos.some(periodo => periodo.fim === null)).length, contadorRotulo: 'parados agora', tom: 'neutro' as const },
+    { id: 'conferencia' as const, rotulo: 'Conferência', curto: 'Conferir', icone: ClipboardCheck, contador: paraConferir, contadorRotulo: 'para conferir' },
     { id: 'relatorio' as const, rotulo: 'Relatório do dia', curto: 'Relatório', icone: BarChart3 },
-    { id: 'ordens' as const, rotulo: 'Ordens de serviço', curto: 'Ordens', icone: ClipboardList },
-    { id: 'historico' as const, rotulo: 'Histórico', icone: History },
+    { id: 'ordens' as const, rotulo: 'Ordens de serviço', curto: 'OS', icone: ClipboardList },
+    { id: 'historico' as const, rotulo: 'Histórico', curto: 'Histórico', icone: History },
   ];
   const exportaExcel = subtela === 'ordens' || subtela === 'relatorio';
   const semNadaParaExportar = subtela === 'relatorio' ? relatorioDoDia.linhas.length === 0 : lista.length === 0;
@@ -750,9 +751,9 @@ export default function ManutencaoTab({
             <textarea value={form.observacao} onChange={event => setForm({ ...form, observacao: event.target.value })} rows={2} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-emerald-500" />
           </label>
         </div>
-        {form.dataConclusao && (
+        {editando && horasDaOrdem(editando) !== undefined && (
           <p className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-            Horas paradas calculadas: <strong>{calcularHorasParadas({ ...form })?.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) ?? '—'} h</strong>
+            Horas paradas pelo controle da frota (até 10 h por dia): <strong>{horasDaOrdem(editando)?.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} h</strong>
           </p>
         )}
         {erro && <p className="mt-3 rounded-lg bg-rose-50 p-3 text-xs font-bold text-rose-700">{erro}</p>}

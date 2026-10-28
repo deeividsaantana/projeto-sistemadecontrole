@@ -1,3 +1,5 @@
+import { dataDeHoje, diaAntes } from '../src/utils/conferenciaManutencao';
+import { OBSERVACAO_LIMITE } from '../src/utils/manutencaoLimite';
 import type {
   ControleEquipamentoDiario, Equipamento, Funcionario, ObraLocal } from '../src/types';
 
@@ -429,7 +431,6 @@ export const controlesBasculantes: ControleEquipamentoDiario[] = OPERATIONAL_FLE
   });
 
 // --- Manutenção: dia de hoje com entradas e liberações, para a tela nova ---
-import { dataDeHoje, diaAntes } from '../src/utils/conferenciaManutencao';
 
 const hojeManutencao = dataDeHoje(new Date());
 const ontemManutencao = diaAntes(hojeManutencao);
@@ -454,7 +455,7 @@ export const controlesManutencao: ControleEquipamentoDiario[] = [
     eventoManutencao(hojeManutencao, 'ENTRADA_MANUTENCAO', '07:10', '2', 'Pneu dianteiro'),
     eventoManutencao(hojeManutencao, 'LIBERACAO_MANUTENCAO', '09:30', '3'),
   ], { horaLiberacao: '09:30', ordemServicoId: 'os-2' }),
-  lancamentoManutencao('man-3', ontemManutencao, 'EH010', 'eq-3', 'Escavadeiras', 'Em manutenção', [eventoManutencao(ontemManutencao, 'ENTRADA_MANUTENCAO', '07:00', '4', 'Elétrica')]),
+  lancamentoManutencao('man-3', ontemManutencao, 'EH010', 'eq-3', 'Escavadeiras', 'Em manutenção', [eventoManutencao(ontemManutencao, 'ENTRADA_MANUTENCAO', '07:00', '4', 'Elétrica')], { ordemServicoId: 'os-3' }),
   lancamentoManutencao('man-4', ontemManutencao, 'RC044', 'eq-4', 'Rolos', 'Disponível', [
     eventoManutencao(ontemManutencao, 'ENTRADA_MANUTENCAO', '10:00', '5', 'Correia'),
     eventoManutencao(ontemManutencao, 'LIBERACAO_MANUTENCAO', '08:30', '6'),
@@ -463,4 +464,15 @@ export const controlesManutencao: ControleEquipamentoDiario[] = [
     eventoManutencao(ontemManutencao, 'ENTRADA_MANUTENCAO', '13:00', '7', 'Freio'),
     eventoManutencao(ontemManutencao, 'LIBERACAO_MANUTENCAO', '15:20', '8'),
   ]),
+];
+
+/** OS que fechou sozinha no limite de 10 h, para conferir o selo na lista. */
+export const ordensManutencao: OrdemServico[] = [
+  ...ordensServico,
+  {
+    id: 'os-3', numero: 'OS-0102', equipamentoId: 'eq-3', tipo: 'Corretiva', prioridade: 'Média',
+    descricao: 'Entrada em manutenção registrada no controle operacional do EH010.', status: 'Concluída',
+    dataAbertura: ontemManutencao, horaAbertura: '07:00', dataConclusao: ontemManutencao, horaConclusao: '18:15', horasParadas: 10,
+    responsavel: 'Renilson', observacao: OBSERVACAO_LIMITE, motivo: 'Elétrica',
+  },
 ];

@@ -51,7 +51,7 @@ const noopImportAbastecimentos = (items: unknown[] = []) => ({
 /** Manutenção com estado: liberar, entrar e conferir voltam para a tela, como no app. */
 function ManutencaoPreview() {
   const [registros, setRegistros] = React.useState(fx.controlesManutencao);
-  const [ordens, setOrdens] = React.useState(fx.ordensServico);
+  const [ordens, setOrdens] = React.useState(fx.ordensManutencao);
   const [logs, setLogs] = React.useState<HistoryLog[]>([]);
   const salvar = (registro: (typeof registros)[number], descricao = `Editou o controle de ${registro.prefixo}.`) => {
     setRegistros(atual => atual.some(item => item.id === registro.id) ? atual.map(item => item.id === registro.id ? registro : item) : [registro, ...atual]);

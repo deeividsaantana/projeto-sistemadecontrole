@@ -43,7 +43,7 @@ const textoDoEvento = (evento: EventoControleEquipamentoDiario) => {
   return `Mudou para ${evento.statusNovo}`;
 };
 
-interface ItemLinhaDoTempo { id: string; hora: string; texto: string; detalhe?: string; responsavel?: string }
+interface ItemLinhaDoTempo { id: string; hora: string; texto: string; detalhe?: string; responsavel?: string; substituido?: boolean }
 
 /** O que foi lançado no dia, na ordem do histórico. Lançamento antigo sem eventos usa os campos do dia. */
 export const linhaDoTempo = (registro: ControleEquipamentoDiario): ItemLinhaDoTempo[] => {
@@ -60,6 +60,7 @@ export const linhaDoTempo = (registro: ControleEquipamentoDiario): ItemLinhaDoTe
     texto: textoDoEvento(evento),
     detalhe: evento.motivo || evento.observacao,
     responsavel: evento.responsavel,
+    substituido: Boolean(evento.substituidoPor),
   }));
 };
 
@@ -130,7 +131,10 @@ export function CartaoParada({ registro, parada, ordemNumero, tipo, podeEditar, 
           {itens.map(item => (
             <li key={item.id} className="relative">
               <span className="absolute -left-[1.4rem] top-1 size-3 rounded-full border-2 border-white bg-slate-400" aria-hidden="true" />
-              <p className="text-sm text-slate-800"><strong className="tabular-nums">{item.hora}</strong> · {item.texto}</p>
+              <p className="text-sm text-slate-800">
+                <span className={item.substituido ? 'text-[#5b6870] line-through' : undefined}><strong className="tabular-nums">{item.hora}</strong> · {item.texto}</span>
+                {item.substituido && <span className="text-[#5b6870]"> (substituída)</span>}
+              </p>
               {(item.detalhe || item.responsavel) && (
                 <p className="text-xs text-[#5b6870]">{[item.detalhe, item.responsavel && `por ${item.responsavel}`].filter(Boolean).join(' · ')}</p>
               )}

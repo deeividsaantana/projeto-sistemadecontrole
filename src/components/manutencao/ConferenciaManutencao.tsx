@@ -105,6 +105,7 @@ function ItemConferencia({ linha, registro, registros, agora, podeEditar, podeRe
   const [hora, setHora] = useState('');
   const [erro, setErro] = useState('');
   const { parada } = linha;
+  const passouDoLimite = parada.brutoMin > parada.totalMin;
   const decisao = registro.conferenciaManutencao;
   const idBase = `conferencia-${registro.id}`;
   const mostrarAcoes = podeEditar && linha.grupo !== 'OK' && (!linha.conferido || reabrindo);
@@ -153,9 +154,14 @@ function ItemConferencia({ linha, registro, registros, agora, podeEditar, podeRe
             {parada.periodos.map((periodo, indice) => (
               <li key={indice} className="tabular-nums">
                 {periodo.inicio} → {periodo.fim ?? 'sem liberação'}
-                <span className="text-[#5b6870]"> · {formatarMinutos(periodo.liquidoMin)}{periodo.descontoMin ? ` (sem ${formatarMinutos(periodo.descontoMin)} de pausa)` : ''}</span>
+                <span className="text-[#5b6870]">{passouDoLimite
+                  ? (parada.periodos.length === 1 ? ` · conta ${formatarMinutos(parada.totalMin)} · total bruto ${formatarMinutos(parada.brutoMin)}` : ` · ${formatarMinutos(periodo.liquidoMin)}`)
+                  : ` · ${formatarMinutos(periodo.liquidoMin)}${periodo.descontoMin ? ` (sem ${formatarMinutos(periodo.descontoMin)} de pausa)` : ''}`}</span>
               </li>
             ))}
+            {passouDoLimite && parada.periodos.length > 1 && (
+              <li className="text-[#5b6870]">conta {formatarMinutos(parada.totalMin)} · total bruto {formatarMinutos(parada.brutoMin)}</li>
+            )}
           </ul>
           {parada.limiteAtingidoAs && <p className="mt-1 text-sm text-[#5b6870]">Bateu 10 h às {parada.limiteAtingidoAs}. O dia conta no máximo 10 h.</p>}
         </div>
@@ -165,6 +171,9 @@ function ItemConferencia({ linha, registro, registros, agora, podeEditar, podeRe
         <p className={`rounded-xl px-3 py-2 text-sm font-semibold ${linha.conferido ? 'bg-emerald-50 text-emerald-900' : 'bg-slate-100 text-slate-700'}`}>
           {linha.conferido ? 'Conferido' : 'Última decisão'}: {ROTULO_DECISAO[decisao.decisao]} · por {decisao.decididoPor} em {quando(decisao.decididoEm)}
         </p>
+      )}
+      {decisao?.decisao === 'CONTINUA_AMANHA' && (
+        <p className="text-sm font-semibold text-slate-700">Amanhã às 07:00 entra sozinho em manutenção com OS nova.</p>
       )}
 
       {linha.grupo === 'OK' && decisao && (
