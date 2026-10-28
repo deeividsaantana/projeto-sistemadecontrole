@@ -1307,6 +1307,8 @@ export type StatusControleEquipamentoDiario =
 export interface EventoControleEquipamentoDiario {
   id: string;
   ocorridoEm: string;
+  /** Hora informada do fato (HH:MM, horário de Brasília). ocorridoEm é quando foi digitado. */
+  hora?: string;
   tipo: 'SAIDA_OPERACAO' | 'ENTRADA_MANUTENCAO' | 'LIBERACAO_MANUTENCAO' | 'ALTERACAO_STATUS';
   statusAnterior?: StatusControleEquipamentoDiario;
   statusNovo: StatusControleEquipamentoDiario;

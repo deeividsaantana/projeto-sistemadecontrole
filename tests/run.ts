@@ -100,6 +100,7 @@ import './dashboardKpiCalculations.test';
 import './dashboardUsability.test';
 import './painelFiltroUnico.test';
 import './manutencaoHistorico.test';
+import './horasParadasDoDia.test';
 import './navigationCleanup.test';
 import './presencaStatus.test';
 import './observability.test';
