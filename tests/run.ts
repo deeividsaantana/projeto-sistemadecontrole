@@ -102,6 +102,7 @@ import './painelFiltroUnico.test';
 import './manutencaoHistorico.test';
 import './horasParadasDoDia.test';
 import './manutencaoLimite.test';
+import './relatorioManutencaoDia.test';
 import './navigationCleanup.test';
 import './presencaStatus.test';
 import './observability.test';
