@@ -1307,6 +1307,8 @@ export type StatusControleEquipamentoDiario =
 export interface EventoControleEquipamentoDiario {
   id: string;
   ocorridoEm: string;
+  /** Hora informada do fato (HH:MM, horário de Brasília). ocorridoEm é quando foi digitado. */
+  hora?: string;
   tipo: 'SAIDA_OPERACAO' | 'ENTRADA_MANUTENCAO' | 'LIBERACAO_MANUTENCAO' | 'ALTERACAO_STATUS';
   statusAnterior?: StatusControleEquipamentoDiario;
   statusNovo: StatusControleEquipamentoDiario;
@@ -1315,6 +1317,8 @@ export interface EventoControleEquipamentoDiario {
   ordemServicoId?: string;
   /** Quem informou a mudança. Sem isso o histórico não responde "quem alterou". */
   responsavel?: string;
+  /** Id do evento que corrigiu este na conferência. Fica no histórico, fora da conta. */
+  substituidoPor?: string;
 }
 
 export interface AprovacaoOperacional {
@@ -1323,6 +1327,13 @@ export interface AprovacaoOperacional {
   solicitadoPor?: string;
   decididoEm?: string;
   decididoPor?: string;
+  observacao?: string;
+}
+
+export interface ConferenciaManutencao {
+  decisao: 'CONFIRMADO_10H' | 'LIBERACAO_INFORMADA' | 'CONTINUA_AMANHA';
+  decididoEm: string;
+  decididoPor: string;
   observacao?: string;
 }
 
@@ -1348,6 +1359,8 @@ export interface ControleEquipamentoDiario {
   origem: 'SISTEMA' | 'PLANILHA';
   revisao: string[];
   aprovacao?: AprovacaoOperacional;
+  /** Decisão da conferência quando o dia bateu 10 h ou ficou inconsistente. */
+  conferenciaManutencao?: ConferenciaManutencao;
   criadoEm: string;
   atualizadoEm: string;
 }

@@ -1,3 +1,5 @@
+import { dataDeHoje, diaAntes } from '../src/utils/conferenciaManutencao';
+import { OBSERVACAO_LIMITE } from '../src/utils/manutencaoLimite';
 import type {
   ControleEquipamentoDiario, Equipamento, Funcionario, ObraLocal } from '../src/types';
 
@@ -427,3 +429,53 @@ export const controlesBasculantes: ControleEquipamentoDiario[] = OPERATIONAL_FLE
       criadoEm: `${hojeQuadro}T10:00:00.000Z`, atualizadoEm: `${hojeQuadro}T10:${String(i).padStart(2, '0')}:00.000Z`,
     } as ControleEquipamentoDiario;
   });
+
+// --- Manutenção: dia de hoje com entradas e liberações, para a tela nova ---
+
+const hojeManutencao = dataDeHoje(new Date());
+const ontemManutencao = diaAntes(hojeManutencao);
+const eventoManutencao = (data: string, tipo: 'ENTRADA_MANUTENCAO' | 'LIBERACAO_MANUTENCAO', hora: string, n: string, motivo?: string) => ({
+  id: `ev-man-${n}`, ocorridoEm: new Date(`${data}T${hora}:00-03:00`).toISOString(), hora, tipo,
+  statusNovo: tipo === 'ENTRADA_MANUTENCAO' ? 'Em manutenção' as const : 'Disponível' as const, motivo, responsavel: 'Renilson',
+});
+const lancamentoManutencao = (id: string, data: string, prefixo: string, equipamentoId: string, familia: string, status: ControleEquipamentoDiario['status'], eventos: ReturnType<typeof eventoManutencao>[], extra: Partial<ControleEquipamentoDiario> = {}): ControleEquipamentoDiario => ({
+  id, chave: `${data}|${equipamentoId}`, data, funcionarioId: '', codigoFuncionario: '', nomeMotorista: 'RENILSON DOS SANTOS',
+  equipamentoId, prefixo, familia, status, horaSaida: '07:00', horaEntradaManutencao: eventos[0]?.hora || '', horaLiberacao: '',
+  motivoManutencao: eventos[0]?.motivo, observacao: '', origem: 'SISTEMA', revisao: [], eventos,
+  criadoEm: `${data}T10:00:00.000Z`, atualizadoEm: `${data}T10:00:00.000Z`, ...extra,
+});
+export const equipamentosManutencao: Equipamento[] = [
+  ...equipamentos,
+  { id: 'eq-3', prefixo: 'EH010', nome: 'Escavadeira', tipo: 'Escavadeira hidráulica', marca: 'Komatsu', modelo: 'PC200', seriePlaca: 'X3', empresaId: 'emp-1', status: 'Ativo', observacao: '' } as Equipamento,
+  { id: 'eq-5', prefixo: 'PC090', nome: 'Pá carregadeira', tipo: 'Pá carregadeira', marca: 'CAT', modelo: '924', seriePlaca: 'X5', empresaId: 'emp-1', status: 'Ativo', observacao: '' } as Equipamento,
+  { id: 'eq-4', prefixo: 'RC044', nome: 'Rolo compactador', tipo: 'Rolo compactador', marca: 'Dynapac', modelo: 'CA250', seriePlaca: 'X4', empresaId: 'emp-1', status: 'Ativo', observacao: '' } as Equipamento,
+];
+export const controlesManutencao: ControleEquipamentoDiario[] = [
+  lancamentoManutencao('man-1', hojeManutencao, 'CB770', 'eq-1', 'Escavadeiras', 'Em manutenção', [eventoManutencao(hojeManutencao, 'ENTRADA_MANUTENCAO', '07:40', '1', 'Vazamento hidráulico')], { ordemServicoId: 'os-1' }),
+  lancamentoManutencao('man-2', hojeManutencao, 'CB1005', 'eq-2', 'Basculantes', 'Disponível', [
+    eventoManutencao(hojeManutencao, 'ENTRADA_MANUTENCAO', '07:10', '2', 'Pneu dianteiro'),
+    eventoManutencao(hojeManutencao, 'LIBERACAO_MANUTENCAO', '09:30', '3'),
+  ], { horaLiberacao: '09:30', ordemServicoId: 'os-2' }),
+  lancamentoManutencao('man-3', ontemManutencao, 'EH010', 'eq-3', 'Escavadeiras', 'Em manutenção', [eventoManutencao(ontemManutencao, 'ENTRADA_MANUTENCAO', '07:00', '4', 'Elétrica')], { ordemServicoId: 'os-3' }),
+  lancamentoManutencao('man-4', ontemManutencao, 'RC044', 'eq-4', 'Rolos', 'Disponível', [
+    eventoManutencao(ontemManutencao, 'ENTRADA_MANUTENCAO', '10:00', '5', 'Correia'),
+    eventoManutencao(ontemManutencao, 'LIBERACAO_MANUTENCAO', '08:30', '6'),
+  ]),
+  // Lançamento antigo: sem eventos, entrada e liberação só nos campos, com a liberação errada.
+  lancamentoManutencao('man-6', ontemManutencao, 'PC090', 'eq-5', 'Carregadeiras', 'Disponível', [], { horaEntradaManutencao: '10:00', horaLiberacao: '07:00', motivoManutencao: 'Hidráulica' }),
+  lancamentoManutencao('man-5', ontemManutencao, 'CB1005', 'eq-2', 'Basculantes', 'Disponível', [
+    eventoManutencao(ontemManutencao, 'ENTRADA_MANUTENCAO', '13:00', '7', 'Freio'),
+    eventoManutencao(ontemManutencao, 'LIBERACAO_MANUTENCAO', '15:20', '8'),
+  ]),
+];
+
+/** OS que fechou sozinha no limite de 10 h, para conferir o selo na lista. */
+export const ordensManutencao: OrdemServico[] = [
+  ...ordensServico,
+  {
+    id: 'os-3', numero: 'OS-0102', equipamentoId: 'eq-3', tipo: 'Corretiva', prioridade: 'Média',
+    descricao: 'Entrada em manutenção registrada no controle operacional do EH010.', status: 'Concluída',
+    dataAbertura: ontemManutencao, horaAbertura: '07:00', dataConclusao: ontemManutencao, horaConclusao: '18:15', horasParadas: 10,
+    responsavel: 'Renilson', observacao: OBSERVACAO_LIMITE, motivo: 'Elétrica',
+  },
+];

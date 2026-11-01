@@ -1,4 +1,5 @@
 import type { ControleEquipamentoDiario, EventoControleEquipamentoDiario, OrdemServico } from '../types';
+import { horaLocal } from './horasParadasDoDia';
 
 /** Fluxo oficial da ordem de serviço. Cancelada sai do fluxo a qualquer momento. */
 export const FLUXO_MANUTENCAO: OrdemServico['status'][] = [
@@ -126,13 +127,14 @@ export const liberarMaquinasDaOrdemConcluida = (
 ): LiberacaoMaquinasDaOrdem => {
   if (!isOrdemEncerrada(ordem.status)) return { registros, liberados: 0 };
   let liberados = 0;
-  const hora = agora.slice(11, 16);
+  const hora = horaLocal(agora);
   const registrosAtualizados = registros.map(registro => {
     if (registro.ordemServicoId !== ordem.id || !EM_MANUTENCAO_OS.includes(registro.status)) return registro;
     liberados += 1;
     const evento: EventoControleEquipamentoDiario = {
       id: `evt-${agora}-${registro.equipamentoId}`,
       ocorridoEm: agora,
+      hora,
       tipo: 'LIBERACAO_MANUTENCAO',
       statusAnterior: registro.status,
       statusNovo: 'Disponível',
