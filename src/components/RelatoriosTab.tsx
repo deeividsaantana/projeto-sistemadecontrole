@@ -66,15 +66,6 @@ export default function RelatoriosTab({
       unidade: ['lançamento', 'lançamentos'],
     },
     {
-      aba: 'presenca',
-      titulo: 'Presença por período',
-      onde: 'Presença e Controle',
-      oQueMostra: 'Como foi o período, presença por equipe, por empresa e por pessoa. Exporta em Excel.',
-      Icone: Users,
-      base: resumirBase(presencas),
-      unidade: ['envio de presença', 'envios de presença'],
-    },
-    {
       aba: 'materiais',
       titulo: 'Materiais e estoque',
       onde: 'Materiais e Estoque',
@@ -92,7 +83,7 @@ export default function RelatoriosTab({
       base: resumirBase(cravacoes),
       unidade: ['cravação', 'cravações'],
     },
-  ], [abastecimentos, controlesEquipamentos, presencas, movimentosMaterial, cravacoes]);
+  ], [abastecimentos, controlesEquipamentos, movimentosMaterial, cravacoes]);
 
   useGSAP(() => {
     const raiz = escopo.current;
