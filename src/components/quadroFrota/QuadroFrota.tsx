@@ -16,6 +16,7 @@ import { DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, type 
 import { AlertTriangle, CheckCircle2, ChevronDown, Fuel, Gauge, Keyboard, LayoutGrid, ListChecks, ListFilter, MapPin, PauseCircle, PlayCircle, Search, SlidersHorizontal, Trash2, Truck, UserCheck, UserX, Wrench, X, type LucideIcon } from 'lucide-react';
 import type { Abastecimento, ControleEquipamentoDiario, Equipamento, FrenteServico, Funcionario, GrupoEquipe } from '../../types';
 import { CountUp, Modal } from '../../shared/ui';
+import { TabNavigation } from '../shared/TabNavigation';
 import {
   CANTEIROS,
   FILTROS_VAZIOS,
@@ -419,21 +420,15 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
 
       <section aria-label="Canteiros e filtros" data-quadro-reveal className={`${CARTAO} space-y-3 p-3 lg:sticky lg:top-0 lg:z-10`}>
         {podeEditar && (
-          <div role="group" aria-label="Como ver as máquinas" className="grid grid-cols-2 gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 sm:inline-grid" data-testid="quadro-vista">
-            {([['quadro', 'Quadro', LayoutGrid], ['lancar', 'Lançar', ListChecks]] as const).map(([valor, rotulo, Icone]) => (
-              <button
-                key={valor}
-                type="button"
-                aria-pressed={vista === valor}
-                onClick={() => trocarVista(valor)}
-                data-testid={`quadro-vista-${valor}`}
-                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${vista === valor ? 'bg-white text-[#176b4d] shadow-[0_6px_16px_-10px_rgba(15,40,31,0.45)] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}
-              >
-                <Icone className="size-4" aria-hidden="true" />
-                {rotulo}
-              </button>
-            ))}
-          </div>
+          <TabNavigation
+            items={[
+              { id: 'quadro', label: 'Quadro', icon: <LayoutGrid className="size-4" /> },
+              { id: 'lancar', label: 'Lançar', icon: <ListChecks className="size-4" /> },
+            ]}
+            activeId={vista}
+            onSelect={(id) => trocarVista(id as Vista)}
+            className="rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200"
+          />
         )}
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Canteiro">
           {chipCanteiro('', 'Todos', cartoes.length)}

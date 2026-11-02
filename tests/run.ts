@@ -1,4 +1,5 @@
 import './keyboardShortcuts.test';
+import './tabNavigation.test';
 import './dashboardLevels.test';
 import './dashboardRigor.test';
 import './critical-path.test';
