@@ -228,3 +228,4 @@ import './frotaTabelaPadrao.test';
 import './tabelaMaisLinhas.test';
 import './frotaNavegacaoDia.test';
 import './faltantesPdf.test';
+import './presencaPublicaLink.test';
