@@ -40,6 +40,7 @@ import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
 import { ConfirmDialog, Modal, PageHeader } from '../shared/ui';
 import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
 import { TelaCheia } from '../shared/ui/TelaCheia';
+import { BuscaColaborador } from './shared/BuscaColaborador';
 import { TabelaPadrao, type ColunaTabela } from '../shared/ui/TabelaPadrao';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { readableTeamText, recoverTeamGroups, teamRecordMatches } from '../utils/teamIdentity';
@@ -1254,6 +1255,13 @@ export default function ControlePresencaTab({
       />}
       faixa={aviso || faixaDaVista ? <>{aviso}{faixaDaVista && <div className={aviso ? 'mt-2' : undefined}>{faixaDaVista}</div>}</> : undefined}
     >
+
+      <BuscaColaborador
+        funcionarios={safeFuncionarios}
+        onSelecionado={() => {
+          // A seleção de um colaborador pode ser usada para pré-preencher filtros ou ações futuras
+        }}
+      />
 
       {view === 'ao-vivo' && pendingPublicSubmissionsCount > 0 && (
         <div role="status" className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">

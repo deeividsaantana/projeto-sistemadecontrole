@@ -17,6 +17,7 @@ import { AlertTriangle, CheckCircle2, ChevronDown, Fuel, Gauge, Keyboard, Layout
 import type { Abastecimento, ControleEquipamentoDiario, Equipamento, FrenteServico, Funcionario, GrupoEquipe } from '../../types';
 import { CountUp, Modal } from '../../shared/ui';
 import { TabNavigation } from '../shared/TabNavigation';
+import { BuscaColaborador } from '../shared/BuscaColaborador';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import {
   CANTEIROS,
@@ -362,6 +363,13 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
 
   return (
     <div ref={escopo} id="quadro-frota-tab" data-testid="quadro-frota-tab" className="space-y-4">
+      <BuscaColaborador
+        funcionarios={funcionarios}
+        onSelecionado={() => {
+          // A seleção de um colaborador pode ser usada para pré-preencher filtros ou ações futuras
+        }}
+      />
+
       {podeEditar && (
         <div data-quadro-reveal className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={atualizarPendentes} disabled={pendentes.length === 0} className={`${BOTAO_PRIMARIO} w-full px-5 sm:w-auto`} data-testid="quadro-acao-principal">
