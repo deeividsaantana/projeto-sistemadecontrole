@@ -82,3 +82,38 @@ export const aplicarPresencaManual = (
   ));
   return [...preservados, ...novos];
 };
+
+/**
+ * Escala de sábado: quem da equipe vem trabalhar naquele sábado. Nasce com
+ * todo mundo fora da escala; o encarregado marca quem vem.
+ */
+export type EscalaSabadoRecord = {
+  id: string;
+  data: string;
+  funcionarios: {
+    id: string;
+    nome: string;
+    escalado: boolean;
+    observacao?: string;
+  }[];
+  grupoEquipeId: string;
+  observacaoGeral?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+};
+
+export const criarEscalaSabado = (
+  data: string,
+  funcionarios: readonly Pick<Funcionario, 'id' | 'nome'>[],
+  grupoEquipeId: string,
+): EscalaSabadoRecord => {
+  const agora = new Date().toISOString();
+  return {
+    id: crypto.randomUUID(),
+    data,
+    funcionarios: funcionarios.map(pessoa => ({ id: pessoa.id, nome: pessoa.nome, escalado: false })),
+    grupoEquipeId,
+    criadoEm: agora,
+    atualizadoEm: agora,
+  };
+};
