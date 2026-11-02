@@ -20,6 +20,11 @@ export function BuscaColaborador({ funcionarios, onSelecionado, onFechado }: Pro
   const [selecionadoIdx, setSelecionadoIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const fechar = () => {
+    setAberto(false);
+    onFechado?.();
+  };
+
   // Registra o listener para tecla 'n'
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -67,16 +72,20 @@ export function BuscaColaborador({ funcionarios, onSelecionado, onFechado }: Pro
         handleSelecion(filtrados[selecionadoIdx]);
       }
     } else if (e.key === 'Escape') {
-      setAberto(false);
-      onFechado?.();
+      fechar();
     }
   };
 
   if (!aberto) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/20">
-      <div className="w-full max-w-md">
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/20"
+      onMouseDown={e => {
+        if (e.target === e.currentTarget) fechar();
+      }}
+    >
+      <div className="w-full max-w-md" role="dialog" aria-modal="true" aria-label="Buscar colaborador">
         <div className="bg-white rounded-xl shadow-2xl overflow-hidden">
           <div className="relative p-3 border-b border-slate-200">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
@@ -87,17 +96,16 @@ export function BuscaColaborador({ funcionarios, onSelecionado, onFechado }: Pro
               onChange={e => setTermo(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Nome ou matrícula..."
+              aria-label="Nome ou matrícula"
               className="w-full pl-10 pr-3 py-2 text-sm outline-none"
               autoFocus
             />
             <button
-              onClick={() => {
-                setAberto(false);
-                onFechado?.();
-              }}
+              onClick={fechar}
+              aria-label="Fechar busca"
               className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded"
             >
-              <X className="size-4" />
+              <X className="size-4" aria-hidden="true" />
             </button>
           </div>
 
@@ -107,22 +115,25 @@ export function BuscaColaborador({ funcionarios, onSelecionado, onFechado }: Pro
                 Nenhum colaborador encontrado
               </div>
             ) : (
-              <ul>
-                {filtrados.map((f, idx) => (
-                  <li key={f.id}>
-                    <button
-                      onClick={() => handleSelecion(f)}
-                      className={`w-full px-4 py-2 text-left text-sm transition ${
-                        idx === selecionadoIdx
-                          ? 'bg-emerald-50 text-emerald-900'
-                          : 'hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="font-medium">{f.nome}</div>
-                      <div className="text-xs text-slate-500">{f.matricula || 'Sem matrícula'}</div>
-                    </button>
-                  </li>
-                ))}
+              <ul role="listbox">
+                {filtrados.map((f, idx) => {
+                  const isSelected = idx === selecionadoIdx;
+                  return (
+                    <li key={f.id} role="option" aria-selected={isSelected}>
+                      <button
+                        onClick={() => handleSelecion(f)}
+                        className={`w-full px-4 py-2 text-left text-sm transition ${
+                          isSelected
+                            ? 'bg-emerald-50 text-emerald-900'
+                            : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="font-medium">{f.nome}</div>
+                        <div className="text-xs text-slate-500">{f.matricula || 'Sem matrícula'}</div>
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
