@@ -230,3 +230,4 @@ import './frotaNavegacaoDia.test';
 import './faltantesPdf.test';
 import './presencaPublicaLink.test';
 import './escalaSabado.test';
+import './quadroFrota.visual.test';

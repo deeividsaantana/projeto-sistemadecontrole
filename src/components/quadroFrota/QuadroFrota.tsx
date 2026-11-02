@@ -17,6 +17,7 @@ import { AlertTriangle, CheckCircle2, ChevronDown, Fuel, Gauge, Keyboard, Layout
 import type { Abastecimento, ControleEquipamentoDiario, Equipamento, FrenteServico, Funcionario, GrupoEquipe } from '../../types';
 import { CountUp, Modal } from '../../shared/ui';
 import { TabNavigation } from '../shared/TabNavigation';
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import {
   CANTEIROS,
   FILTROS_VAZIOS,
@@ -39,6 +40,7 @@ import {
 import { abastecidasSemLancamento } from '../../modules/frota/combustivelDoDia';
 import { OPERATIONAL_DRIVERS } from '../../fleet/operationalDrivers';
 import { CartaoArrastavel } from './CartaoArrastavel';
+import { registrarAtalhosDoQuadro, type AcoesAtalhoQuadro } from './atalhosQuadro';
 import { INSTRUCOES_ARRASTAR, avisosDoArrastar, coordenadasDoCanteiro } from './arrastarComTeclado';
 import { ColunaCanteiro } from './ColunaCanteiro';
 import { LancarFrota } from './LancarFrota';
@@ -106,8 +108,6 @@ const vistaGuardada = (): Vista => {
  * quadro passava de 17 mil elementos na tela; o resto abre no "Mostrar mais".
  */
 const CARTOES_POR_VEZ = 12;
-
-const GRUPO_DA_TECLA: Record<string, GrupoStatus> = { 1: 'operando', 2: 'manutencao', 3: 'parado', 4: 'sem-lancamento' };
 
 interface Indicador {
   id: string;
@@ -319,35 +319,22 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
     return () => window.clearTimeout(tempo);
   }, [aviso]);
 
+  // Teclas do registro global (contexto "frotas"). Ficam desligadas com o
+  // painel da máquina, a lista de atalhos ou a seleção abertos: lá as teclas
+  // são outras. As ações são lidas na hora, nunca de uma tela que já mudou.
+  const acoesAtalho = useRef<AcoesAtalhoQuadro | null>(null);
   useEffect(() => {
-    if (aberto || atalhosAberto || modoSelecao) return undefined;
-    const teclar = (event: KeyboardEvent) => {
-      const alvo = event.target as HTMLElement | null;
-      if (alvo?.matches('input, textarea, select, [contenteditable="true"]') || event.ctrlKey || event.metaKey || event.altKey) return;
-      const tecla = event.key.toLocaleLowerCase('pt-BR');
-      if (tecla === '/') {
-        event.preventDefault();
-        buscaRef.current?.focus();
-      } else if (tecla === '?') {
-        event.preventDefault();
-        setAtalhosAberto(true);
-      } else if (GRUPO_DA_TECLA[tecla]) {
-        event.preventDefault();
-        mudar({ grupo: filtros.grupo === GRUPO_DA_TECLA[tecla] ? '' : GRUPO_DA_TECLA[tecla] });
-      } else if (tecla === 'l') {
-        event.preventDefault();
-        limparFiltros();
-      } else if (tecla === 'v' && podeEditar) {
-        event.preventDefault();
-        trocarVista(vista === 'quadro' ? 'lancar' : 'quadro');
-      } else if (tecla === 'a' && podeEditar) {
-        event.preventDefault();
-        atualizarPendentes();
-      }
+    acoesAtalho.current = {
+      focarBusca: () => buscaRef.current?.focus(),
+      abrirAjuda: () => setAtalhosAberto(true),
+      atualizarPendentes: () => { if (podeEditar) atualizarPendentes(); },
+      alternarVista: () => { if (podeEditar) trocarVista(vista === 'quadro' ? 'lancar' : 'quadro'); },
+      alternarGrupo: grupo => mudar({ grupo: filtros.grupo === grupo ? '' : grupo }),
+      limparFiltros,
     };
-    document.addEventListener('keydown', teclar);
-    return () => document.removeEventListener('keydown', teclar);
   });
+  useEffect(() => registrarAtalhosDoQuadro(() => acoesAtalho.current!), []);
+  useKeyboardShortcuts('frotas', !aberto && !atalhosAberto && !modoSelecao);
 
   useGSAP(() => {
     const raiz = escopo.current;

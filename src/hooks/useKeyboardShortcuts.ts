@@ -50,9 +50,31 @@ export const clearAllShortcuts = (): void => {
   shortcuts.clear();
 };
 
+type TeclaPressionada = Pick<KeyboardEvent, 'key' | 'code' | 'ctrlKey' | 'metaKey' | 'altKey' | 'target'>;
+
+const CAMPOS_DE_DIGITAR = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
+
+/**
+ * Acha o atalho do contexto para a tecla. Não dispara enquanto a pessoa digita
+ * num campo (inclusive lista de opções) nem com Ctrl/Cmd/Alt: Ctrl+V continua
+ * sendo colar, Ctrl+A continua selecionando tudo. "a" e "A" valem igual, para
+ * o Caps Lock ligado não desligar os atalhos.
+ */
+export const findShortcut = (event: TeclaPressionada, context: ShortcutContext): Shortcut | undefined => {
+  if (event.ctrlKey || event.metaKey || event.altKey) return undefined;
+  const target = event.target as { tagName?: string; isContentEditable?: boolean } | null;
+  if ((target?.tagName && CAMPOS_DE_DIGITAR.has(target.tagName)) || target?.isContentEditable) return undefined;
+  const tecla = event.key.toLocaleLowerCase('pt-BR');
+  for (const shortcut of shortcuts.values()) {
+    if (shortcut.context !== context && shortcut.context !== 'global') continue;
+    if (shortcut.key.toLocaleLowerCase('pt-BR') === tecla || shortcut.key === event.code) return shortcut;
+  }
+  return undefined;
+};
+
 /**
  * Hook que habilita o tratamento de atalhos de teclado para um contexto específico.
- * Ignora pressionamentos enquanto o usuário está digitando em inputs ou textareas.
+ * Ignora pressionamentos enquanto o usuário está digitando em campos.
  */
 export const useKeyboardShortcuts = (
   context: ShortcutContext,
@@ -62,27 +84,10 @@ export const useKeyboardShortcuts = (
     if (!enabled) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Ignora se estiver digitando em input/textarea
-      const target = event.target as HTMLElement;
-      if (
-        target?.tagName === 'INPUT' ||
-        target?.tagName === 'TEXTAREA' ||
-        (target instanceof HTMLElement && target.contentEditable === 'true')
-      ) {
-        return;
-      }
-
-      // Verifica se há shortcut registrado para este contexto
-      for (const shortcut of shortcuts.values()) {
-        if (
-          (shortcut.context === context || shortcut.context === 'global') &&
-          (shortcut.key === event.key || shortcut.key === event.code)
-        ) {
-          shortcut.callback(event);
-          event.preventDefault();
-          break;
-        }
-      }
+      const shortcut = findShortcut(event, context);
+      if (!shortcut) return;
+      event.preventDefault();
+      shortcut.callback(event);
     };
 
     window.addEventListener('keydown', handleKeyDown);
