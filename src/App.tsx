@@ -5,7 +5,7 @@
 
 import React, { lazy, Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';import { migrarEfetivoObra3 } from './utils/migracaoEfetivoObra3';
 
-import { PularParaConteudo, RouteMotion, isoDay } from './shared/ui';
+import { PularParaConteudo, RouteMotion, isoDay, PageHeader } from './shared/ui';
 import { 
   Empresa, 
   ObraLocal, 
@@ -124,6 +124,11 @@ const RelatoriosTab = lazy(() => import('./components/RelatoriosTab'));
 const AdministracaoTab = lazy(() => import('./components/AdministracaoTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
+
+// Task 8: Global Integration Components
+import { BuscaColaborador } from './components/shared/BuscaColaborador';
+import { PresencaPublicaLink } from './components/presenca/PresencaPublicaLink';
+import { EscalaSabado } from './components/presenca/EscalaSabado';
 
 // A base histórica de materiais fica em um chunk separado para não pesar no
 // login e nas demais telas. Ela é carregada antes da hidratação dos dados.
@@ -649,6 +654,10 @@ export default function App() {
   const externalPresenceToken = getPresenceTokenFromUrl();
   const externalTicketAccessToken = getTicketAccessTokenFromUrl();
   const externalTicketLink = isTicketLinkUrl();
+
+  // Task 8: presenca-publica rota state
+  const [presencaPublicaAutenticado, setPresencaPublicaAutenticado] = useState<Funcionario | null>(null);
+  const [mostrarModalEscalaSabado, setMostrarModalEscalaSabado] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn || !currentUser || externalTicketLink || externalPresenceToken) return;
@@ -4616,6 +4625,25 @@ export default function App() {
           onMarkNotificationAsRead={handleMarkNotificationAsRead}
           onLogout={() => void handleLogout()}
         />}
+        {/* Task 8: Rota presenca-publica fora do padrão de abas */}
+        {activeTab === 'presenca-publica' && (
+          <div className="h-screen w-full flex flex-col">
+            <PageHeader eyebrow="Público" title="Presença" />
+            <Suspense fallback={<ScreenLoadingFallback />}>
+              <PresencaPublicaLink
+                funcionarios={funcionarios}
+                empresas={empresas}
+                gruposEquipe={gruposEquipe}
+                onAutenticar={(func) => {
+                  setPresencaPublicaAutenticado(func);
+                }}
+              />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab !== 'presenca-publica' && (
+        <>
         {/* Área das abas: o recuo vem de --renea-respiro (index.css), a mesma
             medida que a TelaCheia desconta para caber na altura da tela. */}
         <div id="main-tab-viewport" tabIndex={-1} className={`flex-1 overflow-x-clip w-full max-w-none p-[var(--renea-respiro)] print:p-0 print:m-0${combustivelListaSomente ? ' renea-viewport--solta' : ''}`}>
@@ -4958,8 +4986,22 @@ export default function App() {
             </RouteMotion>
           </Suspense>
         </div>
+        </>
+        )}
         </main>
       </div>
+
+      {/* Task 8: Global BuscaColaborador */}
+      {isLoggedIn && activeTab !== 'presenca-publica' && (
+        <BuscaColaborador
+          funcionarios={funcionarios}
+          onSelecionado={(func) => {
+            if (activeTab !== 'controle-equipamentos') {
+              setActiveTab('controle-equipamentos');
+            }
+          }}
+        />
+      )}
 
       <OfflineStatusV29 />
       <PesquisaGlobal

@@ -158,13 +158,16 @@ export const ALL_NAVIGATION_ITEMS = SIDEBAR_NAVIGATION_GROUPS
   .map(group => group.items as readonly NavigationItem[])
   .reduce<NavigationItem[]>((items, groupItems) => items.concat(groupItems), []);
 
+// Task 8: presenca-publica é acessível a todos os perfis (rota pública)
+const PRESENCA_PUBLICA = 'presenca-publica';
+
 export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
-  admin: [...PRIMARY_MODULE_IDS],
-  gestor: PRIMARY_MODULE_IDS.filter(id => id !== 'administracao'),
+  admin: [...PRIMARY_MODULE_IDS, PRESENCA_PUBLICA],
+  gestor: [...PRIMARY_MODULE_IDS.filter(id => id !== 'administracao'), PRESENCA_PUBLICA],
   // Operador lança no dia a dia, mas não altera a base mestre (mesma regra
   // de antes da limpeza do menu).
-  operador: PRIMARY_MODULE_IDS.filter(id => id !== 'administracao' && id !== 'cadastros'),
-  leitura: ['dashboard', 'relatorios'],
+  operador: [...PRIMARY_MODULE_IDS.filter(id => id !== 'administracao' && id !== 'cadastros'), PRESENCA_PUBLICA],
+  leitura: ['dashboard', 'relatorios', PRESENCA_PUBLICA],
 };
 
 /**

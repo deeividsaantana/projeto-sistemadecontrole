@@ -54,6 +54,7 @@ import {
 } from '../utils/painelPresenca';
 import { CANTEIROS_ATIVOS, RAMOS_ATIVOS, contemTermo } from '../utils/frenteServico';
 import RelatoriosPresenca from './presenca/RelatoriosPresenca';
+import { EscalaSabado } from './presenca/EscalaSabado';
 import reneaLogo from '../assets/images/logo-renea-dark.svg';
 import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import { baixarPlanilhaEquipes } from '../utils/exportarEquipesExcel';
@@ -323,6 +324,9 @@ export default function ControlePresencaTab({
   // Lançamento manual: equipe escolhida, dia, e a situação de cada um.
   const [lancamento, setLancamento] = useState<{ grupoId: string; data: string; observacaoDia: string } | null>(null);
   const [situacoesLancadas, setSituacoesLancadas] = useState<Record<string, SituacaoLancada>>({});
+
+  // Task 8: EscalaSabado modal state
+  const [mostrarEscalaSabado, setMostrarEscalaSabado] = useState(false);
 
   // O crachá no botão diz quantos recortes estão valendo: sem abrir a gaveta,
   // dá para saber se o número na tela é o efetivo todo ou um pedaço dele.
@@ -1950,6 +1954,26 @@ export default function ControlePresencaTab({
           </Modal>
         );
       })()}
+
+      {/* Task 8: EscalaSabado Modal */}
+      {mostrarEscalaSabado && (
+        <Modal
+          open
+          size="lg"
+          title="Escala para sábado"
+          onClose={() => setMostrarEscalaSabado(false)}
+        >
+          <EscalaSabado
+            funcionarios={funcionarios}
+            gruposEquipe={gruposEquipe}
+            onSalvar={(escala) => {
+              // TODO: Implementar salvamento da escala
+              setMostrarEscalaSabado(false);
+            }}
+            onCancelar={() => setMostrarEscalaSabado(false)}
+          />
+        </Modal>
+      )}
     </TelaCheia>
   );
 }
