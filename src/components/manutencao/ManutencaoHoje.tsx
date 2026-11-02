@@ -86,41 +86,40 @@ export function ManutencaoHoje({ relatorio, registros, equipamentos, motoristas,
 
   return (
     <>
-      <section aria-label="Números de hoje" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <section aria-label="Números de hoje" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {contadores.map(item => {
-          const tom = item.destaque === 'amber' ? 'border-amber-200 bg-amber-50' : item.destaque === 'rose' ? 'border-rose-200 bg-rose-50' : 'border-slate-100 bg-white';
-          const bgIcon = item.destaque === 'amber' ? 'bg-amber-100 text-amber-700' : item.destaque === 'rose' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-50 text-emerald-700';
+          const tom = item.destaque === 'amber' ? 'border-amber-300 bg-amber-50' : item.destaque === 'rose' ? 'border-rose-200 bg-white' : '';
           const conteudo = (
             <>
-              <span className="flex items-start justify-between gap-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{item.rotulo}</span>
-                <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${bgIcon}`}>
-                  <item.Icone className="size-5" aria-hidden="true" />
+              <span className="flex items-start justify-between gap-2">
+                <span className="text-sm font-bold text-slate-600">{item.rotulo}</span>
+                <span className={`grid size-7 shrink-0 place-items-center rounded-lg ${item.destaque === 'amber' ? 'bg-amber-100 text-amber-900' : item.destaque === 'rose' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-[#176b4d]'}`}>
+                  <item.Icone className="size-4" aria-hidden="true" />
                 </span>
               </span>
-              <strong className="mt-4 block text-3xl font-black leading-tight tracking-tight tabular-nums text-slate-950">{item.valor}</strong>
-              <span className="mt-1.5 block text-xs font-medium text-slate-600">{item.detalhe}</span>
+              <strong className="mt-1 block text-2xl font-black leading-tight tabular-nums text-slate-950 sm:text-3xl">{item.valor}</strong>
+              <span className="mt-0.5 block text-xs font-semibold text-[#5b6870]">{item.detalhe}</span>
             </>
           );
-          const classe = `${CARTAO} ${tom} block min-w-0 p-5 text-left border transition-all duration-200`;
+          const classe = `${CARTAO} ${tom} block min-w-0 p-4 text-left`;
           return item.aoClicar
-            ? <button key={item.id} type="button" data-manutencao-reveal data-testid={`manutencao-contador-${item.id}`} onClick={item.aoClicar} className={`${classe} hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-sm active:scale-[0.98] ${FOCO}`}>{conteudo}</button>
+            ? <button key={item.id} type="button" data-manutencao-reveal data-testid={`manutencao-contador-${item.id}`} onClick={item.aoClicar} className={`${classe} transition hover:-translate-y-0.5 hover:border-emerald-300 active:scale-[0.98] ${FOCO}`}>{conteudo}</button>
             : <div key={item.id} data-manutencao-reveal data-testid={`manutencao-contador-${item.id}`} className={classe}>{conteudo}</div>;
         })}
       </section>
 
-      <section aria-labelledby="manutencao-hoje-titulo" className="mt-8">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4 pb-4 border-b border-slate-100">
-          <div className="min-w-0 flex-1">
-            <h2 id="manutencao-hoje-titulo" className="text-lg font-bold text-slate-900">Equipamentos que pararam hoje</h2>
-            <p className="mt-1.5 text-sm text-slate-600">Primeiro os que ainda estão na oficina. A conta para em 10 h por dia.</p>
+      <section aria-labelledby="manutencao-hoje-titulo">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 id="manutencao-hoje-titulo" className="text-base font-black text-slate-900">Equipamentos que pararam hoje</h2>
+            <p className="text-sm text-slate-600">Primeiro os que ainda estão na oficina. A conta para em 10 h por dia.</p>
           </div>
-          <span className="flex-none text-xs font-semibold uppercase tracking-wide tabular-nums text-slate-500">Atualizado às {horaAgora}</span>
+          <span className="text-sm font-bold tabular-nums text-slate-600">Atualizado às {horaAgora}</span>
         </div>
         {linhas.length === 0
           ? <EmptyState icon={CheckCircle2} title="Nenhum equipamento parou hoje" description="Quando alguém lançar uma entrada em manutenção, aqui ou no Quadro da Frota, o equipamento aparece neste quadro." />
           : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {linhas.map(linha => {
                 const registro = registroPorId.get(linha.registroId);
                 if (!registro) return null;
