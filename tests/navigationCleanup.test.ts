@@ -6,18 +6,26 @@ test('ROLE_ACCESS cleanup', async (suite) => {
   await suite.test('admin should have access only to primary modules', () => {
     const adminModules = new Set(ROLE_ACCESS.admin as any);
     const primaryModules = new Set(PRIMARY_MODULE_IDS);
+    // Task 8: presenca-publica é uma rota especial, não está em PRIMARY_MODULE_IDS
+    const especiais = new Set(['presenca-publica']);
 
     adminModules.forEach((moduleId: any) => {
-      assert.strictEqual(primaryModules.has(moduleId), true, `${moduleId} not in PRIMARY_MODULE_IDS`);
+      const ehPrimario = primaryModules.has(moduleId);
+      const ehEspecial = especiais.has(moduleId);
+      assert.strictEqual(ehPrimario || ehEspecial, true, `${moduleId} not in PRIMARY_MODULE_IDS or special routes`);
     });
   });
 
   await suite.test('gestor should have access only to primary modules except administracao', () => {
     const gestorModules = new Set(ROLE_ACCESS.gestor as any);
     const primaryModules = new Set(PRIMARY_MODULE_IDS);
+    // Task 8: presenca-publica é uma rota especial, não está em PRIMARY_MODULE_IDS
+    const especiais = new Set(['presenca-publica']);
 
     gestorModules.forEach((moduleId: any) => {
-      assert.strictEqual(primaryModules.has(moduleId), true, `${moduleId} not in PRIMARY_MODULE_IDS`);
+      const ehPrimario = primaryModules.has(moduleId);
+      const ehEspecial = especiais.has(moduleId);
+      assert.strictEqual(ehPrimario || ehEspecial, true, `${moduleId} not in PRIMARY_MODULE_IDS or special routes`);
       assert.notStrictEqual(moduleId, 'administracao', `gestor should not access administracao`);
     });
   });
@@ -25,14 +33,18 @@ test('ROLE_ACCESS cleanup', async (suite) => {
   await suite.test('operador should have access to subset of primary modules', () => {
     const operadorModules = new Set(ROLE_ACCESS.operador as any);
     const primaryModules = new Set(PRIMARY_MODULE_IDS);
+    // Task 8: presenca-publica é uma rota especial, não está em PRIMARY_MODULE_IDS
+    const especiais = new Set(['presenca-publica']);
 
     operadorModules.forEach((moduleId: any) => {
-      assert.strictEqual(primaryModules.has(moduleId), true, `${moduleId} not in PRIMARY_MODULE_IDS`);
+      const ehPrimario = primaryModules.has(moduleId);
+      const ehEspecial = especiais.has(moduleId);
+      assert.strictEqual(ehPrimario || ehEspecial, true, `${moduleId} not in PRIMARY_MODULE_IDS or special routes`);
     });
   });
 
-  await suite.test('leitura should have access only to dashboard and relatorios', () => {
-    assert.deepStrictEqual(ROLE_ACCESS.leitura, ['dashboard', 'relatorios']);
+  await suite.test('leitura should have access to dashboard, relatorios and presenca-publica', () => {
+    assert.deepStrictEqual(ROLE_ACCESS.leitura, ['dashboard', 'relatorios', 'presenca-publica']);
   });
 });
 

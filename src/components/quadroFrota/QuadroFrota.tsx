@@ -16,6 +16,9 @@ import { DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, type 
 import { AlertTriangle, CheckCircle2, ChevronDown, Fuel, Gauge, Keyboard, LayoutGrid, ListChecks, ListFilter, MapPin, PauseCircle, PlayCircle, Search, SlidersHorizontal, Trash2, Truck, UserCheck, UserX, Wrench, X, type LucideIcon } from 'lucide-react';
 import type { Abastecimento, ControleEquipamentoDiario, Equipamento, FrenteServico, Funcionario, GrupoEquipe } from '../../types';
 import { CountUp, Modal } from '../../shared/ui';
+import { TabNavigation } from '../shared/TabNavigation';
+import { BuscaColaborador } from '../shared/BuscaColaborador';
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import {
   CANTEIROS,
   FILTROS_VAZIOS,
@@ -38,6 +41,7 @@ import {
 import { abastecidasSemLancamento } from '../../modules/frota/combustivelDoDia';
 import { OPERATIONAL_DRIVERS } from '../../fleet/operationalDrivers';
 import { CartaoArrastavel } from './CartaoArrastavel';
+import { registrarAtalhosDoQuadro, type AcoesAtalhoQuadro } from './atalhosQuadro';
 import { INSTRUCOES_ARRASTAR, avisosDoArrastar, coordenadasDoCanteiro } from './arrastarComTeclado';
 import { ColunaCanteiro } from './ColunaCanteiro';
 import { LancarFrota } from './LancarFrota';
@@ -105,8 +109,6 @@ const vistaGuardada = (): Vista => {
  * quadro passava de 17 mil elementos na tela; o resto abre no "Mostrar mais".
  */
 const CARTOES_POR_VEZ = 12;
-
-const GRUPO_DA_TECLA: Record<string, GrupoStatus> = { 1: 'operando', 2: 'manutencao', 3: 'parado', 4: 'sem-lancamento' };
 
 interface Indicador {
   id: string;
@@ -318,35 +320,22 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
     return () => window.clearTimeout(tempo);
   }, [aviso]);
 
+  // Teclas do registro global (contexto "frotas"). Ficam desligadas com o
+  // painel da máquina, a lista de atalhos ou a seleção abertos: lá as teclas
+  // são outras. As ações são lidas na hora, nunca de uma tela que já mudou.
+  const acoesAtalho = useRef<AcoesAtalhoQuadro | null>(null);
   useEffect(() => {
-    if (aberto || atalhosAberto || modoSelecao) return undefined;
-    const teclar = (event: KeyboardEvent) => {
-      const alvo = event.target as HTMLElement | null;
-      if (alvo?.matches('input, textarea, select, [contenteditable="true"]') || event.ctrlKey || event.metaKey || event.altKey) return;
-      const tecla = event.key.toLocaleLowerCase('pt-BR');
-      if (tecla === '/') {
-        event.preventDefault();
-        buscaRef.current?.focus();
-      } else if (tecla === '?') {
-        event.preventDefault();
-        setAtalhosAberto(true);
-      } else if (GRUPO_DA_TECLA[tecla]) {
-        event.preventDefault();
-        mudar({ grupo: filtros.grupo === GRUPO_DA_TECLA[tecla] ? '' : GRUPO_DA_TECLA[tecla] });
-      } else if (tecla === 'l') {
-        event.preventDefault();
-        limparFiltros();
-      } else if (tecla === 'v' && podeEditar) {
-        event.preventDefault();
-        trocarVista(vista === 'quadro' ? 'lancar' : 'quadro');
-      } else if (tecla === 'a' && podeEditar) {
-        event.preventDefault();
-        atualizarPendentes();
-      }
+    acoesAtalho.current = {
+      focarBusca: () => buscaRef.current?.focus(),
+      abrirAjuda: () => setAtalhosAberto(true),
+      atualizarPendentes: () => { if (podeEditar) atualizarPendentes(); },
+      alternarVista: () => { if (podeEditar) trocarVista(vista === 'quadro' ? 'lancar' : 'quadro'); },
+      alternarGrupo: grupo => mudar({ grupo: filtros.grupo === grupo ? '' : grupo }),
+      limparFiltros,
     };
-    document.addEventListener('keydown', teclar);
-    return () => document.removeEventListener('keydown', teclar);
   });
+  useEffect(() => registrarAtalhosDoQuadro(() => acoesAtalho.current!), []);
+  useKeyboardShortcuts('frotas', !aberto && !atalhosAberto && !modoSelecao);
 
   useGSAP(() => {
     const raiz = escopo.current;
@@ -374,6 +363,13 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
 
   return (
     <div ref={escopo} id="quadro-frota-tab" data-testid="quadro-frota-tab" className="space-y-4">
+      <BuscaColaborador
+        funcionarios={funcionarios}
+        onSelecionado={() => {
+          // A seleção de um colaborador pode ser usada para pré-preencher filtros ou ações futuras
+        }}
+      />
+
       {podeEditar && (
         <div data-quadro-reveal className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={atualizarPendentes} disabled={pendentes.length === 0} className={`${BOTAO_PRIMARIO} w-full px-5 sm:w-auto`} data-testid="quadro-acao-principal">
@@ -419,21 +415,15 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
 
       <section aria-label="Canteiros e filtros" data-quadro-reveal className={`${CARTAO} space-y-3 p-3 lg:sticky lg:top-0 lg:z-10`}>
         {podeEditar && (
-          <div role="group" aria-label="Como ver as máquinas" className="grid grid-cols-2 gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 sm:inline-grid" data-testid="quadro-vista">
-            {([['quadro', 'Quadro', LayoutGrid], ['lancar', 'Lançar', ListChecks]] as const).map(([valor, rotulo, Icone]) => (
-              <button
-                key={valor}
-                type="button"
-                aria-pressed={vista === valor}
-                onClick={() => trocarVista(valor)}
-                data-testid={`quadro-vista-${valor}`}
-                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${vista === valor ? 'bg-white text-[#176b4d] shadow-[0_6px_16px_-10px_rgba(15,40,31,0.45)] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}
-              >
-                <Icone className="size-4" aria-hidden="true" />
-                {rotulo}
-              </button>
-            ))}
-          </div>
+          <TabNavigation
+            items={[
+              { id: 'quadro', label: 'Quadro', icon: <LayoutGrid className="size-4" /> },
+              { id: 'lancar', label: 'Lançar', icon: <ListChecks className="size-4" /> },
+            ]}
+            activeId={vista}
+            onSelect={(id) => trocarVista(id as Vista)}
+            className="rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200"
+          />
         )}
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Canteiro">
           {chipCanteiro('', 'Todos', cartoes.length)}

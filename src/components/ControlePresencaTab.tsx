@@ -40,6 +40,7 @@ import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
 import { ConfirmDialog, Modal, PageHeader } from '../shared/ui';
 import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
 import { TelaCheia } from '../shared/ui/TelaCheia';
+import { BuscaColaborador } from './shared/BuscaColaborador';
 import { TabelaPadrao, type ColunaTabela } from '../shared/ui/TabelaPadrao';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { readableTeamText, recoverTeamGroups, teamRecordMatches } from '../utils/teamIdentity';
@@ -53,6 +54,7 @@ import {
 } from '../utils/painelPresenca';
 import { CANTEIROS_ATIVOS, RAMOS_ATIVOS, contemTermo } from '../utils/frenteServico';
 import RelatoriosPresenca from './presenca/RelatoriosPresenca';
+import { EscalaSabado } from './presenca/EscalaSabado';
 import reneaLogo from '../assets/images/logo-renea-dark.svg';
 import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import { baixarPlanilhaEquipes } from '../utils/exportarEquipesExcel';
@@ -322,6 +324,9 @@ export default function ControlePresencaTab({
   // Lançamento manual: equipe escolhida, dia, e a situação de cada um.
   const [lancamento, setLancamento] = useState<{ grupoId: string; data: string; observacaoDia: string } | null>(null);
   const [situacoesLancadas, setSituacoesLancadas] = useState<Record<string, SituacaoLancada>>({});
+
+  // Task 8: EscalaSabado modal state
+  const [mostrarEscalaSabado, setMostrarEscalaSabado] = useState(false);
 
   // O crachá no botão diz quantos recortes estão valendo: sem abrir a gaveta,
   // dá para saber se o número na tela é o efetivo todo ou um pedaço dele.
@@ -1255,6 +1260,13 @@ export default function ControlePresencaTab({
       faixa={aviso || faixaDaVista ? <>{aviso}{faixaDaVista && <div className={aviso ? 'mt-2' : undefined}>{faixaDaVista}</div>}</> : undefined}
     >
 
+      <BuscaColaborador
+        funcionarios={safeFuncionarios}
+        onSelecionado={() => {
+          // A seleção de um colaborador pode ser usada para pré-preencher filtros ou ações futuras
+        }}
+      />
+
       {view === 'ao-vivo' && pendingPublicSubmissionsCount > 0 && (
         <div role="status" className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -1942,6 +1954,26 @@ export default function ControlePresencaTab({
           </Modal>
         );
       })()}
+
+      {/* Task 8: EscalaSabado Modal */}
+      {mostrarEscalaSabado && (
+        <Modal
+          open
+          size="lg"
+          title="Escala para sábado"
+          onClose={() => setMostrarEscalaSabado(false)}
+        >
+          <EscalaSabado
+            funcionarios={funcionarios}
+            gruposEquipe={gruposEquipe}
+            onSalvar={(escala) => {
+              // TODO: Implementar salvamento da escala
+              setMostrarEscalaSabado(false);
+            }}
+            onCancelar={() => setMostrarEscalaSabado(false)}
+          />
+        </Modal>
+      )}
     </TelaCheia>
   );
 }

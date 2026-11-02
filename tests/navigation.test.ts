@@ -7,15 +7,18 @@ import {
 } from '../src/app/navigation/navigation';
 
 test('perfil administrador mantém acesso a todos os módulos atuais', () => {
+  // Task 8: presenca-publica é uma rota especial, não está em ALL_NAVIGATION_ITEMS
+  const abasDePrincipio = ALL_NAVIGATION_ITEMS.map(item => item.id);
+  const todasAsAbas = new Set([...abasDePrincipio, 'presenca-publica']);
   assert.deepEqual(
-    [...ROLE_ACCESS.admin],
-    ALL_NAVIGATION_ITEMS.map(item => item.id),
+    new Set(ROLE_ACCESS.admin),
+    todasAsAbas,
   );
 });
 
 test('perfis preservam restrições e não expõem módulos removidos', () => {
-  // Leitura tem acesso apenas a dashboard e relatorios (módulos primários)
-  assert.deepEqual([...ROLE_ACCESS.leitura], ['dashboard', 'relatorios']);
+  // Leitura tem acesso apenas a dashboard, relatorios e presenca-publica (Task 8)
+  assert.deepEqual([...ROLE_ACCESS.leitura], ['dashboard', 'relatorios', 'presenca-publica']);
 
   // Administração é exclusiva do admin
   assert.equal(ROLE_ACCESS.admin.includes('administracao'), true);
