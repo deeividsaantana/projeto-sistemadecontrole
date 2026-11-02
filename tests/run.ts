@@ -74,6 +74,7 @@ import './alertas.test';
 import './custos.test';
 import './cronograma.test';
 import './centralRelatorios.test';
+import './relatoriosDashboard.test';
 import './buscaGlobal.test';
 import './buscaColaborador.test';
 import './auditoria.test';

@@ -95,6 +95,66 @@ export default function RelatoriosTab({
     );
   }, { scope: escopo });
 
+  const conteudo = (
+    <div className="space-y-8">
+      <section data-relatorios-reveal>
+        <h2 className="mb-4 text-lg font-bold text-slate-900">Relatórios Disponíveis</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {itens.map((item) => {
+            const liberado = podeAbrir(item.aba);
+            const vazio = item.base.total === 0;
+            return (
+              <button
+                key={item.aba}
+                type="button"
+                onClick={() => liberado && onAbrir(item.aba)}
+                disabled={!liberado}
+                data-testid={`relatorio-${item.aba}`}
+                className={`
+                  group relative rounded-xl border-2 p-6 transition-all duration-200
+                  ${liberado
+                    ? 'border-emerald-200 bg-emerald-50 hover:border-emerald-400 hover:-translate-y-1 hover:shadow-md'
+                    : 'border-slate-100 bg-slate-50 text-slate-400'
+                  }
+                `}
+              >
+                <div className="mb-3 flex items-start justify-between">
+                  <item.Icone className={`size-6 ${liberado ? 'text-emerald-700' : 'text-slate-400'}`} />
+                  <span
+                    className={`rounded px-2 py-1 text-xs font-bold ${
+                      vazio
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-emerald-100 text-emerald-700'
+                    }`}
+                  >
+                    {textoBase(item.base, ...item.unidade)}
+                  </span>
+                </div>
+                <h3 className="text-left font-bold text-slate-950">{item.titulo}</h3>
+                <p className="mt-1 text-left text-xs text-slate-600">{item.oQueMostra}</p>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section data-relatorios-reveal>
+        <h2 className="mb-4 text-lg font-bold text-slate-900">Em Desenvolvimento</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {SEM_LANCAMENTO.map(item => (
+            <div
+              key={item}
+              className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-6"
+            >
+              <p className="font-medium text-slate-600">{item}</p>
+              <p className="mt-1 text-xs text-slate-500">Aguardando funcionalidade</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+
   return (
     <TelaCheia ref={escopo} id="relatorios-tab" testId="relatorios-tab" rotulo="Relatórios" className="erp-module" longa rotuloDados="Relatórios disponíveis"
       cabecalho={<div data-relatorios-reveal>
@@ -102,58 +162,7 @@ export default function RelatoriosTab({
       </div>}
       faixa={<p data-relatorios-reveal className="px-1 text-sm text-slate-600">Escolha o relatório. Ele abre na aba onde o dado é lançado, com os mesmos números de lá.</p>}
     >
-      <ul className="grid gap-3 lg:grid-cols-2" aria-label="Relatórios disponíveis">
-        {itens.map(item => {
-          const liberado = podeAbrir(item.aba);
-          const vazio = item.base.total === 0;
-          return (
-            <li key={item.aba} data-relatorios-reveal className="min-w-0">
-              <button
-                type="button"
-                disabled={!liberado}
-                onClick={() => onAbrir(item.aba)}
-                data-testid={`relatorio-${item.aba}`}
-                className={`${CARTAO} group flex h-full w-full items-start gap-3 p-4 text-left transition duration-200 enabled:hover:border-emerald-500 enabled:hover:shadow-sm enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-50 ${FOCO}`}
-              >
-                <span className={`grid size-11 shrink-0 place-items-center rounded-xl ${liberado ? 'bg-emerald-50 text-[#176b4d]' : 'bg-slate-100 text-[#5b6870]'}`}>
-                  <item.Icone className="size-5" aria-hidden="true" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-xs font-semibold text-slate-500">em {item.onde}</span>
-                  <span className="mt-0.5 block text-base font-bold text-slate-900">{item.titulo}</span>
-                  <span className="mt-1 block text-sm leading-snug text-slate-600 [text-wrap:pretty]">{item.oQueMostra}</span>
-                  <span className={`mt-2 inline-flex rounded-lg px-2 py-1 text-xs font-bold tabular-nums ${vazio ? 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200' : 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200'}`}>
-                    {textoBase(item.base, ...item.unidade)}
-                  </span>
-                  {!liberado && (
-                    <span className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-                      <Lock className="size-3.5" aria-hidden="true" /> Seu perfil não abre esta aba.
-                    </span>
-                  )}
-                </span>
-                {liberado && (
-                  <span className="hidden shrink-0 items-center gap-1 self-center text-sm font-bold text-[#176b4d] sm:flex">
-                    Abrir <ChevronRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true" />
-                  </span>
-                )}
-                {liberado && <ChevronRight className="size-5 shrink-0 self-center text-[#176b4d] sm:hidden" aria-hidden="true" />}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-
-      <section data-relatorios-reveal aria-labelledby="relatorios-sem-dado" className={`${CARTAO} p-4`}>
-        <h2 id="relatorios-sem-dado" className="text-sm font-bold text-slate-900">Ainda sem relatório</h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Não há lançamentos destas áreas no app, então não há o que somar. O relatório entra aqui quando elas forem usadas.
-        </p>
-        <ul className="mt-3 flex flex-wrap gap-1.5">
-          {SEM_LANCAMENTO.map(area => (
-            <li key={area} className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{area}</li>
-          ))}
-        </ul>
-      </section>
+      {conteudo}
     </TelaCheia>
   );
 }
