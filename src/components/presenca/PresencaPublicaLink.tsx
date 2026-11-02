@@ -45,7 +45,6 @@ export function PresencaPublicaLink({ funcionarios, onAutenticar }: Props) {
               Matrícula
               <input
                 type="text"
-                inputMode="numeric"
                 autoComplete="off"
                 value={matricula}
                 onChange={(e) => setMatricula(e.target.value)}
