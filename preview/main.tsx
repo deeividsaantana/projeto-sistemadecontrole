@@ -708,7 +708,7 @@ const screens: Record<string, React.ReactNode> = {
     <AdministracaoTab ultimaSincronizacao="" nuvemConectada={false} logs={historicoPreview} />
   ),
   relatorios: (
-    <RelatoriosTab abastecimentos={fx.abastecimentos} controlesEquipamentos={fx.controlesEquipamentos} presencas={fx.registrosEnviados} movimentosMaterial={[]} cravacoes={[]} podeAbrir={aba => aba !== 'estacas'} onAbrir={noop} />
+    <RelatoriosTab abastecimentos={fx.abastecimentos} controlesEquipamentos={fx.controlesEquipamentos} presencas={fx.registrosEnviados} movimentosMaterial={[]} cravacoes={[]} funcionarios={fx.funcionarios} equipamentos={fx.equipamentos} podeAbrir={aba => aba !== 'estacas'} onAbrir={noop} />
   ),
   planejamento: <PlanejamentoPreview />,
   'diario-obra': (
