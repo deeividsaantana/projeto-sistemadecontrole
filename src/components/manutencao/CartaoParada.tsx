@@ -21,7 +21,13 @@ const TOM_BARRA: Record<TomSituacao, string> = { parado: 'bg-rose-600', liberado
 
 export function SeloSituacao({ parada, grupo }: { parada: ParadaDoDia; grupo?: LinhaRelatorioManutencao['grupo'] }) {
   const { texto, tom } = rotuloDaSituacao(parada.situacao, grupo);
-  return <span className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold ring-1 ring-inset ${TOM_SELO[tom]}`}>{texto}</span>;
+  const iconClass = tom === 'parado' ? 'text-rose-600' : tom === 'liberado' ? 'text-emerald-700' : 'text-amber-700';
+  return (
+    <span className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold ring-1 ring-inset ${TOM_SELO[tom]}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${iconClass}`} aria-hidden="true" />
+      {texto}
+    </span>
+  );
 }
 
 /** Barra das horas do dia até o limite de 10 h. */
@@ -127,18 +133,20 @@ export function CartaoParada({ registro, parada, ordemNumero, tipo, podeEditar, 
       </div>
 
       {itens.length > 0 && (
-        <ol aria-label={`Linha do tempo de ${registro.prefixo}`} className="relative space-y-3 border-l-2 border-slate-200 pl-5">
-          {itens.map(item => (
+        <ol aria-label={`Linha do tempo de ${registro.prefixo}`} className="relative space-y-2.5 border-l-2 border-slate-100 pl-5">
+          {itens.map((item, idx) => (
             <li key={item.id} className="relative">
-              <span className={`absolute -left-[1.5625rem] top-1.5 size-3.5 rounded-full border-3 border-white ${item.substituido ? 'bg-slate-300' : 'bg-emerald-600'}`} aria-hidden="true" />
-              <p className={`text-sm font-medium ${item.substituido ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
-                <strong className="tabular-nums font-bold text-slate-900">{item.hora}</strong>
-                <span className="ml-2">· {item.texto}</span>
-                {item.substituido && <span className="ml-1 text-xs text-slate-500">(substituída)</span>}
-              </p>
-              {(item.detalhe || item.responsavel) && (
-                <p className="mt-0.5 text-xs text-slate-600">{[item.detalhe, item.responsavel && `por ${item.responsavel}`].filter(Boolean).join(' · ')}</p>
-              )}
+              <div className={`absolute -left-[1.5625rem] top-1 flex items-center justify-center size-4 rounded-full border-3 border-white ${item.substituido ? 'bg-slate-200' : idx === 0 ? 'bg-emerald-500' : 'bg-emerald-600'}`} aria-hidden="true" />
+              <div className={`rounded-lg p-2.5 ${item.substituido ? 'bg-slate-50' : 'bg-emerald-50/40'}`}>
+                <p className={`text-xs font-semibold ${item.substituido ? 'text-slate-500 line-through' : 'text-slate-900'}`}>
+                  <strong className="tabular-nums text-slate-950">{item.hora}</strong>
+                  <span className="ml-1.5 text-slate-700">{item.texto}</span>
+                  {item.substituido && <span className="ml-1 text-slate-500">(substituída)</span>}
+                </p>
+                {(item.detalhe || item.responsavel) && (
+                  <p className="mt-1 text-xs text-slate-600">{[item.detalhe, item.responsavel && `por ${item.responsavel}`].filter(Boolean).join(' · ')}</p>
+                )}
+              </div>
             </li>
           ))}
         </ol>
@@ -152,19 +160,22 @@ export function CartaoParada({ registro, parada, ordemNumero, tipo, podeEditar, 
       )}
 
       {podeEditar && aberto && (
-        <form className="mt-auto space-y-3 rounded-xl bg-slate-50 p-4" onSubmit={event => { event.preventDefault(); confirmar(); }}>
-          <label className={`${ROTULO} block`}>
-            {emManutencao ? 'Hora da liberação' : 'Hora da entrada'}
-            <input type="time" required value={hora} onChange={event => setHora(event.target.value)} className={`${CAMPO} mt-2`} autoFocus />
-          </label>
-          {!emManutencao && (
+        <form className="mt-auto space-y-3 rounded-xl bg-gradient-to-b from-emerald-50/60 to-emerald-50/30 border border-emerald-100 p-4" onSubmit={event => { event.preventDefault(); confirmar(); }}>
+          <fieldset className="space-y-3 border-0 p-0">
+            <legend className="sr-only">Lançar {emManutencao ? 'liberação' : 'entrada em manutenção'}</legend>
             <label className={`${ROTULO} block`}>
-              Motivo
-              <input value={motivo} onChange={event => setMotivo(event.target.value)} placeholder="Pneu, mangueira, elétrica..." className={`${CAMPO} mt-2`} />
+              {emManutencao ? 'Hora da liberação' : 'Hora da entrada'}
+              <input type="time" required value={hora} onChange={event => setHora(event.target.value)} className={`${CAMPO} mt-2`} autoFocus />
             </label>
-          )}
-          {erro && <p role="alert" className="rounded-lg bg-rose-50 px-4 py-3 text-xs font-bold text-rose-700 border border-rose-200">{erro}</p>}
-          <div className="grid grid-cols-2 gap-2 pt-2">
+            {!emManutencao && (
+              <label className={`${ROTULO} block`}>
+                Motivo
+                <input value={motivo} onChange={event => setMotivo(event.target.value)} placeholder="Pneu, mangueira, elétrica..." className={`${CAMPO} mt-2`} />
+              </label>
+            )}
+          </fieldset>
+          {erro && <p role="alert" className="rounded-lg bg-rose-50 px-3.5 py-3 text-xs font-bold text-rose-700 border border-rose-200 mt-3">{erro}</p>}
+          <div className="grid grid-cols-2 gap-2 pt-3 border-t border-emerald-100">
             <button type="button" onClick={() => setAberto(false)} className={BOTAO_SECUNDARIO}>Cancelar</button>
             <button type="submit" className={BOTAO_PRIMARIO}>Confirmar</button>
           </div>

@@ -505,23 +505,23 @@ export default function ManutencaoTab({
           <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{avisoExport}</p>
         )}
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
           <label className="relative min-w-0 flex-1 sm:min-w-56">
             <span className="sr-only">Buscar ordem de serviço</span>
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5b6870]" aria-hidden="true" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
             <input
               type="search"
               value={busca}
               onChange={event => setBusca(event.target.value)}
               placeholder="Número, prefixo, problema, responsável..."
-              className="min-h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
+              className="min-h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all duration-150"
             />
           </label>
           <select
             value={filtroStatus}
             onChange={event => setFiltroStatus(event.target.value as (typeof STATUS_FILTRO)[number])}
             aria-label="Filtrar por situação"
-            className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500"
+            className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all duration-150"
           >
             {STATUS_FILTRO.map(item => <option key={item}>{item}</option>)}
           </select>
@@ -529,7 +529,7 @@ export default function ManutencaoTab({
             value={filtroMotivo}
             onChange={event => setFiltroMotivo(event.target.value)}
             aria-label="Filtrar por motivo"
-            className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500 sm:max-w-[16rem]"
+            className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all duration-150 sm:max-w-[16rem]"
           >
             <option value="todos">Todos os motivos</option>
             {motivosDisponiveis.map(motivo => <option key={motivo} value={motivo}>{motivo}</option>)}
@@ -537,14 +537,14 @@ export default function ManutencaoTab({
         </div>
 
         {familiasComOrdens.length > 1 && (
-          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filtrar por tipo de equipamento">
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filtrar por tipo de equipamento">
             <button
               type="button"
               onClick={() => setFiltroFamilia('todas')}
               aria-pressed={filtroFamilia === 'todas'}
-              className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold transition-colors ${filtroFamilia === 'todas' ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-400'}`}
+              className={`inline-flex min-h-9 items-center gap-2 rounded-lg border px-3.5 py-1.5 text-xs font-semibold transition-all duration-150 ${filtroFamilia === 'todas' ? 'border-emerald-400 bg-emerald-50/80 text-emerald-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
             >
-              Todos <span className="tabular-nums text-[#5b6870]">{ordensServico.length}</span>
+              Todos <span className="tabular-nums text-slate-500">{ordensServico.length}</span>
             </button>
             {familiasComOrdens.map(({ familia, total }) => {
               const Icon = equipmentFamilyIcon(familia);
@@ -556,11 +556,11 @@ export default function ManutencaoTab({
                   onClick={() => setFiltroFamilia(ativo ? 'todas' : familia)}
                   aria-pressed={ativo}
                   title={EQUIPMENT_FAMILY_LABELS[familia]}
-                  className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold transition-colors ${ativo ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-400'}`}
+                  className={`inline-flex min-h-9 items-center gap-2 rounded-lg border px-3.5 py-1.5 text-xs font-semibold transition-all duration-150 ${ativo ? 'border-emerald-400 bg-emerald-50/80 text-emerald-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
                 >
                   <Icon className="size-4" strokeWidth={1.7} aria-hidden="true" />
                   <span className="hidden sm:inline">{EQUIPMENT_FAMILY_LABELS[familia]}</span>
-                  <span className="tabular-nums text-[#5b6870]">{total}</span>
+                  <span className="tabular-nums text-slate-500">{total}</span>
                 </button>
               );
             })}
