@@ -36,7 +36,6 @@ export function TabNavigation({ items, activeId, onSelect, className = '' }: Tab
     Math.max(0, items.findIndex(i => i.id === activeId))
   );
   const containerRef = useRef<HTMLDivElement>(null);
-  const isNavigatingViaTab = useRef(false);
 
   useEffect(() => {
     // Atualiza o índice de foco quando a aba ativa muda externamente
@@ -74,7 +73,6 @@ export function TabNavigation({ items, activeId, onSelect, className = '' }: Tab
 
       setFocusIndex(newIndex);
       onSelect(items[newIndex].id);
-      isNavigatingViaTab.current = true;
       event.preventDefault();
     };
 
@@ -85,7 +83,6 @@ export function TabNavigation({ items, activeId, onSelect, className = '' }: Tab
   const handleButtonClick = (index: number, id: string) => {
     setFocusIndex(index);
     onSelect(id);
-    isNavigatingViaTab.current = false;
   };
 
   return (
