@@ -13,9 +13,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { AlertTriangle, CheckCircle2, ChevronDown, Fuel, Gauge, Keyboard, LayoutGrid, ListChecks, ListFilter, MapPin, PauseCircle, PlayCircle, Search, SlidersHorizontal, Trash2, Truck, UserCheck, UserX, Wrench, X, type LucideIcon } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Keyboard, LayoutGrid, ListChecks, ListFilter, MapPin, Search, SlidersHorizontal, Trash2, Truck, X } from 'lucide-react';
 import type { Abastecimento, ControleEquipamentoDiario, Equipamento, FrenteServico, Funcionario, GrupoEquipe } from '../../types';
-import { CountUp, Modal } from '../../shared/ui';
+import { Modal } from '../../shared/ui';
 import { TabNavigation } from '../shared/TabNavigation';
 import { BuscaColaborador } from '../shared/BuscaColaborador';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
@@ -26,7 +26,6 @@ import {
   ROTULO_ORDEM,
   SEM_CANTEIRO,
   agruparPorCanteiro,
-  calcularIndicadores,
   etiquetasDosFiltros,
   filtrarCartoes,
   montarQuadro,
@@ -38,7 +37,6 @@ import {
   type GrupoStatus,
   type Ordem,
 } from '../../modules/frota/quadroFrota';
-import { abastecidasSemLancamento } from '../../modules/frota/combustivelDoDia';
 import { OPERATIONAL_DRIVERS } from '../../fleet/operationalDrivers';
 import { CartaoArrastavel } from './CartaoArrastavel';
 import { registrarAtalhosDoQuadro, type AcoesAtalhoQuadro } from './atalhosQuadro';
@@ -110,20 +108,6 @@ const vistaGuardada = (): Vista => {
  */
 const CARTOES_POR_VEZ = 12;
 
-interface Indicador {
-  id: string;
-  titulo: string;
-  valor: number;
-  sufixo?: string;
-  /** Mostrado no lugar do número quando não há dado ("—"), nunca 0. */
-  texto?: string;
-  detalhe: string;
-  Icone: LucideIcon;
-  tom: string;
-  filtro?: Partial<FiltrosQuadro>;
-  aoClicar?: () => void;
-}
-
 export default function QuadroFrota({ equipamentos, registros, gruposEquipe, abastecimentos, canteiros = CANTEIROS, frentes, funcionarios, operationalDrivers, podeEditar, usuario, onSave, onSaveMany, onDeleteMany, podeRemover = false, onRemoverEquipamentos, onNavigate, podeAbrir = () => true, dia, onAbrirSituacao }: Props) {
   const escopo = useRef<HTMLDivElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
@@ -175,7 +159,6 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
     () => montarQuadro({ dia, equipamentos, registros, gruposEquipe, abastecimentos, canteiros }),
     [dia, equipamentos, registros, gruposEquipe, abastecimentos, canteiros],
   );
-  const indicadores = useMemo(() => calcularIndicadores(cartoes), [cartoes]);
   const filtrados = useMemo(() => filtrarCartoes(cartoes, filtros, ordem), [cartoes, filtros, ordem]);
   const filtrando = Object.values(filtros).some(Boolean);
   const grupos = useMemo(() => agruparPorCanteiro(filtrados, !filtrando, canteiros), [filtrados, filtrando, canteiros]);
@@ -188,7 +171,6 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
     return mapa;
   }, [cartoes]);
   const pendentes = useMemo(() => filtrados.filter(item => item.grupo === 'sem-lancamento'), [filtrados]);
-  const abastecidasSemLancar = useMemo(() => abastecidasSemLancamento(cartoes, abastecimentos, dia), [cartoes, abastecimentos, dia]);
   const aberto = abertoId ? cartoes.find(item => item.equipamentoId === abertoId) || null : null;
   const indiceAberto = aberto ? naTela.findIndex(item => item.equipamentoId === aberto.equipamentoId) : -1;
   const proximo = indiceAberto >= 0 ? naTela[indiceAberto + 1] : undefined;
@@ -199,18 +181,6 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
   const opcoesMarca = useMemo(() => Array.from(new Set(cartoes.map(item => item.marca).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')), [cartoes]);
   const operadores = useMemo(() => Array.from(new Set(motoristas.filter(item => item.ativo !== false).map(item => item.nome.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')), [motoristas]);
   const etiquetas = etiquetasDosFiltros(filtros);
-
-  const lista: Indicador[] = [
-    { id: 'total', titulo: 'Total', valor: indicadores.total, detalhe: 'máquinas', Icone: Truck, tom: 'bg-slate-100 text-slate-700', filtro: FILTROS_VAZIOS },
-    { id: 'operando', titulo: 'Em operação', valor: indicadores.operando, detalhe: 'trabalhando', Icone: PlayCircle, tom: 'bg-emerald-50 text-[#176b4d]', filtro: { grupo: 'operando' } },
-    { id: 'manutencao', titulo: 'Manutenção', valor: indicadores.manutencao, detalhe: 'em reparo', Icone: Wrench, tom: 'bg-rose-50 text-rose-700', filtro: { grupo: 'manutencao' } },
-    { id: 'parado', titulo: 'À disposição', valor: indicadores.parado, detalhe: 'sem serviço', Icone: PauseCircle, tom: 'bg-amber-50 text-amber-700', filtro: { grupo: 'parado' } },
-    { id: 'sem-lancamento', titulo: 'Sem lançamento', valor: indicadores.semLancamento, detalhe: 'falta atualizar', Icone: AlertTriangle, tom: 'bg-slate-100 text-slate-600', filtro: { grupo: 'sem-lancamento' } },
-    { id: 'disponibilidade', titulo: 'Disponível', valor: indicadores.disponibilidade ?? 0, sufixo: '%', texto: indicadores.disponibilidade === null ? '—' : undefined, detalhe: indicadores.disponibilidade === null ? 'nada lançado no dia' : 'fora da manutenção', Icone: Gauge, tom: 'bg-sky-50 text-sky-700' },
-    { id: 'com-operador', titulo: 'Com operador', valor: indicadores.comOperador, detalhe: 'operadores no dia', Icone: UserCheck, tom: 'bg-emerald-50 text-[#176b4d]', filtro: { operador: 'com' } },
-    { id: 'sem-operador', titulo: 'Sem operador', valor: indicadores.semOperador, detalhe: 'aguardando', Icone: UserX, tom: 'bg-orange-50 text-[#c2410c]', filtro: { operador: 'sem' } },
-    { id: 'abasteceu-sem-lancar', titulo: 'Abastecidas', valor: abastecidasSemLancar.length, detalhe: 'sem lançamento no dia', Icone: Fuel, tom: 'bg-amber-50 text-amber-700', aoClicar: abastecidasSemLancar.length && podeAbrir('lancamentos') ? () => onNavigate('lancamentos') : undefined },
-  ];
 
   const mudar = (parcial: Partial<FiltrosQuadro>) => setFiltros(atual => ({ ...atual, ...parcial }));
   const limparFiltros = () => {
@@ -362,31 +332,14 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
 
   const chipCanteiro = (nome: string, rotulo: string, total: number) => {
     const ligado = filtros.canteiro === nome;
-    const ref = useRef<HTMLButtonElement>(null);
-
-    const handleHover = (hovering: boolean) => {
-      if (!ref.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-      gsap.to(ref.current, {
-        y: hovering ? -2 : 0,
-        boxShadow: hovering
-          ? '0 12px 20px rgba(23, 107, 77, 0.15)'
-          : (ligado ? '0_8px_18px_-10px_rgba(23,107,77,0.8)' : '0 0 0 0px rgba(0,0,0,0)'),
-        duration: 0.3,
-        ease: 'power2.out',
-      });
-    };
-
     return (
       <button
-        ref={ref}
         key={nome || 'todos'}
         type="button"
         aria-pressed={ligado}
         onClick={() => mudar({ canteiro: ligado ? '' : nome })}
-        onMouseEnter={() => handleHover(true)}
-        onMouseLeave={() => handleHover(false)}
         data-testid={`quadro-aba-canteiro-${nome || 'todos'}`}
-        className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${ligado ? 'bg-[#176b4d] text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-emerald-300'} ${FOCO}`}
+        className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${ligado ? 'bg-[#176b4d] text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:-translate-y-0.5 hover:ring-emerald-300 hover:shadow-md'} ${FOCO}`}
       >
         {rotulo}
         <span className={`rounded-full px-1.5 font-mono text-xs ${ligado ? 'bg-white/10' : 'bg-slate-100 text-slate-500'}`}>{total}</span>
@@ -415,36 +368,6 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
           </button>
         </div>
       )}
-
-      <section aria-label="Resumo da frota no dia" className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-9">
-        {lista.map(item => {
-          const ativo = item.id !== 'total' && item.filtro && Object.entries(item.filtro).every(([chave, valor]) => filtros[chave as keyof FiltrosQuadro] === valor);
-          const conteudo = (
-            <>
-              <span className="flex items-start justify-between gap-1.5">
-                <span className="min-w-0 truncate whitespace-nowrap text-xs font-bold leading-tight text-slate-500" title={item.titulo}>{item.titulo}</span>
-                <span className={`grid size-6 shrink-0 place-items-center rounded-full max-2xl:hidden ${item.tom}`}><item.Icone className="size-3.5" aria-hidden="true" /></span>
-              </span>
-              {item.texto !== undefined
-                ? <span className="mt-0.5 block text-xl font-bold tabular-nums text-slate-900">{item.texto}</span>
-                : <CountUp value={item.valor} suffix={item.sufixo} className="mt-0.5 block text-xl font-bold tabular-nums text-slate-900" />}
-              <span className="block truncate text-xs text-slate-500">{item.detalhe}</span>
-            </>
-          );
-          const classe = `${CARTAO} flex min-h-[4.5rem] flex-col p-2 text-left transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${ativo ? 'border-[#176b4d] ring-2 ring-[#176b4d]/15' : ''}`;
-          return item.filtro ? (
-            <button key={item.id} type="button" data-quadro-reveal data-testid={`quadro-indicador-${item.id}`} aria-pressed={ativo || undefined} onClick={() => { if (item.id === 'total') { limparFiltros(); return; } setFiltros(ativo ? { ...filtros, ...Object.fromEntries(Object.keys(item.filtro!).map(chave => [chave, ''])) } : { ...filtros, ...item.filtro }); }} className={`${classe} hover:-translate-y-0.5 hover:border-emerald-300 active:scale-[0.98] ${FOCO}`}>
-              {conteudo}
-            </button>
-          ) : item.aoClicar ? (
-            <button key={item.id} type="button" data-quadro-reveal data-testid={`quadro-indicador-${item.id}`} onClick={item.aoClicar} className={`${classe} hover:-translate-y-0.5 hover:border-emerald-300 active:scale-[0.98] ${FOCO}`}>
-              {conteudo}
-            </button>
-          ) : (
-            <div key={item.id} data-quadro-reveal data-testid={`quadro-indicador-${item.id}`} className={classe}>{conteudo}</div>
-          );
-        })}
-      </section>
 
       <section aria-label="Canteiros e filtros" data-quadro-reveal className={`${CARTAO} space-y-3 p-3 lg:sticky lg:top-0 lg:z-10`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -635,13 +558,14 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
                       onClick={() => alternarGrupo(grupo.canteiro)}
                       aria-expanded={!fechado}
                       aria-label={fechado ? `Mostrar ${grupo.canteiro}` : `Esconder ${grupo.canteiro}`}
-                      className={`ml-auto grid size-11 place-items-center rounded-xl border border-slate-200 text-slate-500 transition duration-200 hover:border-emerald-400 hover:text-[#176b4d] ${FOCO}`}
+                      className={`grid size-11 place-items-center rounded-xl border border-slate-200 text-slate-500 transition duration-200 hover:border-emerald-400 hover:text-[#176b4d] ${FOCO}`}
                     >
                       <ChevronDown className={`size-4 transition duration-300 ${fechado ? '-rotate-90' : ''}`} aria-hidden="true" />
                     </button>}
                   </header>
                   {!fechado && (
                     <ColunaCanteiro canteiro={grupo.canteiro}>
+                      {grupo.cartoes.length === 0 && <p className="col-span-full px-2 py-3 text-center text-sm text-slate-500">Nenhuma máquina aqui. Arraste uma para este canteiro.</p>}
                       {grupo.cartoes.slice(0, limites[grupo.canteiro] ?? CARTOES_POR_VEZ).map(cartao => (
                         <CartaoArrastavel
                           key={cartao.equipamentoId}

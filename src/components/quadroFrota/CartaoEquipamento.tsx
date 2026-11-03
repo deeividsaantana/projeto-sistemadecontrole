@@ -29,16 +29,16 @@ export function CartaoEquipamento({ cartao, onAbrir }: { cartao: CartaoFrota; on
       data-quadro-cartao
       data-testid={`quadro-cartao-${cartao.prefixo}`}
       aria-label={`${cartao.prefixo}, ${cartao.modelo}, ${ROTULO_GRUPO[cartao.grupo]}${cartao.operador ? `, operador ${cartao.operador}` : ', sem operador'}`}
-      className={`group relative flex min-h-[10rem] flex-col overflow-hidden rounded-2xl bg-white text-left transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-1 hover:shadow-[0_20px_40px_-10px_rgba(15,40,31,0.15)] active:scale-[0.97] shadow-[0_2px_8px_rgba(15,40,31,0.08)] ring-1 ring-slate-200 hover:ring-slate-300 ${FOCO}`}
+      className={`group relative flex h-full min-h-[10rem] w-full flex-col overflow-hidden rounded-2xl bg-white text-left transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-1 hover:shadow-[0_20px_40px_-10px_rgba(15,40,31,0.15)] active:scale-[0.97] shadow-[0_2px_8px_rgba(15,40,31,0.08)] ring-1 ring-slate-200 hover:ring-slate-300 ${FOCO}`}
     >
-      <span className={`relative grid h-14 place-items-center overflow-hidden rounded-t-xl bg-gradient-to-b ${tom.fundo}`}>
+      <span className={`relative grid h-14 place-items-center overflow-hidden rounded-t-xl bg-gradient-to-b pr-9 ${tom.fundo}`}>
         <span className={`absolute inset-x-0 top-0 h-1.5 ${tom.faixa}`} aria-hidden="true" />
         {cartao.foto
           ? <img src={cartao.foto} alt="" className="h-full w-full object-cover" loading="lazy" />
           : <DesenhoMaquina tipo={cartao.silhueta} className="h-10 w-20 drop-shadow-[0_6px_6px_rgba(15,40,31,0.12)] transition duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-0.5 group-hover:scale-[1.08]" />}
       </span>
       <span className="flex flex-1 flex-col gap-1.5 p-3">
-        <strong className="font-mono text-sm font-bold leading-tight tracking-tight text-slate-900">{cartao.prefixo}</strong>
+        <strong className="font-mono text-base font-extrabold leading-tight tracking-tight text-slate-900">{cartao.prefixo}</strong>
         <span className="line-clamp-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{cartao.modelo}</span>
         <span className="flex items-center gap-1.5 font-mono text-xs text-slate-600">
           <Gauge className="size-3.5 text-slate-400 flex-shrink-0" aria-hidden="true" />
@@ -58,7 +58,7 @@ export function CartaoEquipamento({ cartao, onAbrir }: { cartao: CartaoFrota; on
           )}
         </span>
         <span className="mt-1.5">
-          <span className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold uppercase ring-1 ring-inset ${tom.etiqueta}`}>
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold uppercase ring-1 ring-inset ${tom.etiqueta}`}>
             <span className={`size-2 rounded-full ${tom.ponto} ${cartao.grupo === 'operando' ? 'animate-pulse motion-reduce:animate-none' : ''}`} aria-hidden="true" />
             {ROTULO_GRUPO[cartao.grupo]}
           </span>
