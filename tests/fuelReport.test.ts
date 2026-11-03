@@ -132,16 +132,19 @@ test('relatorio soma por competencia e preserva linhas de conferencia', () => {
     combustiveis,
   });
 
-  assert.equal(report.totalRegistros, 2);
+  assert.equal(report.totalRegistros, 3);
   assert.equal(report.totalLitros, 250);
   assert.equal(report.totalConferencia, 1);
   assert.deepEqual(report.porCompetencia.map(item => [item.chave, item.registros, item.litros]), [
-    ['2026-07', 1, 150],
+    ['2026-07', 2, 150],
     ['2026-06', 1, 100],
   ]);
-  assert.equal(report.linhasExcel[0].aba, 'JULHO 2026');
-  assert.equal(report.linhasExcel[0].status, 'Conferência necessária');
-  assert.equal(report.linhasExcel[1].prefixo, 'CB001');
+  assert.equal(report.linhasExcel[0].aba, 'JULHO DE 2026 · 21/06 a 20/07');
+  assert.equal(report.linhasExcel[0].status, 'Cancelado');
+  assert.equal(report.linhasExcel[1].aba, 'JULHO 2026');
+  assert.equal(report.linhasExcel[1].status, 'Conferência necessária');
+  assert.equal(report.linhasExcel[1].prefixo, 'ESC200');
+  assert.equal(report.linhasExcel[2].prefixo, 'CB001');
 });
 
 test('competencia do combustivel segue ciclo operacional de 21 a 20', () => {
@@ -156,5 +159,5 @@ test('relatorio aceita intervalo livre de datas', () => {
     dataFim: '2026-07-31',
   }, { equipamentos, empresas, comboios, combustiveis });
 
-  assert.deepEqual(filtrados.map(item => item.id), ['fuel-2']);
+  assert.deepEqual(filtrados.map(item => item.id), ['fuel-2', 'fuel-3']);
 });
