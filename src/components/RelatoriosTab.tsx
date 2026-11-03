@@ -142,9 +142,12 @@ export default function RelatoriosTab({
         </div>
       </section>
 
-      <section data-relatorios-reveal>
-        <h2 className="mb-4 text-lg font-bold text-slate-900">Relatórios Adicionais</h2>
-        <div className="space-y-6">
+      <section data-relatorios-reveal className="border-t-2 border-slate-200 pt-8">
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold tracking-tight text-slate-950">Análise Operacional</h2>
+          <p className="mt-2 text-sm font-medium text-slate-600">Desempenho em tempo real de motoristas e equipamentos</p>
+        </div>
+        <div className="space-y-8">
           <div>
             <RelatorioMotoristas funcionarios={funcionarios} registros={controlesEquipamentos} />
           </div>
