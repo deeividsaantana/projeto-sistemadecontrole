@@ -69,6 +69,8 @@ import FleetImportPreviewModal, { type FleetImportPreviewRow } from './fleet/Fle
 import ImportacaoSge from './fleet/ImportacaoSge';
 import { ConfirmDialog, CountUp, Modal, PageHeader } from '../shared/ui';
 import { AbasDaTela, idDaAba, type AbaDaTela } from '../shared/ui/AbasDaTela';
+import { FILTROS_HISTORICO_VAZIOS, filtrarHistorico, temFiltroNoHistorico, type FiltrosHistorico } from '../modules/frota/historicoLancamentos';
+import { ROTULO_GRUPO, GRUPO_DO_STATUS, type GrupoStatus } from '../modules/frota/quadroFrota';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { TabelaPadrao, type ColunaTabela } from '../shared/ui/TabelaPadrao';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
@@ -147,6 +149,34 @@ interface FechamentoDoDia {
 const disponibilidadeDo = (dia: FechamentoDoDia) => (dia.total ? Math.round(((dia.operating + dia.available) / dia.total) * 100) : null);
 
 const numeroOuTraco = (valor: number) => (valor ? valor.toLocaleString('pt-BR') : '—');
+
+const dataCurta = (iso: string) => iso.split('-').reverse().join('/');
+
+const TOM_GRUPO_HISTORICO: Record<GrupoStatus, string> = {
+  operando: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
+  manutencao: 'bg-rose-50 text-rose-800 ring-rose-200',
+  parado: 'bg-amber-50 text-amber-800 ring-amber-200',
+  'sem-lancamento': 'bg-slate-100 text-slate-700 ring-slate-200',
+};
+
+const COLUNAS_LANCAMENTOS: readonly ColunaTabela<ControleEquipamentoDiario>[] = [
+  { chave: 'data', titulo: 'Dia', larguraMinima: 100, valorOrdenacao: item => item.data, render: item => <span className="font-bold tabular-nums text-slate-900">{dataCurta(item.data)}</span> },
+  { chave: 'prefixo', titulo: 'Equipamento', larguraMinima: 120, valorOrdenacao: item => item.prefixo, render: item => <span className="font-mono font-bold text-slate-900">{item.prefixo}</span> },
+  { chave: 'motorista', titulo: 'Motorista', larguraMinima: 180, valorOrdenacao: item => item.nomeMotorista, dica: item => item.nomeMotorista, render: item => item.nomeMotorista || '—' },
+  { chave: 'matricula', titulo: 'Matrícula', larguraMinima: 90, valorOrdenacao: item => item.codigoFuncionario, render: item => item.codigoFuncionario || '—' },
+  {
+    chave: 'situacao',
+    titulo: 'Situação',
+    larguraMinima: 150,
+    valorOrdenacao: item => item.status,
+    render: item => {
+      const grupo = GRUPO_DO_STATUS[item.status] ?? 'parado';
+      return <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ring-1 ring-inset ${TOM_GRUPO_HISTORICO[grupo]}`}>{item.status}</span>;
+    },
+  },
+  { chave: 'saida', titulo: 'Saída', alinhamento: 'direita', larguraMinima: 70, valorOrdenacao: item => item.horaSaida, render: item => item.horaSaida || '—' },
+  { chave: 'obs', titulo: 'Observação', larguraMinima: 180, dica: item => item.observacao, noCartao: false, render: item => item.observacao || '—' },
+];
 
 const COLUNAS_HISTORICO: readonly ColunaTabela<FechamentoDoDia>[] = [
   {
@@ -300,6 +330,7 @@ export default function ControleEquipamentosDiarioTab({
   const relacaoMudou = useCallback(() => setVersaoRelacao(versao => versao + 1), []);
   const [atalhosAberto, setAtalhosAberto] = useState(false);
   const [driverSearch, setDriverSearch] = useState('');
+  const [filtrosHistorico, setFiltrosHistorico] = useState<FiltrosHistorico>(FILTROS_HISTORICO_VAZIOS);
   const [driverEditor, setDriverEditor] = useState<Partial<Funcionario> | null>(null);
   const [driverErro, setDriverErro] = useState('');
   const [driverExclusao, setDriverExclusao] = useState<Funcionario | null>(null);
@@ -383,12 +414,13 @@ export default function ControleEquipamentosDiarioTab({
   }, [registros, filters.date]);
   const escopoHistorico = useEntradaDeLista<HTMLDivElement>([activeView]);
   const escopoMotoristas = useEntradaDeLista<HTMLDivElement>([activeView, driverSearch]);
+  const registrosDoHistorico = useMemo(() => filtrarHistorico(registros, filtrosHistorico), [registros, filtrosHistorico]);
   const historyByDate = useMemo((): FechamentoDoDia[] => {
     const repetidos = repetidosPorDia(registros);
-    const dates = [...new Set(registros.map(record => record.data).filter(Boolean))]
+    const dates = [...new Set(registrosDoHistorico.map(record => record.data).filter(Boolean))]
       .sort((left, right) => right.localeCompare(left));
     return dates.map(date => {
-      const daily = registros.filter(record => record.data === date);
+      const daily = registrosDoHistorico.filter(record => record.data === date);
       return {
         date,
         total: daily.length,
@@ -399,7 +431,7 @@ export default function ControleEquipamentosDiarioTab({
         repeated: repetidos.get(date) || [],
       };
     });
-  }, [registros]);
+  }, [registros, registrosDoHistorico]);
   const selectedStates = useMemo(
     () => viewModel.allRows.filter(state => selectedIds.includes(state.recordId)),
     [selectedIds, viewModel.allRows],
@@ -671,10 +703,7 @@ export default function ControleEquipamentosDiarioTab({
   const vistas: ReadonlyArray<AbaDaTela<FleetView>> = [
     { id: 'today', rotulo: 'Situação do dia', curto: 'Dia', icone: CalendarDays },
     ...(quadro ? [{ id: 'quadro' as const, rotulo: 'Quadro', icone: LayoutGrid }] : []),
-    { id: 'equipamentos', rotulo: 'Equipamentos', icone: ClipboardCheck, contador: conferenciaDoDia.equipamentos.missing, contadorRotulo: 'a confirmar' },
-    { id: 'operadores', rotulo: 'Operadores', icone: Users, contador: conferenciaDoDia.operadores.missing, contadorRotulo: 'a confirmar' },
     { id: 'history', rotulo: 'Histórico', icone: History },
-    { id: 'registry', rotulo: 'Motoristas', icone: Database },
   ];
   const ITEM_MENU = `flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-[#176b4d] disabled:opacity-50 ${FOCO}`;
   const ROTULO_GRUPO_MENU = 'px-3 pt-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-400';
@@ -741,6 +770,10 @@ export default function ControleEquipamentosDiarioTab({
                 <hr className="my-1 border-slate-100" />
                 <p className={ROTULO_GRUPO_MENU}>Cadastro e tela</p>
                 <button type="button" onClick={handleRefresh} className={ITEM_MENU}><RefreshCw className="size-4" aria-hidden="true" />Limpar filtros e seleção</button>
+                <p className={ROTULO_GRUPO_MENU}>Conferir e cadastrar</p>
+                <button type="button" onClick={() => setActiveView('equipamentos')} className={ITEM_MENU}><ClipboardCheck className="size-4" aria-hidden="true" />Equipamentos que faltam lançar ({conferenciaDoDia.equipamentos.missing})</button>
+                <button type="button" onClick={() => setActiveView('operadores')} className={ITEM_MENU}><Users className="size-4" aria-hidden="true" />Operadores que faltam lançar ({conferenciaDoDia.operadores.missing})</button>
+                <button type="button" onClick={() => setActiveView('registry')} className={ITEM_MENU}><Database className="size-4" aria-hidden="true" />Cadastro de motoristas</button>
                 {onOpenEquipmentRegistration && <button type="button" onClick={onOpenEquipmentRegistration} className={ITEM_MENU}><Plus className="size-4" aria-hidden="true" />Cadastrar equipamento</button>}
               </div>
             </details>
@@ -807,6 +840,44 @@ export default function ControleEquipamentosDiarioTab({
               <button type="button" disabled={Boolean(exporting) || !weeklyReport.records.length} onClick={() => void handleWeeklyExcel()} className={BOTAO_SECUNDARIO}><FileSpreadsheet className="size-4" aria-hidden="true"/>{exporting === 'weekly-excel' ? 'Gerando…' : 'Semana em Excel'}</button>
             </div>
           </header>
+          <div role="search" aria-label="Filtros do histórico" data-testid="frota-historico-filtros" className={`${CARTAO} grid shrink-0 gap-3 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))_auto] lg:items-end`}>
+            <label className="block">
+              <span className="mb-1 block text-xs font-bold text-[#5b6870]">Buscar</span>
+              <span className="relative block">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                <input type="search" value={filtrosHistorico.busca} onChange={event => setFiltrosHistorico(atual => ({ ...atual, busca: event.target.value }))} placeholder="Prefixo, motorista ou matrícula" className={`${CAMPO} pl-9`} data-testid="frota-historico-busca" />
+              </span>
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-bold text-[#5b6870]">De</span>
+              <input type="date" value={filtrosHistorico.de} max={filtrosHistorico.ate || undefined} onChange={event => setFiltrosHistorico(atual => ({ ...atual, de: event.target.value }))} className={CAMPO} data-testid="frota-historico-de" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-bold text-[#5b6870]">Até</span>
+              <input type="date" value={filtrosHistorico.ate} min={filtrosHistorico.de || undefined} onChange={event => setFiltrosHistorico(atual => ({ ...atual, ate: event.target.value }))} className={CAMPO} data-testid="frota-historico-ate" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-bold text-[#5b6870]">Situação</span>
+              <select value={filtrosHistorico.situacao} onChange={event => setFiltrosHistorico(atual => ({ ...atual, situacao: event.target.value as FiltrosHistorico['situacao'] }))} className={CAMPO} data-testid="frota-historico-situacao">
+                <option value="todas">Todas</option>
+                {(Object.keys(ROTULO_GRUPO) as GrupoStatus[]).map(grupo => <option key={grupo} value={grupo}>{ROTULO_GRUPO[grupo]}</option>)}
+              </select>
+            </label>
+            <button type="button" disabled={!temFiltroNoHistorico(filtrosHistorico)} onClick={() => setFiltrosHistorico(FILTROS_HISTORICO_VAZIOS)} className={BOTAO_SECUNDARIO} data-testid="frota-historico-limpar"><X className="size-4" aria-hidden="true" />Limpar</button>
+          </div>
+          <div className="flex min-h-[18rem] flex-1 flex-col">
+            <TabelaPadrao
+              titulo="Lançamentos do período"
+              testId="frota-historico-lancamentos"
+              linhas={registrosDoHistorico}
+              colunas={COLUNAS_LANCAMENTOS}
+              idDaLinha={item => item.id}
+              nomeDoItem={{ um: 'lançamento', varios: 'lançamentos' }}
+              ordenacaoInicial={{ chave: 'data', direcao: 'desc' }}
+              onAbrirLinha={item => { updateFilter('date', item.data); setActiveView('today'); }}
+              vazio={temFiltroNoHistorico(filtrosHistorico) ? 'Nenhum lançamento com esses filtros.' : 'Nenhum lançamento ainda.'}
+            />
+          </div>
           <div ref={escopoHistorico} className="flex min-h-[16rem] flex-1 flex-col">
             <TabelaPadrao
               titulo="Dias lançados"
@@ -817,7 +888,7 @@ export default function ControleEquipamentosDiarioTab({
               nomeDoItem={{ um: 'dia', varios: 'dias' }}
               ordenacaoInicial={{ chave: 'date', direcao: 'desc' }}
               onAbrirLinha={item => { updateFilter('date', item.date); setActiveView('today'); }}
-              vazio="Nenhum dia lançado ainda."
+              vazio={temFiltroNoHistorico(filtrosHistorico) ? 'Nenhum dia com esses filtros.' : 'Nenhum dia lançado ainda.'}
             />
           </div>
         </section>
