@@ -10,10 +10,10 @@ import { FOCO } from '../cadastros/estilos';
 
 /** Cor de cada situação: faixa, fundo do desenho, etiqueta e bolinha. */
 export const TOM: Record<GrupoStatus, { faixa: string; fundo: string; etiqueta: string; ponto: string }> = {
-  operando: { faixa: 'bg-[#176b4d]', fundo: 'from-emerald-50 to-white', etiqueta: 'bg-emerald-50 text-emerald-800 ring-emerald-200', ponto: 'bg-emerald-500' },
-  manutencao: { faixa: 'bg-rose-600', fundo: 'from-rose-50 to-white', etiqueta: 'bg-rose-50 text-rose-800 ring-rose-200', ponto: 'bg-rose-500' },
-  parado: { faixa: 'bg-amber-400', fundo: 'from-amber-50 to-white', etiqueta: 'bg-amber-50 text-amber-800 ring-amber-200', ponto: 'bg-amber-400' },
-  'sem-lancamento': { faixa: 'bg-slate-300', fundo: 'from-slate-100 to-white', etiqueta: 'bg-slate-100 text-slate-600 ring-slate-200', ponto: 'bg-slate-400' },
+  operando: { faixa: 'bg-emerald-600', fundo: 'from-emerald-100 to-emerald-50', etiqueta: 'bg-emerald-100 text-emerald-900 ring-emerald-300 font-semibold', ponto: 'bg-emerald-500' },
+  manutencao: { faixa: 'bg-rose-700', fundo: 'from-rose-100 to-rose-50', etiqueta: 'bg-rose-100 text-rose-900 ring-rose-300 font-semibold', ponto: 'bg-rose-600' },
+  parado: { faixa: 'bg-amber-600', fundo: 'from-amber-100 to-amber-50', etiqueta: 'bg-amber-100 text-amber-900 ring-amber-300 font-semibold', ponto: 'bg-amber-500' },
+  'sem-lancamento': { faixa: 'bg-slate-400', fundo: 'from-slate-200 to-slate-100', etiqueta: 'bg-slate-200 text-slate-800 ring-slate-300 font-semibold', ponto: 'bg-slate-500' },
 };
 
 export const numero = (valor: number) => valor.toLocaleString('pt-BR');
@@ -29,7 +29,7 @@ export function CartaoEquipamento({ cartao, onAbrir }: { cartao: CartaoFrota; on
       data-quadro-cartao
       data-testid={`quadro-cartao-${cartao.prefixo}`}
       aria-label={`${cartao.prefixo}, ${cartao.modelo}, ${ROTULO_GRUPO[cartao.grupo]}${cartao.operador ? `, operador ${cartao.operador}` : ', sem operador'}`}
-      className={`group relative flex min-h-[8.5rem] flex-col overflow-hidden rounded-xl bg-white p-1 text-left shadow-[0_1px_2px_rgba(15,40,31,0.06)] ring-1 ring-slate-200 transition duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-1 hover:shadow-[0_18px_32px_-18px_rgba(15,40,31,0.35)] hover:ring-emerald-300 active:scale-[0.98] ${FOCO}`}
+      className={`group relative flex min-h-[8.5rem] flex-col overflow-hidden rounded-xl bg-white p-1.5 text-left shadow-[0_2px_8px_rgba(15,40,31,0.1)] ring-1.5 ring-slate-200 transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(15,40,31,0.4)] hover:ring-emerald-400 active:scale-[0.97] ${FOCO}`}
     >
       <span className={`relative grid h-11 place-items-center overflow-hidden rounded-lg bg-gradient-to-b ${tom.fundo}`}>
         <span className={`absolute inset-x-0 top-0 h-1 ${tom.faixa}`} aria-hidden="true" />
@@ -37,29 +37,29 @@ export function CartaoEquipamento({ cartao, onAbrir }: { cartao: CartaoFrota; on
           ? <img src={cartao.foto} alt="" className="h-full w-full object-cover" loading="lazy" />
           : <DesenhoMaquina tipo={cartao.silhueta} className="h-9 w-16 drop-shadow-[0_6px_6px_rgba(15,40,31,0.12)] transition duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-0.5 group-hover:scale-[1.06]" />}
       </span>
-      <span className="flex flex-1 flex-col px-1 pb-0.5 pt-1.5">
-        <strong className="font-mono text-[13px] font-bold leading-tight tracking-tight text-slate-900">{cartao.prefixo}</strong>
-        <span className="line-clamp-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{cartao.modelo}</span>
-        <span className="mt-1 flex items-center gap-1 font-mono text-xs text-slate-500">
-          <Gauge className="size-3 text-slate-400" aria-hidden="true" />
-          {cartao.horimetro ? `${numero(cartao.horimetro)} h` : 'sem horímetro'}
+      <span className="flex flex-1 flex-col px-2 pb-1 pt-2">
+        <strong className="font-mono text-sm font-extrabold leading-tight tracking-tighter text-slate-950">{cartao.prefixo}</strong>
+        <span className="line-clamp-1 text-xs font-medium uppercase tracking-widest text-slate-600">{cartao.modelo}</span>
+        <span className="mt-2 flex items-center gap-1.5 font-mono text-xs text-slate-600">
+          <Gauge className="size-3.5 text-slate-500" aria-hidden="true" />
+          <span className="font-semibold">{cartao.horimetro ? `${numero(cartao.horimetro)} h` : '—'}</span>
         </span>
-        <span className="mt-1 flex min-w-0 items-center gap-1">
+        <span className="mt-2 flex min-w-0 items-center gap-1.5">
           {cartao.operador ? (
             <>
-              <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[#176b4d] text-xs font-bold text-white" aria-hidden="true">{iniciais(cartao.operador)}</span>
-              <span className="truncate text-xs font-bold uppercase text-slate-700">{cartao.operador.split(' ')[0]}</span>
+              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-emerald-600 text-xs font-bold text-white ring-1 ring-emerald-700" aria-hidden="true">{iniciais(cartao.operador)}</span>
+              <span className="truncate text-xs font-semibold text-slate-800">{cartao.operador.split(' ')[0]}</span>
             </>
           ) : (
             <>
-              <span className="grid size-5 shrink-0 place-items-center rounded-full border border-dashed border-[#f26a2e] text-xs font-bold text-[#c2410c]" aria-hidden="true">?</span>
-              <span className="truncate text-xs font-medium italic text-slate-500">sem operador</span>
+              <span className="grid size-6 shrink-0 place-items-center rounded-full border-2 border-dashed border-rose-300 bg-rose-50 text-xs font-bold text-rose-700" aria-hidden="true">—</span>
+              <span className="truncate text-xs font-medium text-slate-500">sem operador</span>
             </>
           )}
         </span>
-        <span className="mt-auto pt-1.5">
-          <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-bold uppercase ring-1 ring-inset ${tom.etiqueta}`}>
-            <span className={`size-1.5 rounded-full ${tom.ponto} ${cartao.grupo === 'operando' ? 'animate-pulse motion-reduce:animate-none' : ''}`} aria-hidden="true" />
+        <span className="mt-auto pt-2">
+          <span className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold uppercase ring-1 ring-inset ${tom.etiqueta}`}>
+            <span className={`size-2 rounded-full ${tom.ponto} ${cartao.grupo === 'operando' ? 'animate-pulse motion-reduce:animate-none' : ''}`} aria-hidden="true" />
             {ROTULO_GRUPO[cartao.grupo]}
           </span>
         </span>

@@ -229,6 +229,7 @@ import './guardaDeMovimento.test';
 import './frotaTabelaPadrao.test';
 import './tabelaMaisLinhas.test';
 import './frotaNavegacaoDia.test';
+import './historicoLancamentos.test';
 import './faltantesPdf.test';
 import './presencaPublicaLink.test';
 import './escalaSabado.test';

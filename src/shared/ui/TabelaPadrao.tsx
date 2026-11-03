@@ -404,7 +404,7 @@ export function TabelaPadrao<T>({
       <thead>
         <tr>
           {selecao && (
-            <th scope="col" className="sticky top-0 z-[2] w-12 border-b border-slate-200 bg-[#f3f6f4] p-0">
+            <th scope="col" className="sticky top-0 z-[2] w-12 border-b border-slate-200 bg-gradient-to-b from-slate-100 to-slate-50 p-0">
               <label className="flex min-h-9 cursor-pointer items-center justify-center">{caixaDaPagina}</label>
             </th>
           )}
@@ -422,7 +422,7 @@ export function TabelaPadrao<T>({
                   ...(densa ? { whiteSpace: 'normal' as const } : {}),
                 }}
                 className={cn(
-                  'sticky top-0 z-[1] h-9 border-b border-slate-200 bg-[#f3f6f4] text-xs font-bold uppercase tracking-wide text-[#53635c]',
+                  'sticky top-0 z-[1] h-9 border-b border-slate-200 bg-gradient-to-b from-slate-100 to-slate-50 text-xs font-bold uppercase tracking-wider text-slate-700',
                   densa ? 'px-2 leading-tight' : 'whitespace-nowrap px-3',
                   ALINHAMENTO[coluna.alinhamento ?? 'esquerda'],
                 )}
@@ -441,7 +441,7 @@ export function TabelaPadrao<T>({
             );
           })}
           {acoes && (
-            <th scope="col" className="sticky top-0 z-[1] h-9 whitespace-nowrap border-b border-slate-200 bg-[#f3f6f4] px-3 text-right text-[11px] font-bold uppercase tracking-wide text-[#53635c]">
+            <th scope="col" className="sticky top-0 z-[1] h-9 whitespace-nowrap border-b border-slate-200 bg-gradient-to-b from-slate-100 to-slate-50 px-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-700">
               {tituloAcoes}
             </th>
           )}
@@ -555,10 +555,10 @@ export function TabelaPadrao<T>({
       )}
 
       {temLinhas && semPaginacao && (
-        <p className="shrink-0 border-t border-slate-200 bg-[#f3f6f4] px-3 py-2 text-[13px] font-semibold tabular-nums text-slate-700">{contagem(linhas.length, nomeDoItem)}</p>
+        <p className="shrink-0 border-t border-slate-200 bg-gradient-to-b from-slate-50 to-slate-100 px-3 py-2 text-[13px] font-semibold tabular-nums text-slate-700">{contagem(linhas.length, nomeDoItem)}</p>
       )}
       {mostrarRodape && (
-        <footer data-tabela-rodape className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-slate-200 bg-[#f3f6f4] px-3 py-2 text-[13px] text-slate-700 lg:py-1">
+        <footer data-tabela-rodape className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-slate-200 bg-gradient-to-b from-slate-50 to-slate-100 px-3 py-2 text-[13px] text-slate-700 lg:py-1">
           {rodapeInicio && <div className="min-w-0 flex-1 basis-72">{rodapeInicio}</div>}
           <p className="font-semibold tabular-nums">
             <span aria-live="polite">

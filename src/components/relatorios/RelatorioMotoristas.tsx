@@ -79,16 +79,22 @@ export function RelatorioMotoristas({ funcionarios, registros }: Props) {
   ];
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-bold text-slate-950">Motoristas Cadastrados</h2>
-        <p className="mt-1 text-sm text-slate-600">
-          {dados.length}
-          {' '}
-          {dados.length === 1 ? 'motorista' : 'motoristas'}
-          {' '}
-          com atividades
-        </p>
+    <div className="space-y-6 rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-slate-50 p-6">
+      <div className="flex items-end justify-between border-b border-emerald-200 pb-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-emerald-950">Desempenho dos Motoristas</h2>
+          <p className="mt-2 text-sm font-medium text-emerald-700">
+            {dados.length}
+            {' '}
+            {dados.length === 1 ? 'motorista ativo' : 'motoristas ativos'}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-3xl font-bold text-emerald-600">
+            {dados.reduce((acc, m) => acc + m.quantidadeLancamentos, 0)}
+          </p>
+          <p className="text-xs font-medium text-slate-600">lançamentos total</p>
+        </div>
       </div>
       <TabelaPadrao
         titulo="Relatório de motoristas"

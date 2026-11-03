@@ -104,7 +104,7 @@ const STATUS_STYLES: Record<PresencaStatus, string> = {
   Outro: 'border-violet-200 bg-violet-50 text-violet-800',
 };
 
-const PANEL = 'rounded-xl border border-slate-200 bg-white';
+const PANEL = 'rounded-xl border border-slate-200 bg-white shadow-[0_2px_12px_rgba(15,40,31,0.06)] transition-shadow duration-200 hover:shadow-[0_8px_24px_rgba(15,40,31,0.12)]';
 const FOCO = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)';
 const ROTULO_CAMPO = 'block text-xs font-bold text-[#5b6870]';
 const FIELD = 'min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-emerald-700 focus:ring-4 focus:ring-emerald-700/10';
@@ -282,11 +282,8 @@ export default function ControlePresencaTab({
   const [dashboardBranch, setDashboardBranch] = useState('todos');
   const [dashboardSite, setDashboardSite] = useState('todos');
   const [dashboardSearch, setDashboardSearch] = useState('');
-  // No celular a gaveta nasce fechada: o painel tem de mostrar gente, não
-  // formulário. No desktop sobra largura, então já abre.
-  const [filtrosAbertos, setFiltrosAbertos] = useState(
-    () => typeof window !== 'undefined' && window.innerWidth >= 1024,
-  );
+  // A gaveta nasce fechada: o painel tem de mostrar gente, não formulário.
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [recordDate, setRecordDate] = useState(today);
   const [recordGroup, setRecordGroup] = useState('todos');
   const [recordStatus, setRecordStatus] = useState<'todos' | PresencaStatus>('todos');
@@ -997,7 +994,7 @@ export default function ControlePresencaTab({
     { id: 'relatorios', rotulo: 'Relatórios', icone: PieChart },
     { id: 'equipes', rotulo: 'Equipes', icone: Users },
     { id: 'registros', rotulo: 'Registros', icone: FileSpreadsheet },
-    { id: 'historico', rotulo: 'Histórico', icone: History },
+    { id: 'historico', rotulo: 'Correções', icone: History },
   ];
 
   // Registros e Histórico são tabelas: a área de dados fica do tamanho da tela

@@ -27,7 +27,7 @@ export const ROTULO_GRUPO: Record<GrupoStatus, string> = {
   'sem-lancamento': 'Sem lançamento',
 };
 
-const GRUPO_DO_STATUS: Record<StatusControleEquipamentoDiario, GrupoStatus> = {
+export const GRUPO_DO_STATUS: Record<StatusControleEquipamentoDiario, GrupoStatus> = {
   'Em operação': 'operando',
   'Em manutenção': 'manutencao',
   'Aguardando manutenção': 'manutencao',
