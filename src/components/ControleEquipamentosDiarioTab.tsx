@@ -822,6 +822,9 @@ export default function ControleEquipamentosDiarioTab({
       {activeView === 'quadro' && quadro && <div data-fleet-view>
         <React.Suspense fallback={<p className="p-8 text-center text-sm text-slate-500">Abrindo o quadro…</p>}>{quadro(filters.date, () => setActiveView('today'))}</React.Suspense>
       </div>}
+      {(activeView === 'equipamentos' || activeView === 'operadores' || activeView === 'registry') && (
+        <button type="button" onClick={() => setActiveView('today')} data-testid="frota-voltar" className={`${BOTAO_SECUNDARIO} self-start`}><ChevronLeft className="size-4" aria-hidden="true" />Voltar para a situação do dia</button>
+      )}
       {activeView === 'equipamentos' && <div data-fleet-view className="flex min-h-0 flex-1 flex-col">
         <FleetDailyReference records={registros} date={filters.date} onLancar={openNewRecord} onRelacaoChange={relacaoMudou}/>
       </div>}

@@ -282,11 +282,8 @@ export default function ControlePresencaTab({
   const [dashboardBranch, setDashboardBranch] = useState('todos');
   const [dashboardSite, setDashboardSite] = useState('todos');
   const [dashboardSearch, setDashboardSearch] = useState('');
-  // No celular a gaveta nasce fechada: o painel tem de mostrar gente, não
-  // formulário. No desktop sobra largura, então já abre.
-  const [filtrosAbertos, setFiltrosAbertos] = useState(
-    () => typeof window !== 'undefined' && window.innerWidth >= 1024,
-  );
+  // A gaveta nasce fechada: o painel tem de mostrar gente, não formulário.
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [recordDate, setRecordDate] = useState(today);
   const [recordGroup, setRecordGroup] = useState('todos');
   const [recordStatus, setRecordStatus] = useState<'todos' | PresencaStatus>('todos');
@@ -997,7 +994,7 @@ export default function ControlePresencaTab({
     { id: 'relatorios', rotulo: 'Relatórios', icone: PieChart },
     { id: 'equipes', rotulo: 'Equipes', icone: Users },
     { id: 'registros', rotulo: 'Registros', icone: FileSpreadsheet },
-    { id: 'historico', rotulo: 'Histórico', icone: History },
+    { id: 'historico', rotulo: 'Correções', icone: History },
   ];
 
   // Registros e Histórico são tabelas: a área de dados fica do tamanho da tela
