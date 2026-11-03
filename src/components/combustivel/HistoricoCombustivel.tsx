@@ -529,6 +529,7 @@ export default function HistoricoCombustivel({
             colunas={colunasTabela}
             idDaLinha={item => item.id}
             nomeDoItem={{ um: 'abastecimento', varios: 'abastecimentos' }}
+            classeLinha={item => item.inativoEm ? 'opacity-60 bg-amber-50/50' : undefined}
             densa
             ordenacao={{ chave: ordem.coluna, direcao: ordem.direcao }}
             onOrdenar={ordenar}
