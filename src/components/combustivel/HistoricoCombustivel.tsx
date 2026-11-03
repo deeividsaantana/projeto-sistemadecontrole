@@ -184,6 +184,7 @@ export default function HistoricoCombustivel({
     const termo = semAcento(filtros.texto.trim());
     const lista = abastecimentos.filter(item => {
       const maquina = porId.get(item.equipamentoId);
+      if (item.inativoEm || item.status === 'Cancelado') return false;
       if (filtros.dataInicio && item.data < filtros.dataInicio) return false;
       if (filtros.dataFim && item.data > filtros.dataFim) return false;
       if (filtros.comboioId && item.comboioId !== filtros.comboioId) return false;
