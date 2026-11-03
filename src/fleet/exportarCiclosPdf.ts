@@ -179,7 +179,7 @@ export const gerarHtmlCiclos = (
     }
 
     .metric-card .label {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 600;
       color: #6b7280;
       text-transform: uppercase;
@@ -207,7 +207,7 @@ export const gerarHtmlCiclos = (
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 24px;
-      font-size: 13px;
+      font-size: 12px;
     }
 
     thead {
@@ -233,7 +233,7 @@ export const gerarHtmlCiclos = (
 
     .footer {
       text-align: center;
-      font-size: 11px;
+      font-size: 12px;
       color: #6b7280;
       margin-top: 40px;
       padding-top: 12px;
@@ -242,12 +242,12 @@ export const gerarHtmlCiclos = (
 
     .footer-date {
       color: #9ca3af;
-      font-size: 10px;
+      font-size: 12px;
     }
 
     @media (max-width: 768px) {
       .metrics { grid-template-columns: repeat(2, 1fr); }
-      table { font-size: 11px; }
+      table { font-size: 12px; }
       th, td { padding: 8px; }
     }
   </style>
