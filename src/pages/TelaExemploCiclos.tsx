@@ -7,9 +7,9 @@
  */
 
 import { useState, useEffect } from 'react';
-import { RegistrarCiclo, HistoricoCiclos, CycleTimeline } from '@/components/ciclosEquipamento';
-import { useCycleHistory } from '@/fleet/useCycleHistory';
-import type { CycleEvent, EquipmentCycle } from '@/fleet/cycleHistory';
+import { RegistrarCiclo, HistoricoCiclos, CycleTimeline } from '../components/ciclosEquipamento';
+import { useCycleHistory } from '../fleet/useCycleHistory';
+import type { CycleEvent, EquipmentCycle } from '../fleet/cycleHistory';
 
 export const TelaExemploCiclos = () => {
   const { ciclos, registrarEvento, salvar } = useCycleHistory();

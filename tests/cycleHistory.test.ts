@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
   calcularDuracao,
   formatarDuracao,
@@ -9,55 +10,55 @@ import {
   type CycleEvent,
 } from '../src/fleet/cycleHistory';
 
-describe('cycleHistory', () => {
-  describe('calcularDuracao', () => {
-    it('deve calcular minutos entre dois timestamps ISO', () => {
+test('cycleHistory', async t => {
+  await t.test('calcularDuracao', async t => {
+    await t.test('deve calcular minutos entre dois timestamps ISO', () => {
       const de = '2026-11-03T08:00:00Z';
       const ate = '2026-11-03T09:00:00Z';
-      expect(calcularDuracao(de, ate)).toBe(60);
+      assert.equal(calcularDuracao(de, ate), 60);
     });
 
-    it('deve retornar 0 para timestamps iguais', () => {
+    await t.test('deve retornar 0 para timestamps iguais', () => {
       const timestamp = '2026-11-03T08:00:00Z';
-      expect(calcularDuracao(timestamp, timestamp)).toBe(0);
+      assert.equal(calcularDuracao(timestamp, timestamp), 0);
     });
 
-    it('deve retornar 0 quando "ate" é antes de "de"', () => {
+    await t.test('deve retornar 0 quando "ate" é antes de "de"', () => {
       const de = '2026-11-03T09:00:00Z';
       const ate = '2026-11-03T08:00:00Z';
-      expect(calcularDuracao(de, ate)).toBe(0);
+      assert.equal(calcularDuracao(de, ate), 0);
     });
 
-    it('deve calcular frações de minuto corretamente', () => {
+    await t.test('deve calcular frações de minuto corretamente', () => {
       const de = '2026-11-03T08:00:00Z';
       const ate = '2026-11-03T08:30:30Z';
-      expect(calcularDuracao(de, ate)).toBe(31); // 30.5 minutos arredonda para 31
+      assert.equal(calcularDuracao(de, ate), 31); // 30.5 minutos arredonda para 31
     });
   });
 
-  describe('formatarDuracao', () => {
-    it('deve formatar minutos apenas', () => {
-      expect(formatarDuracao(45)).toBe('45 min');
-      expect(formatarDuracao(59)).toBe('59 min');
+  await t.test('formatarDuracao', async t => {
+    await t.test('deve formatar minutos apenas', () => {
+      assert.equal(formatarDuracao(45), '45 min');
+      assert.equal(formatarDuracao(59), '59 min');
     });
 
-    it('deve formatar horas exatas', () => {
-      expect(formatarDuracao(60)).toBe('1 h');
-      expect(formatarDuracao(120)).toBe('2 h');
+    await t.test('deve formatar horas exatas', () => {
+      assert.equal(formatarDuracao(60), '1 h');
+      assert.equal(formatarDuracao(120), '2 h');
     });
 
-    it('deve formatar horas e minutos', () => {
-      expect(formatarDuracao(75)).toBe('1 h 15 min');
-      expect(formatarDuracao(135)).toBe('2 h 15 min');
+    await t.test('deve formatar horas e minutos', () => {
+      assert.equal(formatarDuracao(75), '1 h 15 min');
+      assert.equal(formatarDuracao(135), '2 h 15 min');
     });
 
-    it('deve lidar com 0', () => {
-      expect(formatarDuracao(0)).toBe('0 min');
+    await t.test('deve lidar com 0', () => {
+      assert.equal(formatarDuracao(0), '0 min');
     });
   });
 
-  describe('extrairFasesCiclo', () => {
-    it('deve extrair fases com duração calculada', () => {
+  await t.test('extrairFasesCiclo', async t => {
+    await t.test('deve extrair fases com duração calculada', () => {
       const ciclo: EquipmentCycle = {
         id: 'cic-1',
         equipamentoId: 'eq-1',
@@ -95,18 +96,18 @@ describe('cycleHistory', () => {
 
       const fases = extrairFasesCiclo(ciclo);
 
-      expect(fases.length).toBe(3);
-      expect(fases[0].status).toBe('Em operação');
-      expect(fases[0].duracao).toBe(30); // 08:30 - 08:00
-      expect(fases[1].status).toBe('Em manutenção');
-      expect(fases[1].duracao).toBe(90); // 10:00 - 08:30
-      expect(fases[2].status).toBe('À disposição');
-      expect(fases[2].duracao).toBeUndefined(); // Sem próximo evento
+      assert.equal(fases.length, 3);
+      assert.equal(fases[0].status, 'Em operação');
+      assert.equal(fases[0].duracao, 30); // 08:30 - 08:00
+      assert.equal(fases[1].status, 'Em manutenção');
+      assert.equal(fases[1].duracao, 90); // 10:00 - 08:30
+      assert.equal(fases[2].status, 'À disposição');
+      assert.equal(fases[2].duracao, undefined); // Sem próximo evento
     });
   });
 
-  describe('montarTimeline', () => {
-    it('deve converter fases para timeline visual', () => {
+  await t.test('montarTimeline', async t => {
+    await t.test('deve converter fases para timeline visual', () => {
       const ciclo: EquipmentCycle = {
         id: 'cic-1',
         equipamentoId: 'eq-1',
@@ -136,16 +137,16 @@ describe('cycleHistory', () => {
       const fases = extrairFasesCiclo(ciclo);
       const timeline = montarTimeline(fases);
 
-      expect(timeline.length).toBe(2);
-      expect(timeline[0].status).toBe('Em operação');
-      expect(timeline[0].icone).toBe('play');
-      expect(timeline[0].duracao).toBe('2 h');
-      expect(timeline[1].icone).toBe('check');
+      assert.equal(timeline.length, 2);
+      assert.equal(timeline[0].status, 'Em operação');
+      assert.equal(timeline[0].icone, 'play');
+      assert.equal(timeline[0].duracao, '2 h');
+      assert.equal(timeline[1].icone, 'check');
     });
   });
 
-  describe('calcularMetricasCiclos', () => {
-    it('deve calcular métricas agregadas corretamente', () => {
+  await t.test('calcularMetricasCiclos', async t => {
+    await t.test('deve calcular métricas agregadas corretamente', () => {
       const ciclos: EquipmentCycle[] = [
         {
           id: 'cic-1',
@@ -176,12 +177,12 @@ describe('cycleHistory', () => {
 
       const metricas = calcularMetricasCiclos(ciclos);
 
-      expect(metricas.totalOperacao).toBe(120); // 2 horas
-      expect(metricas.totalManutencao).toBe(0);
-      expect(metricas.disponibilidade).toBe(100);
+      assert.equal(metricas.totalOperacao, 120); // 2 horas
+      assert.equal(metricas.totalManutencao, 0);
+      assert.equal(metricas.disponibilidade, 100);
     });
 
-    it('deve calcular disponibilidade com múltiplos estados', () => {
+    await t.test('deve calcular disponibilidade com múltiplos estados', () => {
       const ciclos: EquipmentCycle[] = [
         {
           id: 'cic-1',
@@ -221,9 +222,9 @@ describe('cycleHistory', () => {
 
       const metricas = calcularMetricasCiclos(ciclos);
 
-      expect(metricas.totalOperacao).toBe(120); // 08:00 - 10:00
-      expect(metricas.totalManutencao).toBe(120); // 10:00 - 12:00
-      expect(metricas.disponibilidade).toBe(50); // 50/50
+      assert.equal(metricas.totalOperacao, 120); // 08:00 - 10:00
+      assert.equal(metricas.totalManutencao, 120); // 10:00 - 12:00
+      assert.equal(metricas.disponibilidade, 50); // 50/50
     });
   });
 });
