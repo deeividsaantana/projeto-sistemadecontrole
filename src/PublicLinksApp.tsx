@@ -20,6 +20,7 @@ import {
   addPublicPresenceMember,
   removePublicPresenceMember,
   updatePublicPresenceDayNote,
+  saveSaturdayScale,
   loadPublicMaterialView,
   loadPublicPresenceConfig,
   reservePublicTicketNumberViaApi,
@@ -60,6 +61,8 @@ export default function PublicLinksApp() {
   const [observacaoDia, setObservacaoDia] = useState('');
   const [presenceHistory, setPresenceHistory] = useState<Record<string, PresencaApontamento[]>>({});
   const [presenceDayNotes, setPresenceDayNotes] = useState<Record<string, string>>({});
+  const [proximoSabado, setProximoSabado] = useState('');
+  const [escalaProxSabado, setEscalaProxSabado] = useState<Array<{ id: string; nome: string; escalado: boolean; observacao?: string }>>([]);
   const [presenceLoading, setPresenceLoading] = useState(Boolean(presenceToken));
   const [presenceError, setPresenceError] = useState('');
 
@@ -89,6 +92,8 @@ export default function PublicLinksApp() {
       setDataSelecionada(config.dataSelecionada || '');
       setDataAtual(config.dataAtual || '');
       setObservacaoDia(config.observacaoDia || '');
+      setProximoSabado(config.proximoSabado || '');
+      setEscalaProxSabado(config.escalaProxSabado || []);
       // A resposta traz só o dia aberto. Os dias que a pessoa já visitou ficam
       // guardados aqui para a régua de datas não buscar duas vezes a mesma
       // coisa; a atualização automática acrescenta, nunca esvazia o que já foi
@@ -154,6 +159,14 @@ export default function PublicLinksApp() {
   const handleSaveDayNote = useCallback(async (grupoId: string, nota: string) => {
     const resposta = await updatePublicPresenceDayNote(presenceToken, grupoId, nota);
     setObservacaoDia(resposta.observacaoDia);
+    return resposta;
+  }, [presenceToken]);
+
+  const handleSaveSaturdayScale = useCallback(async (grupo: GrupoEquipe, scale: { funcionarios: Array<{ id: string; nome: string; escalado: boolean; observacao?: string }>; observacaoGeral?: string }) => {
+    const resposta = await saveSaturdayScale(presenceToken, grupo.id, scale);
+    if (resposta.success) {
+      setEscalaProxSabado(scale.funcionarios);
+    }
     return resposta;
   }, [presenceToken]);
 
@@ -259,6 +272,9 @@ export default function PublicLinksApp() {
           onAddMember={handleAddMember}
           onRemoveMember={handleRemoveMember}
           onSaveDayNote={handleSaveDayNote}
+          onSaveSaturdayScale={handleSaveSaturdayScale}
+          proximoSabado={proximoSabado}
+          escalaProxSabado={escalaProxSabado}
         />
       </Suspense>
     );

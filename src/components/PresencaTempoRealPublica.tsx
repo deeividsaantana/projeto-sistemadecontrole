@@ -33,6 +33,7 @@ import {
   PRESENCA_STATUS_SECUNDARIOS,
   resumirPresencas,
 } from '../utils/presencaStatus';
+import { PresencaEscalaSabado } from './presenca/PresencaEscalaSabado';
 import './presencaTempoRealPublica.css';
 
 const PRIMARY_STATUSES = PRESENCA_STATUS_PRINCIPAIS;
@@ -111,6 +112,9 @@ interface Props {
   onRemoveMember?: (grupoId: string, funcionarioId: string) => Promise<MemberRemoveResult>;
   observacaoDia?: string;
   onSaveDayNote?: (grupoId: string, observacaoDia: string) => Promise<{ success: boolean; message: string }>;
+  onSaveSaturdayScale?: (grupo: GrupoEquipe, scale: { funcionarios: Array<{ id: string; nome: string; escalado: boolean; observacao?: string }>; observacaoGeral?: string }) => Promise<{ success: boolean; message: string }>;
+  proximoSabado?: string;
+  escalaProxSabado?: Array<{ id: string; nome: string; escalado: boolean; observacao?: string }>;
 }
 
 type ItemState = { status?: PresencaStatus; observacao: string };
@@ -388,6 +392,9 @@ export default function PresencaTempoRealPublica({
   onRemoveMember,
   observacaoDia = '',
   onSaveDayNote,
+  onSaveSaturdayScale,
+  proximoSabado = '',
+  escalaProxSabado,
 }: Props) {
   const generalLink = isGeneralToken(token);
   const [date, setDate] = useState(todayInput());
@@ -434,6 +441,9 @@ export default function PresencaTempoRealPublica({
   const [dayNote, setDayNote] = useState('');
   const [dayNoteSaving, setDayNoteSaving] = useState(false);
   const [dayNoteFeedback, setDayNoteFeedback] = useState('');
+  // Escala de sábado: mostrar painel para selecionar quem vem trabalhar
+  const [editingSaturdayScale, setEditingSaturdayScale] = useState(false);
+  const [saturdayScaleError, setSaturdayScaleError] = useState('');
 
   useEffect(() => {
     setDraftHydrated(false);
@@ -475,8 +485,13 @@ export default function PresencaTempoRealPublica({
   const groupEmployees = useMemo(() => {
     if (!group) return [];
     const byId = new Map((Array.isArray(funcionarios) ? funcionarios : []).filter(Boolean).map(employee => [employee.id, employee]));
-    return group.funcionarioIds.map(id => byId.get(id)).filter((employee): employee is Funcionario => Boolean(employee?.ativo));
-  }, [funcionarios, group]);
+    const ativos = group.funcionarioIds.map(id => byId.get(id)).filter((employee): employee is Funcionario => Boolean(employee?.ativo));
+    // No sábado só a equipe escalada é apontada. Sem escala salva, vale a lista inteira.
+    const escalados = new Set((escalaProxSabado || []).filter(item => item.escalado).map(item => item.id));
+    return dataAtual && dataAtual === proximoSabado && escalados.size > 0
+      ? ativos.filter(employee => escalados.has(employee.id))
+      : ativos;
+  }, [dataAtual, escalaProxSabado, funcionarios, group, proximoSabado]);
 
   const visibleEmployees = useMemo(() => {
     const query = deferredEmployeeSearch.trim().toLocaleLowerCase('pt-BR');
@@ -716,6 +731,27 @@ export default function PresencaTempoRealPublica({
   const setObservacaoDraft = useCallback((employeeId: string, value: string) => {
     setObservacaoDrafts(current => ({ ...current, [employeeId]: value }));
   }, []);
+
+  const saveSaturdayScale = useCallback(async (scale: { funcionarios: Array<{ id: string; nome: string; escalado: boolean; observacao?: string }>; observacaoGeral?: string }) => {
+    if (!group || !onSaveSaturdayScale) {
+      setSaturdayScaleError('Grupo não selecionado ou função não disponível');
+      return { success: false, message: 'Configuração inválida' };
+    }
+    setSaturdayScaleError('');
+    try {
+      const response = await onSaveSaturdayScale(group, scale);
+      if (!response.success) {
+        setSaturdayScaleError(response.message);
+        return response;
+      }
+      setEditingSaturdayScale(false);
+      return response;
+    } catch (caught) {
+      const msg = caught instanceof Error ? caught.message : 'Não foi possível salvar a escala de sábado.';
+      setSaturdayScaleError(msg);
+      return { success: false, message: msg };
+    }
+  }, [group, onSaveSaturdayScale]);
 
   const saveDraft = async () => {
     if (savingDraft || submitting) return;
@@ -1167,6 +1203,26 @@ export default function PresencaTempoRealPublica({
           </section>
         )}
         {dayNoteSection}
+        {editingSaturdayScale && group && proximoSabado && (
+          <section className="presence-public__saturday-section">
+            <PresencaEscalaSabado
+              grupo={group}
+              funcionarios={groupEmployees}
+              proximoSabado={proximoSabado}
+              escalaExistente={escalaProxSabado ? { funcionarios: escalaProxSabado } : undefined}
+              onSalvar={saveSaturdayScale}
+              onCancelar={() => setEditingSaturdayScale(false)}
+            />
+            {saturdayScaleError && <div role="alert" className="presence-public__card-error">{saturdayScaleError}</div>}
+          </section>
+        )}
+        {!editingSaturdayScale && group && proximoSabado && !alreadySubmitted && onSaveSaturdayScale && (
+          <section className="presence-public__saturday-cta">
+            <button type="button" onClick={() => setEditingSaturdayScale(true)} className="presence-public__secondary">
+              Escalar equipe para sábado
+            </button>
+          </section>
+        )}
         {addMemberSection}
         {memberFeedback && <p role="status" className="presence-public__member-feedback"><Check className="h-4 w-4" /> {memberFeedback}</p>}
         <div className="presence-public__search"><Search className="h-5 w-5" /><input inputMode="search" enterKeyHint="search" autoComplete="off" value={employeeSearch} onChange={event => setEmployeeSearch(event.target.value)} placeholder="Buscar colaborador" aria-label="Buscar colaborador" /></div>

@@ -1401,3 +1401,127 @@
   .presence-public__state-card,
   .presence-public__success-card { padding: 22px 16px; }
 }
+
+/* Escala de sábado: escolher quem da equipe vem trabalhar. */
+.presence-public__saturday-cta {
+  margin: 14px 0 4px;
+}
+
+.presence-public__saturday-cta button,
+.presence-public__saturday-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.presence-public__saturday-cta button {
+  width: 100%;
+  border: 1px solid var(--presence-line);
+  background: var(--presence-surface);
+  color: inherit;
+}
+
+.presence-public__saturday-section {
+  margin: 14px 0 4px;
+}
+
+.presence-public__saturday-scale {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--presence-line);
+  border-radius: 12px;
+  background: var(--presence-surface);
+}
+
+.presence-public__saturday-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.presence-public__saturday-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.presence-public__saturday-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.presence-public__saturday-legend {
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.presence-public__saturday-list {
+  display: grid;
+  gap: 4px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.presence-public__saturday-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.presence-public__saturday-checkbox {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  accent-color: var(--presence-green);
+}
+
+.presence-public__saturday-info {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+}
+
+.presence-public__saturday-name {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.presence-public__saturday-cargo {
+  font-size: 14px;
+  color: var(--presence-muted);
+}
+
+.presence-public__saturday-label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.presence-public__saturday-textarea {
+  width: 100%;
+  min-height: 64px;
+  padding: 10px;
+  border: 1px solid var(--presence-line);
+  border-radius: 10px;
+  font-size: 16px;
+}
+
+.presence-public__saturday-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
