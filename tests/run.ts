@@ -235,3 +235,4 @@ import './escalaSabado.test';
 import './quadroFrota.visual.test';
 import './integracaoGlobal.test';
 import './cycleHistory.test';
+import './publicPresenceSaturday.test';

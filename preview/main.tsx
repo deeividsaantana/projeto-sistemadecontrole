@@ -283,6 +283,8 @@ function PresencaFluxoCompleto() {
         return { success: true, message: 'Enviado.', submissionId: 'env-e2e-001' };
       }}
       onUpdateRecord={async () => ({ success: true, message: 'Atualizado.' })}
+      proximoSabado="2026-09-05"
+      onSaveSaturdayScale={async () => ({ success: true, message: 'Escala salva.' })}
     />
   );
 }
