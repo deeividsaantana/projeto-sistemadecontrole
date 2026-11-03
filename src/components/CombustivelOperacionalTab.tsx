@@ -386,7 +386,7 @@ export default function CombustivelOperacionalTab({
 
       {view === 'historico' && (
         <HistoricoCombustivel
-          abastecimentos={ativos}
+          abastecimentos={abastecimentos}
           equipamentos={equipamentos}
           empresas={empresas}
           comboios={comboios}
