@@ -340,20 +340,53 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
   useGSAP(() => {
     const raiz = escopo.current;
     if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    gsap.fromTo(raiz.querySelectorAll('[data-quadro-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
-    gsap.fromTo(raiz.querySelectorAll('[data-quadro-cartao]'), { opacity: 0, y: 10, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: { each: 0.01, from: 'start' }, ease: 'power2.out', delay: 0.12, clearProps: 'transform,opacity' });
+
+    // Animações de entrada: sections e elementos com reveal
+    gsap.fromTo(raiz.querySelectorAll('[data-quadro-reveal]'),
+      { opacity: 0, y: 14 },
+      { opacity: 1, y: 0, duration: 0.5, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' }
+    );
+
+    // Cartões das máquinas com efeito de pop
+    gsap.fromTo(raiz.querySelectorAll('[data-quadro-cartao]'),
+      { opacity: 0, y: 10, scale: 0.97 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: { each: 0.01, from: 'start' }, ease: 'power2.out', delay: 0.12, clearProps: 'transform,opacity' }
+    );
+
+    // Animação dos chips de canteiro com bounce
+    gsap.fromTo(raiz.querySelectorAll('[role="group"][aria-label*="Canteiro"] button'),
+      { opacity: 0, scale: 0.9 },
+      { opacity: 1, scale: 1, duration: 0.4, stagger: 0.05, ease: 'back.out(1.4)', delay: 0.2, clearProps: 'transform,opacity' }
+    );
   }, { scope: escopo, dependencies: [dia, filtros, ordem, vista, modoSelecao] });
 
   const chipCanteiro = (nome: string, rotulo: string, total: number) => {
     const ligado = filtros.canteiro === nome;
+    const ref = useRef<HTMLButtonElement>(null);
+
+    const handleHover = (hovering: boolean) => {
+      if (!ref.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      gsap.to(ref.current, {
+        y: hovering ? -2 : 0,
+        boxShadow: hovering
+          ? '0 12px 20px rgba(23, 107, 77, 0.15)'
+          : (ligado ? '0_8px_18px_-10px_rgba(23,107,77,0.8)' : '0 0 0 0px rgba(0,0,0,0)'),
+        duration: 0.3,
+        ease: 'power2.out',
+      });
+    };
+
     return (
       <button
+        ref={ref}
         key={nome || 'todos'}
         type="button"
         aria-pressed={ligado}
         onClick={() => mudar({ canteiro: ligado ? '' : nome })}
+        onMouseEnter={() => handleHover(true)}
+        onMouseLeave={() => handleHover(false)}
         data-testid={`quadro-aba-canteiro-${nome || 'todos'}`}
-        className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${ligado ? 'bg-[#176b4d] text-white shadow-[0_8px_18px_-10px_rgba(23,107,77,0.8)]' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-emerald-300'} ${FOCO}`}
+        className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${ligado ? 'bg-[#176b4d] text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-emerald-300'} ${FOCO}`}
       >
         {rotulo}
         <span className={`rounded-full px-1.5 font-mono text-xs ${ligado ? 'bg-white/10' : 'bg-slate-100 text-slate-500'}`}>{total}</span>
@@ -414,40 +447,18 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
       </section>
 
       <section aria-label="Canteiros e filtros" data-quadro-reveal className={`${CARTAO} space-y-3 p-3 lg:sticky lg:top-0 lg:z-10`}>
-        {podeEditar && (
-          <TabNavigation
-            items={[
-              { id: 'quadro', label: 'Quadro', icon: <LayoutGrid className="size-4" /> },
-              { id: 'lancar', label: 'Lançar', icon: <ListChecks className="size-4" /> },
-            ]}
-            activeId={vista}
-            onSelect={(id) => trocarVista(id as Vista)}
-            className="rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200"
-          />
-        )}
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Canteiro">
-          {chipCanteiro('', 'Todos', cartoes.length)}
-          {canteiros.map(nome => chipCanteiro(nome, nome, contagemCanteiro.get(nome) || 0))}
-          {(contagemCanteiro.get(SEM_CANTEIRO) || 0) > 0 && chipCanteiro(SEM_CANTEIRO, SEM_CANTEIRO, contagemCanteiro.get(SEM_CANTEIRO) || 0)}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="relative min-w-0 flex-[1_1_14rem]">
-            <span className="sr-only">Buscar prefixo, modelo ou operador</span>
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-            <input ref={buscaRef} value={buscaTexto} onChange={event => setBuscaTexto(event.target.value)} placeholder="Buscar prefixo, modelo ou operador" className={`${CAMPO} pl-9`} data-testid="quadro-busca" />
-          </label>
-          <select value={filtros.grupo} onChange={event => mudar({ grupo: event.target.value as GrupoStatus | '' })} aria-label="Situação" className={`${CAMPO} min-w-0 flex-[1_1_9rem] sm:w-auto`}>
-            <option value="">Todas as situações</option>
-            {(Object.keys(ROTULO_GRUPO) as GrupoStatus[]).map(grupo => <option key={grupo} value={grupo}>{ROTULO_GRUPO[grupo]}</option>)}
-          </select>
-          <select value={filtros.tipo} onChange={event => mudar({ tipo: event.target.value })} aria-label="Tipo" className={`${CAMPO} min-w-0 flex-[1_1_9rem] sm:w-auto`}>
-            <option value="">Todos os tipos</option>
-            {opcoesTipo.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
-          </select>
-          <button type="button" onClick={() => setMaisFiltros(atual => !atual)} aria-expanded={maisFiltros} className={`${BOTAO_SECUNDARIO} flex-none`} data-testid="quadro-mais-filtros">
-            <SlidersHorizontal className="size-4" aria-hidden="true" />
-            Mais filtros
-          </button>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {podeEditar && (
+            <TabNavigation
+              items={[
+                { id: 'quadro', label: 'Quadro', icon: <LayoutGrid className="size-4" /> },
+                { id: 'lancar', label: 'Lançar', icon: <ListChecks className="size-4" /> },
+              ]}
+              activeId={vista}
+              onSelect={(id) => trocarVista(id as Vista)}
+              className="rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200"
+            />
+          )}
           {podeEditar && vista === 'quadro' && (
             <button type="button" onClick={alternarModoSelecao} aria-pressed={modoSelecao} className={`${modoSelecao ? BOTAO_PRIMARIO : BOTAO_SECUNDARIO} flex-none`} data-testid="quadro-alternar-selecao">
               <ListChecks className="size-4" aria-hidden="true" />
@@ -455,36 +466,62 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
             </button>
           )}
         </div>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-2">
+          <label className="relative min-w-0 flex-[1_1_14rem]">
+            <span className="sr-only">Buscar prefixo, modelo ou operador</span>
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <input ref={buscaRef} value={buscaTexto} onChange={event => setBuscaTexto(event.target.value)} placeholder="Buscar prefixo, modelo ou operador" className={`${CAMPO} pl-9 w-full`} data-testid="quadro-busca" />
+          </label>
+          <div className="flex gap-2 flex-wrap lg:flex-nowrap">
+            <select value={filtros.grupo} onChange={event => mudar({ grupo: event.target.value as GrupoStatus | '' })} aria-label="Situação" className={`${CAMPO} min-w-0 flex-[1_1_9rem] sm:flex-auto`}>
+              <option value="">Todas as situações</option>
+              {(Object.keys(ROTULO_GRUPO) as GrupoStatus[]).map(grupo => <option key={grupo} value={grupo}>{ROTULO_GRUPO[grupo]}</option>)}
+            </select>
+            <select value={filtros.tipo} onChange={event => mudar({ tipo: event.target.value })} aria-label="Tipo" className={`${CAMPO} min-w-0 flex-[1_1_9rem] sm:flex-auto`}>
+              <option value="">Todos os tipos</option>
+              {opcoesTipo.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+            </select>
+            <button type="button" onClick={() => setMaisFiltros(atual => !atual)} aria-expanded={maisFiltros} className={`${BOTAO_SECUNDARIO} flex-none`} data-testid="quadro-mais-filtros">
+              <SlidersHorizontal className="size-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Mais</span>
+            </button>
+          </div>
+        </div>
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Canteiro">
+          {chipCanteiro('', 'Todos', cartoes.length)}
+          {canteiros.map(nome => chipCanteiro(nome, nome, contagemCanteiro.get(nome) || 0))}
+          {(contagemCanteiro.get(SEM_CANTEIRO) || 0) > 0 && chipCanteiro(SEM_CANTEIRO, SEM_CANTEIRO, contagemCanteiro.get(SEM_CANTEIRO) || 0)}
+        </div>
         {maisFiltros && (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6" data-testid="quadro-painel-filtros">
-            <select value={filtros.frente} onChange={event => mudar({ frente: event.target.value })} aria-label="Frente" className={CAMPO}>
-              <option value="">Todas as frentes</option>
+          <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" data-testid="quadro-painel-filtros">
+            <select value={filtros.frente} onChange={event => mudar({ frente: event.target.value })} aria-label="Frente" className={`${CAMPO} text-xs`}>
+              <option value="">Frentes</option>
               {opcoesFrente.map(frente => <option key={frente} value={frente}>{frente}</option>)}
             </select>
-            <select value={filtros.marca} onChange={event => mudar({ marca: event.target.value })} aria-label="Marca" className={CAMPO}>
-              <option value="">Todas as marcas</option>
+            <select value={filtros.marca} onChange={event => mudar({ marca: event.target.value })} aria-label="Marca" className={`${CAMPO} text-xs`}>
+              <option value="">Marcas</option>
               {opcoesMarca.map(marca => <option key={marca} value={marca}>{marca}</option>)}
             </select>
-            <select value={filtros.operador} onChange={event => mudar({ operador: event.target.value as FiltrosQuadro['operador'] })} aria-label="Operador" className={CAMPO}>
-              <option value="">Com e sem operador</option>
+            <select value={filtros.operador} onChange={event => mudar({ operador: event.target.value as FiltrosQuadro['operador'] })} aria-label="Operador" className={`${CAMPO} text-xs`}>
+              <option value="">Operador</option>
               <option value="com">Com operador</option>
               <option value="sem">Sem operador</option>
             </select>
-            <select value={filtros.horimetro} onChange={event => mudar({ horimetro: event.target.value as FiltrosQuadro['horimetro'] })} aria-label="Horímetro" className={CAMPO}>
-              <option value="">Com e sem horímetro</option>
+            <select value={filtros.horimetro} onChange={event => mudar({ horimetro: event.target.value as FiltrosQuadro['horimetro'] })} aria-label="Horímetro" className={`${CAMPO} text-xs`}>
+              <option value="">Horímetro</option>
               <option value="com">Com horímetro</option>
               <option value="sem">Sem horímetro</option>
             </select>
-            <select value={filtros.foto} onChange={event => mudar({ foto: event.target.value as FiltrosQuadro['foto'] })} aria-label="Foto" className={CAMPO}>
-              <option value="">Com e sem foto</option>
+            <select value={filtros.foto} onChange={event => mudar({ foto: event.target.value as FiltrosQuadro['foto'] })} aria-label="Foto" className={`${CAMPO} text-xs`}>
+              <option value="">Foto</option>
               <option value="com">Com foto</option>
               <option value="sem">Sem foto</option>
             </select>
             <label className="relative">
               <span className="sr-only">Ordenar por</span>
               <ListFilter className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-              <select value={ordem} onChange={event => setOrdem(event.target.value as Ordem)} className={`${CAMPO} pl-9`} data-testid="quadro-ordem">
-                {(Object.keys(ROTULO_ORDEM) as Ordem[]).map(chave => <option key={chave} value={chave}>Ordenar: {ROTULO_ORDEM[chave]}</option>)}
+              <select value={ordem} onChange={event => setOrdem(event.target.value as Ordem)} className={`${CAMPO} pl-9 text-xs`} data-testid="quadro-ordem">
+                {(Object.keys(ROTULO_ORDEM) as Ordem[]).map(chave => <option key={chave} value={chave}>{ROTULO_ORDEM[chave]}</option>)}
               </select>
             </label>
           </div>
@@ -583,17 +620,14 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
               const semCanteiro = grupo.canteiro === SEM_CANTEIRO;
               return (
                 <section key={grupo.canteiro} data-quadro-reveal aria-label={`Canteiro ${grupo.canteiro}`} data-testid="quadro-coluna" className="overflow-hidden rounded-[1.25rem] bg-[#f7f8f6] p-1.5 ring-1 ring-slate-200">
-                  <header className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[0.9rem] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(15,40,31,0.05)]">
+                  <header className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[0.9rem] bg-white px-4 py-2 shadow-[0_1px_2px_rgba(15,40,31,0.05)]">
                     <span className={`size-2.5 shrink-0 rounded-full ${semCanteiro ? 'bg-slate-300' : 'bg-[#176b4d]'}`} aria-hidden="true" />
-                    <h2 className="min-w-0 truncate text-base font-bold uppercase tracking-wide text-slate-900">{grupo.canteiro}</h2>
+                    <h2 className="min-w-0 truncate text-sm font-bold uppercase tracking-wide text-slate-900">{grupo.canteiro}</h2>
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-700">{grupo.cartoes.length}</span>
-                    {grupo.cartoes.length === 0 && (
-                      <span className="text-xs text-slate-500">Vazio. Arraste uma máquina pra cá, ou abra e escolha este canteiro.</span>
-                    )}
                     {grupo.cartoes.length > 0 && (
-                      <span className="flex items-center gap-3 text-xs font-semibold text-slate-500">
-                        <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />{grupo.operando} em operação</span>
-                        {grupo.manutencao > 0 && <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-rose-500" aria-hidden="true" />{grupo.manutencao} manutenção</span>}
+                      <span className="ml-auto flex items-center gap-3 text-xs font-semibold text-slate-500">
+                        <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" /><span className="hidden sm:inline">{grupo.operando}</span></span>
+                        {grupo.manutencao > 0 && <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-rose-500" aria-hidden="true" /><span className="hidden sm:inline">{grupo.manutencao}</span></span>}
                       </span>
                     )}
                     {grupo.cartoes.length > 0 && <button

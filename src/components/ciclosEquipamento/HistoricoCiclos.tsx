@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import gsap from 'gsap';
 import type { EquipmentCycle, CycleStatus } from '../../fleet/cycleHistory';
 import { calcularMetricasCiclos, extrairFasesCiclo } from '../../fleet/cycleHistory';
+import { imprimirCiclos, baixarCsvCiclos } from '../../fleet/exportarCiclosPdf';
 import { CycleTimeline } from './CycleTimeline';
 
 interface Props {
@@ -25,6 +27,8 @@ export const HistoricoCiclos: React.FC<Props> = ({ ciclos, equipamentos }) => {
     busca: '',
   });
   const [cicloSelecionado, setCicloSelecionado] = useState<string | null>(null);
+  const metricsRef = useRef<HTMLDivElement>(null);
+  const cardsRef = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const ciclosFiltrados = useMemo(() => {
     return ciclos.filter(ciclo => {
@@ -47,38 +51,110 @@ export const HistoricoCiclos: React.FC<Props> = ({ ciclos, equipamentos }) => {
     new Map(ciclos.map(c => [c.equipamentoId, { id: c.equipamentoId, prefixo: c.prefixo }])).values()
   );
 
+  useEffect(() => {
+    if (metricsRef.current) {
+      const cards = metricsRef.current.querySelectorAll('[data-metric]');
+      gsap.fromTo(
+        cards,
+        { opacity: 0, y: 20, scale: 0.95 },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.6,
+          stagger: 0.1,
+          ease: 'back.out(1.5)',
+        }
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    const cards = cardsRef.current;
+    ciclosFiltrados.forEach(ciclo => {
+      const card = cards.get(ciclo.id);
+      if (card && cicloSelecionado === ciclo.id) {
+        gsap.to(card, {
+          boxShadow: '0 20px 25px rgba(0, 0, 0, 0.15)',
+          duration: 0.3,
+          ease: 'power2.out',
+        });
+      } else if (card) {
+        gsap.to(card, {
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          duration: 0.3,
+          ease: 'power2.out',
+        });
+      }
+    });
+  }, [cicloSelecionado, ciclosFiltrados]);
+
+  const handleCardHover = (cicloId: string, isHovering: boolean) => {
+    const card = cardsRef.current.get(cicloId);
+    if (!card) return;
+
+    gsap.to(card, {
+      y: isHovering ? -4 : 0,
+      boxShadow: isHovering
+        ? '0 12px 20px rgba(0, 0, 0, 0.12)'
+        : '0 1px 3px rgba(0, 0, 0, 0.1)',
+      duration: 0.3,
+      ease: 'power2.out',
+    });
+  };
+
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
+      {/* Cabeçalho com ações de exportação */}
       <div className="border-b border-slate-200 pb-4">
-        <h1 className="text-2xl font-bold text-slate-900">Histórico de Ciclos</h1>
-        <p className="text-sm text-slate-600 mt-1">Rastreamento de transições operacionais</p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Histórico de Ciclos</h1>
+            <p className="text-sm text-slate-600 mt-1">Rastreamento de transições operacionais</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => imprimirCiclos(ciclosFiltrados, 'Rastreamento de Ciclos')}
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition-colors"
+              title="Abrir relatório para impressão/PDF"
+            >
+              📄 Imprimir
+            </button>
+            <button
+              onClick={() => baixarCsvCiclos(ciclosFiltrados, `ciclos-${new Date().toISOString().split('T')[0]}.csv`)}
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition-colors"
+              title="Baixar dados em formato CSV"
+            >
+              📊 CSV
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Métricas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4" ref={metricsRef}>
+        <div data-metric className="bg-green-50 border border-green-200 rounded-xl p-4 cursor-pointer hover:border-green-400 transition-colors">
           <div className="text-xs font-semibold text-green-700 uppercase mb-1">Em Operação</div>
           <div className="text-2xl font-bold text-green-600">
             {Math.floor(metricas.totalOperacao / 60)}h {metricas.totalOperacao % 60}m
           </div>
         </div>
 
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+        <div data-metric className="bg-orange-50 border border-orange-200 rounded-xl p-4 cursor-pointer hover:border-orange-400 transition-colors">
           <div className="text-xs font-semibold text-orange-700 uppercase mb-1">Manutenção</div>
           <div className="text-2xl font-bold text-orange-600">
             {Math.floor(metricas.totalManutencao / 60)}h {metricas.totalManutencao % 60}m
           </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <div data-metric className="bg-blue-50 border border-blue-200 rounded-xl p-4 cursor-pointer hover:border-blue-400 transition-colors">
           <div className="text-xs font-semibold text-blue-700 uppercase mb-1">À Disposição</div>
           <div className="text-2xl font-bold text-blue-600">
             {Math.floor(metricas.totalParado / 60)}h {metricas.totalParado % 60}m
           </div>
         </div>
 
-        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+        <div data-metric className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 cursor-pointer hover:border-indigo-400 transition-colors">
           <div className="text-xs font-semibold text-indigo-700 uppercase mb-1">Disponibilidade</div>
           <div className="text-2xl font-bold text-indigo-600">{metricas.disponibilidade}%</div>
         </div>
@@ -188,8 +264,11 @@ export const HistoricoCiclos: React.FC<Props> = ({ ciclos, equipamentos }) => {
           ciclosFiltrados.map(ciclo => (
             <div
               key={ciclo.id}
-              className="border border-slate-200 rounded-xl p-4 bg-white hover:shadow-md transition-shadow cursor-pointer"
+              ref={el => { if (el) cardsRef.current.set(ciclo.id, el); }}
+              className="border border-slate-200 rounded-xl p-4 bg-white cursor-pointer transition-all duration-300"
               onClick={() => setCicloSelecionado(cicloSelecionado === ciclo.id ? null : ciclo.id)}
+              onMouseEnter={() => handleCardHover(ciclo.id, true)}
+              onMouseLeave={() => handleCardHover(ciclo.id, false)}
             >
               <div className="flex justify-between items-start mb-3">
                 <div>
