@@ -53,44 +53,58 @@ export const CycleTimeline: React.FC<Props> = ({ ciclo, prefixo }) => {
       return;
     }
 
-    // Timeline de entrada: cada item aparece com a linha crescendo
-    const tl = gsap.timeline();
+    // Timeline de entrada: estilo Mercado Livre com stagger suave
+    const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
 
     items.forEach((item, i) => {
       const bola = item.querySelector('[data-bola]');
       const conteudo = item.querySelector('[data-conteudo]');
       const linha = item.querySelector('[data-timeline-line]');
 
-      // Linha cresce de cima para baixo
+      // Linha cresce de cima para baixo (antes da bola)
       if (linha) {
         tl.fromTo(
           linha,
-          { scaleY: 0, transformOrigin: 'top' },
-          { scaleY: 1, duration: 0.4, ease: 'power2.out' },
-          i * 0.15
+          { scaleY: 0, transformOrigin: 'top', opacity: 0 },
+          { scaleY: 1, opacity: 1, duration: 0.5, ease: 'power1.inOut' },
+          i * 0.2
         );
       }
 
-      // Bola aparece com pop
+      // Bola com pop + glow effect
       if (bola) {
         tl.fromTo(
           bola,
-          { scale: 0, opacity: 0 },
-          { scale: 1, opacity: 1, duration: 0.3, ease: 'back.out' },
-          i * 0.15 + 0.3
+          { scale: 0, opacity: 0, filter: 'drop-shadow(0 0 10px rgba(0,0,0,0))' },
+          {
+            scale: 1,
+            opacity: 1,
+            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))',
+            duration: 0.4,
+            ease: 'back.out'
+          },
+          i * 0.2 + 0.2
         );
       }
 
-      // Conteúdo fade in
+      // Conteúdo aparece com slide suave
       if (conteudo) {
         tl.fromTo(
           conteudo,
-          { opacity: 0, x: -10 },
-          { opacity: 1, x: 0, duration: 0.3 },
-          i * 0.15 + 0.3
+          { opacity: 0, x: -15, y: 5 },
+          { opacity: 1, x: 0, y: 0, duration: 0.4 },
+          i * 0.2 + 0.25
         );
       }
     });
+
+    // Pequeno bounce no final
+    tl.to(items, {
+      y: -2,
+      duration: 0.3,
+      ease: 'sine.inOut',
+      stagger: { each: 0.05, from: 'start' },
+    }, '-=0.3');
   }, [ciclo]);
 
   if (timeline.length === 0) {
@@ -140,7 +154,7 @@ export const CycleTimeline: React.FC<Props> = ({ ciclo, prefixo }) => {
               data-conteudo
               className={`flex-1 border rounded-lg p-3 ${COR_STATUS[entrada.status]}`}
             >
-              <div className="flex justify-between items-start mb-1">
+              <div data-header className="flex justify-between items-start mb-1">
                 <span className="font-semibold text-slate-800">{entrada.status}</span>
                 <span className="text-xs text-slate-600">{entrada.hora}</span>
               </div>
@@ -151,11 +165,16 @@ export const CycleTimeline: React.FC<Props> = ({ ciclo, prefixo }) => {
                 </div>
               )}
 
-              <div className="text-xs text-slate-700">
+              <div className="text-xs text-slate-700 space-y-1">
                 <div>Por: <strong>{entrada.responsavel}</strong></div>
+                {entrada.operador && (
+                  <div className="text-slate-700">
+                    🚗 Operador: <strong>{entrada.operador}</strong>
+                  </div>
+                )}
                 {entrada.motivo && (
                   <div className="mt-1 text-slate-600">
-                    {entrada.motivo}
+                    📝 {entrada.motivo}
                   </div>
                 )}
               </div>

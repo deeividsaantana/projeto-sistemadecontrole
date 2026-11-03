@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import type { EquipmentCycle, CycleStatus } from '../../fleet/cycleHistory';
 import { calcularMetricasCiclos, extrairFasesCiclo } from '../../fleet/cycleHistory';
+import { imprimirCiclos, baixarCsvCiclos } from '../../fleet/exportarCiclosPdf';
 import { CycleTimeline } from './CycleTimeline';
 
 interface Props {
@@ -49,10 +50,30 @@ export const HistoricoCiclos: React.FC<Props> = ({ ciclos, equipamentos }) => {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
+      {/* Cabeçalho com ações de exportação */}
       <div className="border-b border-slate-200 pb-4">
-        <h1 className="text-2xl font-bold text-slate-900">Histórico de Ciclos</h1>
-        <p className="text-sm text-slate-600 mt-1">Rastreamento de transições operacionais</p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Histórico de Ciclos</h1>
+            <p className="text-sm text-slate-600 mt-1">Rastreamento de transições operacionais</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => imprimirCiclos(ciclosFiltrados, 'Rastreamento de Ciclos')}
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition-colors"
+              title="Abrir relatório para impressão/PDF"
+            >
+              📄 Imprimir
+            </button>
+            <button
+              onClick={() => baixarCsvCiclos(ciclosFiltrados, `ciclos-${new Date().toISOString().split('T')[0]}.csv`)}
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition-colors"
+              title="Baixar dados em formato CSV"
+            >
+              📊 CSV
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Métricas */}

@@ -26,6 +26,7 @@ const COR_BOTAO: Record<CycleStatus, string> = {
 export const RegistrarCiclo: React.FC<Props> = ({ equipamentoId, prefixo, usuarioAtual, onSalvar }) => {
   const [status, setStatus] = useState<CycleStatus>('Em operação');
   const [motivo, setMotivo] = useState('');
+  const [operador, setOperador] = useState('');
   const [salvando, setSalvando] = useState(false);
 
   const handleRegistrar = async () => {
@@ -50,6 +51,7 @@ export const RegistrarCiclo: React.FC<Props> = ({ equipamentoId, prefixo, usuari
         hora,
         responsavel: usuarioAtual,
         motivo: motivo.trim() || undefined,
+        operador: operador.trim() || undefined,
       });
 
       // Salva de volta
@@ -57,6 +59,7 @@ export const RegistrarCiclo: React.FC<Props> = ({ equipamentoId, prefixo, usuari
 
       // Reset form
       setMotivo('');
+      setOperador('');
       setStatus('Em operação');
 
       onSalvar?.();
@@ -99,6 +102,23 @@ export const RegistrarCiclo: React.FC<Props> = ({ equipamentoId, prefixo, usuari
             onChange={e => setMotivo(e.target.value)}
             placeholder="Ex: Troca de óleo, pneu furado"
             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+            disabled={salvando}
+          />
+        </div>
+      )}
+
+      {/* Campo de operador (só para "Em operação") */}
+      {status === 'Em operação' && (
+        <div className="mb-4">
+          <label className="block text-xs font-semibold text-slate-600 mb-1">
+            Motorista/Operador (opcional)
+          </label>
+          <input
+            type="text"
+            value={operador}
+            onChange={e => setOperador(e.target.value)}
+            placeholder="Ex: João Silva"
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
             disabled={salvando}
           />
         </div>

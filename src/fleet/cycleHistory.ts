@@ -14,6 +14,7 @@ export interface CycleEvent {
   hora: string; // HH:MM local
   responsavel: string; // usuário que registrou
   motivo?: string; // motivo da manutenção ou observação
+  operador?: string; // motorista/operador confirmado (só em "Em operação")
 }
 
 export interface EquipmentCycle {
@@ -39,6 +40,7 @@ export interface CyclePhase {
   duracao?: number; // minutos
   responsavel: string;
   motivo?: string;
+  operador?: string; // motorista/operador confirmado
 }
 
 /**
@@ -51,6 +53,7 @@ export interface CycleTimelineEntry {
   duracao?: string; // "58 min", "2 h 15 min"
   responsavel: string;
   motivo?: string;
+  operador?: string; // motorista/operador confirmado
   icone: 'play' | 'wrench' | 'check' | 'clock';
 }
 
@@ -75,6 +78,7 @@ export const extrairFasesCiclo = (ciclo: EquipmentCycle): CyclePhase[] => {
       duracao,
       responsavel: evento.responsavel,
       motivo: evento.motivo,
+      operador: evento.operador,
     });
   }
 
@@ -99,6 +103,7 @@ export const montarTimeline = (fases: CyclePhase[]): CycleTimelineEntry[] => {
     duracao: fase.duracao ? formatarDuracao(fase.duracao) : undefined,
     responsavel: fase.responsavel,
     motivo: fase.motivo,
+    operador: fase.operador,
     icone: icones[fase.status],
   }));
 };
