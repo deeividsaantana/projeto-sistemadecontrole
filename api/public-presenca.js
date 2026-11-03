@@ -664,11 +664,15 @@ export const handler = async event => {
       const nextSaturday = nextSaturdayInSaoPaulo();
       // Uma consulta não depende da outra; esperar em fila só somava latência
       // no 4G do canteiro.
-      const [additionsByGroup, submittedGroupIds, saturdayScaleData] = await Promise.all([
+      const [additionsByGroup, submittedGroupIds, saturdayScales] = await Promise.all([
         loadTeamAdditions(database, tokenGroupIds),
         loadSubmittedGroupIds(database, today),
-        meuGrupo ? loadSaturdayScale(database, meuGrupo.id, nextSaturday) : Promise.resolve(null),
+        Promise.all(tokenGroupIds.slice(0, 100).map(async id => [id, await loadSaturdayScale(database, id, nextSaturday)])),
       ]);
+      // Link geral escolhe a equipe na tela, então a escala viaja por equipe.
+      const escalasSabado = Object.fromEntries(saturdayScales
+        .filter(([, escala]) => Array.isArray(escala?.funcionarios))
+        .map(([id, escala]) => [id, escala.funcionarios]));
       const config = getPublicConfig(snapshot, token, additionsByGroup);
       if (!config) return jsonResponse(404, { success: false, message: 'Link de presença inválido ou inativo.' });
       const availableConfig = filterSubmittedGroups(config, submittedGroupIds);
@@ -683,7 +687,6 @@ export const handler = async event => {
       let datasDisponiveis = [];
       let dataSelecionada = today;
       let observacaoDia = '';
-      let escalaProxSabado = null;
       // Só o dia aberto viaja. Antes iam os 30 dias inteiros — cerca de 260 kB
       // de registros que ninguém tinha pedido, em toda abertura do link, no
       // 4G da obra. Ao escolher outro dia na régua, a tela busca aquele dia.
@@ -697,7 +700,6 @@ export const handler = async event => {
         observacaoDia = history.notesByDate.get(dataSelecionada) || '';
         historicoPorData = { [dataSelecionada]: meusRegistros };
         observacoesPorData = { [dataSelecionada]: observacaoDia };
-        escalaProxSabado = Array.isArray(saturdayScaleData?.funcionarios) ? saturdayScaleData.funcionarios : null;
       }
       return jsonResponse(200, {
         success: true,
@@ -714,7 +716,7 @@ export const handler = async event => {
           observacaoDia,
           historicoPorData,
           observacoesPorData,
-          escalaProxSabado,
+          escalasSabado,
           proximoSabado: nextSaturday,
           dataAtual: today,
         },

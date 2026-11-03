@@ -114,7 +114,7 @@ interface Props {
   onSaveDayNote?: (grupoId: string, observacaoDia: string) => Promise<{ success: boolean; message: string }>;
   onSaveSaturdayScale?: (grupo: GrupoEquipe, scale: { funcionarios: Array<{ id: string; nome: string; escalado: boolean; observacao?: string }>; observacaoGeral?: string }) => Promise<{ success: boolean; message: string }>;
   proximoSabado?: string;
-  escalaProxSabado?: Array<{ id: string; nome: string; escalado: boolean; observacao?: string }>;
+  escalasSabado?: Record<string, Array<{ id: string; nome: string; escalado: boolean; observacao?: string }>>;
 }
 
 type ItemState = { status?: PresencaStatus; observacao: string };
@@ -394,7 +394,7 @@ export default function PresencaTempoRealPublica({
   onSaveDayNote,
   onSaveSaturdayScale,
   proximoSabado = '',
-  escalaProxSabado,
+  escalasSabado,
 }: Props) {
   const generalLink = isGeneralToken(token);
   const [date, setDate] = useState(todayInput());
@@ -487,11 +487,11 @@ export default function PresencaTempoRealPublica({
     const byId = new Map((Array.isArray(funcionarios) ? funcionarios : []).filter(Boolean).map(employee => [employee.id, employee]));
     const ativos = group.funcionarioIds.map(id => byId.get(id)).filter((employee): employee is Funcionario => Boolean(employee?.ativo));
     // No sábado só a equipe escalada é apontada. Sem escala salva, vale a lista inteira.
-    const escalados = new Set((escalaProxSabado || []).filter(item => item.escalado).map(item => item.id));
+    const escalados = new Set((escalasSabado?.[group.id] || []).filter(item => item.escalado).map(item => item.id));
     return dataAtual && dataAtual === proximoSabado && escalados.size > 0
       ? ativos.filter(employee => escalados.has(employee.id))
       : ativos;
-  }, [dataAtual, escalaProxSabado, funcionarios, group, proximoSabado]);
+  }, [dataAtual, escalasSabado, funcionarios, group, proximoSabado]);
 
   const visibleEmployees = useMemo(() => {
     const query = deferredEmployeeSearch.trim().toLocaleLowerCase('pt-BR');
@@ -1209,7 +1209,7 @@ export default function PresencaTempoRealPublica({
               grupo={group}
               funcionarios={groupEmployees}
               proximoSabado={proximoSabado}
-              escalaExistente={escalaProxSabado ? { funcionarios: escalaProxSabado } : undefined}
+              escalaExistente={escalasSabado?.[group.id] ? { funcionarios: escalasSabado[group.id] } : undefined}
               onSalvar={saveSaturdayScale}
               onCancelar={() => setEditingSaturdayScale(false)}
             />

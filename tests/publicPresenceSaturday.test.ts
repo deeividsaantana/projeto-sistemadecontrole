@@ -16,3 +16,13 @@ test('próximo sábado: à noite em Brasília vale o dia local, não o dia em UT
   assert.equal(nextSaturdayInSaoPaulo(new Date('2026-11-14T01:30:00Z')), '2026-11-14');
   assert.equal(nextSaturdayInSaoPaulo(new Date('2026-11-08T01:30:00Z')), '2026-11-07');
 });
+
+test('GET do link lê a escala por equipe e não usa meuGrupo antes de declará-lo', async () => {
+  const { readFileSync } = await import('node:fs');
+  const fonte = readFileSync(new URL('../api/public-presenca.js', import.meta.url), 'utf8');
+  const get = fonte.slice(fonte.indexOf("if (method === 'GET')"));
+  const declaracao = get.indexOf('const meuGrupo =');
+  const primeiroUso = get.indexOf('meuGrupo');
+  assert.ok(declaracao >= 0 && primeiroUso === declaracao + 'const '.length, 'meuGrupo usado antes da declaração');
+  assert.ok(get.includes('escalasSabado'), 'a resposta precisa trazer escalasSabado');
+});

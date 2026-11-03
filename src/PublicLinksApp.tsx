@@ -62,7 +62,7 @@ export default function PublicLinksApp() {
   const [presenceHistory, setPresenceHistory] = useState<Record<string, PresencaApontamento[]>>({});
   const [presenceDayNotes, setPresenceDayNotes] = useState<Record<string, string>>({});
   const [proximoSabado, setProximoSabado] = useState('');
-  const [escalaProxSabado, setEscalaProxSabado] = useState<Array<{ id: string; nome: string; escalado: boolean; observacao?: string }>>([]);
+  const [escalasSabado, setEscalasSabado] = useState<Record<string, Array<{ id: string; nome: string; escalado: boolean; observacao?: string }>>>({});
   const [presenceLoading, setPresenceLoading] = useState(Boolean(presenceToken));
   const [presenceError, setPresenceError] = useState('');
 
@@ -93,7 +93,7 @@ export default function PublicLinksApp() {
       setDataAtual(config.dataAtual || '');
       setObservacaoDia(config.observacaoDia || '');
       setProximoSabado(config.proximoSabado || '');
-      setEscalaProxSabado(config.escalaProxSabado || []);
+      setEscalasSabado(config.escalasSabado || {});
       // A resposta traz só o dia aberto. Os dias que a pessoa já visitou ficam
       // guardados aqui para a régua de datas não buscar duas vezes a mesma
       // coisa; a atualização automática acrescenta, nunca esvazia o que já foi
@@ -165,7 +165,7 @@ export default function PublicLinksApp() {
   const handleSaveSaturdayScale = useCallback(async (grupo: GrupoEquipe, scale: { funcionarios: Array<{ id: string; nome: string; escalado: boolean; observacao?: string }>; observacaoGeral?: string }) => {
     const resposta = await saveSaturdayScale(presenceToken, grupo.id, scale);
     if (resposta.success) {
-      setEscalaProxSabado(scale.funcionarios);
+      setEscalasSabado(atual => ({ ...atual, [grupo.id]: scale.funcionarios }));
     }
     return resposta;
   }, [presenceToken]);
@@ -274,7 +274,7 @@ export default function PublicLinksApp() {
           onSaveDayNote={handleSaveDayNote}
           onSaveSaturdayScale={handleSaveSaturdayScale}
           proximoSabado={proximoSabado}
-          escalaProxSabado={escalaProxSabado}
+          escalasSabado={escalasSabado}
         />
       </Suspense>
     );

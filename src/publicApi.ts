@@ -78,8 +78,8 @@ export interface PublicPresenceConfig {
   dataAtual?: string;
   /** Próximo sábado em YYYY-MM-DD */
   proximoSabado?: string;
-  /** Escala existente para o próximo sábado */
-  escalaProxSabado?: Array<{ id: string; nome: string; escalado: boolean; observacao?: string }>;
+  /** Escala do próximo sábado, por equipe */
+  escalasSabado?: Record<string, Array<{ id: string; nome: string; escalado: boolean; observacao?: string }>>;
 }
 
 export const loadPublicPresenceConfig = async (token: string, data = ''): Promise<PublicPresenceConfig> => {
