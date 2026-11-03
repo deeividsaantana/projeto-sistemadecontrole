@@ -121,7 +121,6 @@ export const filterFuelReportRecords = (
   const term = removeAccents((filters.texto || '').trim());
 
   return records.filter(record => {
-    if (!isActiveFuelRecord(record)) return false;
     if (filters.dataInicio && record.data < filters.dataInicio) return false;
     if (filters.dataFim && record.data > filters.dataFim) return false;
     const equipamento = equipamentos.get(record.equipamentoId);
