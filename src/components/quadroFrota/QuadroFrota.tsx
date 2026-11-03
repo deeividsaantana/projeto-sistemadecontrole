@@ -26,6 +26,7 @@ import {
   ROTULO_ORDEM,
   SEM_CANTEIRO,
   agruparPorCanteiro,
+  calcularIndicadores,
   etiquetasDosFiltros,
   filtrarCartoes,
   montarQuadro,
@@ -42,6 +43,7 @@ import { CartaoArrastavel } from './CartaoArrastavel';
 import { registrarAtalhosDoQuadro, type AcoesAtalhoQuadro } from './atalhosQuadro';
 import { INSTRUCOES_ARRASTAR, avisosDoArrastar, coordenadasDoCanteiro } from './arrastarComTeclado';
 import { ColunaCanteiro } from './ColunaCanteiro';
+import { TOM } from './CartaoEquipamento';
 import { LancarFrota } from './LancarFrota';
 import { PainelEquipamento } from './PainelEquipamento';
 import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO } from '../cadastros/estilos';
@@ -159,6 +161,7 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
     () => montarQuadro({ dia, equipamentos, registros, gruposEquipe, abastecimentos, canteiros }),
     [dia, equipamentos, registros, gruposEquipe, abastecimentos, canteiros],
   );
+  const indicadores = useMemo(() => calcularIndicadores(cartoes), [cartoes]);
   const filtrados = useMemo(() => filtrarCartoes(cartoes, filtros, ordem), [cartoes, filtros, ordem]);
   const filtrando = Object.values(filtros).some(Boolean);
   const grupos = useMemo(() => agruparPorCanteiro(filtrados, !filtrando, canteiros), [filtrados, filtrando, canteiros]);
@@ -396,10 +399,6 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
             <input ref={buscaRef} value={buscaTexto} onChange={event => setBuscaTexto(event.target.value)} placeholder="Buscar prefixo, modelo ou operador" className={`${CAMPO} pl-9 w-full`} data-testid="quadro-busca" />
           </label>
           <div className="flex gap-2 flex-wrap lg:flex-nowrap">
-            <select value={filtros.grupo} onChange={event => mudar({ grupo: event.target.value as GrupoStatus | '' })} aria-label="Situação" className={`${CAMPO} min-w-0 flex-[1_1_9rem] sm:flex-auto`}>
-              <option value="">Todas as situações</option>
-              {(Object.keys(ROTULO_GRUPO) as GrupoStatus[]).map(grupo => <option key={grupo} value={grupo}>{ROTULO_GRUPO[grupo]}</option>)}
-            </select>
             <select value={filtros.tipo} onChange={event => mudar({ tipo: event.target.value })} aria-label="Tipo" className={`${CAMPO} min-w-0 flex-[1_1_9rem] sm:flex-auto`}>
               <option value="">Todos os tipos</option>
               {opcoesTipo.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
@@ -409,6 +408,18 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
               <span className="hidden sm:inline">Mais</span>
             </button>
           </div>
+        </div>
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Situação" data-testid="quadro-situacoes">
+          {([['', 'Todas', indicadores.total, 'bg-slate-400'], ['operando', ROTULO_GRUPO.operando, indicadores.operando, TOM.operando.ponto], ['manutencao', ROTULO_GRUPO.manutencao, indicadores.manutencao, TOM.manutencao.ponto], ['parado', ROTULO_GRUPO.parado, indicadores.parado, TOM.parado.ponto], ['sem-lancamento', ROTULO_GRUPO['sem-lancamento'], indicadores.semLancamento, TOM['sem-lancamento'].ponto]] as const).map(([grupo, rotulo, total, ponto]) => {
+            const ligado = filtros.grupo === grupo;
+            return (
+              <button key={grupo || 'todas'} type="button" aria-pressed={ligado} onClick={() => mudar({ grupo: ligado ? '' : grupo as GrupoStatus | '' })} data-testid={`quadro-situacao-${grupo || 'todas'}`} className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-3.5 text-sm font-bold ring-1 transition duration-200 active:scale-[0.97] ${ligado ? 'bg-[#176b4d] text-white ring-[#176b4d]' : 'bg-white text-slate-700 ring-slate-200 hover:ring-emerald-300'} ${FOCO}`}>
+                <span className={`size-2.5 rounded-full ${ligado ? 'bg-white' : ponto}`} aria-hidden="true" />
+                {rotulo}
+                <span className={`rounded-full px-1.5 font-mono text-xs ${ligado ? 'bg-white/15' : 'bg-slate-100 text-slate-600'}`}>{total}</span>
+              </button>
+            );
+          })}
         </div>
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Canteiro">
           {chipCanteiro('', 'Todos', cartoes.length)}
@@ -549,8 +560,8 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-700">{grupo.cartoes.length}</span>
                     {grupo.cartoes.length > 0 && (
                       <span className="ml-auto flex items-center gap-3 text-xs font-semibold text-slate-500">
-                        <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" /><span className="hidden sm:inline">{grupo.operando}</span></span>
-                        {grupo.manutencao > 0 && <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-rose-500" aria-hidden="true" /><span className="hidden sm:inline">{grupo.manutencao}</span></span>}
+                        <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" /><span>{grupo.operando}<span className="sr-only"> em operação</span></span></span>
+                        {grupo.manutencao > 0 && <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-rose-500" aria-hidden="true" /><span>{grupo.manutencao}<span className="sr-only"> em manutenção</span></span></span>}
                       </span>
                     )}
                     {grupo.cartoes.length > 0 && <button
