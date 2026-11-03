@@ -4772,6 +4772,8 @@ export default function App() {
                 presencas={presencasLinkAtivas}
                 movimentosMaterial={materiaisMovimentosVigentes}
                 cravacoes={controleEstacas.cravacoes}
+                funcionarios={funcionarios}
+                equipamentos={equipamentos}
                 podeAbrir={aba => allowedTabs.includes(aba)}
                 onAbrir={abrirRelatorio}
               />

@@ -9,11 +9,13 @@ import { useMemo, useRef } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import { ChevronRight, Fuel, Hammer, Lock, Package, Truck, Users, type LucideIcon } from 'lucide-react';
-import type { Abastecimento, ControleEquipamentoDiario, CravacaoEstaca, MovimentoMaterial, PresencaApontamento } from '../types';
+import type { Abastecimento, ControleEquipamentoDiario, CravacaoEstaca, MovimentoMaterial, PresencaApontamento, Funcionario, Equipamento } from '../types';
 import { PageHeader } from '../shared/ui';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { resumirBase, textoBase, type BaseRelatorio } from '../utils/centralRelatorios';
 import { CARTAO, FOCO } from './cadastros/estilos';
+import { RelatorioMotoristas } from './relatorios/RelatorioMotoristas';
+import { ListaEquipamentos } from './relatorios/ListaEquipamentos';
 
 /** Abas que sabem abrir já na parte de relatório. */
 export type DestinoRelatorio = 'lancamentos' | 'controle-equipamentos' | 'presenca' | 'materiais' | 'estacas';
@@ -24,6 +26,8 @@ interface RelatoriosTabProps {
   presencas: PresencaApontamento[];
   movimentosMaterial: MovimentoMaterial[];
   cravacoes: CravacaoEstaca[];
+  funcionarios: Funcionario[];
+  equipamentos: Equipamento[];
   podeAbrir: (aba: DestinoRelatorio) => boolean;
   onAbrir: (aba: DestinoRelatorio) => void;
 }
@@ -42,7 +46,7 @@ interface ItemRelatorio {
 const SEM_LANCAMENTO = ['Produção e avanço físico', 'Planejamento', 'Custos', 'Medições', 'Qualidade (FVS e não conformidades)', 'Ocorrências e horas paradas'];
 
 export default function RelatoriosTab({
-  abastecimentos, controlesEquipamentos, presencas, movimentosMaterial, cravacoes, podeAbrir, onAbrir,
+  abastecimentos, controlesEquipamentos, presencas, movimentosMaterial, cravacoes, funcionarios, equipamentos, podeAbrir, onAbrir,
 }: RelatoriosTabProps) {
   const escopo = useRef<HTMLElement>(null);
 
@@ -135,6 +139,21 @@ export default function RelatoriosTab({
               </button>
             );
           })}
+        </div>
+      </section>
+
+      <section data-relatorios-reveal className="border-t-2 border-slate-200 pt-8">
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold tracking-tight text-slate-950">Análise Operacional</h2>
+          <p className="mt-2 text-sm font-medium text-slate-600">Desempenho em tempo real de motoristas e equipamentos</p>
+        </div>
+        <div className="space-y-8">
+          <div>
+            <RelatorioMotoristas funcionarios={funcionarios} registros={controlesEquipamentos} />
+          </div>
+          <div>
+            <ListaEquipamentos equipamentos={equipamentos} registros={controlesEquipamentos} />
+          </div>
         </div>
       </section>
 
