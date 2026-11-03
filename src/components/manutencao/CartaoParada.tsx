@@ -11,6 +11,7 @@ import { LIMITE_HORAS_DIA, formatarMinutos, horaLocal, type ParadaDoDia } from '
 import { rotuloDaSituacao, type TomSituacao } from '../../utils/conferenciaManutencao';
 import type { LinhaRelatorioManutencao } from '../../utils/relatorioManutencaoDia';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, ROTULO } from '../cadastros/estilos';
+import { TimelineManutencao, type EventoTimeline } from './TimelineManutencao';
 
 const TOM_SELO: Record<TomSituacao, string> = {
   parado: 'bg-rose-50 text-rose-800 ring-rose-200',
@@ -133,23 +134,21 @@ export function CartaoParada({ registro, parada, ordemNumero, tipo, podeEditar, 
       </div>
 
       {itens.length > 0 && (
-        <ol aria-label={`Linha do tempo de ${registro.prefixo}`} className="relative space-y-2.5 border-l-2 border-slate-100 pl-5">
-          {itens.map((item, idx) => (
-            <li key={item.id} className="relative">
-              <div className={`absolute -left-[1.5625rem] top-1 flex items-center justify-center size-4 rounded-full border-3 border-white ${item.substituido ? 'bg-slate-200' : idx === 0 ? 'bg-emerald-500' : 'bg-emerald-600'}`} aria-hidden="true" />
-              <div className={`rounded-lg p-2.5 ${item.substituido ? 'bg-slate-50' : 'bg-emerald-50/40'}`}>
-                <p className={`text-xs font-semibold ${item.substituido ? 'text-slate-500 line-through' : 'text-slate-900'}`}>
-                  <strong className="tabular-nums text-slate-950">{item.hora}</strong>
-                  <span className="ml-1.5 text-slate-700">{item.texto}</span>
-                  {item.substituido && <span className="ml-1 text-slate-500">(substituída)</span>}
-                </p>
-                {(item.detalhe || item.responsavel) && (
-                  <p className="mt-1 text-xs text-slate-600">{[item.detalhe, item.responsavel && `por ${item.responsavel}`].filter(Boolean).join(' · ')}</p>
-                )}
-              </div>
-            </li>
-          ))}
-        </ol>
+        <TimelineManutencao
+          eventos={itens.map((item): EventoTimeline => {
+            const isPaused = item.texto.includes('Entrou') || item.texto.includes('Aguardando');
+            const isLiberated = item.texto.includes('Liberado');
+            return {
+              id: item.id,
+              hora: item.hora,
+              status: isLiberated ? 'liberado' : isPaused ? 'manutencao' : 'parado',
+              descricao: item.texto,
+              responsavel: item.responsavel,
+              motivo: item.detalhe,
+            };
+          })}
+          statusAtual={parada.situacao === 'LIBERADO' ? 'liberado' : emManutencao ? 'manutencao' : 'parado'}
+        />
       )}
 
       {podeEditar && !aberto && (
