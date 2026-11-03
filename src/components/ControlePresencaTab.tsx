@@ -104,7 +104,7 @@ const STATUS_STYLES: Record<PresencaStatus, string> = {
   Outro: 'border-violet-200 bg-violet-50 text-violet-800',
 };
 
-const PANEL = 'rounded-xl border border-slate-200 bg-white';
+const PANEL = 'rounded-xl border border-slate-200 bg-white shadow-[0_2px_12px_rgba(15,40,31,0.06)] transition-shadow duration-200 hover:shadow-[0_8px_24px_rgba(15,40,31,0.12)]';
 const FOCO = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)';
 const ROTULO_CAMPO = 'block text-xs font-bold text-[#5b6870]';
 const FIELD = 'min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-emerald-700 focus:ring-4 focus:ring-emerald-700/10';
