@@ -340,20 +340,53 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
   useGSAP(() => {
     const raiz = escopo.current;
     if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    gsap.fromTo(raiz.querySelectorAll('[data-quadro-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
-    gsap.fromTo(raiz.querySelectorAll('[data-quadro-cartao]'), { opacity: 0, y: 10, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: { each: 0.01, from: 'start' }, ease: 'power2.out', delay: 0.12, clearProps: 'transform,opacity' });
+
+    // Animações de entrada: sections e elementos com reveal
+    gsap.fromTo(raiz.querySelectorAll('[data-quadro-reveal]'),
+      { opacity: 0, y: 14 },
+      { opacity: 1, y: 0, duration: 0.5, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' }
+    );
+
+    // Cartões das máquinas com efeito de pop
+    gsap.fromTo(raiz.querySelectorAll('[data-quadro-cartao]'),
+      { opacity: 0, y: 10, scale: 0.97 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: { each: 0.01, from: 'start' }, ease: 'power2.out', delay: 0.12, clearProps: 'transform,opacity' }
+    );
+
+    // Animação dos chips de canteiro com bounce
+    gsap.fromTo(raiz.querySelectorAll('[role="group"][aria-label*="Canteiro"] button'),
+      { opacity: 0, scale: 0.9 },
+      { opacity: 1, scale: 1, duration: 0.4, stagger: 0.05, ease: 'back.out(1.4)', delay: 0.2, clearProps: 'transform,opacity' }
+    );
   }, { scope: escopo, dependencies: [dia, filtros, ordem, vista, modoSelecao] });
 
   const chipCanteiro = (nome: string, rotulo: string, total: number) => {
     const ligado = filtros.canteiro === nome;
+    const ref = useRef<HTMLButtonElement>(null);
+
+    const handleHover = (hovering: boolean) => {
+      if (!ref.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      gsap.to(ref.current, {
+        y: hovering ? -2 : 0,
+        boxShadow: hovering
+          ? '0 12px 20px rgba(23, 107, 77, 0.15)'
+          : (ligado ? '0_8px_18px_-10px_rgba(23,107,77,0.8)' : '0 0 0 0px rgba(0,0,0,0)'),
+        duration: 0.3,
+        ease: 'power2.out',
+      });
+    };
+
     return (
       <button
+        ref={ref}
         key={nome || 'todos'}
         type="button"
         aria-pressed={ligado}
         onClick={() => mudar({ canteiro: ligado ? '' : nome })}
+        onMouseEnter={() => handleHover(true)}
+        onMouseLeave={() => handleHover(false)}
         data-testid={`quadro-aba-canteiro-${nome || 'todos'}`}
-        className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${ligado ? 'bg-[#176b4d] text-white shadow-[0_8px_18px_-10px_rgba(23,107,77,0.8)]' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-emerald-300'} ${FOCO}`}
+        className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${ligado ? 'bg-[#176b4d] text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-emerald-300'} ${FOCO}`}
       >
         {rotulo}
         <span className={`rounded-full px-1.5 font-mono text-xs ${ligado ? 'bg-white/10' : 'bg-slate-100 text-slate-500'}`}>{total}</span>
