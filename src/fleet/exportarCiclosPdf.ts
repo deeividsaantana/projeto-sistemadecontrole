@@ -6,6 +6,25 @@
 import type { EquipmentCycle } from './cycleHistory';
 import { extrairFasesCiclo, formatarDuracao, calcularMetricasCiclos } from './cycleHistory';
 
+/** Texto digitado vira texto no HTML do relatório, nunca marcação ou script. */
+const esc = (valor: unknown): string => String(valor ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
+/**
+ * Célula de CSV entre aspas, com aspas internas dobradas. Texto que começa
+ * com =, +, -, @, tab ou retorno ganha um apóstrofo para a planilha não ler
+ * como fórmula.
+ */
+const celulaCsv = (valor: unknown): string => {
+  const texto = String(valor ?? '');
+  const seguro = /^[=+\-@\t\r]/.test(texto) ? `'${texto}` : texto;
+  return `"${seguro.replace(/"/g, '""')}"`;
+};
+
 interface PdfOptions {
   titulo?: string;
   dataRelatorio?: string;
@@ -29,22 +48,22 @@ export const gerarCsvCiclos = (ciclos: EquipmentCycle[]): string => {
     'Responsável',
     'Operador',
     'Observação',
-  ].map(col => `"${col}"`).join(','));
+  ].map(celulaCsv).join(','));
 
   // Dados
   ciclos.forEach(ciclo => {
     const fases = extrairFasesCiclo(ciclo);
     fases.forEach(fase => {
       linhas.push([
-        `"${ciclo.prefixo}"`,
-        `"${ciclo.dataInicio}"`,
-        `"${fase.status}"`,
-        `"${fase.hora}"`,
-        `"${fase.duracao ? formatarDuracao(fase.duracao) : '—'}"`,
-        `"${fase.responsavel}"`,
-        `"${fase.operador || '—'}"`,
-        `"${fase.motivo || '—'}"`,
-      ].join(','));
+        ciclo.prefixo,
+        ciclo.dataInicio,
+        fase.status,
+        fase.hora,
+        fase.duracao ? formatarDuracao(fase.duracao) : '—',
+        fase.responsavel,
+        fase.operador || '—',
+        fase.motivo || '—',
+      ].map(celulaCsv).join(','));
     });
   });
 
@@ -87,12 +106,12 @@ export const gerarHtmlCiclos = (
     return `
       <tr>
         <td style="border: 1px solid #e5e7eb; padding: 8px; font-weight: 600; color: ${colColor};">
-          ${ciclo.prefixo}
+          ${esc(ciclo.prefixo)}
         </td>
-        <td style="border: 1px solid #e5e7eb; padding: 8px;">${ciclo.dataInicio}</td>
+        <td style="border: 1px solid #e5e7eb; padding: 8px;">${esc(ciclo.dataInicio)}</td>
         <td style="border: 1px solid #e5e7eb; padding: 8px;">
           <span style="display: inline-block; background-color: ${colColor}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
-            ${ciclo.statusAtual}
+            ${esc(ciclo.statusAtual)}
           </span>
         </td>
         <td style="border: 1px solid #e5e7eb; padding: 8px; text-align: right;">
@@ -105,15 +124,15 @@ export const gerarHtmlCiclos = (
       ${fases.map((fase, idx) => `
         <tr style="background-color: #f9fafb;">
           <td colspan="2" style="border: 1px solid #e5e7eb; padding: 6px 8px; font-size: 12px;">
-            ${idx === 0 ? '↳' : ''} ${fase.status}
+            ${idx === 0 ? '↳' : ''} ${esc(fase.status)}
           </td>
-          <td style="border: 1px solid #e5e7eb; padding: 6px 8px; font-size: 12px;">${fase.hora}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 6px 8px; font-size: 12px;">${esc(fase.hora)}</td>
           <td style="border: 1px solid #e5e7eb; padding: 6px 8px; font-size: 12px; text-align: right;">
             ${fase.duracao ? formatarDuracao(fase.duracao) : '—'}
           </td>
           <td style="border: 1px solid #e5e7eb; padding: 6px 8px; font-size: 12px;">
-            ${fase.responsavel}${fase.operador ? ` / ${fase.operador}` : ''}
-            ${fase.motivo ? `<br/>📝 ${fase.motivo}` : ''}
+            ${esc(fase.responsavel)}${fase.operador ? ` / ${esc(fase.operador)}` : ''}
+            ${fase.motivo ? `<br/>📝 ${esc(fase.motivo)}` : ''}
           </td>
         </tr>
       `).join('')}
@@ -126,7 +145,7 @@ export const gerarHtmlCiclos = (
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${titulo}</title>
+  <title>${esc(titulo)}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -255,9 +274,9 @@ export const gerarHtmlCiclos = (
 <body>
   <div class="container">
     <div class="header">
-      <h1>${titulo}</h1>
+      <h1>${esc(titulo)}</h1>
       <p>Relatório de rastreamento operacional de equipamentos</p>
-      <p class="footer-date">${dataRelatorio}</p>
+      <p class="footer-date">${esc(dataRelatorio)}</p>
     </div>
 
     <div class="section-title">📊 Resumo Executivo</div>
@@ -297,8 +316,8 @@ export const gerarHtmlCiclos = (
     </table>
 
     <div class="footer">
-      <p>${rodape}</p>
-      <p class="footer-date">Gerado em ${dataRelatorio}</p>
+      <p>${esc(rodape)}</p>
+      <p class="footer-date">Gerado em ${esc(dataRelatorio)}</p>
     </div>
   </div>
 </body>
