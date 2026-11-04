@@ -5,7 +5,12 @@ import { extractBearerToken, mergeSecurityHeaders } from './api-security.js';
 const url = () => String(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim();
 const key = () => String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
+// Testes trocam o cliente por um falso; em produção fica sempre null.
+let clienteSubstituto = null;
+export const substituirClienteSupabase = cliente => { clienteSubstituto = cliente; };
+
 export const getSupabaseAdmin = () => {
+  if (clienteSubstituto) return clienteSubstituto;
   if (!url() || !key()) throw new Error('Supabase administrativo não configurado no servidor.');
   return createClient(url(), key(), { auth: { autoRefreshToken: false, persistSession: false } });
 };
@@ -107,15 +112,33 @@ const mirrorPublicSubmission = async (id, document, { reabrir = false } = {}) =>
   });
   if (error) throw error;
 };
+const documentRow = (collectionPath, id, payload) => ({ id, organization_id: process.env.SUPABASE_ORGANIZATION_ID || 'renea', collection_path: collectionPath, path: `${collectionPath}/${id}`, payload, updated_at: new Date().toISOString() });
+const alreadyExists = () => { const error = new Error('Documento já existe.'); error.code = 'already-exists'; error.statusCode = 409; return error; };
 const makeRef = (path, id = crypto.randomUUID()) => ({
   id,
   path: `${path}/${id}`,
+  collectionPath: path,
   async get() { const { data, error } = await rowStore().select('id,payload').eq('path', `${path}/${id}`).maybeSingle(); if (error) throw error; return snapshot(data ? { ...data, payload: data.payload } : null, makeRef(path, id)); },
-  async set(payload, options = {}) { const current = options.merge ? await this.get() : null; const next = options.merge ? { ...(current.data() || {}), ...payload } : payload; const { error } = await rowStore().upsert({ id, organization_id: process.env.SUPABASE_ORGANIZATION_ID || 'renea', collection_path: path, path: `${path}/${id}`, payload: next, updated_at: new Date().toISOString() }); if (error) throw error; if (path === PUBLIC_SUBMISSIONS_COLLECTION) await mirrorPublicSubmission(id, next, { reabrir: true }); },
+  async set(payload, options = {}) { const current = options.merge ? await this.get() : null; const next = options.merge ? { ...(current.data() || {}), ...payload } : payload; const { error } = await rowStore().upsert(documentRow(path, id, next)); if (error) throw error; if (path === PUBLIC_SUBMISSIONS_COLLECTION) await mirrorPublicSubmission(id, next, { reabrir: true }); },
+  // Como o create do Firestore: falha se o documento já existe (a chave única de
+  // path decide no banco, então duas requisições simultâneas não passam juntas).
+  async create(payload) { const { error } = await rowStore().insert(documentRow(path, id, payload)); if (error) throw error.code === '23505' ? alreadyExists() : error; if (path === PUBLIC_SUBMISSIONS_COLLECTION) await mirrorPublicSubmission(id, payload, { reabrir: true }); },
   async update(payload) { const current = await this.get(); if (!current.exists) throw new Error('Documento não encontrado.'); await this.set(applyFieldUpdates(current.data(), payload)); },
   async delete() { const { error } = await rowStore().delete().eq('path', `${path}/${id}`); if (error) throw error; },
   collection(child) { return makeCollection(`${path}/${id}/${child}`); },
 });
+// O PostgREST devolve no máximo 1000 linhas por pedido: lê a coleção em páginas
+// para nenhum documento sumir das listas quando ela cresce.
+const PAGE_SIZE = 1000;
+const readCollection = async path => {
+  const rows = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await rowStore().select('id,payload').eq('collection_path', path).order('path').range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < PAGE_SIZE) return rows;
+  }
+};
 const makeCollection = path => {
   const filters = [];
   const query = {
@@ -123,14 +146,14 @@ const makeCollection = path => {
     orderBy(field, direction = 'asc') { query._order = { field, direction }; return query; },
     limit(count) { query._limit = count; return query; },
     async get() {
-      const { data, error } = await rowStore().select('id,payload').eq('collection_path', path);
-      if (error) throw error;
-      let rows = data || [];
-      if (path === PUBLIC_SUBMISSIONS_COLLECTION) await Promise.all(rows.map(row => mirrorPublicSubmission(row.id, row.payload)));
+      let rows = await readCollection(path);
       rows = rows.filter(row => filters.every(filter => {
         const actual = valueAt(row.payload, filter.field);
         return filter.operator === '==' ? actual === filter.value : filter.operator === 'in' ? Array.isArray(filter.value) && filter.value.includes(actual) : filter.operator === '>=' ? actual >= filter.value : true;
       }));
+      // Reespelha só o que a consulta devolve: a coleção inteira viraria milhares
+      // de pedidos simultâneos a cada leitura do link público.
+      if (path === PUBLIC_SUBMISSIONS_COLLECTION) await Promise.all(rows.map(row => mirrorPublicSubmission(row.id, row.payload)));
       if (query._order) rows.sort((a, b) => String(valueAt(a.payload, query._order.field) || '').localeCompare(String(valueAt(b.payload, query._order.field) || '')) * (query._order.direction === 'desc' ? -1 : 1));
       if (query._limit) rows = rows.slice(0, query._limit);
       return { docs: rows.map(row => snapshot(row, makeRef(path, row.id))) };
@@ -139,9 +162,85 @@ const makeCollection = path => {
   };
   return query;
 };
-const makeBatch = () => { const actions = []; return { set(ref, data, options) { actions.push(() => ref.set(data, options)); }, update(ref, data) { actions.push(() => ref.update(data)); }, delete(ref) { actions.push(() => ref.delete()); }, async commit() { for (const action of actions) await action(); } }; };
-export const getAdminDb = () => ({ collection: makeCollection, batch: makeBatch, async runTransaction(callback) { const transaction = { get: ref => ref.get(), set: (ref, data, options) => ref.set(data, options), update: (ref, data) => ref.update(data), delete: ref => ref.delete(), create: (ref, data) => ref.set(data) }; return callback(transaction); } });
-export const enforceRateLimit = async (_database, _event, _bucket, _limit, _windowSeconds, _identity = '') => {};
+const functionMissing = error => error?.code === 'PGRST202' || error?.code === '42883';
+// Lote atômico: calcula o resultado de cada documento (set, merge, update e
+// delete, na ordem) e grava tudo numa chamada só à função
+// aplicar_lote_documentos, que roda numa transação. Banco ainda sem a função
+// (migration não aplicada): volta a gravar um por um, como antes.
+const makeBatch = () => {
+  const actions = [];
+  return {
+    set(ref, data, options = {}) { actions.push({ kind: 'set', ref, data, options }); },
+    update(ref, data) { actions.push({ kind: 'update', ref, data }); },
+    delete(ref) { actions.push({ kind: 'delete', ref }); },
+    async commit() {
+      const pending = new Map();
+      const current = async ref => {
+        if (pending.has(ref.path)) return pending.get(ref.path);
+        const stored = await ref.get();
+        return stored.exists ? stored.data() : null;
+      };
+      for (const action of actions) {
+        if (action.kind === 'delete') { pending.set(action.ref.path, null); continue; }
+        if (action.kind === 'update') {
+          const base = await current(action.ref);
+          if (!base) throw new Error('Documento não encontrado.');
+          pending.set(action.ref.path, applyFieldUpdates(base, action.data));
+          continue;
+        }
+        pending.set(action.ref.path, action.options.merge ? { ...((await current(action.ref)) || {}), ...action.data } : action.data);
+      }
+      const refs = new Map(actions.map(action => [action.ref.path, action.ref]));
+      const writes = [...pending].filter(([, payload]) => payload !== null).map(([path, payload]) => documentRow(refs.get(path).collectionPath, refs.get(path).id, payload));
+      const deletes = [...pending].filter(([, payload]) => payload === null).map(([path]) => path);
+      const { error } = await getSupabaseAdmin().rpc('aplicar_lote_documentos', { p_gravar: writes, p_apagar: deletes });
+      if (error && !functionMissing(error)) throw error;
+      if (error) {
+        console.warn('aplicar_lote_documentos ausente no banco; lote gravado um por um.');
+        for (const row of writes) { const { error: rowError } = await rowStore().upsert(row); if (rowError) throw rowError; }
+        for (const path of deletes) { const { error: rowError } = await rowStore().delete().eq('path', path); if (rowError) throw rowError; }
+      }
+      await Promise.all(writes.filter(row => row.collection_path === PUBLIC_SUBMISSIONS_COLLECTION).map(row => mirrorPublicSubmission(row.id, row.payload, { reabrir: true })));
+    },
+  };
+};
+// Sem transação de verdade no PostgREST. Como no Firestore, as escritas só
+// acontecem depois que o bloco termina sem erro, na ordem em que foram pedidas;
+// create falha se o documento existe e interrompe as escritas seguintes.
+export const getAdminDb = () => ({ collection: makeCollection, batch: makeBatch, async runTransaction(callback) {
+  const operations = [];
+  const transaction = { get: ref => ref.get(), set: (ref, data, options) => { operations.push(() => ref.set(data, options)); }, update: (ref, data) => { operations.push(() => ref.update(data)); }, delete: ref => { operations.push(() => ref.delete()); }, create: (ref, data) => { operations.push(() => ref.create(data)); } };
+  const result = await callback(transaction);
+  for (const operation of operations) await operation();
+  return result;
+} });
+// Contador por janela na função registrar_requisicao (atômica no banco). Banco
+// fora do ar ou ainda sem a função: deixa passar e registra, para um problema de
+// infraestrutura não travar a presença e os tickets de campo.
+// IP para o limite: o último item do X-Forwarded-For é o que o proxy da Render
+// anotou; os anteriores e os outros cabeçalhos o próprio cliente pode inventar.
+const trustedClientIpHash = event => {
+  const headers = event?.headers || {};
+  const forwarded = String(headers['x-forwarded-for'] || '').split(',').map(item => item.trim()).filter(Boolean);
+  return stableHash(forwarded.at(-1) || headers['x-real-ip'] || 'unknown').slice(0, 24);
+};
+export const enforceRateLimit = async (_database, event, bucket, limit, windowSeconds, identity = '') => {
+  const who = identity ? cleanString(identity, 160) : `ip-${trustedClientIpHash(event)}`;
+  let data;
+  try {
+    const result = await getSupabaseAdmin().rpc('registrar_requisicao', { p_chave: `${cleanString(bucket, 120)}|${who}`, p_limite: limit, p_janela_segundos: windowSeconds });
+    if (result.error) throw result.error;
+    data = result.data;
+  } catch (error) {
+    console.error('Limite de requisições indisponível:', error?.message || error);
+    return;
+  }
+  if (data === false) {
+    const denied = new Error('Muitos envios em pouco tempo. Aguarde um instante e tente de novo.');
+    denied.statusCode = 429;
+    throw denied;
+  }
+};
 // Mantém a forma do antigo Firebase Admin (uid, displayName, disabled e
 // claims) para api/master-data.js, traduzindo para o Supabase: e-mail já
 // confirmado, nome em user_metadata, bloqueio por ban_duration e o perfil

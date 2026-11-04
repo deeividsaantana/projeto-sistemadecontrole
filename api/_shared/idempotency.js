@@ -54,6 +54,8 @@ export const withIdempotency = async (event, context, key, operation) => {
 
   await context.database.runTransaction(async transaction => {
     const snapshot = await transaction.get(reference);
+    // Outra requisição com a mesma chave pode ter reservado entre a leitura e o
+    // create: o create falha com 'already-exists' e cai no mesmo 409 abaixo.
     if (!snapshot.exists) {
       claimed = true;
       transaction.create(reference, {
@@ -96,6 +98,11 @@ export const withIdempotency = async (event, context, key, operation) => {
     const error = new Error('Operacao equivalente ainda esta em processamento.');
     error.statusCode = 409;
     throw error;
+  }).catch(error => {
+    if (error?.code !== 'already-exists') throw error;
+    const emCurso = new Error('Operacao equivalente ainda esta em processamento.');
+    emCurso.statusCode = 409;
+    throw emCurso;
   });
 
   if (replay) return toReplayResponse(replay);

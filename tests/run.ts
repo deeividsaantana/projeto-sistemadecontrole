@@ -114,6 +114,7 @@ import './presencaStatus.test';
 import './observability.test';
 import './auditLog.test';
 import './idempotency.test';
+import './apiAdaptadorSupabase.test';
 import './masterDataContract.test';
 import './cloudMerge.test';
 import './exclusoes.test';
