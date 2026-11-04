@@ -231,6 +231,7 @@ import './tabelaMaisLinhas.test';
 import './frotaNavegacaoDia.test';
 import './faltantesPdf.test';
 import './presencaPublicaLink.test';
+import './segurancaCiclosPresenca.test';
 import './escalaSabado.test';
 import './quadroFrota.visual.test';
 import './integracaoGlobal.test';

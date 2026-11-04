@@ -3,11 +3,7 @@ import test from 'node:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { PresencaPublicaLink } from '../src/components/presenca/PresencaPublicaLink';
-import {
-  gerarTokenPresencaPublica,
-  validarMatricula,
-  validarTokenPresencaPublica,
-} from '../src/utils/presencaPublicaAuth';
+import { validarMatricula } from '../src/utils/presencaPublicaAuth';
 import type { Funcionario } from '../src/types';
 
 const funcionario = (id: string, nome: string, matricula?: string): Funcionario => ({
@@ -32,26 +28,6 @@ test('presencaPublicaAuth: case-insensitive para matrícula', () => {
 test('presencaPublicaAuth: retorna null para matrícula inválida ou vazia', () => {
   assert.equal(validarMatricula('99999', funcionarios), null);
   assert.equal(validarMatricula('   ', funcionarios), null);
-});
-
-test('presencaPublicaAuth: token gerado é válido para o mesmo funcionário', () => {
-  const token = gerarTokenPresencaPublica('1');
-  assert.equal(validarTokenPresencaPublica(token, '1'), true);
-});
-
-test('presencaPublicaAuth: token válido dentro de 24h', () => {
-  assert.equal(validarTokenPresencaPublica(`1:${Date.now()}:random123`, '1'), true);
-});
-
-test('presencaPublicaAuth: token inválido com ID errado', () => {
-  assert.equal(validarTokenPresencaPublica(`1:${Date.now()}:random123`, '2'), false);
-});
-
-test('presencaPublicaAuth: token inválido expirado, no futuro ou malformado', () => {
-  const hora = 60 * 60 * 1000;
-  assert.equal(validarTokenPresencaPublica(`1:${Date.now() - 25 * hora}:r`, '1'), false);
-  assert.equal(validarTokenPresencaPublica(`1:${Date.now() + hora}:r`, '1'), false);
-  assert.equal(validarTokenPresencaPublica('1:abc:r', '1'), false);
 });
 
 test('PresencaPublicaLink: mostra campo de matrícula com rótulo e botão Acessar', () => {
