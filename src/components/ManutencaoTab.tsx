@@ -607,6 +607,7 @@ export default function ManutencaoTab({
             paraConferir={paraConferir}
             onAbrirConferencia={() => setSubtela('conferencia')}
             onSaveControle={onSaveControle}
+            onSalvarConferencia={onSalvarConferencia}
           />
           <FilaOficina fila={filaOperacional} ordensServico={ordensServico} podeEditar={podeEditar} onAvancar={avancar} onEditar={abrirEdicao} />
         </>

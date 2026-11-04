@@ -26,12 +26,14 @@ export interface PeriodoParado {
 export interface ParadaDoDia {
   data: string;
   periodos: PeriodoParado[];
-  /** Já com descontos e limite. */
+  /** Já com descontos e limite (sem limite quando alemDoLimite). */
   totalMin: number;
   /** Com descontos, antes do limite. */
   brutoMin: number;
   situacao: SituacaoParada;
   limiteAtingidoAs: string | null;
+  /** Decidiram continuar além de 10 h: o contador segue sem teto. */
+  alemDoLimite: boolean;
   motivoInconsistencia?: string;
 }
 
@@ -119,7 +121,8 @@ export const horasParadasDoDia = (
   agora: Date,
   opcoes: { vemParadoDeOntem?: boolean } = {},
 ): ParadaDoDia => {
-  const base = { data: registro.data, periodos: [] as PeriodoParado[], totalMin: 0, brutoMin: 0, limiteAtingidoAs: null };
+  const alemDoLimite = Boolean(registro.continuaAlemDoLimite);
+  const base = { data: registro.data, periodos: [] as PeriodoParado[], totalMin: 0, brutoMin: 0, limiteAtingidoAs: null, alemDoLimite };
   const marcos = marcosDoRegistro(registro);
   if (typeof marcos === 'string') return { ...base, situacao: 'INCONSISTENTE', motivoInconsistencia: marcos };
 
@@ -172,9 +175,9 @@ export const horasParadasDoDia = (
   });
 
   const brutoMin = acumulado;
-  const totalMin = Math.min(brutoMin, LIMITE_MIN);
-  const situacao: SituacaoParada = brutoMin >= LIMITE_MIN
+  const totalMin = alemDoLimite ? brutoMin : Math.min(brutoMin, LIMITE_MIN);
+  const situacao: SituacaoParada = brutoMin >= LIMITE_MIN && !alemDoLimite
     ? 'LIMITE_ATINGIDO'
     : detalhados.some(periodo => periodo.fim === null) ? 'PARADO' : 'LIBERADO';
-  return { data: registro.data, periodos: detalhados, totalMin, brutoMin, situacao, limiteAtingidoAs };
+  return { data: registro.data, periodos: detalhados, totalMin, brutoMin, situacao, limiteAtingidoAs, alemDoLimite };
 };

@@ -93,8 +93,8 @@ import {
 import { filterNovelFuelImports } from './utils/fuelImportIdentity';
 import type { FuelImportedMasterData } from './utils/fuelMasterDataImport';
 import { mergeImportedRecords } from './utils/importMerge';
-import { garantirOrdemAutomaticaDaFrota, liberarMaquinasDaOrdemConcluida, reconciliarHistoricoManutencaoDaFrota } from './utils/manutencao';
-import { encerrarOrdensNoLimite, pendentesDeContinuidade, recalcularOrdemDoLimite } from './utils/manutencaoLimite';
+import { garantirOrdemAutomaticaDaFrota, isOrdemEncerrada, liberarMaquinasDaOrdemConcluida, reconciliarHistoricoManutencaoDaFrota } from './utils/manutencao';
+import { continuacaoParaDesfazer, encerrarOrdensNoLimite, pendentesDeContinuidade, reabrirOrdensAlemDoLimite, recalcularOrdemDoLimite } from './utils/manutencaoLimite';
 import { descricaoDoEncerramento } from './utils/conferenciaManutencao';
 import {
   LOCAL_FUEL_RESET_STORAGE_KEY,
@@ -4103,19 +4103,49 @@ export default function App() {
   const handleSalvarConferenciaManutencao = (registro: ControleEquipamentoDiario, descricao: string) => {
     const anterior = controleEquipamentosDiario.find(item => item.id === registro.id);
     if (!anterior) return;
-    const updated = controleEquipamentosDiario.map(item => item.id === registro.id ? registro : item);
+    const decidiuFechar = registro.conferenciaManutencao?.decisao === 'LIBERACAO_INFORMADA' || registro.conferenciaManutencao?.decisao === 'CONFIRMADO_10H';
+    // A continuidade já abriu o dia seguinte e ninguém mexeu nele: com a decisão de fechar, ele sai (vai para a Lixeira).
+    const desfeito = decidiuFechar ? continuacaoParaDesfazer(controleEquipamentosDiario, registro) : undefined;
+    const updated = controleEquipamentosDiario
+      .filter(item => item.id !== desfeito?.id)
+      .map(item => item.id === registro.id ? registro : item);
     // OS que fechou pelo limite neste dia é refeita com a decisão (horas e, se saiu do limite, a conclusão).
     const ordem = registro.ordemServicoId ? ordensServico.find(item => item.id === registro.ordemServicoId) : undefined;
     const recalculada = ordem ? recalcularOrdemDoLimite(ordem, updated, new Date()) : null;
     const ordemNova = recalculada && ordem ? { ...recalculada, atualizadoEm: new Date().toISOString() } : null;
-    const ordensAtualizadas = ordemNova ? ordensServico.map(item => item.id === ordemNova.id ? ordemNova : item) : ordensServico;
+    const agoraIso = new Date().toISOString();
+    // A OS aberta só para o dia desfeito (nenhum outro dia aponta para ela) é cancelada.
+    const ordemDoDesfeito = desfeito?.ordemServicoId && desfeito.ordemServicoId !== registro.ordemServicoId
+      && !updated.some(item => item.ordemServicoId === desfeito.ordemServicoId)
+      ? ordensServico.find(item => item.id === desfeito.ordemServicoId && !isOrdemEncerrada(item.status))
+      : undefined;
+    const ordensAtualizadas = ordensServico.map(item => {
+      if (ordemNova && item.id === ordemNova.id) return ordemNova;
+      if (ordemDoDesfeito && item.id === ordemDoDesfeito.id) {
+        return { ...item, status: 'Cancelada' as const, observacao: [item.observacao, 'Cancelada: a conferência informou que a máquina não seguiu parada.'].filter(Boolean).join(' '), atualizadoEm: agoraIso };
+      }
+      return item;
+    });
+    const exclusaoDoDesfeito = desfeito ? criarExclusao({
+      tabela: 'controleEquipamentosDiario',
+      registro: desfeito as unknown as { id: string } & Record<string, unknown>,
+      rotulo: `${desfeito.prefixo || 'Lançamento da frota'} em ${desfeito.data}`,
+      usuario: activeUserName,
+      agora: agoraIso,
+    }) : undefined;
+    const textoDesfeito = desfeito ? ` Desfez a continuidade de ${desfeito.data}${ordemDoDesfeito ? ` e cancelou a ${ordemDoDesfeito.numero}` : ''}.` : '';
     const textoOrdem = ordemNova && ordem
-      ? ` ${ordem.numero} refeita: horas ${ordem.horasParadas ?? '—'} → ${ordemNova.horasParadas} h; conclusão ${ordem.horaConclusao || '—'} → ${ordemNova.horaConclusao || '—'}${ordemNova.observacao !== ordem.observacao ? '; agora "Concluída na conferência."' : ''}.`
+      ? ` ${ordem.numero} refeita: horas ${ordem.horasParadas ?? '—'} → ${ordemNova.horasParadas} h; conclusão ${ordem.horaConclusao || '—'} → ${ordemNova.horaConclusao || '—'}${ordemNova.status !== ordem.status ? `; reaberta (${ordemNova.status}), segue além de 10 h` : ordemNova.observacao !== ordem.observacao ? '; agora "Concluída na conferência."' : ''}.`
       : '';
-    saveAndLog('Manutenção', 'Editou', `${descricao}${textoOrdem}`, historyLogs, () => {
+    saveAndLog('Manutenção', 'Editou', `${descricao}${textoOrdem}${textoDesfeito}`, historyLogs, () => {
       setControleEquipamentosDiario(updated);
       writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(updated));
-      if (ordemNova) {
+      if (exclusaoDoDesfeito) {
+        const proximasExclusoes = [exclusaoDoDesfeito, ...exclusoes];
+        setExclusoes(proximasExclusoes);
+        writeStorageValue(localStorage, STORAGE_KEYS.exclusoes, JSON.stringify(proximasExclusoes));
+      }
+      if (ordemNova || ordemDoDesfeito) {
         setOrdensServico(ordensAtualizadas);
         writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(ordensAtualizadas));
       }
@@ -4132,6 +4162,16 @@ export default function App() {
   const encerrarPeloLimiteRef = useRef<() => void>(() => {});
   encerrarPeloLimiteRef.current = () => {
     if (uploadsInFlightRef.current > 0) return;
+    // Outro aparelho pode ter fechado no limite antes de a decisão "além de 10 h" chegar: reabre antes de fechar.
+    const reabertura = reabrirOrdensAlemDoLimite(controleEquipamentosDiario, ordensServico, new Date());
+    if (reabertura.reabertas.length) {
+      const numeros = reabertura.reabertas.map(ordem => ordem.numero).join(', ');
+      saveAndLog('Manutenção', 'Editou', `Reabriu ${numeros}: o dia segue além de 10 h.`, historyLogs, () => {
+        setOrdensServico(reabertura.ordens);
+        writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(reabertura.ordens));
+      });
+      return;
+    }
     const { ordens, encerradas } = encerrarOrdensNoLimite(controleEquipamentosDiario, ordensServico, new Date());
     if (!encerradas.length) {
       abrirContinuidadeRef.current();
@@ -4158,8 +4198,8 @@ export default function App() {
       writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(ordens));
     }, { registroId: primeiro.registroId, valorAnterior: primeiro.valorAnterior, valorNovo: primeiro.valorNovo, tipoOperacao: 'UPDATE' });
   };
-  // "Continua parado amanhã": no dia seguinte o equipamento entra sozinho em
-  // manutenção às 07:00, pelo mesmo caminho do Quadro (a OS nova abre ali).
+  // Em manutenção sem liberação (ou "Continua parado amanhã"): no dia seguinte o
+  // equipamento entra sozinho em manutenção às 07:00, pelo mesmo caminho do Quadro (a OS nova abre ali).
   // O módulo do Quadro carrega sob demanda (importar direto passava o App do
   // limite de peso). Depois do import, os lançamentos e o salvamento vêm de
   // refs atualizadas a cada render: um download da nuvem, uma edição ou um
@@ -4223,14 +4263,20 @@ export default function App() {
           frente: anteriorFleet.frenteServico || '',
           operador: pendente.nomeMotorista || '',
           motivoManutencao: pendente.motivoManutencao?.trim() || 'Continua em manutenção',
-          observacao: `Continua parado desde ${pendente.data.split('-').reverse().join('/')} (decisão da conferência).`,
+          observacao: `Continua parado desde ${pendente.data.split('-').reverse().join('/')} (${pendente.conferenciaManutencao?.decisao === 'CONTINUA_AMANHA' ? 'decisão da conferência' : 'não foi liberado'}).`,
         },
       });
       if ('erro' in resultado) {
         falhou(resultado.erro);
         return;
       }
-      salvarControleRef.current(resultado.registro, resultado.novo);
+      // Quem decidiu seguir além de 10 h segue assim no dia seguinte, até a liberação.
+      // continuacaoDe deixa a conferência desfazer este dia se a liberação de ontem for informada depois.
+      salvarControleRef.current({
+        ...resultado.registro,
+        continuacaoDe: pendente.id,
+        ...(pendente.continuaAlemDoLimite ? { continuaAlemDoLimite: pendente.continuaAlemDoLimite } : {}),
+      }, resultado.novo);
     }).catch(error => falhou(error instanceof Error ? error.message : 'não foi possível carregar o Quadro.'))
       .finally(() => { continuidadeEmCursoRef.current = false; });
   };

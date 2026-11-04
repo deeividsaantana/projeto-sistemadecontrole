@@ -163,7 +163,8 @@ function ItemConferencia({ linha, registro, registros, agora, podeEditar, podeRe
               <li className="text-[#5b6870]">conta {formatarMinutos(parada.totalMin)} · total bruto {formatarMinutos(parada.brutoMin)}</li>
             )}
           </ul>
-          {parada.limiteAtingidoAs && <p className="mt-1 text-sm text-[#5b6870]">Bateu 10 h às {parada.limiteAtingidoAs}. O dia conta no máximo 10 h.</p>}
+          {parada.limiteAtingidoAs && !parada.alemDoLimite && <p className="mt-1 text-sm text-[#5b6870]">Bateu 10 h às {parada.limiteAtingidoAs}. O dia conta no máximo 10 h.</p>}
+          {parada.alemDoLimite && <p className="mt-1 text-sm text-[#5b6870]">{parada.limiteAtingidoAs ? `Passou de 10 h às ${parada.limiteAtingidoAs}; ` : ''}segue sem teto{registro.continuaAlemDoLimite?.decididoPor ? ` por decisão de ${registro.continuaAlemDoLimite.decididoPor}` : ''}.</p>}
         </div>
       )}
 

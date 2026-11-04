@@ -6,7 +6,7 @@
 import { useRef, useEffect } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import { CheckCircle2, Clock, Wrench, User, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Clock, Truck, Wrench, User, AlertCircle } from 'lucide-react';
 import type { EventoControleEquipamentoDiario } from '../../types';
 import { ROTULO } from '../cadastros/estilos';
 
@@ -18,7 +18,11 @@ export interface EventoTimeline {
   responsavel?: string;
   motivo?: string;
   observacao?: string;
+  /** "João assumiu às 14:10": quem pegou a máquina na saída ou na liberação. */
+  assumiu?: string;
 }
+
+const ROTULO_STATUS = { parado: 'Parado', manutencao: 'Em manutenção', liberado: 'Liberado' } as const;
 
 const ICONE_STATUS = {
   parado: AlertCircle,
@@ -50,6 +54,8 @@ export function TimelineManutencao({ eventos, statusAtual }: Props) {
   useGSAP(
     () => {
       if (!containerRef.current || itemsRef.current.length === 0) return;
+      // Movimento reduzido: a linha do tempo aparece pronta, sem animar.
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
       // Fade in + slide para cada item da timeline
       itemsRef.current.forEach((item, index) => {
@@ -106,8 +112,8 @@ export function TimelineManutencao({ eventos, statusAtual }: Props) {
       {eventos.length > 1 && (
         <div
           data-timeline-line
-          className="absolute left-8 top-12 w-0.5 bg-gradient-to-b from-slate-300 to-slate-200"
-          style={{ height: `calc(100% - 3rem)` }}
+          className="absolute left-7 top-6 w-0.5 bg-gradient-to-b from-slate-300 to-slate-200"
+          style={{ height: `calc(100% - 5.5rem)` }}
         />
       )}
 
@@ -125,12 +131,12 @@ export function TimelineManutencao({ eventos, statusAtual }: Props) {
               ref={(el) => {
                 itemsRef.current[index] = el;
               }}
-              className="relative pl-20"
+              className="relative pl-9"
             >
               {/* Dot conectando à linha */}
               <div
                 data-timeline-dot
-                className={`absolute left-3 top-1 size-6 rounded-full border-2 border-white ${dotClasse} flex items-center justify-center shadow-md z-10`}
+                className={`absolute left-0 top-1 size-6 rounded-full border-2 border-white ${dotClasse} flex items-center justify-center shadow-md z-10`}
               >
                 <Icon className="size-3 text-white" aria-hidden="true" />
               </div>
@@ -138,9 +144,9 @@ export function TimelineManutencao({ eventos, statusAtual }: Props) {
               {/* Card do evento */}
               <div className={`space-y-2 rounded-lg border px-3 py-2 ${corClasse}`}>
                 {/* Hora e status */}
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   <span className="font-mono text-sm font-bold">{evento.hora}</span>
-                  <span className="text-xs font-bold uppercase tracking-wide opacity-75">
+                  <span className="min-w-0 break-words text-xs font-bold uppercase tracking-wide opacity-75">
                     {evento.descricao}
                   </span>
                 </div>
@@ -149,6 +155,13 @@ export function TimelineManutencao({ eventos, statusAtual }: Props) {
                 {evento.motivo && (
                   <p className="text-xs font-medium opacity-85">
                     <span className="font-semibold">Motivo:</span> {evento.motivo}
+                  </p>
+                )}
+
+                {evento.assumiu && (
+                  <p className="flex items-center gap-1.5 text-xs font-semibold opacity-90">
+                    <Truck className="size-3 shrink-0" aria-hidden="true" />
+                    {evento.assumiu}
                   </p>
                 )}
 
@@ -176,7 +189,7 @@ export function TimelineManutencao({ eventos, statusAtual }: Props) {
         <Clock className="size-4 text-slate-500" aria-hidden="true" />
         <span className="text-xs font-semibold text-slate-600">
           Status atual:{' '}
-          <span className="capitalize font-bold">{statusAtual}</span>
+          <span className="font-bold">{ROTULO_STATUS[statusAtual]}</span>
         </span>
       </div>
     </div>

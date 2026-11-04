@@ -408,6 +408,9 @@ export const registroDaEdicao = ({ dia, hora, agora, usuario, equipamento, regis
     ? 'ENTRADA_MANUTENCAO'
     : saiuDaManutencao ? 'LIBERACAO_MANUTENCAO' : edicao.status === 'Em operação' ? 'SAIDA_OPERACAO' : 'ALTERACAO_STATUS';
   const classificacao = classifyOperationalFleet(equipamento);
+  const nomeOperador = (funcionario?.nome || operador || '').trim() || undefined;
+  const assumiu = edicao.status === 'Em operação' && Boolean(nomeOperador)
+    && (anterior !== 'Em operação' || nomeOperador !== (existente?.nomeMotorista || '').trim());
 
   const registro: FleetPersistedRecord = {
     ...existente,
@@ -436,11 +439,13 @@ export const registroDaEdicao = ({ dia, hora, agora, usuario, equipamento, regis
     eventos: [...(existente?.eventos || []), {
       id: `evt-${agora}-${equipamento.id}`,
       ocorridoEm: agora,
-      hora: tipo === 'ENTRADA_MANUTENCAO' || tipo === 'LIBERACAO_MANUTENCAO' ? hora : undefined,
+      hora,
       tipo,
       statusAnterior: anterior,
       statusNovo: edicao.status,
       motivo: entrouNaManutencao ? motivo : undefined,
+      // Só quando alguém assume a máquina: saída, liberação ou troca de motorista. Mudar canteiro não conta.
+      operador: assumiu ? nomeOperador : undefined,
       observacao: edicao.observacao.trim() || undefined,
       responsavel: usuario,
     }],
