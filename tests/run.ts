@@ -98,6 +98,7 @@ import './apiSecurity.test';
 import './serviceWorkerSecurity.test';
 import './apiRoutes.test';
 import './repoHygiene.test';
+import './rlsTabelasPonte.test';
 import './padraoAbas.test';
 import './dashboardGeneral.test';
 import './dashboardKpiCalculations.test';
