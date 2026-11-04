@@ -54,6 +54,8 @@ export function TimelineManutencao({ eventos, statusAtual }: Props) {
   useGSAP(
     () => {
       if (!containerRef.current || itemsRef.current.length === 0) return;
+      // Movimento reduzido: a linha do tempo aparece pronta, sem animar.
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
       // Fade in + slide para cada item da timeline
       itemsRef.current.forEach((item, index) => {

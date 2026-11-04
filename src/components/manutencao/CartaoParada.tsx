@@ -11,7 +11,7 @@ import type { ControleEquipamentoDiario, EventoControleEquipamentoDiario } from 
 import { LIMITE_HORAS_DIA, formatarMinutos, horaLocal, type ParadaDoDia } from '../../utils/horasParadasDoDia';
 import { rotuloDaSituacao, type TomSituacao } from '../../utils/conferenciaManutencao';
 import type { LinhaRelatorioManutencao } from '../../utils/relatorioManutencaoDia';
-import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, ROTULO } from '../cadastros/estilos';
+import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO } from '../cadastros/estilos';
 import { TimelineManutencao, type EventoTimeline } from './TimelineManutencao';
 
 const TOM_SELO: Record<TomSituacao, string> = {
@@ -159,7 +159,7 @@ export function CartaoParada({ registro, parada, ordemNumero, tipo, podeEditar, 
           </div>
         )}
         {podeEditar && parada.alemDoLimite && onVoltarRegra && (
-          <button type="button" onClick={onVoltarRegra} data-testid="parada-voltar-regra" className="min-h-11 w-full text-xs font-semibold text-slate-600 underline-offset-4 hover:text-[#176b4d] hover:underline">
+          <button type="button" onClick={onVoltarRegra} data-testid="parada-voltar-regra" className={`min-h-11 w-full rounded-lg text-xs font-semibold text-slate-600 underline-offset-4 hover:text-[#176b4d] hover:underline ${FOCO}`}>
             Voltar à regra das 10 h
           </button>
         )}
