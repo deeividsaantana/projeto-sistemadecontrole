@@ -34,7 +34,7 @@ test('os avisos de conferência ficam na faixa de filtros, não num bloco à par
 });
 
 test('rótulo de indicador do Quadro não quebra no meio da palavra', () => {
-  assert.match(ler('src/components/quadroFrota/QuadroFrota.tsx'), /truncate whitespace-nowrap/);
+  assert.match(ler('src/components/quadroFrota/QuadroFrota.tsx'), /quadro-indicador-\$\{item\.id\}[\s\S]*?whitespace-nowrap/);
 });
 
 test('a Situação do dia abre com os cartões de resumo e a tabela logo abaixo', () => {

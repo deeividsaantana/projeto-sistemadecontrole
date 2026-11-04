@@ -21,7 +21,7 @@ test('o arrastar desliga sozinho enquanto a seleção está ativa', () => {
 });
 
 test('busca do Quadro espera parar de digitar antes de refiltrar (não trava a tela)', () => {
-  assert.match(tab, /const \[buscaTexto, setBuscaTexto\] = useState\(''\)/);
+  assert.match(tab, /const \[buscaTexto, setBuscaTexto\] = useState\(buscaInicial\)/);
   assert.match(tab, /window\.setTimeout\(\(\) => setFiltros\(atual => \(atual\.busca === buscaTexto/);
   assert.match(tab, /value=\{buscaTexto\} onChange=\{event => setBuscaTexto\(event\.target\.value\)\}/);
 });

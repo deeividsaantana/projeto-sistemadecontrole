@@ -55,6 +55,10 @@ interface ManutencaoTabProps {
   onSave: (ordem: OrdemServico, isNew: boolean) => void;
   /** Sem ele, a tela não mostra Excluir: só o administrador exclui (A7). */
   onDelete?: (id: string) => void;
+  /** Busca já preenchida quando a tela abre vinda do Quadro. */
+  buscaInicial?: string;
+  /** Abre a máquina no Quadro de frotas. */
+  onVerNoQuadro?: (prefixo: string) => void;
 }
 
 const TIPOS: OrdemServico['tipo'][] = ['Corretiva', 'Preventiva', 'Preditiva', 'Revisão'];
@@ -98,10 +102,12 @@ export default function ManutencaoTab({
   historyLogs = [],
   onSave,
   onDelete,
+  buscaInicial = '',
+  onVerNoQuadro,
 }: ManutencaoTabProps) {
   const escopo = useRef<HTMLElement>(null);
   const [subtela, setSubtela] = useState<Subtela>('ordens');
-  const [busca, setBusca] = useState('');
+  const [busca, setBusca] = useState(buscaInicial);
   const [filtroStatus, setFiltroStatus] = useState<(typeof STATUS_FILTRO)[number]>('Em aberto');
   const [filtroFamilia, setFiltroFamilia] = useState<EquipmentFamily | 'todas'>('todas');
   const [filtroMotivo, setFiltroMotivo] = useState('todos');
@@ -429,6 +435,7 @@ export default function ManutencaoTab({
     <TelaCheia ref={escopo} id="manutencao-tab" rotulo="Manutenção"
       longa={subtela !== 'ordens'} idAbaAtiva={idDaAba('manutencao', subtela)} idDados="manutencao-dados" chaveRolagem={subtela}
       cabecalho={<PageHeader
+       
         eyebrow="Frota"
         title="Manutenção"
         abas={<AbasDaTela<Subtela> id="manutencao" rotulo="Subtelas da manutenção" abas={subtelas} ativa={subtela} onTrocar={setSubtela} idPainel="manutencao-dados" testId="manutencao-aba" />}
@@ -563,13 +570,11 @@ export default function ManutencaoTab({
 
       {subtela === 'fila' && (
         <section aria-label="Fila operacional de manutenção">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <h2 className="text-sm font-black text-slate-900">Fila de oficina</h2>
-              <p className="text-sm text-slate-600">OS em curso, ordenadas pelo tempo parado do equipamento.</p>
-            </div>
-            <span className="shrink-0 text-sm font-bold tabular-nums text-slate-600">{filaOperacional.length} em curso</span>
-          </div>
+          <h2 className="sr-only">Fila de oficina</h2>
+          <p className="flex items-baseline justify-between gap-4 text-sm text-slate-600">
+            <span>OS em curso, ordenadas pelo tempo parado do equipamento.</span>
+            <span className="shrink-0 font-bold tabular-nums">{filaOperacional.length} em curso</span>
+          </p>
           {filaOperacional.length === 0
             ? <EmptyState icon={Wrench} title="Nenhuma OS em curso" description="Com os filtros de agora, nenhum equipamento está parado na oficina." />
             : (
@@ -602,6 +607,7 @@ export default function ManutencaoTab({
                   <footer className="mt-3 flex items-center justify-between gap-2">
                     <span className="font-mono text-xs font-bold text-[#5b6870]">{item.numero}</span>
                     <span className="flex gap-1.5">
+                      {onVerNoQuadro && <button type="button" onClick={() => onVerNoQuadro(item.prefixo)} aria-label={`Ver ${item.prefixo} no quadro`} className="min-h-10 rounded-md border border-slate-200 px-2.5 text-sm font-bold text-slate-600 transition hover:border-emerald-500 hover:text-emerald-800">Ver no quadro</button>}
                       {podeEditar && proximo && ordem && <button type="button" onClick={() => avancar(ordem)} className="min-h-10 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 text-sm font-bold text-emerald-800 transition hover:border-emerald-500">{proximo}</button>}
                       {podeEditar && ordem && <button type="button" aria-label={`Editar ${item.numero}`} onClick={() => abrirEdicao(ordem)} className="min-h-10 rounded-md border border-slate-200 px-2.5 text-sm font-bold text-slate-600 transition hover:border-emerald-500 hover:text-emerald-800">Editar</button>}
                     </span>
@@ -615,11 +621,8 @@ export default function ManutencaoTab({
       )}
 
       {subtela === 'motivos' && (
-        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-labelledby="manutencao-motivos-titulo">
-          <header className="border-b border-slate-200 px-4 py-3 sm:px-5">
-            <h2 id="manutencao-motivos-titulo" className="text-sm font-black text-slate-900">Motivos que mais param a frota</h2>
-            <p className="text-sm text-slate-600">Horas somadas por motivo no recorte atual.</p>
-          </header>
+        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-label="Motivos que mais param a frota">
+          <p className="border-b border-slate-200 px-4 py-2.5 text-sm text-slate-600 sm:px-5">Horas somadas por motivo no recorte atual.</p>
           {motivosRanking.length === 0
             ? <EmptyState icon={BarChart3} title="Nenhum motivo no recorte" description="Ajuste os filtros para ver as paradas." />
             : (
@@ -647,13 +650,8 @@ export default function ManutencaoTab({
       {/* Histórico: o que já aconteceu com as ordens, incluindo as abertas
           automaticamente pelo controle diário da frota. */}
       {subtela === 'historico' && (
-        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-labelledby="manutencao-historico-titulo">
-          <header className="border-b border-slate-200 px-4 py-3">
-            <h2 id="manutencao-historico-titulo" className="text-sm font-black text-slate-900">Histórico de manutenção</h2>
-            <p className="text-sm text-slate-600">
-              Aberturas, edições e liberações — inclusive as OS abertas pelo Controle de Frotas.
-            </p>
-          </header>
+        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-label="Histórico de manutenção">
+          <p className="border-b border-slate-200 px-4 py-2.5 text-sm text-slate-600">Aberturas, edições e liberações, inclusive as OS abertas pelo Controle de Frotas.</p>
 
           {historico.length === 0 ? (
             <EmptyState

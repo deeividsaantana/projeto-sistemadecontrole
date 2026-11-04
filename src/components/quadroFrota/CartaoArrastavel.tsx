@@ -41,7 +41,7 @@ export function CartaoArrastavel({ cartao, podeArrastar, onAbrir, modoSelecao, s
           aria-pressed={selecionado}
           aria-label={`Selecionar ${cartao.prefixo}`}
           data-testid={`quadro-selecionar-${cartao.prefixo}`}
-          className={`absolute right-1 top-1 z-10 grid size-11 place-items-center rounded-full lg:size-7 ${FOCO}`}
+          className={`absolute right-1 top-1 z-[1] grid size-11 place-items-center rounded-full lg:size-7 ${FOCO}`}
         >
           <span className={`grid size-6 place-items-center rounded-full ring-2 ring-white transition ${selecionado ? 'bg-[#176b4d] text-white' : 'bg-white/90 text-slate-400'}`}>
             {selecionado && <Check className="size-3.5" aria-hidden="true" />}
@@ -70,7 +70,7 @@ export function CartaoArrastavel({ cartao, podeArrastar, onAbrir, modoSelecao, s
           aria-label={`Arrastar ${cartao.prefixo} para outro canteiro`}
           title="Segure e arraste para outro canteiro"
           data-testid={`quadro-alca-${cartao.prefixo}`}
-          className={`absolute right-1 top-1 z-10 grid size-11 cursor-grab touch-none place-items-center rounded-lg bg-white/85 text-slate-500 ring-1 ring-slate-200 transition hover:bg-white hover:text-[#176b4d] hover:ring-emerald-300 active:cursor-grabbing lg:size-7 ${FOCO}`}
+          className={`absolute right-1 top-1 z-[1] grid size-11 cursor-grab touch-none place-items-center rounded-lg bg-white/85 text-slate-500 ring-1 ring-slate-200 transition hover:bg-white hover:text-[#176b4d] hover:ring-emerald-300 active:cursor-grabbing lg:size-7 ${FOCO}`}
         >
           <GripVertical className="size-4" aria-hidden="true" />
         </button>

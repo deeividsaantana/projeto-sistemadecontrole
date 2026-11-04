@@ -13,13 +13,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { AlertTriangle, CheckCircle2, ChevronDown, Fuel, Gauge, Keyboard, LayoutGrid, ListChecks, ListFilter, MapPin, PauseCircle, PlayCircle, Search, SlidersHorizontal, Trash2, Truck, UserCheck, UserX, Wrench, X, type LucideIcon } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Fuel, Keyboard, LayoutGrid, ListChecks, ListFilter, MapPin, Search, SlidersHorizontal, Trash2, Truck, Wrench, X } from 'lucide-react';
 import type { Abastecimento, ControleEquipamentoDiario, Equipamento, FrenteServico, Funcionario, GrupoEquipe } from '../../types';
-import { CountUp, Modal } from '../../shared/ui';
+import { Modal } from '../../shared/ui';
 import {
   CANTEIROS,
   FILTROS_VAZIOS,
-  ROTULO_GRUPO,
   ROTULO_ORDEM,
   SEM_CANTEIRO,
   agruparPorCanteiro,
@@ -75,6 +74,10 @@ interface Props {
   dia: string;
   /** Volta para a Situação do dia do Controle de Frotas. */
   onAbrirSituacao: () => void;
+  /** Busca já preenchida quando a tela abre vinda de outra (ex.: Manutenção). */
+  buscaInicial?: string;
+  /** Abre as ordens de serviço da máquina na Manutenção. */
+  onVerOrdens?: (prefixo: string) => void;
 }
 
 const horaAgora = () => new Date().toTimeString().slice(0, 5);
@@ -112,27 +115,20 @@ interface Indicador {
   id: string;
   titulo: string;
   valor: number;
-  sufixo?: string;
-  /** Mostrado no lugar do número quando não há dado ("—"), nunca 0. */
-  texto?: string;
-  detalhe: string;
-  Icone: LucideIcon;
-  tom: string;
   filtro?: Partial<FiltrosQuadro>;
-  aoClicar?: () => void;
 }
 
-export default function QuadroFrota({ equipamentos, registros, gruposEquipe, abastecimentos, canteiros = CANTEIROS, frentes, funcionarios, operationalDrivers, podeEditar, usuario, onSave, onSaveMany, onDeleteMany, podeRemover = false, onRemoverEquipamentos, onNavigate, podeAbrir = () => true, dia, onAbrirSituacao }: Props) {
+export default function QuadroFrota({ equipamentos, registros, gruposEquipe, abastecimentos, canteiros = CANTEIROS, frentes, funcionarios, operationalDrivers, podeEditar, usuario, onSave, onSaveMany, onDeleteMany, podeRemover = false, onRemoverEquipamentos, onNavigate, podeAbrir = () => true, dia, onAbrirSituacao, buscaInicial = '', onVerOrdens }: Props) {
   const escopo = useRef<HTMLDivElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
   // Mesma lista de motoristas e operadores do Controle de Frotas, para o operador
   // sugerido aqui ser sempre o mesmo cadastro, sem duplicar em colaboradores.
   const motoristas = useMemo(() => operationalDrivers || funcionarios || OPERATIONAL_DRIVERS, [operationalDrivers, funcionarios]);
   const [limites, setLimites] = useState<Readonly<Record<string, number>>>({});
-  const [filtros, setFiltros] = useState<FiltrosQuadro>(FILTROS_VAZIOS);
+  const [filtros, setFiltros] = useState<FiltrosQuadro>({ ...FILTROS_VAZIOS, busca: buscaInicial });
   // A caixa de busca mostra o texto na hora; o filtro (que refiltra e reanima
   // os cartões) só atualiza um instante depois, pra digitar rápido não travar.
-  const [buscaTexto, setBuscaTexto] = useState('');
+  const [buscaTexto, setBuscaTexto] = useState(buscaInicial);
   const [ordem, setOrdem] = useState<Ordem>('prefixo');
   const [maisFiltros, setMaisFiltros] = useState(false);
   const [fechados, setFechados] = useState<ReadonlySet<string>>(() => new Set());
@@ -199,15 +195,11 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
   const etiquetas = etiquetasDosFiltros(filtros);
 
   const lista: Indicador[] = [
-    { id: 'total', titulo: 'Total', valor: indicadores.total, detalhe: 'máquinas', Icone: Truck, tom: 'bg-slate-100 text-slate-700', filtro: FILTROS_VAZIOS },
-    { id: 'operando', titulo: 'Em operação', valor: indicadores.operando, detalhe: 'trabalhando', Icone: PlayCircle, tom: 'bg-emerald-50 text-[#176b4d]', filtro: { grupo: 'operando' } },
-    { id: 'manutencao', titulo: 'Manutenção', valor: indicadores.manutencao, detalhe: 'em reparo', Icone: Wrench, tom: 'bg-rose-50 text-rose-700', filtro: { grupo: 'manutencao' } },
-    { id: 'parado', titulo: 'À disposição', valor: indicadores.parado, detalhe: 'sem serviço', Icone: PauseCircle, tom: 'bg-amber-50 text-amber-700', filtro: { grupo: 'parado' } },
-    { id: 'sem-lancamento', titulo: 'Sem lançamento', valor: indicadores.semLancamento, detalhe: 'falta atualizar', Icone: AlertTriangle, tom: 'bg-slate-100 text-slate-600', filtro: { grupo: 'sem-lancamento' } },
-    { id: 'disponibilidade', titulo: 'Disponível', valor: indicadores.disponibilidade ?? 0, sufixo: '%', texto: indicadores.disponibilidade === null ? '—' : undefined, detalhe: indicadores.disponibilidade === null ? 'nada lançado no dia' : 'fora da manutenção', Icone: Gauge, tom: 'bg-sky-50 text-sky-700' },
-    { id: 'com-operador', titulo: 'Com operador', valor: indicadores.comOperador, detalhe: 'operadores no dia', Icone: UserCheck, tom: 'bg-emerald-50 text-[#176b4d]', filtro: { operador: 'com' } },
-    { id: 'sem-operador', titulo: 'Sem operador', valor: indicadores.semOperador, detalhe: 'aguardando', Icone: UserX, tom: 'bg-orange-50 text-[#c2410c]', filtro: { operador: 'sem' } },
-    { id: 'abasteceu-sem-lancar', titulo: 'Abastecidas', valor: abastecidasSemLancar.length, detalhe: 'sem lançamento no dia', Icone: Fuel, tom: 'bg-amber-50 text-amber-700', aoClicar: abastecidasSemLancar.length && podeAbrir('lancamentos') ? () => onNavigate('lancamentos') : undefined },
+    { id: 'total', titulo: 'Total', valor: indicadores.total, filtro: FILTROS_VAZIOS },
+    { id: 'operando', titulo: 'Em operação', valor: indicadores.operando, filtro: { grupo: 'operando' } },
+    { id: 'manutencao', titulo: 'Manutenção', valor: indicadores.manutencao, filtro: { grupo: 'manutencao' } },
+    { id: 'parado', titulo: 'À disposição', valor: indicadores.parado, filtro: { grupo: 'parado' } },
+    { id: 'sem-lancamento', titulo: 'Sem lançamento', valor: indicadores.semLancamento, filtro: { grupo: 'sem-lancamento' } },
   ];
 
   const mudar = (parcial: Partial<FiltrosQuadro>) => setFiltros(atual => ({ ...atual, ...parcial }));
@@ -374,82 +366,69 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
 
   return (
     <div ref={escopo} id="quadro-frota-tab" data-testid="quadro-frota-tab" className="space-y-4">
-      {podeEditar && (
-        <div data-quadro-reveal className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={atualizarPendentes} disabled={pendentes.length === 0} className={`${BOTAO_PRIMARIO} w-full px-5 sm:w-auto`} data-testid="quadro-acao-principal">
-            {pendentes.length === 0 ? <CheckCircle2 className="size-5" aria-hidden="true" /> : <Truck className="size-5" aria-hidden="true" />}
-            {pendentes.length === 0 ? 'Tudo lançado no dia' : `Atualizar ${pendentes.length} sem lançamento`}
-          </button>
-          <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} max-lg:hidden`} aria-label="Atalhos do quadro" data-testid="quadro-atalhos">
-            <Keyboard className="size-4" aria-hidden="true" />
-            <kbd className="text-xs">?</kbd>
-          </button>
-        </div>
-      )}
-
-      <section aria-label="Resumo da frota no dia" className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-9">
+      <section aria-label="Resumo da frota no dia" data-quadro-reveal className="flex flex-wrap items-center gap-2">
         {lista.map(item => {
-          const ativo = item.id !== 'total' && item.filtro && Object.entries(item.filtro).every(([chave, valor]) => filtros[chave as keyof FiltrosQuadro] === valor);
-          const conteudo = (
-            <>
-              <span className="flex items-start justify-between gap-1.5">
-                <span className="min-w-0 truncate whitespace-nowrap text-xs font-bold leading-tight text-slate-500" title={item.titulo}>{item.titulo}</span>
-                <span className={`grid size-6 shrink-0 place-items-center rounded-full max-2xl:hidden ${item.tom}`}><item.Icone className="size-3.5" aria-hidden="true" /></span>
-              </span>
-              {item.texto !== undefined
-                ? <span className="mt-0.5 block text-xl font-bold tabular-nums text-slate-900">{item.texto}</span>
-                : <CountUp value={item.valor} suffix={item.sufixo} className="mt-0.5 block text-xl font-bold tabular-nums text-slate-900" />}
-              <span className="block truncate text-xs text-slate-500">{item.detalhe}</span>
-            </>
-          );
-          const classe = `${CARTAO} flex min-h-[4.5rem] flex-col p-2 text-left transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${ativo ? 'border-[#176b4d] ring-2 ring-[#176b4d]/15' : ''}`;
-          return item.filtro ? (
-            <button key={item.id} type="button" data-quadro-reveal data-testid={`quadro-indicador-${item.id}`} aria-pressed={ativo || undefined} onClick={() => { if (item.id === 'total') { limparFiltros(); return; } setFiltros(ativo ? { ...filtros, ...Object.fromEntries(Object.keys(item.filtro!).map(chave => [chave, ''])) } : { ...filtros, ...item.filtro }); }} className={`${classe} hover:-translate-y-0.5 hover:border-emerald-300 active:scale-[0.98] ${FOCO}`}>
-              {conteudo}
+          const ativo = item.id === 'total' ? !filtros.grupo : filtros.grupo === item.filtro?.grupo;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              data-testid={`quadro-indicador-${item.id}`}
+              aria-pressed={ativo}
+              onClick={() => { if (item.id === 'total') { limparFiltros(); return; } mudar({ grupo: ativo ? '' : (item.filtro?.grupo ?? '') }); }}
+              className={`inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-bold transition duration-300 active:scale-[0.97] lg:min-h-10 ${ativo ? 'bg-[#176b4d] text-white' : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:ring-emerald-300'} ${FOCO}`}
+            >
+              {item.id !== 'total' && <span className={`size-2 rounded-full ${item.id === 'operando' ? 'bg-emerald-500' : item.id === 'manutencao' ? 'bg-rose-500' : item.id === 'parado' ? 'bg-amber-400' : 'bg-slate-400'}`} aria-hidden="true" />}
+              {item.id === 'total' ? 'Todas' : item.titulo}
+              <span className={`rounded-full px-1.5 font-mono text-xs ${ativo ? 'bg-white/15' : 'bg-slate-100 text-slate-500'}`}>{item.valor}</span>
             </button>
-          ) : item.aoClicar ? (
-            <button key={item.id} type="button" data-quadro-reveal data-testid={`quadro-indicador-${item.id}`} onClick={item.aoClicar} className={`${classe} hover:-translate-y-0.5 hover:border-emerald-300 active:scale-[0.98] ${FOCO}`}>
-              {conteudo}
-            </button>
-          ) : (
-            <div key={item.id} data-quadro-reveal data-testid={`quadro-indicador-${item.id}`} className={classe}>{conteudo}</div>
           );
         })}
+        {abastecidasSemLancar.length > 0 && podeAbrir('lancamentos') && (
+          <button type="button" data-testid="quadro-indicador-abasteceu-sem-lancar" onClick={() => onNavigate('lancamentos')} className={`inline-flex min-h-11 items-center gap-2 rounded-full bg-amber-50 px-4 text-sm font-bold text-amber-800 ring-1 ring-amber-200 lg:min-h-10 ${FOCO}`}>
+            <Fuel className="size-4" aria-hidden="true" />
+            {abastecidasSemLancar.length} abastecida(s) sem lançamento
+          </button>
+        )}
+        <span className="ml-auto text-xs font-semibold text-slate-500">{indicadores.disponibilidade === null ? 'Nada lançado no dia' : `Disponível ${indicadores.disponibilidade}%`}</span>
       </section>
 
-      <section aria-label="Canteiros e filtros" data-quadro-reveal className={`${CARTAO} space-y-3 p-3 lg:sticky lg:top-0 lg:z-10`}>
-        {podeEditar && (
-          <div role="group" aria-label="Como ver as máquinas" className="grid grid-cols-2 gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200 sm:inline-grid" data-testid="quadro-vista">
-            {([['quadro', 'Quadro', LayoutGrid], ['lancar', 'Lançar', ListChecks]] as const).map(([valor, rotulo, Icone]) => (
-              <button
-                key={valor}
-                type="button"
-                aria-pressed={vista === valor}
-                onClick={() => trocarVista(valor)}
-                data-testid={`quadro-vista-${valor}`}
-                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${vista === valor ? 'bg-white text-[#176b4d] shadow-[0_6px_16px_-10px_rgba(15,40,31,0.45)] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}
-              >
-                <Icone className="size-4" aria-hidden="true" />
-                {rotulo}
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Canteiro">
+      <section aria-label="Canteiros e filtros" data-quadro-reveal className={`${CARTAO} space-y-3 p-3 lg:sticky lg:top-0 lg:z-20`}>
+        {(canteiros.length > 1 || (contagemCanteiro.get(SEM_CANTEIRO) || 0) > 0) && <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Canteiro">
           {chipCanteiro('', 'Todos', cartoes.length)}
           {canteiros.map(nome => chipCanteiro(nome, nome, contagemCanteiro.get(nome) || 0))}
           {(contagemCanteiro.get(SEM_CANTEIRO) || 0) > 0 && chipCanteiro(SEM_CANTEIRO, SEM_CANTEIRO, contagemCanteiro.get(SEM_CANTEIRO) || 0)}
-        </div>
+        </div>}
         <div className="flex flex-wrap items-center gap-2">
+        {podeEditar && (
+            <div role="group" aria-label="Como ver as máquinas" className="grid flex-none grid-cols-2 gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200" data-testid="quadro-vista">
+              {([['quadro', 'Quadro', LayoutGrid], ['lancar', 'Lançar', ListChecks]] as const).map(([valor, rotulo, Icone]) => (
+                <button
+                  key={valor}
+                  type="button"
+                  aria-pressed={vista === valor}
+                  onClick={() => trocarVista(valor)}
+                  data-testid={`quadro-vista-${valor}`}
+                  className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${vista === valor ? 'bg-white text-[#176b4d] shadow-[0_6px_16px_-10px_rgba(15,40,31,0.45)] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}
+                >
+                  <Icone className="size-4" aria-hidden="true" />
+                  {rotulo}
+                </button>
+              ))}
+            </div>
+          )}
+          {podeEditar && pendentes.length > 0 && (
+            <button type="button" onClick={atualizarPendentes} className={`${BOTAO_PRIMARIO} flex-none px-4`} data-testid="quadro-acao-principal">
+              <Truck className="size-5" aria-hidden="true" />
+              Atualizar {pendentes.length} sem lançamento
+            </button>
+          )}
+          {podeEditar && <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} flex-none max-lg:hidden`} aria-label="Atalhos do quadro" data-testid="quadro-atalhos"><Keyboard className="size-4" aria-hidden="true" /><kbd className="text-xs">?</kbd></button>}
           <label className="relative min-w-0 flex-[1_1_14rem]">
             <span className="sr-only">Buscar prefixo, modelo ou operador</span>
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
             <input ref={buscaRef} value={buscaTexto} onChange={event => setBuscaTexto(event.target.value)} placeholder="Buscar prefixo, modelo ou operador" className={`${CAMPO} pl-9`} data-testid="quadro-busca" />
           </label>
-          <select value={filtros.grupo} onChange={event => mudar({ grupo: event.target.value as GrupoStatus | '' })} aria-label="Situação" className={`${CAMPO} min-w-0 flex-[1_1_9rem] sm:w-auto`}>
-            <option value="">Todas as situações</option>
-            {(Object.keys(ROTULO_GRUPO) as GrupoStatus[]).map(grupo => <option key={grupo} value={grupo}>{ROTULO_GRUPO[grupo]}</option>)}
-          </select>
           <select value={filtros.tipo} onChange={event => mudar({ tipo: event.target.value })} aria-label="Tipo" className={`${CAMPO} min-w-0 flex-[1_1_9rem] sm:w-auto`}>
             <option value="">Todos os tipos</option>
             {opcoesTipo.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
@@ -593,7 +572,7 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
               const semCanteiro = grupo.canteiro === SEM_CANTEIRO;
               return (
                 <section key={grupo.canteiro} data-quadro-reveal aria-label={`Canteiro ${grupo.canteiro}`} data-testid="quadro-coluna" className="overflow-hidden rounded-[1.25rem] bg-[#f7f8f6] p-1.5 ring-1 ring-slate-200">
-                  <header className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[0.9rem] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(15,40,31,0.05)]">
+                  <header className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[0.9rem] bg-white px-3 py-2 shadow-[0_1px_2px_rgba(15,40,31,0.05)]">
                     <span className={`size-2.5 shrink-0 rounded-full ${semCanteiro ? 'bg-slate-300' : 'bg-[#176b4d]'}`} aria-hidden="true" />
                     <h2 className="min-w-0 truncate text-base font-bold uppercase tracking-wide text-slate-900">{grupo.canteiro}</h2>
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-700">{grupo.cartoes.length}</span>
@@ -692,6 +671,7 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
         onFechar={() => setAbertoId(null)}
         onSalvar={salvar}
         onAbrirControle={() => { setAbertoId(null); onAbrirSituacao(); }}
+        onVerOrdens={onVerOrdens && aberto ? () => { setAbertoId(null); onVerOrdens(aberto.prefixo); } : undefined}
         podeRemover={podeRemover && Boolean(onRemoverEquipamentos)}
         onRemover={aberto ? () => setRemocaoPendente([aberto]) : undefined}
       />
