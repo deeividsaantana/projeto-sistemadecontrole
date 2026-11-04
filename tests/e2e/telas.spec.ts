@@ -546,3 +546,21 @@ test('painel de presença: quem falta sempre leva aos registros da pessoa', asyn
   await expect(cartao).toBeVisible();
   await expect(cartao.getByRole('combobox')).toBeVisible();
 });
+
+test('Quadro e Manutenção se abrem um no outro já buscando o prefixo da máquina', async ({ page }) => {
+  await page.goto('/?screen=manutencao&shell=1');
+  await page.getByRole('tab', { name: /^(Fila de oficina|Fila)/ }).click();
+  await page.getByRole('button', { name: /^Ver .+ no quadro$/ }).first().click();
+  await expect(page).toHaveURL(/screen=frotas.*busca=/);
+  await expect(page.getByRole('tab', { name: /^Quadro/, selected: true })).toBeVisible();
+  const prefixo = new URL(page.url()).searchParams.get('busca') || '';
+  await expect(page.getByTestId('quadro-busca')).toHaveValue(prefixo);
+
+  await page.goto('/?screen=frotas&shell=1');
+  await page.getByRole('tab', { name: /^Quadro/ }).click();
+  await page.getByTestId('quadro-indicador-manutencao').click();
+  await page.getByTestId('quadro-arrastar-CB1012').getByRole('button').first().click();
+  await page.getByTestId('quadro-ver-ordens').click();
+  await expect(page).toHaveURL(/screen=manutencao.*busca=CB1012/);
+  await expect(page.getByPlaceholder('Número, prefixo, problema, responsável...')).toHaveValue('CB1012');
+});
