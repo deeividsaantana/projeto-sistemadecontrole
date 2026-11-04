@@ -546,3 +546,23 @@ test('painel de presença: quem falta sempre leva aos registros da pessoa', asyn
   await expect(cartao).toBeVisible();
   await expect(cartao.getByRole('combobox')).toBeVisible();
 });
+
+test('manutenção: "Continuar além de 10 h" tira o teto do card e registra quem decidiu', async ({ page }) => {
+  await page.goto('/?screen=manutencao&shell=1');
+  // Preso pelo prefixo: depois do clique o botão some e não serve para achar o card.
+  const cartao = page.getByTestId('cartao-parada').filter({ has: page.getByRole('heading', { name: 'CB770' }) });
+  await cartao.getByTestId('parada-continuar-alem').click();
+  // Pede confirmação antes de gravar: cancelar não muda nada.
+  await expect(cartao.getByText('A OS não fecha sozinha')).toBeVisible();
+  await cartao.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(cartao.getByTestId('parada-alem-aviso')).toHaveCount(0);
+  await cartao.getByTestId('parada-continuar-alem').click();
+  await cartao.getByTestId('parada-continuar-alem-confirmar').click();
+  await expect(cartao.getByTestId('parada-alem-aviso')).toContainText('Segue contando até a liberação, por decisão de');
+  await expect(cartao).toContainText('sem teto');
+  await expect(cartao.getByTestId('parada-continuar-alem')).toHaveCount(0);
+  // E dá para voltar atrás.
+  await cartao.getByTestId('parada-voltar-regra').click();
+  await expect(cartao.getByTestId('parada-alem-aviso')).toHaveCount(0);
+  await expect(cartao).toContainText('/ 10 h');
+});
