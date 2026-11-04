@@ -4,6 +4,9 @@ import { isOrdemEncerrada } from './manutencao';
 
 export const OBSERVACAO_LIMITE = 'Encerrada pelo limite de 10 h paradas no dia.';
 export const OBSERVACAO_CONFERENCIA = 'Concluída na conferência.';
+export const OBSERVACAO_ALEM_DO_LIMITE = 'Reaberta: segue além de 10 h; fecha quando a oficina concluir.';
+
+const EM_MANUTENCAO = new Set(['Em manutenção', 'Aguardando manutenção']);
 
 /**
  * Primeiro dia em que a regra das 10 h fecha OS e cria continuidade sozinha.
@@ -11,6 +14,14 @@ export const OBSERVACAO_CONFERENCIA = 'Concluída na conferência.';
  * pelo Deivid; depois da aprovação, baixar esta data num commit só dela.
  */
 export const LIMITE_10H_DESDE = '2026-10-29';
+
+/**
+ * Primeiro dia em que o equipamento em manutenção sem liberação passa sozinho
+ * para o dia seguinte, sem decisão da conferência. Os dias antes dele só
+ * continuam com "Continua amanhã": a regra nova não volta no tempo criando um
+ * lançamento por dia desde LIMITE_10H_DESDE.
+ */
+export const CONTINUIDADE_AUTOMATICA_DESDE = '2026-11-04';
 
 const dataLocal = (momento: Date): string => new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
@@ -83,6 +94,19 @@ const decidir = (
 export const confirmarDezHoras = (registro: ControleEquipamentoDiario, responsavel: string, agoraIso: string) =>
   decidir(registro, 'CONFIRMADO_10H', responsavel, agoraIso);
 
+/** Segue contando além de 10 h: o dia fica sem teto e a OS não fecha sozinha até a liberação. */
+export const continuarAlemDoLimite = (registro: ControleEquipamentoDiario, responsavel: string, agoraIso: string): ControleEquipamentoDiario => ({
+  ...registro,
+  continuaAlemDoLimite: { decididoEm: agoraIso, decididoPor: responsavel },
+  atualizadoEm: agoraIso,
+});
+
+/** Desfaz "continuar além de 10 h": o teto volta e a OS pode fechar de novo no limite. */
+export const voltarARegraDasDezHoras = (registro: ControleEquipamentoDiario, _responsavel: string, agoraIso: string): ControleEquipamentoDiario => {
+  const { continuaAlemDoLimite: _decisao, ...resto } = registro;
+  return { ...resto, atualizadoEm: agoraIso };
+};
+
 export const continuaParadoAmanha = (registro: ControleEquipamentoDiario, responsavel: string, agoraIso: string) =>
   decidir(registro, 'CONTINUA_AMANHA', responsavel, agoraIso);
 
@@ -123,7 +147,7 @@ export const informarLiberacaoReal = (
   return { ok: true, registro: candidato };
 };
 
-/** Horas da OS: soma dos dias dela, cada um já limitado a 10 h; dia inconsistente não soma. */
+/** Horas da OS: soma dos dias dela, cada um limitado a 10 h salvo quem segue além; dia inconsistente não soma. */
 export const horasDaOrdem = (
   ordem: Pick<OrdemServico, 'id'>,
   registros: readonly ControleEquipamentoDiario[],
@@ -143,9 +167,10 @@ export const horasMedidasDaOrdem = (
 ): number | undefined => (registros.some(item => item.ordemServicoId === ordem.id) ? horasDaOrdem(ordem, registros, agora) : undefined);
 
 /**
- * Dias decididos como "continua parado amanhã" cujo dia seguinte já começou
- * e ainda não tem lançamento do equipamento: quem chama cria a entrada das
- * 07:00, e a OS nova abre pelo caminho de sempre.
+ * Dias que terminaram com o equipamento em manutenção (ou decididos como
+ * "continua parado amanhã") cujo dia seguinte já começou e ainda não tem
+ * lançamento do equipamento: quem chama cria a entrada das 07:00. Fica de
+ * fora só quem a conferência fechou ("Confirmado 10 h" ou "Liberação informada").
  */
 export const pendentesDeContinuidade = (
   registros: readonly ControleEquipamentoDiario[],
@@ -154,7 +179,9 @@ export const pendentesDeContinuidade = (
   const hoje = dataLocal(agora);
   const ativos = registros.filter(item => !(item as { excluido?: unknown }).excluido);
   return ativos.filter(item => {
-    if (item.conferenciaManutencao?.decisao !== 'CONTINUA_AMANHA' || item.data < LIMITE_10H_DESDE) return false;
+    if (item.data < LIMITE_10H_DESDE) return false;
+    const decisao = item.conferenciaManutencao?.decisao;
+    if (decisao !== 'CONTINUA_AMANHA' && (decisao || !EM_MANUTENCAO.has(item.status) || item.data < CONTINUIDADE_AUTOMATICA_DESDE)) return false;
     const seguinte = somarDias(item.data, 1);
     // Lançamento excluído do dia seguinte conta como existente: a continuidade nunca ressuscita o que alguém apagou.
     return seguinte <= hoje && !registros.some(outro => outro.equipamentoId === item.equipamentoId && outro.data === seguinte);
@@ -174,6 +201,17 @@ export const recalcularOrdemDoLimite = (
   if (!(ordem.observacao || '').includes(OBSERVACAO_LIMITE)) return null;
   const horasParadas = horasDaOrdem(ordem, registros, agora);
   const doDia = registros.find(item => item.ordemServicoId === ordem.id && item.data === ordem.dataConclusao);
+  // Decidiram continuar além de 10 h: a OS que fechou no limite volta a ficar aberta até a liberação.
+  if (doDia?.continuaAlemDoLimite && isOrdemEncerrada(ordem.status)) {
+    return {
+      ...ordem,
+      status: 'Em Andamento',
+      dataConclusao: undefined,
+      horaConclusao: undefined,
+      horasParadas,
+      observacao: ordem.observacao.replace(OBSERVACAO_LIMITE, OBSERVACAO_ALEM_DO_LIMITE),
+    };
+  }
   const parada = doDia ? horasParadasDoDia(doDia, agora, { vemParadoDeOntem: vemParadoDeOntem(registros, doDia) }) : undefined;
   const saiuDoLimite = parada && parada.situacao !== 'LIMITE_ATINGIDO' && parada.situacao !== 'INCONSISTENTE';
   const fim = saiuDoLimite ? parada.periodos.at(-1)?.fim : null;
@@ -187,4 +225,45 @@ export const recalcularOrdemDoLimite = (
   };
   const mudou = proxima.horasParadas !== ordem.horasParadas || proxima.horaConclusao !== ordem.horaConclusao || proxima.observacao !== ordem.observacao;
   return mudou ? proxima : null;
+};
+
+/**
+ * OS que fechou no limite num dia em que decidiram seguir além de 10 h volta a
+ * ficar aberta. Roda junto do fechamento automático: se outro aparelho fechou a
+ * OS antes de a decisão chegar, ela se corrige sozinha.
+ */
+export const reabrirOrdensAlemDoLimite = (
+  registros: readonly ControleEquipamentoDiario[],
+  ordens: readonly OrdemServico[],
+  agora: Date,
+): { ordens: OrdemServico[]; reabertas: OrdemServico[] } => {
+  const reabertas: OrdemServico[] = [];
+  const proximas = ordens.map(ordem => {
+    if (!isOrdemEncerrada(ordem.status) || !(ordem.observacao || '').includes(OBSERVACAO_LIMITE)) return ordem;
+    const doDia = registros.find(item => item.ordemServicoId === ordem.id && item.data === ordem.dataConclusao);
+    if (!doDia?.continuaAlemDoLimite) return ordem;
+    const reaberta = recalcularOrdemDoLimite(ordem, registros, agora);
+    if (!reaberta) return ordem;
+    reabertas.push(reaberta);
+    return reaberta;
+  });
+  return { ordens: reabertas.length ? proximas : [...ordens], reabertas };
+};
+
+/**
+ * Dia seguinte aberto sozinho pela continuidade e ainda intocado (só a entrada
+ * das 07:00). Quando a conferência informa a liberação real ou confirma 10 h
+ * depois que a continuidade já rodou, esse lançamento deve ser desfeito.
+ */
+export const continuacaoParaDesfazer = (
+  registros: readonly ControleEquipamentoDiario[],
+  decidido: ControleEquipamentoDiario,
+): ControleEquipamentoDiario | undefined => {
+  const seguinte = somarDias(decidido.data, 1);
+  return registros.find(item => item.continuacaoDe === decidido.id
+    && item.equipamentoId === decidido.equipamentoId
+    && item.data === seguinte
+    && !(item as { excluido?: unknown }).excluido
+    && (item.eventos?.length ?? 0) <= 1
+    && item.atualizadoEm === item.criadoEm);
 };

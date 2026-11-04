@@ -19,3 +19,7 @@ test('Topo do Quadro: alça de arrastar não passa por cima da faixa de filtros'
   assert.match(ler('src/components/quadroFrota/QuadroFrota.tsx'), /lg:sticky lg:top-0 lg:z-20/);
   assert.doesNotMatch(ler('src/components/quadroFrota/CartaoArrastavel.tsx'), /absolute right-1 top-1 z-10/);
 });
+
+test('Manutenção aberta pelo Quadro com prefixo vai direto às ordens, onde fica a busca', () => {
+  assert.match(ler('src/components/ManutencaoTab.tsx'), /useState<Subtela>\(buscaInicial \? 'ordens' : 'hoje'\)/);
+});

@@ -1319,6 +1319,8 @@ export interface EventoControleEquipamentoDiario {
   responsavel?: string;
   /** Id do evento que corrigiu este na conferência. Fica no histórico, fora da conta. */
   substituidoPor?: string;
+  /** Motorista que assumiu a máquina na saída ou na liberação. */
+  operador?: string;
 }
 
 export interface AprovacaoOperacional {
@@ -1361,6 +1363,10 @@ export interface ControleEquipamentoDiario {
   aprovacao?: AprovacaoOperacional;
   /** Decisão da conferência quando o dia bateu 10 h ou ficou inconsistente. */
   conferenciaManutencao?: ConferenciaManutencao;
+  /** Decidiram seguir contando além de 10 h: o dia não tem teto e a OS não fecha sozinha. */
+  continuaAlemDoLimite?: { decididoEm: string; decididoPor: string };
+  /** Id do lançamento do dia anterior que abriu este pela continuidade (entrada das 07:00). */
+  continuacaoDe?: string;
   criadoEm: string;
   atualizadoEm: string;
 }

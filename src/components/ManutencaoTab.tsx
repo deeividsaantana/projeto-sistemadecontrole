@@ -125,7 +125,8 @@ export default function ManutencaoTab({
   onVerNoQuadro,
 }: ManutencaoTabProps) {
   const escopo = useRef<HTMLElement>(null);
-  const [subtela, setSubtela] = useState<Subtela>('hoje');
+  // Quem chega do Quadro com um prefixo vai direto às ordens, onde fica a busca.
+  const [subtela, setSubtela] = useState<Subtela>(buscaInicial ? 'ordens' : 'hoje');
   // As horas do dia correm com o relógio: refaz a conta a cada minuto.
   const [agora, setAgora] = useState(() => new Date());
   useEffect(() => {
@@ -614,6 +615,7 @@ export default function ManutencaoTab({
             paraConferir={paraConferir}
             onAbrirConferencia={() => setSubtela('conferencia')}
             onSaveControle={onSaveControle}
+            onSalvarConferencia={onSalvarConferencia}
           />
           <FilaOficina fila={filaOperacional} ordensServico={ordensServico} podeEditar={podeEditar} onAvancar={avancar} onEditar={abrirEdicao} onVerNoQuadro={onVerNoQuadro} />
         </>

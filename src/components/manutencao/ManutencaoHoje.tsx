@@ -10,7 +10,7 @@ import type { ControleEquipamentoDiario, Equipamento, Funcionario, StatusControl
 import type { FleetPersistedRecord } from '../../fleet/domain';
 import { registroDaEdicao } from '../../modules/frota/quadroFrota';
 import { formatarMinutos, horaLocal, horasParadasDoDia } from '../../utils/horasParadasDoDia';
-import { vemParadoDeOntem } from '../../utils/manutencaoLimite';
+import { continuarAlemDoLimite, vemParadoDeOntem, voltarARegraDasDezHoras } from '../../utils/manutencaoLimite';
 import type { RelatorioManutencaoDia } from '../../utils/relatorioManutencaoDia';
 import { EmptyState } from '../../shared/ui';
 import { CARTAO, FOCO } from '../cadastros/estilos';
@@ -30,11 +30,13 @@ interface Props {
   paraConferir: number;
   onAbrirConferencia: () => void;
   onSaveControle: (registro: ControleEquipamentoDiario) => void;
+  /** Grava decisão sobre o dia (mesmo caminho da Conferência, que refaz a OS). */
+  onSalvarConferencia?: (registro: ControleEquipamentoDiario, descricao: string) => void;
 }
 
 interface Contador { id: string; rotulo: string; valor: string; detalhe: string; Icone: LucideIcon; destaque?: 'rose' | 'amber'; aoClicar?: () => void }
 
-export function ManutencaoHoje({ relatorio, registros, equipamentos, motoristas, responsavel, podeEditar, agora, paraConferir, onAbrirConferencia, onSaveControle }: Props) {
+export function ManutencaoHoje({ relatorio, registros, equipamentos, motoristas, responsavel, podeEditar, agora, paraConferir, onAbrirConferencia, onSaveControle, onSalvarConferencia }: Props) {
   const registroPorId = useMemo(() => new Map(registros.map(registro => [registro.id, registro])), [registros]);
   const linhas = useMemo(() => [...relatorio.linhas].sort((a, b) => {
     const peso = (linha: typeof a) => (linha.parada.periodos.some(periodo => periodo.fim === null) ? 0 : linha.grupo === 'OK' ? 2 : 1);
@@ -113,7 +115,7 @@ export function ManutencaoHoje({ relatorio, registros, equipamentos, motoristas,
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4 pb-4 border-b border-slate-100">
           <div className="min-w-0 flex-1">
             <h2 id="manutencao-hoje-titulo" className="text-lg font-bold text-slate-900">Equipamentos que pararam hoje</h2>
-            <p className="mt-1.5 text-sm text-slate-600">Primeiro os que ainda estão na oficina. A conta para em 10 h por dia.</p>
+            <p className="mt-1.5 text-sm text-slate-600">Primeiro os que ainda estão na oficina. A conta para em 10 h por dia, salvo quem segue além.</p>
           </div>
           <span className="flex-none text-xs font-semibold uppercase tracking-wide tabular-nums text-slate-500">Atualizado às {horaAgora}</span>
         </div>
@@ -135,6 +137,8 @@ export function ManutencaoHoje({ relatorio, registros, equipamentos, motoristas,
                     horaAgora={horaAgora}
                     onLiberar={hora => lancar(registro, 'Disponível', hora, registro.motivoManutencao || '')}
                     onEntrar={(hora, motivo) => lancar(registro, 'Em manutenção', hora, motivo)}
+                    onContinuarAlem={onSalvarConferencia ? () => onSalvarConferencia(continuarAlemDoLimite(registro, responsavel, new Date().toISOString()), `Manutenção: ${registro.prefixo} segue além de 10 h até a liberação.`) : undefined}
+                    onVoltarRegra={onSalvarConferencia ? () => onSalvarConferencia(voltarARegraDasDezHoras(registro, responsavel, new Date().toISOString()), `Manutenção: ${registro.prefixo} voltou à regra das 10 h.`) : undefined}
                   />
                 );
               })}
