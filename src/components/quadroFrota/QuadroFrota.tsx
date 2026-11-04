@@ -13,12 +13,16 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { CheckCircle2, ChevronDown, Fuel, Keyboard, LayoutGrid, ListChecks, ListFilter, MapPin, Search, SlidersHorizontal, Trash2, Truck, Wrench, X } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Keyboard, LayoutGrid, ListChecks, ListFilter, MapPin, Search, SlidersHorizontal, Trash2, Truck, X } from 'lucide-react';
 import type { Abastecimento, ControleEquipamentoDiario, Equipamento, FrenteServico, Funcionario, GrupoEquipe } from '../../types';
 import { Modal } from '../../shared/ui';
+import { TabNavigation } from '../shared/TabNavigation';
+import { BuscaColaborador } from '../shared/BuscaColaborador';
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import {
   CANTEIROS,
   FILTROS_VAZIOS,
+  ROTULO_GRUPO,
   ROTULO_ORDEM,
   SEM_CANTEIRO,
   agruparPorCanteiro,
@@ -34,11 +38,12 @@ import {
   type GrupoStatus,
   type Ordem,
 } from '../../modules/frota/quadroFrota';
-import { abastecidasSemLancamento } from '../../modules/frota/combustivelDoDia';
 import { OPERATIONAL_DRIVERS } from '../../fleet/operationalDrivers';
 import { CartaoArrastavel } from './CartaoArrastavel';
+import { registrarAtalhosDoQuadro, type AcoesAtalhoQuadro } from './atalhosQuadro';
 import { INSTRUCOES_ARRASTAR, avisosDoArrastar, coordenadasDoCanteiro } from './arrastarComTeclado';
 import { ColunaCanteiro } from './ColunaCanteiro';
+import { TOM } from './CartaoEquipamento';
 import { LancarFrota } from './LancarFrota';
 import { PainelEquipamento } from './PainelEquipamento';
 import { BOTAO_PERIGO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO } from '../cadastros/estilos';
@@ -109,15 +114,6 @@ const vistaGuardada = (): Vista => {
  */
 const CARTOES_POR_VEZ = 12;
 
-const GRUPO_DA_TECLA: Record<string, GrupoStatus> = { 1: 'operando', 2: 'manutencao', 3: 'parado', 4: 'sem-lancamento' };
-
-interface Indicador {
-  id: string;
-  titulo: string;
-  valor: number;
-  filtro?: Partial<FiltrosQuadro>;
-}
-
 export default function QuadroFrota({ equipamentos, registros, gruposEquipe, abastecimentos, canteiros = CANTEIROS, frentes, funcionarios, operationalDrivers, podeEditar, usuario, onSave, onSaveMany, onDeleteMany, podeRemover = false, onRemoverEquipamentos, onNavigate, podeAbrir = () => true, dia, onAbrirSituacao, buscaInicial = '', onVerOrdens }: Props) {
   const escopo = useRef<HTMLDivElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
@@ -182,7 +178,6 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
     return mapa;
   }, [cartoes]);
   const pendentes = useMemo(() => filtrados.filter(item => item.grupo === 'sem-lancamento'), [filtrados]);
-  const abastecidasSemLancar = useMemo(() => abastecidasSemLancamento(cartoes, abastecimentos, dia), [cartoes, abastecimentos, dia]);
   const aberto = abertoId ? cartoes.find(item => item.equipamentoId === abertoId) || null : null;
   const indiceAberto = aberto ? naTela.findIndex(item => item.equipamentoId === aberto.equipamentoId) : -1;
   const proximo = indiceAberto >= 0 ? naTela[indiceAberto + 1] : undefined;
@@ -193,14 +188,6 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
   const opcoesMarca = useMemo(() => Array.from(new Set(cartoes.map(item => item.marca).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')), [cartoes]);
   const operadores = useMemo(() => Array.from(new Set(motoristas.filter(item => item.ativo !== false).map(item => item.nome.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')), [motoristas]);
   const etiquetas = etiquetasDosFiltros(filtros);
-
-  const lista: Indicador[] = [
-    { id: 'total', titulo: 'Total', valor: indicadores.total, filtro: FILTROS_VAZIOS },
-    { id: 'operando', titulo: 'Em operação', valor: indicadores.operando, filtro: { grupo: 'operando' } },
-    { id: 'manutencao', titulo: 'Manutenção', valor: indicadores.manutencao, filtro: { grupo: 'manutencao' } },
-    { id: 'parado', titulo: 'À disposição', valor: indicadores.parado, filtro: { grupo: 'parado' } },
-    { id: 'sem-lancamento', titulo: 'Sem lançamento', valor: indicadores.semLancamento, filtro: { grupo: 'sem-lancamento' } },
-  ];
 
   const mudar = (parcial: Partial<FiltrosQuadro>) => setFiltros(atual => ({ ...atual, ...parcial }));
   const limparFiltros = () => {
@@ -310,41 +297,44 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
     return () => window.clearTimeout(tempo);
   }, [aviso]);
 
+  // Teclas do registro global (contexto "frotas"). Ficam desligadas com o
+  // painel da máquina, a lista de atalhos ou a seleção abertos: lá as teclas
+  // são outras. As ações são lidas na hora, nunca de uma tela que já mudou.
+  const acoesAtalho = useRef<AcoesAtalhoQuadro | null>(null);
   useEffect(() => {
-    if (aberto || atalhosAberto || modoSelecao) return undefined;
-    const teclar = (event: KeyboardEvent) => {
-      const alvo = event.target as HTMLElement | null;
-      if (alvo?.matches('input, textarea, select, [contenteditable="true"]') || event.ctrlKey || event.metaKey || event.altKey) return;
-      const tecla = event.key.toLocaleLowerCase('pt-BR');
-      if (tecla === '/') {
-        event.preventDefault();
-        buscaRef.current?.focus();
-      } else if (tecla === '?') {
-        event.preventDefault();
-        setAtalhosAberto(true);
-      } else if (GRUPO_DA_TECLA[tecla]) {
-        event.preventDefault();
-        mudar({ grupo: filtros.grupo === GRUPO_DA_TECLA[tecla] ? '' : GRUPO_DA_TECLA[tecla] });
-      } else if (tecla === 'l') {
-        event.preventDefault();
-        limparFiltros();
-      } else if (tecla === 'v' && podeEditar) {
-        event.preventDefault();
-        trocarVista(vista === 'quadro' ? 'lancar' : 'quadro');
-      } else if (tecla === 'a' && podeEditar) {
-        event.preventDefault();
-        atualizarPendentes();
-      }
+    acoesAtalho.current = {
+      focarBusca: () => buscaRef.current?.focus(),
+      abrirAjuda: () => setAtalhosAberto(true),
+      atualizarPendentes: () => { if (podeEditar) atualizarPendentes(); },
+      alternarVista: () => { if (podeEditar) trocarVista(vista === 'quadro' ? 'lancar' : 'quadro'); },
+      alternarGrupo: grupo => mudar({ grupo: filtros.grupo === grupo ? '' : grupo }),
+      limparFiltros,
     };
-    document.addEventListener('keydown', teclar);
-    return () => document.removeEventListener('keydown', teclar);
   });
+  useEffect(() => registrarAtalhosDoQuadro(() => acoesAtalho.current!), []);
+  useKeyboardShortcuts('frotas', !aberto && !atalhosAberto && !modoSelecao);
 
   useGSAP(() => {
     const raiz = escopo.current;
     if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    gsap.fromTo(raiz.querySelectorAll('[data-quadro-reveal]'), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' });
-    gsap.fromTo(raiz.querySelectorAll('[data-quadro-cartao]'), { opacity: 0, y: 10, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: { each: 0.01, from: 'start' }, ease: 'power2.out', delay: 0.12, clearProps: 'transform,opacity' });
+
+    // Animações de entrada: sections e elementos com reveal
+    gsap.fromTo(raiz.querySelectorAll('[data-quadro-reveal]'),
+      { opacity: 0, y: 14 },
+      { opacity: 1, y: 0, duration: 0.5, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' }
+    );
+
+    // Cartões das máquinas com efeito de pop
+    gsap.fromTo(raiz.querySelectorAll('[data-quadro-cartao]'),
+      { opacity: 0, y: 10, scale: 0.97 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: { each: 0.01, from: 'start' }, ease: 'power2.out', delay: 0.12, clearProps: 'transform,opacity' }
+    );
+
+    // Animação dos chips de canteiro com bounce
+    gsap.fromTo(raiz.querySelectorAll('[role="group"][aria-label*="Canteiro"] button'),
+      { opacity: 0, scale: 0.9 },
+      { opacity: 1, scale: 1, duration: 0.4, stagger: 0.05, ease: 'back.out(1.4)', delay: 0.2, clearProps: 'transform,opacity' }
+    );
   }, { scope: escopo, dependencies: [dia, filtros, ordem, vista, modoSelecao] });
 
   const chipCanteiro = (nome: string, rotulo: string, total: number) => {
@@ -356,7 +346,7 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
         aria-pressed={ligado}
         onClick={() => mudar({ canteiro: ligado ? '' : nome })}
         data-testid={`quadro-aba-canteiro-${nome || 'todos'}`}
-        className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${ligado ? 'bg-[#176b4d] text-white shadow-[0_8px_18px_-10px_rgba(23,107,77,0.8)]' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-emerald-300'} ${FOCO}`}
+        className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${ligado ? 'bg-[#176b4d] text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:-translate-y-0.5 hover:ring-emerald-300 hover:shadow-md'} ${FOCO}`}
       >
         {rotulo}
         <span className={`rounded-full px-1.5 font-mono text-xs ${ligado ? 'bg-white/10' : 'bg-slate-100 text-slate-500'}`}>{total}</span>
@@ -366,77 +356,39 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
 
   return (
     <div ref={escopo} id="quadro-frota-tab" data-testid="quadro-frota-tab" className="space-y-4">
-      <section aria-label="Resumo da frota no dia" data-quadro-reveal className="flex flex-wrap items-center gap-2">
-        {lista.map(item => {
-          const ativo = item.id === 'total' ? !filtros.grupo : filtros.grupo === item.filtro?.grupo;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              data-testid={`quadro-indicador-${item.id}`}
-              aria-pressed={ativo}
-              onClick={() => { if (item.id === 'total') { limparFiltros(); return; } mudar({ grupo: ativo ? '' : (item.filtro?.grupo ?? '') }); }}
-              className={`inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-bold transition duration-300 active:scale-[0.97] lg:min-h-10 ${ativo ? 'bg-[#176b4d] text-white' : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:ring-emerald-300'} ${FOCO}`}
-            >
-              {item.id !== 'total' && <span className={`size-2 rounded-full ${item.id === 'operando' ? 'bg-emerald-500' : item.id === 'manutencao' ? 'bg-rose-500' : item.id === 'parado' ? 'bg-amber-400' : 'bg-slate-400'}`} aria-hidden="true" />}
-              {item.id === 'total' ? 'Todas' : item.titulo}
-              <span className={`rounded-full px-1.5 font-mono text-xs ${ativo ? 'bg-white/15' : 'bg-slate-100 text-slate-500'}`}>{item.valor}</span>
-            </button>
-          );
-        })}
-        {abastecidasSemLancar.length > 0 && podeAbrir('lancamentos') && (
-          <button type="button" data-testid="quadro-indicador-abasteceu-sem-lancar" onClick={() => onNavigate('lancamentos')} className={`inline-flex min-h-11 items-center gap-2 rounded-full bg-amber-50 px-4 text-sm font-bold text-amber-800 ring-1 ring-amber-200 lg:min-h-10 ${FOCO}`}>
-            <Fuel className="size-4" aria-hidden="true" />
-            {abastecidasSemLancar.length} abastecida(s) sem lançamento
+      <BuscaColaborador
+        funcionarios={funcionarios}
+        onSelecionado={() => {
+          // A seleção de um colaborador pode ser usada para pré-preencher filtros ou ações futuras
+        }}
+      />
+
+      {podeEditar && (
+        <div data-quadro-reveal className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={atualizarPendentes} disabled={pendentes.length === 0} className={`${BOTAO_PRIMARIO} w-full px-5 sm:w-auto`} data-testid="quadro-acao-principal">
+            {pendentes.length === 0 ? <CheckCircle2 className="size-5" aria-hidden="true" /> : <Truck className="size-5" aria-hidden="true" />}
+            {pendentes.length === 0 ? 'Tudo lançado no dia' : `Atualizar ${pendentes.length} sem lançamento`}
           </button>
-        )}
-        <span className="ml-auto text-xs font-semibold text-slate-500">{indicadores.disponibilidade === null ? 'Nada lançado no dia' : `Disponível ${indicadores.disponibilidade}%`}</span>
-      </section>
+          <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} max-lg:hidden`} aria-label="Atalhos do quadro" data-testid="quadro-atalhos">
+            <Keyboard className="size-4" aria-hidden="true" />
+            <kbd className="text-xs">?</kbd>
+          </button>
+        </div>
+      )}
 
       <section aria-label="Canteiros e filtros" data-quadro-reveal className={`${CARTAO} space-y-3 p-3 lg:sticky lg:top-0 lg:z-20`}>
-        {(canteiros.length > 1 || (contagemCanteiro.get(SEM_CANTEIRO) || 0) > 0) && <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Canteiro">
-          {chipCanteiro('', 'Todos', cartoes.length)}
-          {canteiros.map(nome => chipCanteiro(nome, nome, contagemCanteiro.get(nome) || 0))}
-          {(contagemCanteiro.get(SEM_CANTEIRO) || 0) > 0 && chipCanteiro(SEM_CANTEIRO, SEM_CANTEIRO, contagemCanteiro.get(SEM_CANTEIRO) || 0)}
-        </div>}
-        <div className="flex flex-wrap items-center gap-2">
-        {podeEditar && (
-            <div role="group" aria-label="Como ver as máquinas" className="grid flex-none grid-cols-2 gap-1 rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200" data-testid="quadro-vista">
-              {([['quadro', 'Quadro', LayoutGrid], ['lancar', 'Lançar', ListChecks]] as const).map(([valor, rotulo, Icone]) => (
-                <button
-                  key={valor}
-                  type="button"
-                  aria-pressed={vista === valor}
-                  onClick={() => trocarVista(valor)}
-                  data-testid={`quadro-vista-${valor}`}
-                  className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${vista === valor ? 'bg-white text-[#176b4d] shadow-[0_6px_16px_-10px_rgba(15,40,31,0.45)] ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-800'} ${FOCO}`}
-                >
-                  <Icone className="size-4" aria-hidden="true" />
-                  {rotulo}
-                </button>
-              ))}
-            </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {podeEditar && (
+            <TabNavigation
+              items={[
+                { id: 'quadro', label: 'Quadro', icon: <LayoutGrid className="size-4" /> },
+                { id: 'lancar', label: 'Lançar', icon: <ListChecks className="size-4" /> },
+              ]}
+              activeId={vista}
+              onSelect={(id) => trocarVista(id as Vista)}
+              className="rounded-2xl bg-[#f7f8f6] p-1 ring-1 ring-inset ring-slate-200"
+            />
           )}
-          {podeEditar && pendentes.length > 0 && (
-            <button type="button" onClick={atualizarPendentes} className={`${BOTAO_PRIMARIO} flex-none px-4`} data-testid="quadro-acao-principal">
-              <Truck className="size-5" aria-hidden="true" />
-              Atualizar {pendentes.length} sem lançamento
-            </button>
-          )}
-          {podeEditar && <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} flex-none max-lg:hidden`} aria-label="Atalhos do quadro" data-testid="quadro-atalhos"><Keyboard className="size-4" aria-hidden="true" /><kbd className="text-xs">?</kbd></button>}
-          <label className="relative min-w-0 flex-[1_1_14rem]">
-            <span className="sr-only">Buscar prefixo, modelo ou operador</span>
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-            <input ref={buscaRef} value={buscaTexto} onChange={event => setBuscaTexto(event.target.value)} placeholder="Buscar prefixo, modelo ou operador" className={`${CAMPO} pl-9`} data-testid="quadro-busca" />
-          </label>
-          <select value={filtros.tipo} onChange={event => mudar({ tipo: event.target.value })} aria-label="Tipo" className={`${CAMPO} min-w-0 flex-[1_1_9rem] sm:w-auto`}>
-            <option value="">Todos os tipos</option>
-            {opcoesTipo.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
-          </select>
-          <button type="button" onClick={() => setMaisFiltros(atual => !atual)} aria-expanded={maisFiltros} className={`${BOTAO_SECUNDARIO} flex-none`} data-testid="quadro-mais-filtros">
-            <SlidersHorizontal className="size-4" aria-hidden="true" />
-            Mais filtros
-          </button>
           {podeEditar && vista === 'quadro' && (
             <button type="button" onClick={alternarModoSelecao} aria-pressed={modoSelecao} className={`${modoSelecao ? BOTAO_PRIMARIO : BOTAO_SECUNDARIO} flex-none`} data-testid="quadro-alternar-selecao">
               <ListChecks className="size-4" aria-hidden="true" />
@@ -444,36 +396,70 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
             </button>
           )}
         </div>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-2">
+          <label className="relative min-w-0 flex-[1_1_14rem]">
+            <span className="sr-only">Buscar prefixo, modelo ou operador</span>
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <input ref={buscaRef} value={buscaTexto} onChange={event => setBuscaTexto(event.target.value)} placeholder="Buscar prefixo, modelo ou operador" className={`${CAMPO} pl-9 w-full`} data-testid="quadro-busca" />
+          </label>
+          <div className="flex gap-2 flex-wrap lg:flex-nowrap">
+            <select value={filtros.tipo} onChange={event => mudar({ tipo: event.target.value })} aria-label="Tipo" className={`${CAMPO} min-w-0 flex-[1_1_9rem] sm:flex-auto`}>
+              <option value="">Todos os tipos</option>
+              {opcoesTipo.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+            </select>
+            <button type="button" onClick={() => setMaisFiltros(atual => !atual)} aria-expanded={maisFiltros} className={`${BOTAO_SECUNDARIO} flex-none`} data-testid="quadro-mais-filtros">
+              <SlidersHorizontal className="size-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Mais</span>
+            </button>
+          </div>
+        </div>
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Situação" data-testid="quadro-situacoes">
+          {([['', 'Todas', indicadores.total, 'bg-slate-400'], ['operando', ROTULO_GRUPO.operando, indicadores.operando, TOM.operando.ponto], ['manutencao', ROTULO_GRUPO.manutencao, indicadores.manutencao, TOM.manutencao.ponto], ['parado', ROTULO_GRUPO.parado, indicadores.parado, TOM.parado.ponto], ['sem-lancamento', ROTULO_GRUPO['sem-lancamento'], indicadores.semLancamento, TOM['sem-lancamento'].ponto]] as const).map(([grupo, rotulo, total, ponto]) => {
+            const ligado = filtros.grupo === grupo;
+            return (
+              <button key={grupo || 'todas'} type="button" aria-pressed={ligado} onClick={() => mudar({ grupo: ligado ? '' : grupo as GrupoStatus | '' })} data-testid={`quadro-situacao-${grupo || 'todas'}`} className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-3.5 text-sm font-bold ring-1 transition duration-200 active:scale-[0.97] ${ligado ? 'bg-[#176b4d] text-white ring-[#176b4d]' : 'bg-white text-slate-700 ring-slate-200 hover:ring-emerald-300'} ${FOCO}`}>
+                <span className={`size-2.5 rounded-full ${ligado ? 'bg-white' : ponto}`} aria-hidden="true" />
+                {rotulo}
+                <span className={`rounded-full px-1.5 font-mono text-xs ${ligado ? 'bg-white/15' : 'bg-slate-100 text-slate-600'}`}>{total}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Canteiro">
+          {chipCanteiro('', 'Todos', cartoes.length)}
+          {canteiros.map(nome => chipCanteiro(nome, nome, contagemCanteiro.get(nome) || 0))}
+          {(contagemCanteiro.get(SEM_CANTEIRO) || 0) > 0 && chipCanteiro(SEM_CANTEIRO, SEM_CANTEIRO, contagemCanteiro.get(SEM_CANTEIRO) || 0)}
+        </div>
         {maisFiltros && (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6" data-testid="quadro-painel-filtros">
-            <select value={filtros.frente} onChange={event => mudar({ frente: event.target.value })} aria-label="Frente" className={CAMPO}>
-              <option value="">Todas as frentes</option>
+          <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" data-testid="quadro-painel-filtros">
+            <select value={filtros.frente} onChange={event => mudar({ frente: event.target.value })} aria-label="Frente" className={`${CAMPO} text-xs`}>
+              <option value="">Frentes</option>
               {opcoesFrente.map(frente => <option key={frente} value={frente}>{frente}</option>)}
             </select>
-            <select value={filtros.marca} onChange={event => mudar({ marca: event.target.value })} aria-label="Marca" className={CAMPO}>
-              <option value="">Todas as marcas</option>
+            <select value={filtros.marca} onChange={event => mudar({ marca: event.target.value })} aria-label="Marca" className={`${CAMPO} text-xs`}>
+              <option value="">Marcas</option>
               {opcoesMarca.map(marca => <option key={marca} value={marca}>{marca}</option>)}
             </select>
-            <select value={filtros.operador} onChange={event => mudar({ operador: event.target.value as FiltrosQuadro['operador'] })} aria-label="Operador" className={CAMPO}>
-              <option value="">Com e sem operador</option>
+            <select value={filtros.operador} onChange={event => mudar({ operador: event.target.value as FiltrosQuadro['operador'] })} aria-label="Operador" className={`${CAMPO} text-xs`}>
+              <option value="">Operador</option>
               <option value="com">Com operador</option>
               <option value="sem">Sem operador</option>
             </select>
-            <select value={filtros.horimetro} onChange={event => mudar({ horimetro: event.target.value as FiltrosQuadro['horimetro'] })} aria-label="Horímetro" className={CAMPO}>
-              <option value="">Com e sem horímetro</option>
+            <select value={filtros.horimetro} onChange={event => mudar({ horimetro: event.target.value as FiltrosQuadro['horimetro'] })} aria-label="Horímetro" className={`${CAMPO} text-xs`}>
+              <option value="">Horímetro</option>
               <option value="com">Com horímetro</option>
               <option value="sem">Sem horímetro</option>
             </select>
-            <select value={filtros.foto} onChange={event => mudar({ foto: event.target.value as FiltrosQuadro['foto'] })} aria-label="Foto" className={CAMPO}>
-              <option value="">Com e sem foto</option>
+            <select value={filtros.foto} onChange={event => mudar({ foto: event.target.value as FiltrosQuadro['foto'] })} aria-label="Foto" className={`${CAMPO} text-xs`}>
+              <option value="">Foto</option>
               <option value="com">Com foto</option>
               <option value="sem">Sem foto</option>
             </select>
             <label className="relative">
               <span className="sr-only">Ordenar por</span>
               <ListFilter className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-              <select value={ordem} onChange={event => setOrdem(event.target.value as Ordem)} className={`${CAMPO} pl-9`} data-testid="quadro-ordem">
-                {(Object.keys(ROTULO_ORDEM) as Ordem[]).map(chave => <option key={chave} value={chave}>Ordenar: {ROTULO_ORDEM[chave]}</option>)}
+              <select value={ordem} onChange={event => setOrdem(event.target.value as Ordem)} className={`${CAMPO} pl-9 text-xs`} data-testid="quadro-ordem">
+                {(Object.keys(ROTULO_ORDEM) as Ordem[]).map(chave => <option key={chave} value={chave}>{ROTULO_ORDEM[chave]}</option>)}
               </select>
             </label>
           </div>
@@ -572,17 +558,14 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
               const semCanteiro = grupo.canteiro === SEM_CANTEIRO;
               return (
                 <section key={grupo.canteiro} data-quadro-reveal aria-label={`Canteiro ${grupo.canteiro}`} data-testid="quadro-coluna" className="overflow-hidden rounded-[1.25rem] bg-[#f7f8f6] p-1.5 ring-1 ring-slate-200">
-                  <header className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[0.9rem] bg-white px-3 py-2 shadow-[0_1px_2px_rgba(15,40,31,0.05)]">
+                  <header className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[0.9rem] bg-white px-4 py-2 shadow-[0_1px_2px_rgba(15,40,31,0.05)]">
                     <span className={`size-2.5 shrink-0 rounded-full ${semCanteiro ? 'bg-slate-300' : 'bg-[#176b4d]'}`} aria-hidden="true" />
-                    <h2 className="min-w-0 truncate text-base font-bold uppercase tracking-wide text-slate-900">{grupo.canteiro}</h2>
+                    <h2 className="min-w-0 truncate text-sm font-bold uppercase tracking-wide text-slate-900">{grupo.canteiro}</h2>
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-700">{grupo.cartoes.length}</span>
-                    {grupo.cartoes.length === 0 && (
-                      <span className="text-xs text-slate-500">Vazio. Arraste uma máquina pra cá, ou abra e escolha este canteiro.</span>
-                    )}
                     {grupo.cartoes.length > 0 && (
-                      <span className="flex items-center gap-3 text-xs font-semibold text-slate-500">
-                        <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />{grupo.operando} em operação</span>
-                        {grupo.manutencao > 0 && <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-rose-500" aria-hidden="true" />{grupo.manutencao} manutenção</span>}
+                      <span className="ml-auto flex items-center gap-3 text-xs font-semibold text-slate-500">
+                        <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" /><span>{grupo.operando}<span className="sr-only"> em operação</span></span></span>
+                        {grupo.manutencao > 0 && <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-rose-500" aria-hidden="true" /><span>{grupo.manutencao}<span className="sr-only"> em manutenção</span></span></span>}
                       </span>
                     )}
                     {grupo.cartoes.length > 0 && <button
@@ -590,13 +573,14 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
                       onClick={() => alternarGrupo(grupo.canteiro)}
                       aria-expanded={!fechado}
                       aria-label={fechado ? `Mostrar ${grupo.canteiro}` : `Esconder ${grupo.canteiro}`}
-                      className={`ml-auto grid size-11 place-items-center rounded-xl border border-slate-200 text-slate-500 transition duration-200 hover:border-emerald-400 hover:text-[#176b4d] ${FOCO}`}
+                      className={`grid size-11 place-items-center rounded-xl border border-slate-200 text-slate-500 transition duration-200 hover:border-emerald-400 hover:text-[#176b4d] ${FOCO}`}
                     >
                       <ChevronDown className={`size-4 transition duration-300 ${fechado ? '-rotate-90' : ''}`} aria-hidden="true" />
                     </button>}
                   </header>
                   {!fechado && (
                     <ColunaCanteiro canteiro={grupo.canteiro}>
+                      {grupo.cartoes.length === 0 && <p className="col-span-full px-2 py-3 text-center text-sm text-slate-500">Nenhuma máquina aqui. Arraste uma para este canteiro.</p>}
                       {grupo.cartoes.slice(0, limites[grupo.canteiro] ?? CARTOES_POR_VEZ).map(cartao => (
                         <CartaoArrastavel
                           key={cartao.equipamentoId}

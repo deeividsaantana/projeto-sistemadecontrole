@@ -5,7 +5,7 @@
 
 import React, { lazy, Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';import { migrarEfetivoObra3 } from './utils/migracaoEfetivoObra3';
 
-import { PularParaConteudo, RouteMotion, isoDay } from './shared/ui';
+import { PularParaConteudo, RouteMotion, isoDay, PageHeader } from './shared/ui';
 import { 
   Empresa, 
   ObraLocal, 
@@ -94,6 +94,8 @@ import { filterNovelFuelImports } from './utils/fuelImportIdentity';
 import type { FuelImportedMasterData } from './utils/fuelMasterDataImport';
 import { mergeImportedRecords } from './utils/importMerge';
 import { garantirOrdemAutomaticaDaFrota, liberarMaquinasDaOrdemConcluida, reconciliarHistoricoManutencaoDaFrota } from './utils/manutencao';
+import { encerrarOrdensNoLimite, pendentesDeContinuidade, recalcularOrdemDoLimite } from './utils/manutencaoLimite';
+import { descricaoDoEncerramento } from './utils/conferenciaManutencao';
 import {
   LOCAL_FUEL_RESET_STORAGE_KEY,
   LOCAL_FUEL_RESET_VERSION,
@@ -114,8 +116,6 @@ const ControleEquipamentosDiarioTab = lazy(() => import('./components/ControleEq
 const QuadroFrota = lazy(() => import('./components/quadroFrota/QuadroFrota'));
 const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
-// NOVO: Módulo unificado Pessoas & Presença (Beta paralela - Fases 0-3 completas)
-const PessoasPresencaBeta = lazy(() => import('./components/PessoasPresenca/PessoasPresencaWrapper'));
 const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
 const MeuDiaTab = lazy(() => import('./components/MeuDiaTab'));
 const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
@@ -124,6 +124,11 @@ const RelatoriosTab = lazy(() => import('./components/RelatoriosTab'));
 const AdministracaoTab = lazy(() => import('./components/AdministracaoTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
+
+// Task 8: Global Integration Components
+import { BuscaColaborador } from './components/shared/BuscaColaborador';
+import { PresencaPublicaLink } from './components/presenca/PresencaPublicaLink';
+import { EscalaSabado } from './components/presenca/EscalaSabado';
 
 // A base histórica de materiais fica em um chunk separado para não pesar no
 // login e nas demais telas. Ela é carregada antes da hidratação dos dados.
@@ -625,6 +630,9 @@ export default function App() {
   const presencasLinkInativas = useMemo(() => presencasLink.filter(item => !estaAtivo(item)), [presencasLink]);
   const [historicoPresencas, setHistoricoPresencas] = useState<HistoricoPresenca[]>([]);
   const [controleEquipamentosDiario, setControleEquipamentosDiario] = useState<ControleEquipamentoDiario[]>([]);
+  // As regras automáticas da manutenção (fechar no limite, continuidade) só
+  // gravam depois que esta sessão igualou com a nuvem pelo menos uma vez.
+  const [baixouDaNuvemNestaSessao, setBaixouDaNuvemNestaSessao] = useState(false);
   const [controleEstacas, setControleEstacas] = useState<ControleEstacas>(INITIAL_CONTROLE_ESTACAS);
   const [periodosArquivados, setPeriodosArquivados] = useState<PeriodoArquivado[]>([]);
   const [vinculosOperadorEquipamento, setVinculosOperadorEquipamento] = useState<VinculoOperadorEquipamento[]>([]);
@@ -649,6 +657,10 @@ export default function App() {
   const externalPresenceToken = getPresenceTokenFromUrl();
   const externalTicketAccessToken = getTicketAccessTokenFromUrl();
   const externalTicketLink = isTicketLinkUrl();
+
+  // Task 8: presenca-publica rota state
+  const [presencaPublicaAutenticado, setPresencaPublicaAutenticado] = useState<Funcionario | null>(null);
+  const [mostrarModalEscalaSabado, setMostrarModalEscalaSabado] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn || !currentUser || externalTicketLink || externalPresenceToken) return;
@@ -1425,6 +1437,7 @@ export default function App() {
         // Acabou de igualar com a nuvem: este é o retrato que serve de base
         // para diferenciar exclusões locais de novidades dos colegas depois.
         cloudBaselineRef.current = downloadedBaseline;
+        setBaixouDaNuvemNestaSessao(true);
         if (edicoesLocais.length && !devolverParaNuvem.length && !novidadesLocais.length) {
           queueMicrotask(() => { void handleUploadToSupabase(); });
           const editados = edicoesLocais.reduce((total, item) => total + item.editados, 0);
@@ -3470,6 +3483,7 @@ export default function App() {
       () => {
         setGruposEquipe(updated);
         writeStorageValue(localStorage, 'renea_grupos_equipes', JSON.stringify(updated));
+        void handleUploadToSupabase();
       }
     );
   };
@@ -4087,6 +4101,149 @@ export default function App() {
     }
   }, [controleEquipamentosDiario, ordensServico, activeUserName]);
 
+  // Conferência da manutenção: grava só a decisão no lançamento do dia, sem
+  // passar pela OS automática (o equipamento já tem a OS que fechou no limite).
+  const handleSalvarConferenciaManutencao = (registro: ControleEquipamentoDiario, descricao: string) => {
+    const anterior = controleEquipamentosDiario.find(item => item.id === registro.id);
+    if (!anterior) return;
+    const updated = controleEquipamentosDiario.map(item => item.id === registro.id ? registro : item);
+    // OS que fechou pelo limite neste dia é refeita com a decisão (horas e, se saiu do limite, a conclusão).
+    const ordem = registro.ordemServicoId ? ordensServico.find(item => item.id === registro.ordemServicoId) : undefined;
+    const recalculada = ordem ? recalcularOrdemDoLimite(ordem, updated, new Date()) : null;
+    const ordemNova = recalculada && ordem ? { ...recalculada, atualizadoEm: new Date().toISOString() } : null;
+    const ordensAtualizadas = ordemNova ? ordensServico.map(item => item.id === ordemNova.id ? ordemNova : item) : ordensServico;
+    const textoOrdem = ordemNova && ordem
+      ? ` ${ordem.numero} refeita: horas ${ordem.horasParadas ?? '—'} → ${ordemNova.horasParadas} h; conclusão ${ordem.horaConclusao || '—'} → ${ordemNova.horaConclusao || '—'}${ordemNova.observacao !== ordem.observacao ? '; agora "Concluída na conferência."' : ''}.`
+      : '';
+    saveAndLog('Manutenção', 'Editou', `${descricao}${textoOrdem}`, historyLogs, () => {
+      setControleEquipamentosDiario(updated);
+      writeStorageValue(localStorage, 'renea_controle_equipamentos_diario', JSON.stringify(updated));
+      if (ordemNova) {
+        setOrdensServico(ordensAtualizadas);
+        writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(ordensAtualizadas));
+      }
+    }, { registroId: registro.id, valorAnterior: ordem && ordemNova ? { registro: anterior, ordem } : anterior, valorNovo: ordemNova ? { registro, ordem: ordemNova } : registro, tipoOperacao: 'UPDATE' });
+  };
+
+  // OS aberta cujo dia bateu 10 h paradas fecha sozinha, na hora do limite. Não
+  // há servidor rodando: o primeiro aparelho aberto de quem edita a manutenção
+  // grava. A conta é a mesma em todo aparelho, então não briga com os outros.
+  // Não usa handleSaveOrdemServico: ele liberaria a máquina na hora de agora
+  // (o que mudaria as horas do dia) e, chamado várias vezes seguidas, cada
+  // gravação apagaria a anterior. Aqui vai uma gravação só, um log por OS.
+  const podeEditarManutencao = pode(currentUserRole, 'manutencao', 'editar');
+  const encerrarPeloLimiteRef = useRef<() => void>(() => {});
+  encerrarPeloLimiteRef.current = () => {
+    if (uploadsInFlightRef.current > 0) return;
+    const { ordens, encerradas } = encerrarOrdensNoLimite(controleEquipamentosDiario, ordensServico, new Date());
+    if (!encerradas.length) {
+      abrirContinuidadeRef.current();
+      return;
+    }
+    const antes = new Map(ordensServico.map(ordem => [ordem.id, ordem]));
+    const prefixoDe = (equipamentoId: string) => equipamentos.find(item => item.id === equipamentoId)?.prefixo || 'frota não localizada';
+    const logs: HistoryLog[] = encerradas.map((ordem, indice) => ({
+      id: `log-${Date.now()}-${indice}-${Math.floor(Math.random() * 1000)}`,
+      timestamp: new Date().toLocaleString('pt-BR'),
+      usuario: activeUserName,
+      acao: 'Editou',
+      tela: 'Manutenção',
+      descricao: descricaoDoEncerramento(antes.get(ordem.id) || ordem, ordem, prefixoDe(ordem.equipamentoId)),
+      registroId: ordem.id,
+      valorAnterior: antes.get(ordem.id),
+      valorNovo: ordem,
+      tipoOperacao: 'UPDATE',
+    }));
+    // saveAndLog grava o log da primeira OS; os das outras entram logo abaixo dele.
+    const [primeiro, ...outros] = logs;
+    saveAndLog('Manutenção', 'Editou', primeiro.descricao, [...outros, ...historyLogs], () => {
+      setOrdensServico(ordens);
+      writeStorageValue(localStorage, 'renea_ordens_servico', JSON.stringify(ordens));
+    }, { registroId: primeiro.registroId, valorAnterior: primeiro.valorAnterior, valorNovo: primeiro.valorNovo, tipoOperacao: 'UPDATE' });
+  };
+  // "Continua parado amanhã": no dia seguinte o equipamento entra sozinho em
+  // manutenção às 07:00, pelo mesmo caminho do Quadro (a OS nova abre ali).
+  // O módulo do Quadro carrega sob demanda (importar direto passava o App do
+  // limite de peso). Depois do import, os lançamentos e o salvamento vêm de
+  // refs atualizadas a cada render: um download da nuvem, uma edição ou um
+  // fechamento no meio não é sobrescrito por um estado antigo.
+  // Um por rodada: a próxima parte do estado já salvo por esta.
+  const controleAtualRef = useRef(controleEquipamentosDiario);
+  controleAtualRef.current = controleEquipamentosDiario;
+  const salvarControleRef = useRef(handleSaveControleEquipamentoDiario);
+  salvarControleRef.current = handleSaveControleEquipamentoDiario;
+  const continuidadesComFalhaRef = useRef(new Set<string>());
+  const continuidadeEmCursoRef = useRef(false);
+  const abrirContinuidadeRef = useRef<() => void>(() => {});
+  abrirContinuidadeRef.current = () => {
+    if (continuidadeEmCursoRef.current) return;
+    const pendente = pendentesDeContinuidade(controleEquipamentosDiario, new Date())
+      .find(item => !continuidadesComFalhaRef.current.has(item.id));
+    if (!pendente) return;
+    // Falha fica registrada uma vez por sessão e por lançamento, e não trava os outros.
+    const falhou = (motivo: string) => {
+      continuidadesComFalhaRef.current.add(pendente.id);
+      const descricao = `Continuidade não aberta: ${pendente.prefixo} — ${motivo}`;
+      console.warn(descricao);
+      setHistoryLogs(atual => {
+        const proximo = [{
+          id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          timestamp: new Date().toLocaleString('pt-BR'),
+          usuario: activeUserName,
+          acao: 'Editou' as const,
+          tela: 'Manutenção',
+          descricao,
+          registroId: pendente.id,
+        }, ...atual].slice(0, 2_000);
+        writeStorageValue(localStorage, 'renea_history_logs', JSON.stringify(proximo));
+        return proximo;
+      });
+    };
+    const equipamento = equipamentos.find(item => item.id === pendente.equipamentoId);
+    if (!equipamento) {
+      falhou('o equipamento não está mais no cadastro.');
+      return;
+    }
+    const seguinte = new Date(`${pendente.data}T12:00:00Z`);
+    seguinte.setUTCDate(seguinte.getUTCDate() + 1);
+    const anteriorFleet = pendente as ControleEquipamentoDiario & { local?: string; frenteServico?: string };
+    continuidadeEmCursoRef.current = true;
+    void import('./modules/frota/quadroFrota').then(({ registroDaEdicao }) => {
+      const registros = controleAtualRef.current;
+      // Alguém pode ter lançado o dia seguinte enquanto o módulo carregava.
+      if (!pendentesDeContinuidade(registros, new Date()).some(item => item.id === pendente.id)) return;
+      const resultado = registroDaEdicao({
+        dia: seguinte.toISOString().slice(0, 10),
+        hora: '07:00',
+        agora: new Date().toISOString(),
+        usuario: activeUserName,
+        equipamento,
+        registros,
+        funcionarios: motoristasOperacionais,
+        edicao: {
+          status: 'Em manutenção',
+          canteiro: anteriorFleet.local || '',
+          frente: anteriorFleet.frenteServico || '',
+          operador: pendente.nomeMotorista || '',
+          motivoManutencao: pendente.motivoManutencao?.trim() || 'Continua em manutenção',
+          observacao: `Continua parado desde ${pendente.data.split('-').reverse().join('/')} (decisão da conferência).`,
+        },
+      });
+      if ('erro' in resultado) {
+        falhou(resultado.erro);
+        return;
+      }
+      salvarControleRef.current(resultado.registro, resultado.novo);
+    }).catch(error => falhou(error instanceof Error ? error.message : 'não foi possível carregar o Quadro.'))
+      .finally(() => { continuidadeEmCursoRef.current = false; });
+  };
+  useEffect(() => {
+    if (!isLoggedIn || !podeEditarManutencao || !baixouDaNuvemNestaSessao) return;
+    encerrarPeloLimiteRef.current();
+    const relogio = window.setInterval(() => encerrarPeloLimiteRef.current(), 60_000);
+    return () => window.clearInterval(relogio);
+  }, [isLoggedIn, podeEditarManutencao, baixouDaNuvemNestaSessao, controleEquipamentosDiario, ordensServico]);
+
   const handleApproveControleEquipamentoDiario = (id: string, status: 'APROVADO' | 'REJEITADO') => {
     if (!['admin', 'gestor'].includes(currentUserRole)) return;
     const current = controleEquipamentosDiario.find(item => item.id === id);
@@ -4476,6 +4633,25 @@ export default function App() {
           onMarkNotificationAsRead={handleMarkNotificationAsRead}
           onLogout={() => void handleLogout()}
         />}
+        {/* Task 8: Rota presenca-publica fora do padrão de abas */}
+        {activeTab === 'presenca-publica' && (
+          <div className="h-screen w-full flex flex-col">
+            <PageHeader eyebrow="Público" title="Presença" />
+            <Suspense fallback={<ScreenLoadingFallback />}>
+              <PresencaPublicaLink
+                funcionarios={funcionarios}
+                empresas={empresas}
+                gruposEquipe={gruposEquipe}
+                onAutenticar={(func) => {
+                  setPresencaPublicaAutenticado(func);
+                }}
+              />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab !== 'presenca-publica' && (
+        <>
         {/* Área das abas: o recuo vem de --renea-respiro (index.css), a mesma
             medida que a TelaCheia desconta para caber na altura da tela. */}
         <div id="main-tab-viewport" tabIndex={-1} className={`flex-1 overflow-x-clip w-full max-w-none p-[var(--renea-respiro)] print:p-0 print:m-0${combustivelListaSomente ? ' renea-viewport--solta' : ''}`}>
@@ -4604,6 +4780,8 @@ export default function App() {
                 presencas={presencasLinkAtivas}
                 movimentosMaterial={materiaisMovimentosVigentes}
                 cravacoes={controleEstacas.cravacoes}
+                funcionarios={funcionarios}
+                equipamentos={equipamentos}
                 podeAbrir={aba => allowedTabs.includes(aba)}
                 onAbrir={abrirRelatorio}
               />
@@ -4716,37 +4894,6 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'pessoas-beta' && (
-              <PessoasPresencaBeta
-                empresas={empresas}
-                funcionarios={funcionarios}
-                obras={obras}
-                canteiros={canteirosNomes}
-                gruposEquipe={gruposEquipe}
-                presencasLink={presencasLinkAtivas}
-                historicoPresencas={historicoPresencas}
-                controlesEquipamentos={controleEquipamentosDiario}
-                ticketsJazida={ticketsJazidaAtivos}
-                checklists={checklists}
-                onSaveGrupoEquipe={handleSaveGrupoEquipe}
-                onDeleteGrupoEquipe={podeExcluirCadastro ? handleDeleteGrupoEquipe : undefined}
-                onUpdatePresencaLink={handleUpdatePresencaLink}
-                onLancarPresencaManual={handleLancarPresencaManual}
-                onInativarPresencaLink={handleInativarPresencaLink}
-                onReativarPresencaLink={handleReativarPresencaLink}
-                onResetPresencaDia={handleResetPresencaDia}
-                onSyncEquipesPlanilha={handleSyncEquipesPlanilha}
-                onRestorePresenceHistory={handleRestorePresenceHistory}
-                onAlterarSituacao={(proximo, descricao) => {
-                  handleSaveFuncionario(proximo, false);
-                  addNotification('Situação atualizada', descricao, 'info', 'Sistema Local');
-                }}
-                onNavigate={navigateTo}
-                podeAbrir={podeAbrir}
-                responsavel={activeUserName}
-              />
-            )}
-
             {activeTab === 'manutencao' && (
               <ManutencaoTab
                 key={`manutencao-${pedidoManutencao.vez}`}
@@ -4755,10 +4902,14 @@ export default function App() {
                 ordensServico={ordensServico}
                 equipamentos={equipamentos}
                 controlesEquipamentos={controleEquipamentosDiario}
+                motoristas={motoristasOperacionais}
                 responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'manutencao', 'editar')}
+                podeEditar={podeEditarManutencao}
+                podeReabrirConferencia={currentUserRole === 'admin'}
                 historyLogs={historyLogs}
                 onSave={handleSaveOrdemServico}
+                onSaveControle={registro => handleSaveControleEquipamentoDiario(registro, !controleEquipamentosDiario.some(item => item.id === registro.id))}
+                onSalvarConferencia={handleSalvarConferenciaManutencao}
                 onDelete={podeExcluirLancamento ? handleDeleteOrdemServico : undefined}
               />
             )}
@@ -4853,8 +5004,22 @@ export default function App() {
             </RouteMotion>
           </Suspense>
         </div>
+        </>
+        )}
         </main>
       </div>
+
+      {/* Task 8: Global BuscaColaborador */}
+      {isLoggedIn && activeTab !== 'presenca-publica' && (
+        <BuscaColaborador
+          funcionarios={funcionarios}
+          onSelecionado={(func) => {
+            if (activeTab !== 'controle-equipamentos') {
+              setActiveTab('controle-equipamentos');
+            }
+          }}
+        />
+      )}
 
       <OfflineStatusV29 />
       <PesquisaGlobal

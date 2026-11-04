@@ -1,16 +1,17 @@
 /**
- * Manutenção: abertura, acompanhamento e liberação das ordens de serviço.
- * As horas paradas saem da própria ordem — abertura até liberação.
+ * Manutenção: o dia da oficina (quem parou, por quanto tempo, até 10 h por
+ * dia), a conferência de quem bateu o limite, o relatório do dia e as ordens
+ * de serviço. As horas do dia saem dos eventos do controle diário da frota
+ * (horasParadasDoDia); a OS guarda o atendimento.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { BarChart3, ClipboardList, FileSpreadsheet, History, Plus, Search, Wrench } from 'lucide-react';
-import type { ControleEquipamentoDiario, Equipamento, HistoryLog, OrdemServico } from '../types';
+import { BarChart3, ClipboardCheck, ClipboardList, FileSpreadsheet, History, Plus, Search, Timer, Wrench } from 'lucide-react';
+import type { ControleEquipamentoDiario, Equipamento, Funcionario, HistoryLog, OrdemServico } from '../types';
 import { historicoDaManutencao } from '../utils/manutencaoHistorico';
 import {
   FLUXO_MANUTENCAO,
-  calcularHorasParadas,
   isOrdemEncerrada,
   proximoNumeroOrdemServico,
   proximoStatusManutencao,
@@ -24,7 +25,10 @@ import {
   presentEquipment,
   type EquipmentFamily,
 } from '../utils/equipmentPresentation';
-import { downloadManutencaoWorkbook } from '../utils/manutencaoExport';
+import { downloadManutencaoWorkbook, downloadRelatorioManutencaoDia } from '../utils/manutencaoExport';
+import { OBSERVACAO_LIMITE, horasMedidasDaOrdem } from '../utils/manutencaoLimite';
+import { montarRelatorioManutencaoDia } from '../utils/relatorioManutencaoDia';
+import { dataDeHoje, diasParaConferir, motivosDoDia, registrosDeManutencao } from '../utils/conferenciaManutencao';
 import { buildMaintenanceQueue } from '../utils/maintenanceQueue';
 import {
   Badge,
@@ -42,17 +46,31 @@ import {
 } from '../shared/ui';
 import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
 import { TelaCheia } from '../shared/ui/TelaCheia';
+import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from './cadastros/estilos';
+import { ManutencaoHoje } from './manutencao/ManutencaoHoje';
+import { FilaOficina } from './manutencao/FilaOficina';
+import { ConferenciaManutencao } from './manutencao/ConferenciaManutencao';
+import { RelatorioManutencaoDia } from './manutencao/RelatorioManutencaoDia';
 
 interface ManutencaoTabProps {
   ordensServico: OrdemServico[];
   equipamentos: Equipamento[];
-  controlesEquipamentos?: ControleEquipamentoDiario[];
+  /** Controle diário da frota: os eventos de entrada e liberação são a fonte das horas do dia. */
+  controlesEquipamentos: ControleEquipamentoDiario[];
+  /** Motoristas e operadores do Controle de Frotas, a mesma lista que o Quadro usa ao lançar. */
+  motoristas?: Funcionario[];
   /** Quem está operando: entra como responsável e no log da alteração. */
   responsavel: string;
   podeEditar: boolean;
+  /** Só o administrador muda uma decisão de conferência já tomada. */
+  podeReabrirConferencia?: boolean;
   /** Histórico geral do sistema; a tela filtra o que é de manutenção. */
   historyLogs?: HistoryLog[];
   onSave: (ordem: OrdemServico, isNew: boolean) => void;
+  /** "Liberar agora" e "Entrou em manutenção": o mesmo salvamento do Controle de Frotas e do Quadro. */
+  onSaveControle: (registro: ControleEquipamentoDiario) => void;
+  /** Decisão da conferência, com o texto do histórico (antes e depois). */
+  onSalvarConferencia: (registro: ControleEquipamentoDiario, descricao: string) => void;
   /** Sem ele, a tela não mostra Excluir: só o administrador exclui (A7). */
   onDelete?: (id: string) => void;
   /** Busca já preenchida quando a tela abre vinda do Quadro. */
@@ -64,7 +82,7 @@ interface ManutencaoTabProps {
 const TIPOS: OrdemServico['tipo'][] = ['Corretiva', 'Preventiva', 'Preditiva', 'Revisão'];
 const PRIORIDADES: OrdemServico['prioridade'][] = ['Baixa', 'Média', 'Alta', 'Urgente'];
 const STATUS_FILTRO = ['Todas', 'Em aberto', ...FLUXO_MANUTENCAO, 'Cancelada'] as const;
-type Subtela = 'ordens' | 'fila' | 'motivos' | 'historico';
+type Subtela = 'hoje' | 'conferencia' | 'relatorio' | 'ordens' | 'historico';
 
 const prioridadeTone = (prioridade: OrdemServico['prioridade']) => {
   if (prioridade === 'Urgente') return 'danger' as const;
@@ -74,9 +92,6 @@ const prioridadeTone = (prioridade: OrdemServico['prioridade']) => {
 };
 
 const formatarData = (valor?: string) => (valor ? valor.slice(0, 10).split('-').reverse().join('/') : '—');
-const formatarHoras = (valor?: number) => (
-  valor === undefined ? '—' : `${valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`
-);
 
 const formularioVazio = (equipamentoId = '') => ({
   equipamentoId,
@@ -96,17 +111,29 @@ const formularioVazio = (equipamentoId = '') => ({
 export default function ManutencaoTab({
   ordensServico,
   equipamentos,
-  controlesEquipamentos = [],
+  controlesEquipamentos,
+  motoristas = [],
   responsavel,
   podeEditar,
+  podeReabrirConferencia = false,
   historyLogs = [],
   onSave,
+  onSaveControle,
+  onSalvarConferencia,
   onDelete,
   buscaInicial = '',
   onVerNoQuadro,
 }: ManutencaoTabProps) {
   const escopo = useRef<HTMLElement>(null);
-  const [subtela, setSubtela] = useState<Subtela>('ordens');
+  const [subtela, setSubtela] = useState<Subtela>('hoje');
+  // As horas do dia correm com o relógio: refaz a conta a cada minuto.
+  const [agora, setAgora] = useState(() => new Date());
+  useEffect(() => {
+    const relogio = window.setInterval(() => setAgora(new Date()), 60_000);
+    return () => window.clearInterval(relogio);
+  }, []);
+  const hoje = dataDeHoje(agora);
+  const [dataRelatorio, setDataRelatorio] = useState(hoje);
   const [busca, setBusca] = useState(buscaInicial);
   const [filtroStatus, setFiltroStatus] = useState<(typeof STATUS_FILTRO)[number]>('Em aberto');
   const [filtroFamilia, setFiltroFamilia] = useState<EquipmentFamily | 'todas'>('todas');
@@ -139,6 +166,19 @@ export default function ManutencaoTab({
 
   /** O que já aconteceu com as ordens — abertura, edição e liberação. */
   const historico = useMemo(() => historicoDaManutencao(historyLogs), [historyLogs]);
+
+  const registrosManutencao = useMemo(() => registrosDeManutencao(controlesEquipamentos), [controlesEquipamentos]);
+  // Horas da OS = soma dos dias dela no controle da frota, cada dia até 10 h.
+  // OS sem nenhum dia lançado não tem hora parada medida: fica vazio, não zero.
+  const horasDaOrdem = (ordem: Pick<OrdemServico, 'id'>) => horasMedidasDaOrdem(ordem, registrosManutencao, agora);
+  const relatorioHoje = useMemo(() => montarRelatorioManutencaoDia(hoje, registrosManutencao, ordensServico, agora), [hoje, registrosManutencao, ordensServico, agora]);
+  const relatorioDoDia = useMemo(
+    () => (dataRelatorio === hoje ? relatorioHoje : montarRelatorioManutencaoDia(dataRelatorio, registrosManutencao, ordensServico, agora)),
+    [dataRelatorio, hoje, relatorioHoje, registrosManutencao, ordensServico, agora],
+  );
+  const motivosDoRelatorio = useMemo(() => motivosDoDia(relatorioDoDia, registrosManutencao, ordensServico), [relatorioDoDia, registrosManutencao, ordensServico]);
+  const pendentes = useMemo(() => diasParaConferir(registrosManutencao, ordensServico, agora), [registrosManutencao, ordensServico, agora]);
+  const paraConferir = pendentes.reduce((total, dia) => total + dia.aConferir, 0);
 
   const equipamentoPorId = useMemo(
     () => new Map(equipamentos.map(item => [item.id, item])),
@@ -182,34 +222,20 @@ export default function ManutencaoTab({
   // topo precisam falar do que está na tela, não do arquivo inteiro.
   const resumo = useMemo(() => {
     const abertas = lista.filter(ordem => !isOrdemEncerrada(ordem.status));
-    const horasAbertas = abertas.reduce((total, ordem) => total + (calcularHorasParadas(ordem) || 0), 0);
     return {
       abertas: abertas.length,
       aguardandoPeca: lista.filter(ordem => ordem.status === 'Aguardando Peça').length,
       concluidas: lista.filter(ordem => ordem.status === 'Concluída').length,
-      horasAbertas: Math.round(horasAbertas),
+      pelaRegra: lista.filter(ordem => (ordem.observacao || '').includes(OBSERVACAO_LIMITE)).length,
       criticas: abertas.filter(ordem => ['Alta', 'Urgente'].includes(ordem.prioridade)).length,
     };
   }, [lista]);
 
   /** Fila de oficina: uma OS ativa por cartão, sem esconder equipamento sem cadastro. */
   const filaOperacional = useMemo(
-    () => buildMaintenanceQueue(lista, equipamentos, new Date(), controlesEquipamentos),
-    [lista, equipamentos, controlesEquipamentos],
+    () => buildMaintenanceQueue(ordensServico, equipamentos, agora, controlesEquipamentos),
+    [ordensServico, equipamentos, agora, controlesEquipamentos],
   );
-
-  /** Ranking dos motivos que mais param a frota no recorte atual. */
-  const motivosRanking = useMemo(() => {
-    const agrupado = new Map<string, { motivo: string; horas: number; ocorrencias: number }>();
-    lista.forEach(ordem => {
-      const motivo = (ordem.motivo || ordem.descricao || 'Sem motivo informado').trim();
-      const atual = agrupado.get(motivo) || { motivo, horas: 0, ocorrencias: 0 };
-      atual.horas += calcularHorasParadas(ordem) || 0;
-      atual.ocorrencias += 1;
-      agrupado.set(motivo, atual);
-    });
-    return Array.from(agrupado.values()).sort((a, b) => b.horas - a.horas).slice(0, 6);
-  }, [lista]);
 
   const familiasComOrdens = useMemo(() => {
     const contagem = new Map<EquipmentFamily, number>();
@@ -234,8 +260,10 @@ export default function ManutencaoTab({
     setExportando(true);
     setAvisoExport('');
     try {
-      await downloadManutencaoWorkbook({
+      if (subtela === 'relatorio') await downloadRelatorioManutencaoDia(relatorioDoDia);
+      else await downloadManutencaoWorkbook({
         ordens: lista,
+        registros: registrosManutencao,
         equipamentos,
         filtros: filtrosAtivos,
         periodo: usarPeriodo ? { from: periodo.from, to: periodo.to } : undefined,
@@ -313,7 +341,7 @@ export default function ManutencaoTab({
     // número é corrente e seria mentira gravar.
     const ordem: OrdemServico = {
       ...base,
-      horasParadas: base.dataConclusao ? calcularHorasParadas(base) : undefined,
+      horasParadas: base.dataConclusao ? horasDaOrdem(base) : undefined,
     };
     onSave(ordem, !editando);
     setFormAberto(false);
@@ -331,7 +359,7 @@ export default function ManutencaoTab({
       dataConclusao: concluindo ? (ordem.dataConclusao || isoDay(hoje)) : ordem.dataConclusao,
       horaConclusao: concluindo ? (ordem.horaConclusao || hoje.toTimeString().slice(0, 5)) : ordem.horaConclusao,
     };
-    onSave({ ...atualizada, horasParadas: atualizada.dataConclusao ? calcularHorasParadas(atualizada) : undefined }, false);
+    onSave({ ...atualizada, horasParadas: atualizada.dataConclusao ? horasDaOrdem(atualizada) : undefined }, false);
   };
 
   const colunasOrdens: ColunaTabela<OrdemServico>[] = [
@@ -349,7 +377,7 @@ export default function ManutencaoTab({
     {
       chave: 'equipamento',
       titulo: 'Equipamento',
-      larguraMinima: 150,
+      larguraMinima: 110,
       valorOrdenacao: ordem => prefixoDe(ordem.equipamentoId),
       dica: ordem => [prefixoDe(ordem.equipamentoId), presentEquipment(equipamentoPorId.get(ordem.equipamentoId)).label].filter(Boolean).join(' · '),
       render: ordem => {
@@ -361,7 +389,8 @@ export default function ManutencaoTab({
             </span>
             <span className="min-w-0 lg:truncate">
               <strong className="text-slate-800">{prefixoDe(ordem.equipamentoId)}</strong>
-              <small className="text-xs text-slate-500"> · {equipmentLabel}</small>
+              {/* O tipo fica no cartão do celular e na dica: na tabela, a coluna estreita deixa as ações à vista a 1366 px. */}
+              <small className="text-xs text-slate-500 md:hidden"> · {equipmentLabel}</small>
             </span>
           </span>
         );
@@ -370,7 +399,7 @@ export default function ManutencaoTab({
     {
       chave: 'problema',
       titulo: 'Problema',
-      larguraMinima: 160,
+      larguraMinima: 100,
       valorOrdenacao: ordem => ordem.descricao || ordem.motivo,
       dica: ordem => ordem.descricao || ordem.motivo,
       render: ordem => ordem.descricao || ordem.motivo || '—',
@@ -378,33 +407,39 @@ export default function ManutencaoTab({
     {
       chave: 'situacao',
       titulo: 'Situação',
+      dica: ordem => [ordem.status, (ordem.observacao || '').includes(OBSERVACAO_LIMITE) ? 'Pelo limite de 10 h' : ''].filter(Boolean).join(' · '),
       valorOrdenacao: ordem => ordem.status,
-      render: ordem => <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold ${statusTone(ordem.status)}`}>{ordem.status}</span>,
+      render: ordem => (
+        <span className="flex flex-wrap items-center gap-1 lg:flex-nowrap">
+          <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold ${statusTone(ordem.status)}`}>{ordem.status}</span>
+          {(ordem.observacao || '').includes(OBSERVACAO_LIMITE) && <span className="inline-flex whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900">Pelo limite de 10 h</span>}
+        </span>
+      ),
     },
     {
       chave: 'abertura',
       titulo: 'Abertura',
       valorOrdenacao: ordem => `${ordem.dataAbertura} ${ordem.horaAbertura || ''}`,
-      render: ordem => <span className="whitespace-nowrap tabular-nums">{formatarData(ordem.dataAbertura)}{ordem.horaAbertura ? ` ${ordem.horaAbertura}` : ''}</span>,
+      dica: ordem => `${formatarData(ordem.dataAbertura)}${ordem.horaAbertura ? ` às ${ordem.horaAbertura}` : ''}`,
+      // Dia e mês na linha (o ano fica na dica): a coluna estreita deixa as ações à vista a 1366 px.
+      render: ordem => <span className="whitespace-nowrap tabular-nums">{formatarData(ordem.dataAbertura).slice(0, 5)}{ordem.horaAbertura ? ` ${ordem.horaAbertura}` : ''}</span>,
     },
     {
       chave: 'horas',
-      titulo: 'Horas paradas',
+      titulo: 'Horas',
       alinhamento: 'direita',
-      valorOrdenacao: ordem => calcularHorasParadas(ordem),
+      valorOrdenacao: ordem => horasDaOrdem(ordem),
+      dica: ordem => (isOrdemEncerrada(ordem.status) ? undefined : 'Em curso: conta até agora, no máximo 10 h por dia.'),
       render: ordem => {
-        const horas = calcularHorasParadas(ordem);
+        const horas = horasDaOrdem(ordem);
         if (horas === undefined) return '—';
         return (
-          <>
-            <span className="whitespace-nowrap">{`${horas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`}</span>
-            {!isOrdemEncerrada(ordem.status) && <span className="whitespace-nowrap text-xs text-slate-500"> · em curso</span>}
-          </>
+          <span className="whitespace-nowrap">{`${horas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`}</span>
         );
       },
     },
   ];
-  const BOTAO_LINHA = 'min-h-11 rounded-lg border bg-white px-2.5 text-[13px] font-bold transition-colors md:min-h-8';
+  const BOTAO_LINHA = 'min-h-11 rounded-lg border bg-white px-2 text-[13px] font-bold transition-colors md:min-h-8';
   const acoesDaOrdem = podeEditar
     ? (ordem: OrdemServico) => {
       const proximo = proximoStatusManutencao(ordem.status);
@@ -425,11 +460,14 @@ export default function ManutencaoTab({
   }, { scope: escopo, dependencies: [subtela] });
 
   const subtelas = [
-    { id: 'ordens' as const, rotulo: 'Ordens de serviço', curto: 'Ordens', icone: ClipboardList },
-    { id: 'fila' as const, rotulo: 'Fila de oficina', curto: 'Fila', icone: Wrench, contador: filaOperacional.length, contadorRotulo: 'em curso' },
-    { id: 'motivos' as const, rotulo: 'Motivos de parada', curto: 'Motivos', icone: BarChart3 },
-    { id: 'historico' as const, rotulo: 'Histórico', icone: History },
+    { id: 'hoje' as const, rotulo: 'Hoje', curto: 'Hoje', icone: Timer, contador: relatorioHoje.linhas.filter(linha => linha.parada.periodos.some(periodo => periodo.fim === null)).length, contadorRotulo: 'parados agora', tom: 'neutro' as const },
+    { id: 'conferencia' as const, rotulo: 'Conferência', curto: 'Conferir', icone: ClipboardCheck, contador: paraConferir, contadorRotulo: 'para conferir' },
+    { id: 'relatorio' as const, rotulo: 'Relatório do dia', curto: 'Relatório', icone: BarChart3 },
+    { id: 'ordens' as const, rotulo: 'Ordens de serviço', curto: 'OS', icone: ClipboardList },
+    { id: 'historico' as const, rotulo: 'Histórico', curto: 'Histórico', icone: History },
   ];
+  const exportaExcel = subtela === 'ordens' || subtela === 'relatorio';
+  const semNadaParaExportar = subtela === 'relatorio' ? relatorioDoDia.linhas.length === 0 : lista.length === 0;
 
   return (
     <TelaCheia ref={escopo} id="manutencao-tab" rotulo="Manutenção"
@@ -438,28 +476,23 @@ export default function ManutencaoTab({
        
         eyebrow="Frota"
         title="Manutenção"
-        abas={<AbasDaTela<Subtela> id="manutencao" rotulo="Subtelas da manutenção" abas={subtelas} ativa={subtela} onTrocar={setSubtela} idPainel="manutencao-dados" testId="manutencao-aba" />}
+        abas={<AbasDaTela<Subtela> id="manutencao" rotulo="Subtelas da manutenção" abas={subtelas} ativa={subtela} onTrocar={setSubtela} idPainel="manutencao-dados" testId="manutencao-aba" gradeNoCelular />}
         actions={<>
-          <button
-            type="button"
-            onClick={() => void exportarExcel()}
-            disabled={exportando || lista.length === 0}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700 disabled:opacity-50"
-          >
-            <FileSpreadsheet className="h-4 w-4" aria-hidden="true" /> {exportando ? 'Gerando...' : 'Exportar Excel'}
-          </button>
+          {exportaExcel && (
+            <button type="button" onClick={() => void exportarExcel()} disabled={exportando || semNadaParaExportar} className={BOTAO_SECUNDARIO}>
+              <FileSpreadsheet className="h-4 w-4" aria-hidden="true" /> {exportando ? 'Gerando...' : 'Exportar Excel'}
+            </button>
+          )}
           {podeEditar && (
-            <button
-              type="button"
-              onClick={abrirNova}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white transition-colors hover:bg-emerald-800"
-            >
+            <button type="button" onClick={abrirNova} className={BOTAO_PRIMARIO}>
               <Plus className="h-4 w-4" aria-hidden="true" /> Abrir OS
             </button>
           )}
         </>}
       />}
-      faixa={<div data-manutencao-reveal className="space-y-2">
+      faixa={avisoExport && subtela === 'relatorio'
+        ? <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{avisoExport}</p>
+        : subtela === 'ordens' && <div data-manutencao-reveal className="space-y-2">
         {/* Números do recorte: acompanham os filtros logo abaixo. */}
         <ul aria-label="Números do recorte" className="flex flex-wrap items-center gap-1.5">
           {[
@@ -467,7 +500,7 @@ export default function ManutencaoTab({
             { label: 'Alta ou urgente', valor: String(resumo.criticas), alerta: resumo.criticas > 0 },
             { label: 'Aguardando peça', valor: String(resumo.aguardandoPeca), alerta: false },
             { label: 'Concluídas', valor: String(resumo.concluidas), alerta: false },
-            { label: 'Horas paradas', valor: `${resumo.horasAbertas.toLocaleString('pt-BR')} h`, alerta: false },
+            { label: 'Pelo limite de 10 h', valor: String(resumo.pelaRegra), alerta: false },
           ].map(item => (
             <li key={item.label} className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-sm font-semibold ring-1 ring-inset ${item.alerta ? 'bg-amber-50 text-amber-900 ring-amber-200' : 'bg-white text-slate-600 ring-slate-200'}`}>
               {item.label} <strong className="tabular-nums text-slate-950">{item.valor}</strong>
@@ -479,23 +512,23 @@ export default function ManutencaoTab({
           <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{avisoExport}</p>
         )}
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
           <label className="relative min-w-0 flex-1 sm:min-w-56">
             <span className="sr-only">Buscar ordem de serviço</span>
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5b6870]" aria-hidden="true" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
             <input
               type="search"
               value={busca}
               onChange={event => setBusca(event.target.value)}
               placeholder="Número, prefixo, problema, responsável..."
-              className="min-h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500"
+              className="min-h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all duration-150"
             />
           </label>
           <select
             value={filtroStatus}
             onChange={event => setFiltroStatus(event.target.value as (typeof STATUS_FILTRO)[number])}
             aria-label="Filtrar por situação"
-            className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500"
+            className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all duration-150"
           >
             {STATUS_FILTRO.map(item => <option key={item}>{item}</option>)}
           </select>
@@ -503,7 +536,7 @@ export default function ManutencaoTab({
             value={filtroMotivo}
             onChange={event => setFiltroMotivo(event.target.value)}
             aria-label="Filtrar por motivo"
-            className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500 sm:max-w-[16rem]"
+            className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all duration-150 sm:max-w-[16rem]"
           >
             <option value="todos">Todos os motivos</option>
             {motivosDisponiveis.map(motivo => <option key={motivo} value={motivo}>{motivo}</option>)}
@@ -511,14 +544,14 @@ export default function ManutencaoTab({
         </div>
 
         {familiasComOrdens.length > 1 && (
-          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filtrar por tipo de equipamento">
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filtrar por tipo de equipamento">
             <button
               type="button"
               onClick={() => setFiltroFamilia('todas')}
               aria-pressed={filtroFamilia === 'todas'}
-              className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold transition-colors ${filtroFamilia === 'todas' ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-400'}`}
+              className={`inline-flex min-h-9 items-center gap-2 rounded-lg border px-3.5 py-1.5 text-xs font-semibold transition-all duration-150 ${filtroFamilia === 'todas' ? 'border-emerald-400 bg-emerald-50/80 text-emerald-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
             >
-              Todos <span className="tabular-nums text-[#5b6870]">{ordensServico.length}</span>
+              Todos <span className="tabular-nums text-slate-500">{ordensServico.length}</span>
             </button>
             {familiasComOrdens.map(({ familia, total }) => {
               const Icon = equipmentFamilyIcon(familia);
@@ -530,11 +563,11 @@ export default function ManutencaoTab({
                   onClick={() => setFiltroFamilia(ativo ? 'todas' : familia)}
                   aria-pressed={ativo}
                   title={EQUIPMENT_FAMILY_LABELS[familia]}
-                  className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold transition-colors ${ativo ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-400'}`}
+                  className={`inline-flex min-h-9 items-center gap-2 rounded-lg border px-3.5 py-1.5 text-xs font-semibold transition-all duration-150 ${ativo ? 'border-emerald-400 bg-emerald-50/80 text-emerald-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
                 >
                   <Icon className="size-4" strokeWidth={1.7} aria-hidden="true" />
                   <span className="hidden sm:inline">{EQUIPMENT_FAMILY_LABELS[familia]}</span>
-                  <span className="tabular-nums text-[#5b6870]">{total}</span>
+                  <span className="tabular-nums text-slate-500">{total}</span>
                 </button>
               );
             })}
@@ -568,83 +601,39 @@ export default function ManutencaoTab({
         />
       )}
 
-      {subtela === 'fila' && (
-        <section aria-label="Fila operacional de manutenção">
-          <h2 className="sr-only">Fila de oficina</h2>
-          <p className="flex items-baseline justify-between gap-4 text-sm text-slate-600">
-            <span>OS em curso, ordenadas pelo tempo parado do equipamento.</span>
-            <span className="shrink-0 font-bold tabular-nums">{filaOperacional.length} em curso</span>
-          </p>
-          {filaOperacional.length === 0
-            ? <EmptyState icon={Wrench} title="Nenhuma OS em curso" description="Com os filtros de agora, nenhum equipamento está parado na oficina." />
-            : (
-          <div className="mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-            {filaOperacional.slice(0, 12).map(item => {
-              const Icon = equipmentFamilyIcon(item.familia);
-              const ordem = ordensServico.find(candidate => candidate.id === item.ordemId);
-              const proximo = ordem ? proximoStatusManutencao(ordem.status) : undefined;
-              return (
-                <article key={item.ordemId} className="group rounded-xl border border-slate-200 bg-white p-3.5 transition duration-200 hover:border-emerald-300 hover:shadow-[0_10px_24px_rgba(6,60,49,0.08)]">
-                  <header className="flex items-start gap-3">
-                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-800" role="img" aria-label={EQUIPMENT_FAMILY_LABELS[item.familia]}>
-                      <Icon className="size-5" strokeWidth={1.7} aria-hidden="true" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <strong className="block truncate font-mono text-sm font-black text-slate-900">{item.prefixo}</strong>
-                          <span className="block line-clamp-2 break-words text-xs font-bold uppercase tracking-wide text-slate-500">{item.equipamentoNome}</span>
-                        </div>
-                        <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${statusTone(item.status)}`}>{item.status}</span>
-                      </div>
-                    </div>
-                  </header>
-                  <p className="mt-3 line-clamp-2 min-h-9 text-xs font-semibold leading-4 text-slate-700" title={item.motivo}>{item.motivo}</p>
-                  <dl className="mt-3 grid grid-cols-2 gap-x-3 border-y border-slate-100 py-2.5 text-xs">
-                    <div><dt className="text-[#5b6870]">Desde</dt><dd className="mt-0.5 font-bold text-slate-700">{formatarData(item.desde)}</dd></div>
-                    <div className="text-right"><dt className="text-[#5b6870]">Tempo parado</dt><dd className="mt-0.5 font-mono font-black tabular-nums text-rose-700">{formatarHoras(item.horasParadas)}</dd></div>
-                  </dl>
-                  <footer className="mt-3 flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs font-bold text-[#5b6870]">{item.numero}</span>
-                    <span className="flex gap-1.5">
-                      {onVerNoQuadro && <button type="button" onClick={() => onVerNoQuadro(item.prefixo)} aria-label={`Ver ${item.prefixo} no quadro`} className="min-h-10 rounded-md border border-slate-200 px-2.5 text-sm font-bold text-slate-600 transition hover:border-emerald-500 hover:text-emerald-800">Ver no quadro</button>}
-                      {podeEditar && proximo && ordem && <button type="button" onClick={() => avancar(ordem)} className="min-h-10 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 text-sm font-bold text-emerald-800 transition hover:border-emerald-500">{proximo}</button>}
-                      {podeEditar && ordem && <button type="button" aria-label={`Editar ${item.numero}`} onClick={() => abrirEdicao(ordem)} className="min-h-10 rounded-md border border-slate-200 px-2.5 text-sm font-bold text-slate-600 transition hover:border-emerald-500 hover:text-emerald-800">Editar</button>}
-                    </span>
-                  </footer>
-                </article>
-              );
-            })}
-          </div>
-            )}
-        </section>
+      {subtela === 'hoje' && (
+        <>
+          <ManutencaoHoje
+            relatorio={relatorioHoje}
+            registros={controlesEquipamentos}
+            equipamentos={equipamentos}
+            motoristas={motoristas}
+            responsavel={responsavel}
+            podeEditar={podeEditar}
+            agora={agora}
+            paraConferir={paraConferir}
+            onAbrirConferencia={() => setSubtela('conferencia')}
+            onSaveControle={onSaveControle}
+          />
+          <FilaOficina fila={filaOperacional} ordensServico={ordensServico} podeEditar={podeEditar} onAvancar={avancar} onEditar={abrirEdicao} onVerNoQuadro={onVerNoQuadro} />
+        </>
       )}
 
-      {subtela === 'motivos' && (
-        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-label="Motivos que mais param a frota">
-          <p className="border-b border-slate-200 px-4 py-2.5 text-sm text-slate-600 sm:px-5">Horas somadas por motivo no recorte atual.</p>
-          {motivosRanking.length === 0
-            ? <EmptyState icon={BarChart3} title="Nenhum motivo no recorte" description="Ajuste os filtros para ver as paradas." />
-            : (
-          <ul className="divide-y divide-slate-100">
-            {motivosRanking.map(item => {
-              const maior = motivosRanking[0]?.horas || 1;
-              return (
-                <li key={item.motivo} className="px-4 py-3 sm:px-5">
-                  <div className="flex items-baseline justify-between gap-3 text-xs">
-                    <span className="min-w-0 truncate font-bold text-slate-700" title={item.motivo}>{item.motivo}</span>
-                    <span className="shrink-0 font-mono font-black tabular-nums text-slate-900">{formatarHoras(item.horas)}</span>
-                  </div>
-                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                    <div className="h-full rounded-full bg-emerald-600" style={{ width: `${Math.max(3, (item.horas / maior) * 100)}%` }} />
-                  </div>
-                  <span className="mt-1 block text-xs text-[#5b6870]">{item.ocorrencias} ordem(ns)</span>
-                </li>
-              );
-            })}
-          </ul>
-            )}
-        </section>
+      {subtela === 'conferencia' && (
+        <ConferenciaManutencao
+          registros={registrosManutencao}
+          ordens={ordensServico}
+          agora={agora}
+          podeEditar={podeEditar}
+          podeReabrir={podeReabrirConferencia}
+          responsavel={responsavel}
+          pendentes={pendentes}
+          onSalvarConferencia={onSalvarConferencia}
+        />
+      )}
+
+      {subtela === 'relatorio' && (
+        <RelatorioManutencaoDia relatorio={relatorioDoDia} hoje={hoje} onData={setDataRelatorio} motivos={motivosDoRelatorio} />
       )}
 
       {/* Histórico: o que já aconteceu com as ordens, incluindo as abertas
@@ -764,9 +753,9 @@ export default function ManutencaoTab({
             <textarea value={form.observacao} onChange={event => setForm({ ...form, observacao: event.target.value })} rows={2} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-emerald-500" />
           </label>
         </div>
-        {form.dataConclusao && (
+        {editando && horasDaOrdem(editando) !== undefined && (
           <p className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-            Horas paradas calculadas: <strong>{calcularHorasParadas({ ...form })?.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) ?? '—'} h</strong>
+            Horas paradas pelo controle da frota (até 10 h por dia): <strong>{horasDaOrdem(editando)?.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} h</strong>
           </p>
         )}
         {erro && <p className="mt-3 rounded-lg bg-rose-50 p-3 text-xs font-bold text-rose-700">{erro}</p>}

@@ -417,10 +417,12 @@ export default function DailyRecordForm({
       const key = existing?.chave || `${form.date}|${form.equipmentId || normalizePrefix(form.prefix)}`;
       const previousStatus = existing ? normalizeOperationalStatus(existing.status) : undefined;
       const nextLegacyStatus = toLegacyDailyStatus(form.operationalStatus);
+      const tipoEvento = eventTypeForStatus(previousStatus, form.operationalStatus, form.releaseTime);
       const timelineEvent: EventoControleEquipamentoDiario = {
         id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         ocorridoEm: now,
-        tipo: eventTypeForStatus(previousStatus, form.operationalStatus, form.releaseTime),
+        hora: tipoEvento === 'ENTRADA_MANUTENCAO' ? form.maintenanceEntryTime : tipoEvento === 'LIBERACAO_MANUTENCAO' ? form.releaseTime : undefined,
+        tipo: tipoEvento,
         statusAnterior: existing?.status,
         statusNovo: nextLegacyStatus,
         motivo: form.maintenanceReason,

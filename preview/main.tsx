@@ -48,6 +48,34 @@ const noopImportAbastecimentos = (items: unknown[] = []) => ({
   totalAfter: 0,
 });
 
+/** Manutenção com estado: liberar, entrar e conferir voltam para a tela, como no app. */
+function ManutencaoPreview() {
+  const [registros, setRegistros] = React.useState(fx.controlesManutencao);
+  const [ordens, setOrdens] = React.useState(fx.ordensManutencao);
+  const [logs, setLogs] = React.useState<HistoryLog[]>([]);
+  const salvar = (registro: (typeof registros)[number], descricao = `Editou o controle de ${registro.prefixo}.`) => {
+    setRegistros(atual => atual.some(item => item.id === registro.id) ? atual.map(item => item.id === registro.id ? registro : item) : [registro, ...atual]);
+    setLogs(atual => [{ id: `log-${Date.now()}`, timestamp: new Date().toLocaleString('pt-BR'), usuario: 'Deivid Santana', acao: 'Editou', tela: 'Manutenção', descricao }, ...atual]);
+  };
+  return (
+    <ManutencaoTab
+      buscaInicial={buscaDaUrl}
+      onVerNoQuadro={prefixo => location.assign(`/?screen=frotas&shell=1&busca=${encodeURIComponent(prefixo)}`)}
+      ordensServico={ordens}
+      equipamentos={fx.equipamentosManutencao}
+      controlesEquipamentos={registros}
+      responsavel="Deivid Santana"
+      podeEditar
+      podeReabrirConferencia
+      historyLogs={logs}
+      onSave={(ordem, novo) => setOrdens(atual => novo ? [ordem, ...atual] : atual.map(item => item.id === ordem.id ? ordem : item))}
+      onSaveControle={registro => salvar(registro)}
+      onSalvarConferencia={salvar}
+      onDelete={noop}
+    />
+  );
+}
+
 /** Quadro com estado: o que se salva no painel volta para o quadro, como no app. */
 /** Prefixo vindo da outra tela (Quadro <-> Manutenção), como no app. */
 const buscaDaUrl = new URLSearchParams(location.search).get('busca') || '';
@@ -262,6 +290,8 @@ function PresencaFluxoCompleto() {
         return { success: true, message: 'Enviado.', submissionId: 'env-e2e-001' };
       }}
       onUpdateRecord={async () => ({ success: true, message: 'Atualizado.' })}
+      proximoSabado="2026-09-05"
+      onSaveSaturdayScale={async () => ({ success: true, message: 'Escala salva.' })}
     />
   );
 }
@@ -689,7 +719,7 @@ const screens: Record<string, React.ReactNode> = {
     <AdministracaoTab ultimaSincronizacao="" nuvemConectada={false} logs={historicoPreview} />
   ),
   relatorios: (
-    <RelatoriosTab abastecimentos={fx.abastecimentos} controlesEquipamentos={fx.controlesEquipamentos} presencas={fx.registrosEnviados} movimentosMaterial={[]} cravacoes={[]} podeAbrir={aba => aba !== 'estacas'} onAbrir={noop} />
+    <RelatoriosTab abastecimentos={fx.abastecimentos} controlesEquipamentos={fx.controlesEquipamentos} presencas={fx.registrosEnviados} movimentosMaterial={[]} cravacoes={[]} funcionarios={fx.funcionarios} equipamentos={fx.equipamentos} podeAbrir={aba => aba !== 'estacas'} onAbrir={noop} />
   ),
   planejamento: <PlanejamentoPreview />,
   'diario-obra': (
@@ -756,19 +786,7 @@ const screens: Record<string, React.ReactNode> = {
       onNavigate={noop}
     />
   ),
-  manutencao: (
-    <ManutencaoTab
-      buscaInicial={buscaDaUrl}
-      onVerNoQuadro={prefixo => location.assign(`/?screen=frotas&shell=1&busca=${encodeURIComponent(prefixo)}`)}
-      ordensServico={fx.ordensServico}
-      equipamentos={fx.equipamentos}
-      controlesEquipamentos={fx.controlesEquipamentos}
-      responsavel="Deivid Santana"
-      podeEditar
-      onSave={noop}
-      onDelete={noop}
-    />
-  ),
+  manutencao: <ManutencaoPreview />,
   painel: (
     <Dashboard
       empresas={fx.empresas}

@@ -12,7 +12,7 @@ export function ColunaCanteiro({ canteiro, children }: { canteiro: string; child
     <div
       ref={setNodeRef}
       data-testid={`quadro-solte-${canteiro}`}
-      className={`grid gap-1.5 p-1.5 transition duration-200 [grid-template-columns:repeat(auto-fill,minmax(6.75rem,1fr))] ${isOver ? 'rounded-xl bg-emerald-50 ring-2 ring-inset ring-[#176b4d]' : ''}`}
+      className={`grid gap-2 p-2 transition duration-200 sm:gap-2.5 sm:p-2.5 md:gap-3 md:p-3 [grid-template-columns:repeat(auto-fill,minmax(9rem,1fr))] sm:[grid-template-columns:repeat(auto-fill,minmax(10.5rem,1fr))] lg:[grid-template-columns:repeat(auto-fill,minmax(12rem,1fr))] ${isOver ? 'rounded-2xl bg-emerald-50 ring-2 ring-inset ring-[#176b4d]' : ''}`}
     >
       {children}
     </div>

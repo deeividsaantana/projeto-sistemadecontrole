@@ -61,6 +61,14 @@ const todayInSaoPaulo = () => new Intl.DateTimeFormat('en-CA', {
   month: '2-digit',
   day: '2-digit',
 }).format(new Date());
+const nextSaturdayInSaoPaulo = (now = new Date()) => {
+  const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(now);
+  const [ano, mes, dia] = hoje.split('-').map(Number);
+  const base = new Date(Date.UTC(ano, mes - 1, dia));
+  const diasAteSabado = (6 - base.getUTCDay() + 7) % 7;
+  base.setUTCDate(base.getUTCDate() + diasAteSabado);
+  return base.toISOString().slice(0, 10);
+};
 // A configuração pública pode ser reutilizada por poucos segundos sem perder
 // a sensação de tempo real. O cabeçalho no-store continua impedindo cache do
 // navegador; esta janela curta evita leituras excessivas no banco.
@@ -86,6 +94,40 @@ const loadPresenceSnapshot = async database => {
       });
   }
   return snapshotRequest;
+};
+
+const SCALES_COLLECTION = 'sistemarenea_presence_scales';
+
+const loadSaturdayScale = async (database, groupId, saturdayDate) => {
+  try {
+    const snapshot = await database.collection(SCALES_COLLECTION)
+      .where('grupoId', '==', groupId)
+      .where('data', '==', saturdayDate)
+      .limit(1)
+      .get();
+    if (snapshot.empty) return null;
+    return snapshot.docs[0].data();
+  } catch {
+    return null;
+  }
+};
+
+const saveSaturdayScale = async (database, groupId, saturdayDate, scale, token) => {
+  const scaleId = `scale_${stableHash(`${groupId}|${saturdayDate}`).slice(0, 48)}`;
+  const docRef = database.collection(SCALES_COLLECTION).doc(scaleId);
+  const now = new Date().toISOString();
+  const existing = await docRef.get();
+  await docRef.set({
+    id: scaleId,
+    grupoId: groupId,
+    data: saturdayDate,
+    funcionarios: scale.funcionarios || [],
+    observacaoGeral: cleanString(scale.observacaoGeral, 600) || '',
+    tokenUsado: `validado-${stableHash(token).slice(0, 12)}`,
+    criadoEm: existing.exists ? existing.data()?.criadoEm : now,
+    atualizadoEm: now,
+  });
+  return { success: true };
 };
 
 // Equipes antigas na nuvem guardam nome, responsável e frente como objeto.
@@ -591,6 +633,9 @@ export const __testing = {
   textoLegivel,
   teamMemberDocId,
   todayInSaoPaulo,
+  loadSaturdayScale,
+  saveSaturdayScale,
+  nextSaturdayInSaoPaulo,
 };
 
 export const handler = async event => {
@@ -616,12 +661,18 @@ export const handler = async event => {
         return jsonResponse(404, { success: false, message: 'Link de presença inválido ou inativo.' });
       }
       const today = todayInSaoPaulo();
+      const nextSaturday = nextSaturdayInSaoPaulo();
       // Uma consulta não depende da outra; esperar em fila só somava latência
       // no 4G do canteiro.
-      const [additionsByGroup, submittedGroupIds] = await Promise.all([
+      const [additionsByGroup, submittedGroupIds, saturdayScales] = await Promise.all([
         loadTeamAdditions(database, tokenGroupIds),
         loadSubmittedGroupIds(database, today),
+        Promise.all(tokenGroupIds.slice(0, 100).map(async id => [id, await loadSaturdayScale(database, id, nextSaturday)])),
       ]);
+      // Link geral escolhe a equipe na tela, então a escala viaja por equipe.
+      const escalasSabado = Object.fromEntries(saturdayScales
+        .filter(([, escala]) => Array.isArray(escala?.funcionarios))
+        .map(([id, escala]) => [id, escala.funcionarios]));
       const config = getPublicConfig(snapshot, token, additionsByGroup);
       if (!config) return jsonResponse(404, { success: false, message: 'Link de presença inválido ou inativo.' });
       const availableConfig = filterSubmittedGroups(config, submittedGroupIds);
@@ -665,6 +716,8 @@ export const handler = async event => {
           observacaoDia,
           historicoPorData,
           observacoesPorData,
+          escalasSabado,
+          proximoSabado: nextSaturday,
           dataAtual: today,
         },
       }, {
@@ -1016,6 +1069,43 @@ export const handler = async event => {
       });
     }
 
+    // Salvar escala de sábado: quem da equipe vai trabalhar.
+    if (cleanString(body.action, 40) === 'escala-sabado') {
+      const token = cleanString(body.token, 180);
+      const groupId = cleanString(body.grupoId, 160);
+      const saturdayDate = cleanString(body.data, 10);
+      const scale = body.scale;
+      if (!token || !groupId || !isIsoDate(saturdayDate) || !scale) {
+        return jsonResponse(400, { success: false, message: 'Dados da escala incompletos ou inválidos.' });
+      }
+      const idempotencyKey = assertIdempotencyKey(event, { required: true });
+      const scaleContext = {
+        database,
+        organizationId: 'public-presenca',
+        userId: stableHash(token).slice(0, 32),
+        requestId: event.headers?.['x-request-id'] || '',
+      };
+      return await withIdempotency(event, scaleContext, idempotencyKey, async () => {
+        const snapshot = await loadPresenceSnapshot(database);
+        const employees = (snapshot.funcionarios || []).filter(item => item?.ativo);
+        const tokenGroups = activeGroupsForToken(snapshot, token);
+        const additionsByGroup = await loadTeamAdditions(database, tokenGroups.map(item => item.id));
+        const authorizedGroups = applyTeamAdditions(resolveGroupEmployeeIds(tokenGroups, employees), additionsByGroup, employees);
+        const group = authorizedGroups.find(item => item.id === groupId);
+        if (!group) return jsonResponse(403, { success: false, message: 'O link não autoriza o grupo selecionado.' });
+        try {
+          await saveSaturdayScale(database, group.id, saturdayDate, scale, token);
+          return jsonResponse(200, {
+            success: true,
+            data: { scale },
+            message: `Escala de sábado de ${group.nome} salva com sucesso.`,
+          });
+        } catch (error) {
+          throw new Error('Não foi possível salvar a escala de sábado com segurança.');
+        }
+      });
+    }
+
     const token = cleanString(body.token, 180);
     const groupId = cleanString(body.grupoId, 160);
     const date = cleanString(body.data, 10);
@@ -1057,7 +1147,14 @@ export const handler = async event => {
         throw error;
       }
       const stableSubmissionId = `presence_${stableHash(idempotencyKey).slice(0, 48)}`;
-      const { records, submissionId, createdAtIso } = buildPresenceRecords({ group, employees, date, items: body.items, token, submissionId: stableSubmissionId });
+      // No sábado só a equipe escalada trabalha: o apontamento cobre quem foi
+      // escalado, não a lista inteira.
+      const escalaDoDia = date === nextSaturdayInSaoPaulo() ? await loadSaturdayScale(database, group.id, date) : null;
+      const escaladosIds = new Set((escalaDoDia?.funcionarios || []).filter(item => item?.escalado).map(item => item.id));
+      const groupDoDia = escaladosIds.size > 0
+        ? { ...group, funcionarioIds: (group.funcionarioIds || []).filter(id => escaladosIds.has(id)) }
+        : group;
+      const { records, submissionId, createdAtIso } = buildPresenceRecords({ group: groupDoDia, employees, date, items: body.items, token, submissionId: stableSubmissionId });
       const lockId = presenceLockId(group.id, date);
       const lockRef = database.collection('sistemarenea_presence_locks').doc(lockId);
       const submissionRef = database.collection('sistemarenea_public_submissions').doc(`presence_${submissionId}`);

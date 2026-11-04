@@ -11,7 +11,8 @@ test('Quadro e Manutenção se abrem um no outro pelo prefixo da máquina', () =
   assert.match(app, /buscaInicial=\{pedidoManutencao\.prefixo\}/);
   assert.match(app, /quadroBusca=\{pedidoFrota\.prefixo\}/);
   assert.match(ler('src/components/quadroFrota/PainelEquipamento.tsx'), /quadro-ver-ordens/);
-  assert.match(ler('src/components/ManutencaoTab.tsx'), /Ver no quadro/);
+  assert.match(ler('src/components/ManutencaoTab.tsx'), /onVerNoQuadro=\{onVerNoQuadro\}/);
+  assert.match(ler('src/components/manutencao/FilaOficina.tsx'), /Ver no quadro/);
 });
 
 test('Topo do Quadro: alça de arrastar não passa por cima da faixa de filtros', () => {

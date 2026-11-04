@@ -76,6 +76,10 @@ export interface PublicPresenceConfig {
   historicoPorData?: Record<string, PresencaApontamento[]>;
   observacoesPorData?: Record<string, string>;
   dataAtual?: string;
+  /** Próximo sábado em YYYY-MM-DD */
+  proximoSabado?: string;
+  /** Escala do próximo sábado, por equipe */
+  escalasSabado?: Record<string, Array<{ id: string; nome: string; escalado: boolean; observacao?: string }>>;
 }
 
 export const loadPublicPresenceConfig = async (token: string, data = ''): Promise<PublicPresenceConfig> => {
@@ -185,6 +189,21 @@ export const updatePublicPresenceDayNote = async (
     body: JSON.stringify(payload),
   });
   return { success: true, message: response.message || 'Observação registrada.', observacaoDia: response.data?.observacaoDia ?? observacaoDia };
+};
+
+/** Salva a escala de sábado: quem da equipe vem trabalhar */
+export const saveSaturdayScale = async (
+  token: string,
+  grupoId: string,
+  scale: { funcionarios: Array<{ id: string; nome: string; escalado: boolean; observacao?: string }>; observacaoGeral?: string },
+) => {
+  const payload = { action: 'escala-sabado', token, grupoId, scale };
+  const response = await callPublicApi<{ success: boolean }>('/api/public-presenca', {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': stableRequestKey('escala-sabado', payload) },
+    body: JSON.stringify(payload),
+  });
+  return { success: true, message: response.message || 'Escala de sábado salva.' };
 };
 
 /**

@@ -29,40 +29,38 @@ export function CartaoEquipamento({ cartao, onAbrir }: { cartao: CartaoFrota; on
       data-quadro-cartao
       data-testid={`quadro-cartao-${cartao.prefixo}`}
       aria-label={`${cartao.prefixo}, ${cartao.modelo}, ${ROTULO_GRUPO[cartao.grupo]}${cartao.operador ? `, operador ${cartao.operador}` : ', sem operador'}`}
-      className={`group relative flex min-h-[8.5rem] flex-col overflow-hidden rounded-xl bg-white p-1 text-left shadow-[0_1px_2px_rgba(15,40,31,0.06)] ring-1 ring-slate-200 transition duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-1 hover:shadow-[0_18px_32px_-18px_rgba(15,40,31,0.35)] hover:ring-emerald-300 active:scale-[0.98] ${FOCO}`}
+      className={`group relative flex h-full min-h-[14rem] w-full flex-col overflow-hidden rounded-2xl bg-white text-left transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-1 hover:shadow-[0_20px_40px_-10px_rgba(15,40,31,0.15)] active:scale-[0.97] shadow-[0_2px_8px_rgba(15,40,31,0.08)] ring-1 ring-slate-200 hover:ring-slate-300 ${FOCO}`}
     >
-      <span className={`relative grid h-11 place-items-center overflow-hidden rounded-lg bg-gradient-to-b ${tom.fundo}`}>
-        <span className={`absolute inset-x-0 top-0 h-1 ${tom.faixa}`} aria-hidden="true" />
+      <span className={`relative grid h-24 place-items-center overflow-hidden bg-gradient-to-b pr-9 ${tom.fundo}`}>
+        <span className={`absolute inset-x-0 top-0 h-1.5 ${tom.faixa}`} aria-hidden="true" />
         {cartao.foto
           ? <img src={cartao.foto} alt="" className="h-full w-full object-cover" loading="lazy" />
-          : <DesenhoMaquina tipo={cartao.silhueta} className="h-9 w-16 drop-shadow-[0_6px_6px_rgba(15,40,31,0.12)] transition duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-0.5 group-hover:scale-[1.06]" />}
+          : <DesenhoMaquina tipo={cartao.silhueta} className="h-14 w-28 drop-shadow-[0_8px_8px_rgba(15,40,31,0.14)] transition duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-0.5 group-hover:scale-[1.08]" />}
       </span>
-      <span className="flex flex-1 flex-col px-1 pb-0.5 pt-1.5">
-        <strong className="font-mono text-[13px] font-bold leading-tight tracking-tight text-slate-900">{cartao.prefixo}</strong>
+      <span className="flex flex-1 flex-col gap-1 px-3 pb-3 pt-2.5">
+        <strong className="font-mono text-lg font-extrabold leading-none tracking-tight text-slate-900">{cartao.prefixo}</strong>
         <span className="line-clamp-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{cartao.modelo}</span>
-        <span className="mt-1 flex items-center gap-1 font-mono text-xs text-slate-500">
-          <Gauge className="size-3 text-slate-400" aria-hidden="true" />
-          {cartao.horimetro ? `${numero(cartao.horimetro)} h` : 'sem horímetro'}
+        <span className={`mt-1 flex min-w-0 items-center gap-1.5 font-mono ${cartao.horimetro ? 'text-sm font-semibold text-slate-700' : 'text-xs text-slate-500'}`}>
+          <Gauge className="size-4 shrink-0 text-slate-400" aria-hidden="true" />
+          <span className="truncate">{cartao.horimetro ? `${numero(cartao.horimetro)} h` : 'sem horímetro'}</span>
         </span>
-        <span className="mt-1 flex min-w-0 items-center gap-1">
+        <span className="mt-auto flex min-w-0 items-center gap-2 pt-2">
           {cartao.operador ? (
             <>
-              <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[#176b4d] text-xs font-bold text-white" aria-hidden="true">{iniciais(cartao.operador)}</span>
-              <span className="truncate text-xs font-bold uppercase text-slate-700">{cartao.operador.split(' ')[0]}</span>
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#176b4d] text-xs font-bold text-white" aria-hidden="true">{iniciais(cartao.operador)}</span>
+              <span className="truncate text-sm font-semibold text-slate-800">{cartao.operador.split(' ')[0]}</span>
             </>
           ) : (
             <>
-              <span className="grid size-5 shrink-0 place-items-center rounded-full border border-dashed border-[#f26a2e] text-xs font-bold text-[#c2410c]" aria-hidden="true">?</span>
-              <span className="truncate text-xs font-medium italic text-slate-500">sem operador</span>
+              <span className="grid size-7 shrink-0 place-items-center rounded-full border-2 border-[#f26a2e] bg-orange-50 text-xs font-bold text-[#c2410c]" aria-hidden="true">?</span>
+              <span className="truncate text-xs font-medium text-slate-500">sem operador</span>
             </>
           )}
         </span>
-        <span className="mt-auto pt-1.5">
-          <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-bold uppercase ring-1 ring-inset ${tom.etiqueta}`}>
-            <span className={`size-1.5 rounded-full ${tom.ponto} ${cartao.grupo === 'operando' ? 'animate-pulse motion-reduce:animate-none' : ''}`} aria-hidden="true" />
-            {ROTULO_GRUPO[cartao.grupo]}
-          </span>
-        </span>
+      </span>
+      <span className={`flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wide ring-1 ring-inset ${tom.etiqueta}`}>
+        <span className={`size-2 shrink-0 rounded-full ${tom.ponto} ${cartao.grupo === 'operando' ? 'animate-pulse motion-reduce:animate-none' : ''}`} aria-hidden="true" />
+        {ROTULO_GRUPO[cartao.grupo]}
       </span>
     </button>
   );

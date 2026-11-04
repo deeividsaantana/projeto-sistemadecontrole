@@ -24,6 +24,13 @@ interface Props {
   onAlternarSelecao?: () => void;
 }
 
+/**
+ * O cartão que está sendo arrastado é o próprio que segue o dedo: em vez de
+ * apagado, ele "levanta" (maior, inclinado, com sombra e contorno verde) para
+ * ficar claro o que está na mão. Quem pede menos movimento não vê a inclinação.
+ */
+export const ARRASTANDO = 'scale-[1.04] rotate-[1.5deg] motion-reduce:rotate-0 cursor-grabbing shadow-[0_24px_40px_-18px_rgba(15,40,31,0.5)] ring-2 ring-emerald-400';
+
 export function CartaoArrastavel({ cartao, podeArrastar, onAbrir, modoSelecao, selecionado, onAlternarSelecao }: Props) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({
     id: cartao.equipamentoId,
@@ -34,7 +41,7 @@ export function CartaoArrastavel({ cartao, podeArrastar, onAbrir, modoSelecao, s
     : undefined;
   if (modoSelecao) {
     return (
-      <div style={style} data-testid={`quadro-arrastar-${cartao.prefixo}`} className="relative">
+      <div style={style} data-testid={`quadro-arrastar-${cartao.prefixo}`} className="relative h-full">
         <button
           type="button"
           onClick={onAlternarSelecao}
@@ -57,7 +64,8 @@ export function CartaoArrastavel({ cartao, podeArrastar, onAbrir, modoSelecao, s
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative ${isDragging ? 'opacity-40' : ''}`}
+      className={`relative h-full rounded-xl transition-[scale,rotate,box-shadow] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${isDragging ? ARRASTANDO : ''}`}
+      data-arrastando={isDragging || undefined}
       data-testid={`quadro-arrastar-${cartao.prefixo}`}
     >
       <CartaoEquipamento cartao={cartao} onAbrir={onAbrir} />
@@ -70,7 +78,7 @@ export function CartaoArrastavel({ cartao, podeArrastar, onAbrir, modoSelecao, s
           aria-label={`Arrastar ${cartao.prefixo} para outro canteiro`}
           title="Segure e arraste para outro canteiro"
           data-testid={`quadro-alca-${cartao.prefixo}`}
-          className={`absolute right-1 top-1 z-[1] grid size-11 cursor-grab touch-none place-items-center rounded-lg bg-white/85 text-slate-500 ring-1 ring-slate-200 transition hover:bg-white hover:text-[#176b4d] hover:ring-emerald-300 active:cursor-grabbing lg:size-7 ${FOCO}`}
+          className={`absolute right-1 top-2 z-[1] grid size-11 cursor-grab touch-none place-items-center rounded-lg bg-white/85 text-slate-500 ring-1 ring-slate-200 transition hover:bg-white hover:text-[#176b4d] hover:ring-emerald-300 active:cursor-grabbing lg:size-7 ${FOCO}`}
         >
           <GripVertical className="size-4" aria-hidden="true" />
         </button>

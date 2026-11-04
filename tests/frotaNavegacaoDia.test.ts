@@ -33,10 +33,6 @@ test('os avisos de conferência ficam na faixa de filtros, não num bloco à par
   assert.match(filtros, /data-testid="frota-conferencia"/);
 });
 
-test('rótulo de indicador do Quadro não quebra no meio da palavra', () => {
-  assert.match(ler('src/components/quadroFrota/QuadroFrota.tsx'), /quadro-indicador-\$\{item\.id\}[\s\S]*?whitespace-nowrap/);
-});
-
 test('a Situação do dia abre com os cartões de resumo e a tabela logo abaixo', () => {
   const aba = ler('src/components/ControleEquipamentosDiarioTab.tsx');
   assert.match(aba, /frota-resumo-visualizacao/);
