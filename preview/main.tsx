@@ -59,6 +59,8 @@ function ManutencaoPreview() {
   };
   return (
     <ManutencaoTab
+      buscaInicial={buscaDaUrl}
+      onVerNoQuadro={prefixo => location.assign(`/?screen=frotas&shell=1&busca=${encodeURIComponent(prefixo)}`)}
       ordensServico={ordens}
       equipamentos={fx.equipamentosManutencao}
       controlesEquipamentos={registros}
@@ -75,11 +77,16 @@ function ManutencaoPreview() {
 }
 
 /** Quadro com estado: o que se salva no painel volta para o quadro, como no app. */
-function QuadroFrotaPreview({ dia, onAbrirSituacao }: { dia: string; onAbrirSituacao: () => void }) {
+/** Prefixo vindo da outra tela (Quadro <-> Manutenção), como no app. */
+const buscaDaUrl = new URLSearchParams(location.search).get('busca') || '';
+
+function QuadroFrotaPreview({ dia, onAbrirSituacao, busca }: { dia: string; onAbrirSituacao: () => void; busca: string }) {
   const [registros, setRegistros] = React.useState(fx.controlesQuadro);
   const [equipamentos, setEquipamentos] = React.useState(fx.equipamentosQuadro);
   return (
     <QuadroFrota
+      buscaInicial={busca}
+      onVerOrdens={prefixo => location.assign(`/?screen=manutencao&shell=1&busca=${encodeURIComponent(prefixo)}`)}
       equipamentos={equipamentos}
       registros={registros}
       gruposEquipe={[fx.grupo]}
@@ -662,7 +669,9 @@ const screens: Record<string, React.ReactNode> = {
       onOpenEquipmentRegistration={noop}
       onAddOperationalDrivers={noop}
       canApproveFleet
-      quadro={(dia, verSituacao) => <QuadroFrotaPreview dia={dia} onAbrirSituacao={verSituacao} />}
+      abrirNoQuadro={Boolean(buscaDaUrl)}
+      quadroBusca={buscaDaUrl}
+      quadro={(dia, verSituacao, busca) => <QuadroFrotaPreview dia={dia} onAbrirSituacao={verSituacao} busca={busca} />}
     />
   ),
   combustivel: <CombustivelVivo />,

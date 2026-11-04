@@ -73,6 +73,10 @@ interface ManutencaoTabProps {
   onSalvarConferencia: (registro: ControleEquipamentoDiario, descricao: string) => void;
   /** Sem ele, a tela não mostra Excluir: só o administrador exclui (A7). */
   onDelete?: (id: string) => void;
+  /** Busca já preenchida quando a tela abre vinda do Quadro. */
+  buscaInicial?: string;
+  /** Abre a máquina no Quadro de frotas. */
+  onVerNoQuadro?: (prefixo: string) => void;
 }
 
 const TIPOS: OrdemServico['tipo'][] = ['Corretiva', 'Preventiva', 'Preditiva', 'Revisão'];
@@ -117,9 +121,12 @@ export default function ManutencaoTab({
   onSaveControle,
   onSalvarConferencia,
   onDelete,
+  buscaInicial = '',
+  onVerNoQuadro,
 }: ManutencaoTabProps) {
   const escopo = useRef<HTMLElement>(null);
-  const [subtela, setSubtela] = useState<Subtela>('hoje');
+  // Quem chega do Quadro com um prefixo vai direto às ordens, onde fica a busca.
+  const [subtela, setSubtela] = useState<Subtela>(buscaInicial ? 'ordens' : 'hoje');
   // As horas do dia correm com o relógio: refaz a conta a cada minuto.
   const [agora, setAgora] = useState(() => new Date());
   useEffect(() => {
@@ -128,7 +135,7 @@ export default function ManutencaoTab({
   }, []);
   const hoje = dataDeHoje(agora);
   const [dataRelatorio, setDataRelatorio] = useState(hoje);
-  const [busca, setBusca] = useState('');
+  const [busca, setBusca] = useState(buscaInicial);
   const [filtroStatus, setFiltroStatus] = useState<(typeof STATUS_FILTRO)[number]>('Em aberto');
   const [filtroFamilia, setFiltroFamilia] = useState<EquipmentFamily | 'todas'>('todas');
   const [filtroMotivo, setFiltroMotivo] = useState('todos');
@@ -467,6 +474,7 @@ export default function ManutencaoTab({
     <TelaCheia ref={escopo} id="manutencao-tab" rotulo="Manutenção"
       longa={subtela !== 'ordens'} idAbaAtiva={idDaAba('manutencao', subtela)} idDados="manutencao-dados" chaveRolagem={subtela}
       cabecalho={<PageHeader
+       
         eyebrow="Frota"
         title="Manutenção"
         abas={<AbasDaTela<Subtela> id="manutencao" rotulo="Subtelas da manutenção" abas={subtelas} ativa={subtela} onTrocar={setSubtela} idPainel="manutencao-dados" testId="manutencao-aba" gradeNoCelular />}
@@ -609,7 +617,7 @@ export default function ManutencaoTab({
             onSaveControle={onSaveControle}
             onSalvarConferencia={onSalvarConferencia}
           />
-          <FilaOficina fila={filaOperacional} ordensServico={ordensServico} podeEditar={podeEditar} onAvancar={avancar} onEditar={abrirEdicao} />
+          <FilaOficina fila={filaOperacional} ordensServico={ordensServico} podeEditar={podeEditar} onAvancar={avancar} onEditar={abrirEdicao} onVerNoQuadro={onVerNoQuadro} />
         </>
       )}
 
@@ -633,13 +641,8 @@ export default function ManutencaoTab({
       {/* Histórico: o que já aconteceu com as ordens, incluindo as abertas
           automaticamente pelo controle diário da frota. */}
       {subtela === 'historico' && (
-        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-labelledby="manutencao-historico-titulo">
-          <header className="border-b border-slate-200 px-4 py-3">
-            <h2 id="manutencao-historico-titulo" className="text-sm font-black text-slate-900">Histórico de manutenção</h2>
-            <p className="text-sm text-slate-600">
-              Aberturas, edições e liberações — inclusive as OS abertas pelo Controle de Frotas.
-            </p>
-          </header>
+        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-label="Histórico de manutenção">
+          <p className="border-b border-slate-200 px-4 py-2.5 text-sm text-slate-600">Aberturas, edições e liberações, inclusive as OS abertas pelo Controle de Frotas.</p>
 
           {historico.length === 0 ? (
             <EmptyState

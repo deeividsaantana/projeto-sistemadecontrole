@@ -214,6 +214,7 @@ import './presencaInativarDeVerdade.test';
 import './dieselPrefixoSemCadastro.test';
 import './permissoesNaAcao.test';
 import './navegacaoDestinos.test';
+import './quadroManutencaoLigacao.test';
 import './contasIguais.test';
 import './appHooksOrdem.test';
 import './primeiroDownload.test';

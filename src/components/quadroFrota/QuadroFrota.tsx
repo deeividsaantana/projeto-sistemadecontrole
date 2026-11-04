@@ -79,6 +79,10 @@ interface Props {
   dia: string;
   /** Volta para a Situação do dia do Controle de Frotas. */
   onAbrirSituacao: () => void;
+  /** Busca já preenchida quando a tela abre vinda de outra (ex.: Manutenção). */
+  buscaInicial?: string;
+  /** Abre as ordens de serviço da máquina na Manutenção. */
+  onVerOrdens?: (prefixo: string) => void;
 }
 
 const horaAgora = () => new Date().toTimeString().slice(0, 5);
@@ -110,17 +114,17 @@ const vistaGuardada = (): Vista => {
  */
 const CARTOES_POR_VEZ = 12;
 
-export default function QuadroFrota({ equipamentos, registros, gruposEquipe, abastecimentos, canteiros = CANTEIROS, frentes, funcionarios, operationalDrivers, podeEditar, usuario, onSave, onSaveMany, onDeleteMany, podeRemover = false, onRemoverEquipamentos, onNavigate, podeAbrir = () => true, dia, onAbrirSituacao }: Props) {
+export default function QuadroFrota({ equipamentos, registros, gruposEquipe, abastecimentos, canteiros = CANTEIROS, frentes, funcionarios, operationalDrivers, podeEditar, usuario, onSave, onSaveMany, onDeleteMany, podeRemover = false, onRemoverEquipamentos, onNavigate, podeAbrir = () => true, dia, onAbrirSituacao, buscaInicial = '', onVerOrdens }: Props) {
   const escopo = useRef<HTMLDivElement>(null);
   const buscaRef = useRef<HTMLInputElement>(null);
   // Mesma lista de motoristas e operadores do Controle de Frotas, para o operador
   // sugerido aqui ser sempre o mesmo cadastro, sem duplicar em colaboradores.
   const motoristas = useMemo(() => operationalDrivers || funcionarios || OPERATIONAL_DRIVERS, [operationalDrivers, funcionarios]);
   const [limites, setLimites] = useState<Readonly<Record<string, number>>>({});
-  const [filtros, setFiltros] = useState<FiltrosQuadro>(FILTROS_VAZIOS);
+  const [filtros, setFiltros] = useState<FiltrosQuadro>({ ...FILTROS_VAZIOS, busca: buscaInicial });
   // A caixa de busca mostra o texto na hora; o filtro (que refiltra e reanima
   // os cartões) só atualiza um instante depois, pra digitar rápido não travar.
-  const [buscaTexto, setBuscaTexto] = useState('');
+  const [buscaTexto, setBuscaTexto] = useState(buscaInicial);
   const [ordem, setOrdem] = useState<Ordem>('prefixo');
   const [maisFiltros, setMaisFiltros] = useState(false);
   const [fechados, setFechados] = useState<ReadonlySet<string>>(() => new Set());
@@ -372,7 +376,7 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
         </div>
       )}
 
-      <section aria-label="Canteiros e filtros" data-quadro-reveal className={`${CARTAO} space-y-3 p-3 lg:sticky lg:top-0 lg:z-10`}>
+      <section aria-label="Canteiros e filtros" data-quadro-reveal className={`${CARTAO} space-y-3 p-3 lg:sticky lg:top-0 lg:z-20`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           {podeEditar && (
             <TabNavigation
@@ -651,6 +655,7 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
         onFechar={() => setAbertoId(null)}
         onSalvar={salvar}
         onAbrirControle={() => { setAbertoId(null); onAbrirSituacao(); }}
+        onVerOrdens={onVerOrdens && aberto ? () => { setAbertoId(null); onVerOrdens(aberto.prefixo); } : undefined}
         podeRemover={podeRemover && Boolean(onRemoverEquipamentos)}
         onRemover={aberto ? () => setRemocaoPendente([aberto]) : undefined}
       />
