@@ -42,10 +42,10 @@ export function ResumoConferencia({ id, Icone, data, titulo, descricao, contador
     <header className={`${CARTAO} grid shrink-0 gap-2 p-3`}>
       <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-[#176b4d]"><Icone className="size-5" aria-hidden="true" /></span>
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-[#176b4d] max-sm:hidden"><Icone className="size-5" aria-hidden="true" /></span>
           <div className="min-w-0">
             <h2 id={id} className="text-base font-bold text-slate-950">{titulo} <span className="text-sm font-semibold text-[#5b6870]">· {dataCurta(data)}</span></h2>
-            <p className="text-sm text-[#5b6870]">{descricao}</p>
+            <p className="text-sm text-[#5b6870] max-sm:hidden">{descricao}</p>
           </div>
         </div>
         <dl className="grid grid-cols-2 overflow-hidden rounded-xl border border-slate-200 bg-[#f7f8f6] text-center sm:grid-cols-4">

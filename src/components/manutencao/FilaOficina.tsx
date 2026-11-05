@@ -19,9 +19,11 @@ interface Props {
   podeEditar: boolean;
   onAvancar: (ordem: OrdemServico) => void;
   onEditar: (ordem: OrdemServico) => void;
+  /** Abre a máquina no Quadro de frotas. */
+  onVerNoQuadro?: (prefixo: string) => void;
 }
 
-export function FilaOficina({ fila, ordensServico, podeEditar, onAvancar, onEditar }: Props) {
+export function FilaOficina({ fila, ordensServico, podeEditar, onAvancar, onEditar, onVerNoQuadro }: Props) {
   return (
     <section aria-labelledby="manutencao-fila-titulo" data-manutencao-reveal>
       <div className="flex items-end justify-between gap-4">
@@ -62,6 +64,7 @@ export function FilaOficina({ fila, ordensServico, podeEditar, onAvancar, onEdit
                     <span className="text-xs font-bold text-[#5b6870]">{item.numero}</span>
                     <span className="flex gap-1.5">
                       {podeEditar && proximo && ordem && <button type="button" onClick={() => onAvancar(ordem)} className={`min-h-11 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-sm font-bold text-emerald-800 transition hover:border-emerald-500 md:min-h-10 ${FOCO}`}>{proximo}</button>}
+                      {onVerNoQuadro && <button type="button" onClick={() => onVerNoQuadro(item.prefixo)} aria-label={`Ver ${item.prefixo} no quadro`} className={`min-h-11 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-600 transition hover:border-emerald-500 hover:text-emerald-800 md:min-h-10 ${FOCO}`}>Ver no quadro</button>}
                       {podeEditar && ordem && <button type="button" aria-label={`Editar ${item.numero}`} onClick={() => onEditar(ordem)} className={`min-h-11 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-600 transition hover:border-emerald-500 hover:text-emerald-800 md:min-h-10 ${FOCO}`}>Editar</button>}
                     </span>
                   </footer>

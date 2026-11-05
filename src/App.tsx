@@ -514,6 +514,9 @@ export default function App() {
   }, [activeTab]);
   // Parte de Materiais pedida por outro lugar (aviso, busca); a vez remonta a tela na parte certa.
   const [materiaisPedido, setMateriaisPedido] = useState<{ secao?: SecaoMateriais; vez: number }>({ vez: 0 });
+  // Quadro e Manutenção se abrem um no outro já filtrados pelo prefixo da máquina.
+  const [pedidoFrota, setPedidoFrota] = useState<{ prefixo: string; vez: number }>({ prefixo: '', vez: 0 });
+  const [pedidoManutencao, setPedidoManutencao] = useState<{ prefixo: string; vez: number }>({ prefixo: '', vez: 0 });
   /** Aba aberta pela aba Relatórios: ela já entra na parte de relatório. */
   const [relatorioPedido, setRelatorioPedido] = useState<DestinoRelatorio | ''>('');
   // Recorte de datas do painel. Fica aqui, e não dentro do Dashboard, porque
@@ -4529,8 +4532,13 @@ export default function App() {
   // Função comum: um hook aqui, depois dos retornos antecipados, derrubava o app ao entrar.
   const podeAbrir = (tab: string) => destinoDaAba(tab, ROLE_ACCESS[currentUserRole]) !== null;
 
+  const verOrdensDaMaquina = (prefixo: string) => { navigateTo('manutencao'); setPedidoManutencao(atual => ({ prefixo, vez: atual.vez + 1 })); };
+  const verMaquinaNoQuadro = (prefixo: string) => { navigateTo('controle-equipamentos'); setPedidoFrota(atual => ({ prefixo, vez: atual.vez + 1 })); };
+
   const navigateTo = (tab: string, closeMobile = false) => {
     setRelatorioPedido('');
+    setPedidoFrota(atual => (atual.prefixo ? { ...atual, prefixo: '' } : atual));
+    setPedidoManutencao(atual => (atual.prefixo ? { ...atual, prefixo: '' } : atual));
     // A busca do menu não fica filtrada depois de escolher a tela (B6).
     setMenuSearch('');
     if (tab === 'tickets-jazida') setMateriaisPedido(atual => ({ secao: 'viagens', vez: atual.vez + 1 }));
@@ -4965,6 +4973,9 @@ export default function App() {
 
             {activeTab === 'manutencao' && (
               <ManutencaoTab
+                key={`manutencao-${pedidoManutencao.vez}`}
+                buscaInicial={pedidoManutencao.prefixo}
+                onVerNoQuadro={podeAbrir('controle-equipamentos') ? verMaquinaNoQuadro : undefined}
                 ordensServico={ordensServico}
                 equipamentos={equipamentos}
                 controlesEquipamentos={controleEquipamentosDiario}
@@ -4983,6 +4994,9 @@ export default function App() {
 
             {activeTab === 'controle-equipamentos' && (
               <ControleEquipamentosDiarioTab
+                key={`frota-${pedidoFrota.vez}`}
+                abrirNoQuadro={pedidoFrota.prefixo !== ''}
+                quadroBusca={pedidoFrota.prefixo}
                 registros={controleEquipamentosDiario}
                 equipamentos={equipamentos}
                 empresas={empresas}
@@ -5002,7 +5016,7 @@ export default function App() {
                 canApproveFleet={['admin', 'gestor'].includes(currentUserRole)}
                 registeredBy={activeUserName}
                 onApproveFleetRecord={handleApproveControleEquipamentoDiario}
-                quadro={(dia, verSituacao) => (
+                quadro={(dia, verSituacao, busca) => (
                   <QuadroFrota
                     equipamentos={equipamentos}
                     registros={controleEquipamentosDiario}
@@ -5023,6 +5037,8 @@ export default function App() {
                     podeAbrir={podeAbrir}
                     dia={dia}
                     onAbrirSituacao={verSituacao}
+                    buscaInicial={busca}
+                    onVerOrdens={podeAbrir('manutencao') ? verOrdensDaMaquina : undefined}
                   />
                 )}
               />

@@ -35,12 +35,14 @@ interface Props {
   /** Devolve a mensagem de erro, ou nada quando gravou. */
   onSalvar: (cartao: CartaoFrota, edicao: EdicaoQuadro, irParaProximo: boolean) => string | undefined;
   onAbrirControle: () => void;
+  /** Abre as ordens de serviço desta máquina na Manutenção. */
+  onVerOrdens?: () => void;
   /** Quem pode desmobilizar a máquina (mesma permissão de excluir em Cadastros). */
   podeRemover?: boolean;
   onRemover?: () => void;
 }
 
-export function PainelEquipamento({ cartao, podeEditar, temProximo, canteiros = CANTEIROS, frentes, operadores, onFechar, onSalvar, onAbrirControle, podeRemover, onRemover }: Props) {
+export function PainelEquipamento({ cartao, podeEditar, temProximo, canteiros = CANTEIROS, frentes, operadores, onFechar, onSalvar, onAbrirControle, onVerOrdens, podeRemover, onRemover }: Props) {
   const [edicao, setEdicao] = useState<RascunhoQuadro | null>(null);
   const [erro, setErro] = useState('');
   const idLista = useId();
@@ -93,6 +95,10 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, canteiros = 
   });
 
   const emManutencao = edicao?.status ? EM_MANUTENCAO.has(edicao.status) : false;
+  // Atalho só para quem já está em manutenção no que está gravado (não no rascunho).
+  const botaoOrdens = onVerOrdens && cartao?.grupo === 'manutencao'
+    ? <button type="button" onClick={onVerOrdens} className={`${BOTAO_SECUNDARIO} w-full`} data-testid="quadro-ver-ordens">Ver ordens de serviço na Manutenção</button>
+    : null;
   const tom = cartao ? TOM[cartao.grupo] : TOM['sem-lancamento'];
 
   const rodape = cartao && (podeEditar ? (
@@ -110,6 +116,7 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, canteiros = 
           </button>
         )}
       </div>
+      {botaoOrdens}
       <button type="button" onClick={onAbrirControle} className="min-h-11 text-sm font-semibold text-slate-500 underline-offset-4 hover:text-[#176b4d] hover:underline">
         Ver horários e histórico no Controle de Frotas
       </button>
@@ -120,7 +127,10 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, canteiros = 
       )}
     </div>
   ) : (
-    <button type="button" onClick={onAbrirControle} className={`${BOTAO_PRIMARIO} w-full`}>Abrir no Controle de Frotas</button>
+    <>
+      <button type="button" onClick={onAbrirControle} className={`${BOTAO_PRIMARIO} w-full`}>Abrir no Controle de Frotas</button>
+      {botaoOrdens}
+    </>
   ));
 
   return (
