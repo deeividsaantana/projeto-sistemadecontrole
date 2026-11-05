@@ -4,7 +4,7 @@
  * (mês, data, prefixo, descrição, empresa, KM, horímetro, litros, hora,
  * comboio, combustível, bombas) e os botões Salvar, Limpar e Fechar embaixo.
  * Descrição e empresa saem do cadastro, a bomba inicial é a última bomba final
- * do comboio e a final é inicial + litros. Enter passa de campo, Ctrl + S salva
+ * do comboio e a final é inicial + litros. Enter passa de campo, Ctrl + Enter salva
  * e já deixa pronto para o próximo, Esc fecha.
  */
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
@@ -286,7 +286,8 @@ export default function LancamentoCombustivel({
 
   useEffect(() => {
     const teclar = (event: globalThis.KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+      // Ctrl + Enter é o padrão do sistema; Ctrl + S segue valendo para quem já se acostumou.
+      if ((event.ctrlKey || event.metaKey) && (event.key === 'Enter' || event.key.toLowerCase() === 's')) {
         event.preventDefault();
         salvar();
         return;

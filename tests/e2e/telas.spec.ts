@@ -586,3 +586,42 @@ test('manutenção: "Continuar além de 10 h" tira o teto do card e registra que
   await expect(cartao.getByTestId('parada-alem-aviso')).toHaveCount(0);
   await expect(cartao).toContainText('/ 10 h');
 });
+
+test('L limpa a busca de Cadastros e do Histórico do Combustível', async ({ page }) => {
+  await page.goto('/?screen=cadastros&shell=1');
+  const busca = page.getByPlaceholder(/Buscar em/).first();
+  await busca.fill('zzz');
+  await busca.blur();
+  await page.keyboard.press('l');
+  await expect(busca).toHaveValue('');
+
+  await page.goto('/?screen=combustivel&shell=1');
+  await page.getByRole('tab', { name: 'Lançamentos' }).click();
+  const buscaDiesel = page.getByPlaceholder(/Buscar máquina/).first();
+  await buscaDiesel.fill('zzz');
+  await buscaDiesel.blur();
+  await page.keyboard.press('l');
+  await expect(buscaDiesel).toHaveValue('');
+});
+
+test('barra usa a busca da tela e Ctrl+K abre a pesquisa geral', async ({ page }) => {
+  await page.goto('/?screen=cadastros&shell=1');
+  await expect(page.locator('.renea-page-header').first()).toBeVisible();
+  await page.keyboard.press('/');
+  await expect(page.getByPlaceholder(/Buscar em/).first()).toBeFocused();
+
+  await page.goto('/?screen=pesquisa-atalho');
+  await page.keyboard.press('Control+k');
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  await page.goto('/?screen=pesquisa-atalho');
+  await page.keyboard.press('/');
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  // Tela que usa a barra: a pesquisa geral fica fechada.
+  await page.goto('/?screen=pesquisa-atalho');
+  await page.evaluate(() => window.addEventListener('keydown', event => { if (event.key === '/') event.preventDefault(); }));
+  await page.keyboard.press('/');
+  await page.waitForTimeout(150);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});

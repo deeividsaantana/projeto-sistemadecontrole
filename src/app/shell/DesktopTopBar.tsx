@@ -100,17 +100,6 @@ export function DesktopTopBar({
     };
   }, { scope: headerRef });
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault();
-        searchRef.current?.focus();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
-
   const abrirPrimeiroResultado = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape') {
       onMenuSearchChange('');

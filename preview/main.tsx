@@ -138,6 +138,12 @@ function EstacasPreview() {
   return <EstacasTab controle={controle} obras={fx.obras} onChange={setControle} responsavel="Deivid" />;
 }
 
+/** Pesquisa fechada, como no app: só abre pelos atalhos. */
+function PesquisaPorAtalho() {
+  const [aberto, setAberto] = React.useState(false);
+  return <PesquisaGlobal fontes={{ equipamentos: fx.equipamentos, funcionarios: fx.funcionarios, ordensServico: fx.ordensServico }} aberto={aberto} onAbertoChange={setAberto} podeAbrir={() => true} onNavigate={noop} />;
+}
+
 function CadastrosPreview() {
   const [listas, setListas] = React.useState<Record<string, Array<{ id: string } & Record<string, unknown>>>>(() => ({
     empresas: [...fx.empresas],
@@ -637,6 +643,7 @@ const screens: Record<string, React.ReactNode> = {
       onNavigate={noop}
     />
   ),
+  'pesquisa-atalho': <PesquisaPorAtalho />,
   cadastros: <CadastrosPreview />,
   estacas: <EstacasPreview />,
   jazida: (

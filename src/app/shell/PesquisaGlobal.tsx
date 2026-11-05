@@ -46,11 +46,13 @@ export function PesquisaGlobal({ fontes, aberto, onAbertoChange: setAberto, pode
 
   useEffect(() => {
     const abrirPorAtalho = (evento: KeyboardEvent) => {
-      const atalhoBarra = evento.key === '/' && !editando(evento.target);
-      const atalhoK = evento.key.toLowerCase() === 'k' && (evento.ctrlKey || evento.metaKey);
-      if (atalhoBarra || atalhoK) {
+      if (evento.key.toLowerCase() === 'k' && (evento.ctrlKey || evento.metaKey)) {
         evento.preventDefault();
         setAberto(true);
+      } else if (evento.key === '/' && !editando(evento.target)) {
+        // A barra é da busca da tela. Depois de todos ouvirem a tecla, só abre
+        // a pesquisa geral se nenhuma tela a usou.
+        window.setTimeout(() => { if (!evento.defaultPrevented) setAberto(true); });
       }
     };
     document.addEventListener('keydown', abrirPorAtalho);

@@ -289,6 +289,11 @@ export default function CadastrosTab(props: CadastrosTabProps) {
       if (event.key === '/' && !isTyping && vista !== 'lixeira') {
         event.preventDefault();
         buscaRef.current?.focus();
+        return;
+      }
+      if (event.key.toLowerCase() === 'l' && !isTyping && vista !== 'lixeira' && !document.querySelector('[role="dialog"]')) {
+        event.preventDefault();
+        limparFiltros();
       }
     };
     window.addEventListener('keydown', handleShortcut);

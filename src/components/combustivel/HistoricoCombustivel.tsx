@@ -257,6 +257,18 @@ export default function HistoricoCombustivel({
     irParaInicio();
   };
 
+  useEffect(() => {
+    const teclar = (event: KeyboardEvent) => {
+      const alvo = event.target as HTMLElement | null;
+      if (event.key.toLowerCase() !== 'l' || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (alvo?.matches('input, textarea, select, [contenteditable="true"]') || document.querySelector('[role="dialog"]')) return;
+      event.preventDefault();
+      limparFiltros();
+    };
+    document.addEventListener('keydown', teclar);
+    return () => document.removeEventListener('keydown', teclar);
+  });
+
   // O relatório pede a lista já filtrada (um dia, uma máquina, um comboio...).
   useEffect(() => {
     if (!pedidoFiltro?.chave) return;
