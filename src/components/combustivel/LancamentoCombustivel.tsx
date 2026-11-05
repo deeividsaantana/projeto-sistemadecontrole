@@ -215,7 +215,8 @@ export default function LancamentoCombustivel({
   };
 
   const aoTeclar = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key !== 'Enter' || event.shiftKey) return;
+    // Ctrl + Enter é do atalho de salvar: aqui ele salvaria uma segunda vez.
+    if (event.key !== 'Enter' || event.shiftKey || event.ctrlKey || event.metaKey) return;
     event.preventDefault();
     if (!proximoCampo(event.target as HTMLElement)) salvar();
   };

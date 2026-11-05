@@ -261,7 +261,8 @@ export default function HistoricoCombustivel({
     const teclar = (event: KeyboardEvent) => {
       const alvo = event.target as HTMLElement | null;
       if (event.key.toLowerCase() !== 'l' || event.ctrlKey || event.metaKey || event.altKey) return;
-      if (alvo?.matches('input, textarea, select, [contenteditable="true"]') || document.querySelector('[role="dialog"]')) return;
+      if (alvo?.matches('input, textarea, select, [contenteditable="true"]') || document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]')) return;
+      if (filtrosExtras === 0 && !filtros.texto) return;
       event.preventDefault();
       limparFiltros();
     };

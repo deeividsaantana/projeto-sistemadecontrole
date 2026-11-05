@@ -49,14 +49,21 @@ export function PesquisaGlobal({ fontes, aberto, onAbertoChange: setAberto, pode
       if (evento.key.toLowerCase() === 'k' && (evento.ctrlKey || evento.metaKey)) {
         evento.preventDefault();
         setAberto(true);
-      } else if (evento.key === '/' && !editando(evento.target)) {
-        // A barra é da busca da tela. Depois de todos ouvirem a tecla, só abre
-        // a pesquisa geral se nenhuma tela a usou.
-        window.setTimeout(() => { if (!evento.defaultPrevented) setAberto(true); });
       }
     };
+    // A barra é da busca da tela: quem a usa cancela o keydown, e aí o keypress
+    // nem acontece. Sem busca na tela, ela abre a pesquisa geral.
+    const abrirPelaBarra = (evento: KeyboardEvent) => {
+      if (evento.key !== '/' || editando(evento.target)) return;
+      evento.preventDefault();
+      setAberto(true);
+    };
     document.addEventListener('keydown', abrirPorAtalho);
-    return () => document.removeEventListener('keydown', abrirPorAtalho);
+    document.addEventListener('keypress', abrirPelaBarra);
+    return () => {
+      document.removeEventListener('keydown', abrirPorAtalho);
+      document.removeEventListener('keypress', abrirPelaBarra);
+    };
   }, [setAberto]);
 
   useEffect(() => {

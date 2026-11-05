@@ -168,6 +168,6 @@ test('cada atalho faz uma coisa só', () => {
   const ler = (arquivo: string) => readFileSync(new URL(`../src/${arquivo}`, import.meta.url), 'utf8');
   assert.doesNotMatch(ler('app/shell/DesktopTopBar.tsx'), /toLowerCase\(\) === 'k'/, 'Ctrl+K é só da pesquisa geral');
   const pesquisa = ler('app/shell/PesquisaGlobal.tsx');
-  assert.match(pesquisa, /if \(!evento\.defaultPrevented\) setAberto\(true\)/, 'barra é da busca da tela quando ela existe');
+  assert.match(pesquisa, /addEventListener\('keypress', abrirPelaBarra\)/, 'barra é da busca da tela quando ela existe');
   assert.match(ler('components/combustivel/LancamentoCombustivel.tsx'), /event\.key === 'Enter' \|\| event\.key\.toLowerCase\(\) === 's'/, 'Combustível salva com Ctrl+Enter');
 });
