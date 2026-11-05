@@ -947,6 +947,9 @@ export const handler = async event => {
               funcao,
             },
           });
+        }).catch(error => {
+          // Nova tentativa com a mesma chave: o aviso já foi gravado da primeira vez.
+          if (error?.code !== 'already-exists') throw error;
         });
         return jsonResponse(200, {
           success: true,
@@ -1186,6 +1189,12 @@ export const handler = async event => {
           transaction.create(submissionRef, submission);
         });
       } catch (error) {
+        if (error?.code === 'already-exists') {
+          // Outro celular da equipe reservou o dia entre a leitura e a gravação.
+          const duplicate = new Error('Já existe presença registrada para esta equipe nesta data.');
+          duplicate.statusCode = 409;
+          throw duplicate;
+        }
         if (error?.statusCode === 409) throw error;
         throw new Error('Não foi possível registrar a presença desta equipe com segurança.');
       }

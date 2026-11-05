@@ -128,6 +128,10 @@ const saveSubmission = async (database, event, body) => {
       sourceIpHash: requestIpHash(event),
       payload: JSON.parse(JSON.stringify({ ...submission.payload, fotos: uploaded.paths.length ? uploaded.paths : undefined })),
     });
+  }).catch(error => {
+    // Toque duplo: a outra requisição gravou primeiro. É o mesmo envio.
+    if (error?.code !== 'already-exists') throw error;
+    replay = true;
   });
   return { id: submission.id, replay, createdAtIso, fotos: uploaded.paths.length, fotosFalharam: uploaded.failed };
 };
