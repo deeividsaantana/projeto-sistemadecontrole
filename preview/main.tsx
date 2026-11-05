@@ -141,7 +141,7 @@ function EstacasPreview() {
 /** Pesquisa fechada, como no app: só abre pelos atalhos. */
 function PesquisaPorAtalho() {
   const [aberto, setAberto] = React.useState(false);
-  return <PesquisaGlobal fontes={{ equipamentos: fx.equipamentos, funcionarios: fx.funcionarios, ordensServico: fx.ordensServico }} aberto={aberto} onAbertoChange={setAberto} podeAbrir={() => true} onNavigate={noop} />;
+  return <><p>Pesquisa fechada</p><PesquisaGlobal fontes={{ equipamentos: fx.equipamentos, funcionarios: fx.funcionarios, ordensServico: fx.ordensServico }} aberto={aberto} onAbertoChange={setAberto} podeAbrir={() => true} onNavigate={noop} /></>;
 }
 
 function CadastrosPreview() {

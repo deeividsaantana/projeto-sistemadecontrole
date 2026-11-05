@@ -611,15 +611,18 @@ test('barra usa a busca da tela e Ctrl+K abre a pesquisa geral', async ({ page }
   await expect(page.getByPlaceholder(/Buscar em/).first()).toBeFocused();
 
   await page.goto('/?screen=pesquisa-atalho');
+  await expect(page.getByText('Pesquisa fechada')).toBeVisible();
   await page.keyboard.press('Control+k');
   await expect(page.getByRole('dialog')).toBeVisible();
 
   await page.goto('/?screen=pesquisa-atalho');
+  await expect(page.getByText('Pesquisa fechada')).toBeVisible();
   await page.keyboard.press('/');
   await expect(page.getByRole('dialog')).toBeVisible();
 
   // Tela que usa a barra: a pesquisa geral fica fechada.
   await page.goto('/?screen=pesquisa-atalho');
+  await expect(page.getByText('Pesquisa fechada')).toBeVisible();
   await page.evaluate(() => window.addEventListener('keydown', event => { if (event.key === '/') event.preventDefault(); }));
   await page.keyboard.press('/');
   await page.waitForTimeout(150);
