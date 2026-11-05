@@ -1,4 +1,4 @@
-import { getAdminDb, serverTimestamp } from './_shared/supabase-admin.js';
+import { getAdminDb, getSupabaseAdmin, serverTimestamp } from './_shared/supabase-admin.js';
 
 const CLOUD_COLLECTION = 'sistemarenea_cloud';
 const RATE_LIMIT_COLLECTION = 'sistemarenea_rate_limits';
@@ -42,6 +42,11 @@ export const handler = async () => {
     deleteInBatches(database, orphanChunks),
     deleteInBatches(database, expiredRateLimits),
   ]);
+
+  // Janelas do limite de requisições (registrar_requisicao) sem uso há um dia.
+  // Banco ainda sem a tabela: só registra e segue.
+  const { error: windowsError } = await getSupabaseAdmin().from('api_request_windows').delete().lt('janela_inicio', new Date(cutoff).toISOString());
+  if (windowsError) console.warn('Limpeza de api_request_windows não feita:', windowsError.message || windowsError);
 
   await database.collection(CLOUD_COLLECTION).doc('cleanup_status').set({
     kind: 'maintenance',
