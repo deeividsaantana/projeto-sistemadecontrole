@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type SyntheticEvent } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type SyntheticEvent } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import type { CravacaoEstaca } from '../../types';
@@ -32,9 +32,12 @@ const acimaDoChao = (estaca: CravacaoEstaca) => {
 const useEstacasPorLinha = (total: number) => {
   const caixa = useRef<HTMLDivElement>(null);
   const [largura, setLargura] = useState(960);
-  useEffect(() => {
+  // Mede antes de pintar: senão o celular mostra um quadro com a largura de computador.
+  useLayoutEffect(() => {
     const elemento = caixa.current;
-    if (!elemento || typeof ResizeObserver === 'undefined') return undefined;
+    if (!elemento) return undefined;
+    setLargura(Math.round(elemento.getBoundingClientRect().width));
+    if (typeof ResizeObserver === 'undefined') return undefined;
     const observador = new ResizeObserver(([entrada]) => setLargura(Math.round(entrada.contentRect.width)));
     observador.observe(elemento);
     return () => observador.disconnect();
@@ -42,7 +45,7 @@ const useEstacasPorLinha = (total: number) => {
   // No celular cada estaca fica com uns 16 px; no computador, até 30 px.
   const minimo = largura < 640 ? 16 : 22;
   const porLinha = Math.max(8, Math.min(50, Math.floor((largura - 40) / minimo)));
-  return { caixa, porLinha: Math.min(porLinha, Math.max(total, 8)) };
+  return { caixa, celular: largura < 640, porLinha: Math.min(porLinha, Math.max(total, 8)) };
 };
 
 /**
@@ -52,7 +55,7 @@ const useEstacasPorLinha = (total: number) => {
  * martelo em cima. Acima de tudo, a planta da cortina com o encaixe em Z.
  */
 export default function CortinaEstacas({ frente, escolhidaId, onEscolher }: Props) {
-  const { caixa, porLinha } = useEstacasPorLinha(frente.estacas.length);
+  const { caixa, celular, porLinha } = useEstacasPorLinha(frente.estacas.length);
   const [emFoco, setEmFoco] = useState<{ estaca: CravacaoEstaca; x: number; y: number } | null>(null);
   // O cartão aparece logo acima da estaca, onde quer que ela esteja no desenho.
   const mostrar = (event: SyntheticEvent<SVGGElement>, estaca: CravacaoEstaca) => {
@@ -95,6 +98,10 @@ export default function CortinaEstacas({ frente, escolhidaId, onEscolher }: Prop
     });
     gsap.to('[data-martelo]', { y: 6, duration: 0.32, repeat: -1, yoyo: true, ease: 'power1.inOut' });
   }, { scope: escopo, dependencies: [frente.frente, porLinha, frente.cravadas] });
+
+  const rotuloDe = (estaca: CravacaoEstaca) => (estaCravada(estaca)
+    ? `${nomeDaEstaca(estaca)}, cravada ${numero(estaca.comprimentoCravadoM, 2)} m em ${formatarData(estaca.data)}`
+    : `${nomeDaEstaca(estaca)}, a cravar${estaca.id === frente.proxima?.id ? ', é a próxima' : ''}`);
 
   const escolherPeloTeclado = (event: KeyboardEvent, estaca: CravacaoEstaca) => {
     if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -157,25 +164,23 @@ export default function CortinaEstacas({ frente, escolhidaId, onEscolher }: Prop
                 const fundo = profundidadeDe(estaca) * ESCALA;
                 const acima = cravada ? Math.min(acimaDoChao(estaca), 4) * ESCALA : 0;
                 const topo = chao - acima;
-                const nome = nomeDaEstaca(estaca);
-                const rotulo = cravada
-                  ? `${nome}, cravada ${numero(estaca.comprimentoCravadoM, 2)} m em ${formatarData(estaca.data)}`
-                  : `${nome}, a cravar${proxima ? ', é a próxima' : ''}`;
                 return (
                   <g
                     key={estaca.id}
                     className="cortina-estaca"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={rotulo}
-                    aria-pressed={escolhidaId === estaca.id}
                     data-escolhida={escolhidaId === estaca.id}
-                    onClick={() => onEscolher(estaca)}
-                    onKeyDown={event => escolherPeloTeclado(event, estaca)}
-                    onMouseEnter={event => mostrar(event, estaca)}
-                    onMouseLeave={() => setEmFoco(null)}
-                    onFocus={event => mostrar(event, estaca)}
-                    onBlur={() => setEmFoco(null)}
+                    {...(celular ? {} : {
+                      role: 'button',
+                      tabIndex: 0,
+                      'aria-label': rotuloDe(estaca),
+                      'aria-pressed': escolhidaId === estaca.id,
+                      onClick: () => onEscolher(estaca),
+                      onKeyDown: (event: KeyboardEvent) => escolherPeloTeclado(event, estaca),
+                      onMouseEnter: (event: SyntheticEvent<SVGGElement>) => mostrar(event, estaca),
+                      onMouseLeave: () => setEmFoco(null),
+                      onFocus: (event: SyntheticEvent<SVGGElement>) => mostrar(event, estaca),
+                      onBlur: () => setEmFoco(null),
+                    })}
                   >
                     {cravada ? (
                       <g data-desce={fundo + acima}>
@@ -220,6 +225,32 @@ export default function CortinaEstacas({ frente, escolhidaId, onEscolher }: Prop
           );
         })}
       </div>
+
+      {/* No celular a estaca do desenho fica estreita demais para o dedo: escolhe-se pelo número. */}
+      {celular && (
+        <div role="group" aria-label="Escolher a estaca" data-testid="cortina-botoes" className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(3rem,1fr))] gap-1.5">
+          {frente.estacas.map(estaca => {
+            const cor = estaCravada(estaca)
+              ? 'bg-[#176b4d] text-white'
+              : estaca.id === frente.proxima?.id
+                ? 'border border-dashed border-[#f26a2e] bg-orange-50 text-[#c2410c]'
+                : 'border border-dashed border-[#718087] bg-white text-[#5b6870]';
+            const marcada = escolhidaId === estaca.id;
+            return (
+              <button
+                key={estaca.id}
+                type="button"
+                aria-label={rotuloDe(estaca)}
+                aria-pressed={marcada}
+                onClick={() => onEscolher(estaca)}
+                className={`min-h-11 min-w-0 truncate rounded-lg px-1 text-sm font-bold tabular-nums transition duration-200 active:scale-[0.98] ${cor} ${marcada ? 'ring-2 ring-[#f26a2e] ring-offset-1' : ''}`}
+              >
+                {String(estaca.item || '').trim() || nomeDaEstaca(estaca)}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {emFoco && (
         <div

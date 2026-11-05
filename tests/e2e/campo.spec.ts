@@ -90,3 +90,22 @@ for (const tela of TELAS_AUDITADAS) {
     expect(await page.evaluate(auditarTela)).toEqual([]);
   });
 }
+
+test('estacas: no celular escolhe pelo número, com toque de 44 px', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?screen=estacas');
+  const botoes = page.getByTestId('cortina-botoes').getByRole('button');
+  await expect(botoes.first()).toBeVisible();
+  const caixa = await botoes.first().boundingBox();
+  expect(Math.min(caixa?.width ?? 0, caixa?.height ?? 0)).toBeGreaterThanOrEqual(44);
+  await expect(page.locator('.cortina g[role="button"]')).toHaveCount(0);
+  await botoes.first().click();
+  await expect(botoes.first()).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('estacas: no computador o desenho continua clicável', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto('/?screen=estacas');
+  await expect(page.locator('.cortina g[role="button"]').first()).toBeVisible();
+  await expect(page.getByTestId('cortina-botoes')).toHaveCount(0);
+});
