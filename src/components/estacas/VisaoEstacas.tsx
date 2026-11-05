@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarClock, Hammer, Pencil, Ruler, Target, TrendingUp } from 'lucide-react';
 import type { CravacaoEstaca } from '../../types';
 import {
@@ -50,6 +50,13 @@ export default function VisaoEstacas({ hoje, estacas, frentes, frenteAtual, onFr
   const previsao = useMemo(() => previsaoDeTermino(estacas, hoje), [estacas, hoje]);
   const frente = frentes.find(item => item.frente === frenteAtual) ?? frentes[0];
   const escolhida = frente?.estacas.find(item => item.id === escolhidaId) ?? null;
+  const fichaRef = useRef<HTMLDivElement>(null);
+  // No celular a grade de números é longa: a ação da estaca escolhida vem para a vista.
+  useEffect(() => {
+    if (!escolhidaId || !window.matchMedia('(max-width: 1023px)').matches) return;
+    const suave = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    fichaRef.current?.scrollIntoView({ block: 'center', behavior: suave ? 'smooth' : 'auto' });
+  }, [escolhidaId]);
   const maiorDia = Math.max(1, ...ritmo.map(dia => dia.cravadas));
 
   if (!estacas.length) {
@@ -148,7 +155,7 @@ export default function VisaoEstacas({ hoje, estacas, frentes, frenteAtual, onFr
           )}
 
           {escolhida && (
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-[#f7f8f6] p-4" aria-live="polite">
+            <div ref={fichaRef} data-testid="estaca-escolhida" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-[#f7f8f6] p-4" aria-live="polite">
               <div className="min-w-0">
                 <p className="font-bold text-slate-900">{nomeDaEstaca(escolhida)}</p>
                 <p className="text-sm text-slate-600">

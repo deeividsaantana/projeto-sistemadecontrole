@@ -28,6 +28,12 @@ const acimaDoChao = (estaca: CravacaoEstaca) => {
   return Math.max(0, (Number(estaca.comprimentoM) || 0) - (Number(estaca.comprimentoCravadoM) || 0) - (Number(estaca.perdaM) || 0));
 };
 
+/** O que cabe no botão: o número no fim do item ou do nome. "Estaca 12" vira 12. */
+const rotuloCurto = (estaca: CravacaoEstaca) => {
+  const texto = String(estaca.item || '').trim() || nomeDaEstaca(estaca);
+  return texto.match(/\d+(?!.*\d)/)?.[0] ?? texto;
+};
+
 /** Estacas por linha do desenho, pela largura que a tela tem. */
 const useEstacasPorLinha = (total: number) => {
   const caixa = useRef<HTMLDivElement>(null);
@@ -45,7 +51,9 @@ const useEstacasPorLinha = (total: number) => {
   // No celular cada estaca fica com uns 16 px; no computador, até 30 px.
   const minimo = largura < 640 ? 16 : 22;
   const porLinha = Math.max(8, Math.min(50, Math.floor((largura - 40) / minimo)));
-  return { caixa, celular: largura < 640, porLinha: Math.min(porLinha, Math.max(total, 8)) };
+  // Tablet também escolhe pelo número: o dedo não acerta os 22 px do desenho.
+  const toque = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
+  return { caixa, celular: largura < 640 || Boolean(toque), porLinha: Math.min(porLinha, Math.max(total, 8)) };
 };
 
 /**
@@ -123,8 +131,9 @@ export default function CortinaEstacas({ frente, escolhidaId, onEscolher }: Prop
             <svg
               key={`${frente.frente}-${indiceLinha}`}
               viewBox={`0 0 ${largura} ${altura}`}
-              role="group"
-              aria-label={`Cortina ${frente.frente}, estacas ${indiceLinha * porLinha + 1} a ${indiceLinha * porLinha + linha.length}`}
+              role={celular ? undefined : 'group'}
+              aria-hidden={celular || undefined}
+              aria-label={celular ? undefined : `Cortina ${frente.frente}, estacas ${indiceLinha * porLinha + 1} a ${indiceLinha * porLinha + linha.length}`}
             >
               <defs>
                 <linearGradient id="cortina-ceu" x1="0" x2="0" y1="0" y2="1">
@@ -245,14 +254,14 @@ export default function CortinaEstacas({ frente, escolhidaId, onEscolher }: Prop
                 onClick={() => onEscolher(estaca)}
                 className={`min-h-11 min-w-0 truncate rounded-lg px-1 text-sm font-bold tabular-nums transition duration-200 active:scale-[0.98] ${cor} ${marcada ? 'ring-2 ring-[#f26a2e] ring-offset-1' : ''}`}
               >
-                {String(estaca.item || '').trim() || nomeDaEstaca(estaca)}
+                {rotuloCurto(estaca)}
               </button>
             );
           })}
         </div>
       )}
 
-      {emFoco && (
+      {emFoco && !celular && (
         <div
           role="tooltip"
           className="pointer-events-none absolute z-10 w-52 -translate-x-1/2 -translate-y-full rounded-xl border border-slate-200 bg-white p-3 text-sm shadow-xl max-sm:hidden"
