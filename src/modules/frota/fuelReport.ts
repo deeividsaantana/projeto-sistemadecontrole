@@ -1,5 +1,5 @@
 import type { Abastecimento, Comboio, Empresa, Equipamento, TipoCombustivel } from '../../types';
-import { getOperationalFuelLiters } from '../../utils/fuelAnalyticsSafety';
+import { parseFuelAnalyticsNumber } from '../../utils/fuelAnalyticsSafety';
 
 export interface FuelReportFilters {
   competencias?: readonly string[];
@@ -188,7 +188,7 @@ export const buildFuelReport = (sources: FuelReportSources, filters: FuelReportF
       const equipamento = equipamentos.get(record.equipamentoId);
       const empresaId = equipamento?.empresaId || '';
       const empresa = empresas.get(empresaId);
-      const litros = getOperationalFuelLiters(record) ?? 0;
+      const litros = isActiveFuelRecord(record) ? parseFuelAnalyticsNumber(record.quantidadeLitros) ?? 0 : 0;
       const review = isFuelRecordReviewRequired(record);
       const competencia = getFuelRecordCompetence(record);
       totalLitros += litros;

@@ -174,3 +174,10 @@ test('fim de mês cai na competência seguinte, sem pular um mês', () => {
   assert.equal(competencia('2026-10-21'), '2026-11');
   assert.equal(competencia('2026-10-20'), '2026-10');
 });
+
+test('o relatório mostra os litros como foram lançados, igual à tela', () => {
+  const registro = { id: 'x', data: '2026-10-28', hora: '10:38', equipamentoId: '', prefixoInformado: 'LO366', comboioId: '', tipoCombustivelId: '', quantidadeLitros: 24_983, status: 'OK' } as unknown as Abastecimento;
+  const relatorio = buildFuelReport({ records: [registro], equipamentos: [], empresas: [], comboios: [], combustiveis: [] });
+  assert.equal(relatorio.totalLitros, 24_983);
+  assert.equal(relatorio.linhasExcel[0].litros, 24_983);
+});
