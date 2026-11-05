@@ -30,9 +30,9 @@ export const downloadCloudBackup = async (_database?: unknown): Promise<CloudDow
   return (await loadSupabaseSync()).downloadSupabaseBackup();
 };
 
-export const uploadCloudBackup = async (_database: unknown, data: CloudData, knownCloudVersion = '', baseline?: CloudBaseline): Promise<CloudUploadResult> => {
+export const uploadCloudBackup = async (_database: unknown, data: CloudData, knownCloudVersion = '', baseline?: CloudBaseline, opcoes: { tabelasDaNuvem?: readonly string[]; marcasDaNuvem?: readonly string[] } = {}): Promise<CloudUploadResult> => {
   assertSupabase();
-  return (await loadSupabaseSync()).uploadSupabaseBackup(data, knownCloudVersion, baseline);
+  return (await loadSupabaseSync()).uploadSupabaseBackup(data, knownCloudVersion, baseline, opcoes);
 };
 
 export const readKnownCloudSignatures = async (knownCloudVersion: string) => {
