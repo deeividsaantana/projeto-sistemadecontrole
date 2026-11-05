@@ -161,3 +161,16 @@ test('relatorio aceita intervalo livre de datas', () => {
 
   assert.deepEqual(filtrados.map(item => item.id), ['fuel-2', 'fuel-3']);
 });
+
+test('fim de mês cai na competência seguinte, sem pular um mês', () => {
+  const competencia = (data: string) => getFuelRecordCompetence({ data, competencia: undefined });
+  assert.equal(competencia('2026-10-31'), '2026-11');
+  assert.equal(competencia('2026-08-31'), '2026-09');
+  assert.equal(competencia('2026-05-31'), '2026-06');
+  assert.equal(competencia('2026-03-31'), '2026-04');
+  assert.equal(competencia('2026-01-29'), '2026-02');
+  assert.equal(competencia('2026-01-31'), '2026-02');
+  assert.equal(competencia('2026-12-31'), '2027-01');
+  assert.equal(competencia('2026-10-21'), '2026-11');
+  assert.equal(competencia('2026-10-20'), '2026-10');
+});

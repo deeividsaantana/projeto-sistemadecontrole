@@ -51,3 +51,9 @@ test('o Excel sai no modelo da planilha', async () => {
   assert.equal(pasta.views[0].activeTab, 3);
   await pasta.xlsx.writeBuffer();
 });
+
+test('o 31 de outubro fica na aba de novembro, com o total igual ao da tela', () => {
+  const linha = (data: string, litros: number) => ({ data, hora: '07:00', litros }) as FuelReportExcelRow;
+  const abas = separarPorMes([linha('2026-10-31', 500), linha('2026-11-05', 300)]);
+  assert.deepEqual(abas.map(aba => [aba.competencia, aba.litros]), [['2026-11', 800]]);
+});

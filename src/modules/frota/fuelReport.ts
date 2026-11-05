@@ -70,7 +70,7 @@ const toIsoMonth = (date: Date) => `${date.getFullYear()}-${String(date.getMonth
 export const getFuelRecordCompetence = (record: Pick<Abastecimento, 'competencia' | 'data'>) => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(record.data || '')) {
     const date = new Date(`${record.data}T12:00:00`);
-    if (date.getDate() >= 21) date.setMonth(date.getMonth() + 1);
+    if (date.getDate() >= 21) date.setMonth(date.getMonth() + 1, 1);
     return toIsoMonth(date);
   }
   if (record.competencia && /^\d{4}-\d{2}$/.test(record.competencia)) return record.competencia;
