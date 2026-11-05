@@ -586,3 +586,15 @@ test('manutenção: "Continuar além de 10 h" tira o teto do card e registra que
   await expect(cartao.getByTestId('parada-alem-aviso')).toHaveCount(0);
   await expect(cartao).toContainText('/ 10 h');
 });
+
+for (const largura of [1024, 1100, 1279]) {
+  test(`status da nuvem aparece escrito a ${largura} px`, async ({ page }) => {
+    await page.setViewportSize({ width: largura, height: 720 });
+    await page.goto('/?screen=painel&shell=1');
+    const texto = page.locator('.erp-topbar__status-texto');
+    await expect(texto).toBeVisible();
+    expect((await texto.boundingBox())?.width ?? 0, 'texto legível, não só a bolinha').toBeGreaterThan(40);
+    const barra = await page.locator('.erp-topbar').evaluate(item => item.scrollWidth - item.clientWidth);
+    expect(barra, 'barra de cima sem vazar').toBeLessThanOrEqual(0);
+  });
+}

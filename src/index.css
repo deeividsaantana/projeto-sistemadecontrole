@@ -485,8 +485,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 }
 @media (max-width: 1279px) {
   .erp-topbar { gap: .75rem; padding-inline: 1rem; }
-  .erp-topbar__status { padding: .55rem; }
-  .erp-topbar__status-texto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .erp-topbar nav[aria-label="Trilha de navegação"] { display: none; }
   .erp-topbar__project small { display: none; }
   .erp-topbar__project { max-width: 16rem; }
