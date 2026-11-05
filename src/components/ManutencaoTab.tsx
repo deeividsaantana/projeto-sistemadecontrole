@@ -477,7 +477,7 @@ export default function ManutencaoTab({
        
         eyebrow="Frota"
         title="Manutenção"
-        abas={<AbasDaTela<Subtela> id="manutencao" rotulo="Subtelas da manutenção" abas={subtelas} ativa={subtela} onTrocar={setSubtela} idPainel="manutencao-dados" testId="manutencao-aba" gradeNoCelular />}
+        abas={<AbasDaTela<Subtela> id="manutencao" rotulo="Subtelas da manutenção" abas={subtelas} ativa={subtela} onTrocar={setSubtela} idPainel="manutencao-dados" testId="manutencao-aba" />}
         actions={<>
           {exportaExcel && (
             <button type="button" onClick={() => void exportarExcel()} disabled={exportando || semNadaParaExportar} className={BOTAO_SECUNDARIO}>

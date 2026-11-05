@@ -547,21 +547,47 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 
 /* Cabeçalho com subtelas: título curto, abas logo ao lado e a ação
    principal encostada à direita, numa linha só quando couber. Quando não
-   cabe, as ações descem para a linha de baixo, ainda à direita. No celular
-   cada parte ganha a própria linha, e as ações quebram linha em vez de
-   rolar para o lado (o botão principal nunca fica escondido). */
+   cabe, as ações descem para a linha de baixo, ainda à direita. No celular a
+   primeira dobra é do dado: uma ação só fica ao lado do título, várias dividem
+   uma linha, e o rótulo acima do título sai (o nome da aba já dá o contexto). */
 #main-tab-viewport .renea-page-header.renea-page-header--com-abas { align-items: center; justify-content: flex-start; }
 #main-tab-viewport .renea-page-header.renea-page-header--com-abas .renea-page-header__copy { flex: 0 1 auto; margin-right: 0; }
 .renea-page-header__abas { display: flex; min-width: 0; max-width: 100%; flex: 0 1 auto; }
 @media (max-width: 767px) {
+  #main-tab-viewport .renea-page-header { gap: .375rem .5rem; }
+  #main-tab-viewport .renea-page-header__eyebrow { display: none; }
   #main-tab-viewport .renea-page-header.renea-page-header--com-abas .renea-page-header__copy,
   .renea-page-header__abas { flex-basis: 100%; }
-  #main-tab-viewport .renea-page-header.renea-page-header--com-abas .renea-page-actions {
+  .renea-page-header__abas { order: 2; }
+  #main-tab-viewport .renea-page-header .renea-abas:not(.renea-abas--grupo) { padding: 0; }
+  #main-tab-viewport .renea-page-header .renea-page-actions {
+    order: 3;
+    display: flex;
     flex-wrap: wrap;
     justify-content: flex-start;
+    gap: .375rem;
+    width: 100%;
     margin-left: 0;
+    padding-bottom: 0;
     overflow: visible;
   }
+  #main-tab-viewport .renea-page-header .renea-page-actions > * { flex: 1 1 auto; min-width: 0; }
+  #main-tab-viewport .renea-page-header .renea-page-actions > button { padding-inline: .5rem; white-space: nowrap; }
+  /* Uma ação só divide a linha com o título. renea-acao-lateral marca o botão
+     quando há irmãos que não aparecem no celular. */
+  #main-tab-viewport .renea-page-header:has(.renea-page-actions > :only-child) .renea-page-header__copy { flex: 1 1 auto; }
+  #main-tab-viewport .renea-page-header:has(.renea-page-actions > .renea-acao-lateral) .renea-page-header__copy { flex: 1 1 auto; }
+  #main-tab-viewport .renea-page-header .renea-page-actions:has(> :only-child) { order: 1; width: auto; max-width: 100%; flex: 0 1 auto; }
+  #main-tab-viewport .renea-page-header .renea-page-actions > :only-child { max-width: 100%; }
+  #main-tab-viewport .renea-page-header .renea-page-actions:has(> .renea-acao-lateral) { order: 1; width: auto; flex: 0 1 auto; }
+  #main-tab-viewport .renea-page-header .renea-page-actions:has(> :only-child) > button { width: auto; min-width: 2.75rem; padding-inline: .75rem; flex: 0 0 auto; }
+  #main-tab-viewport .renea-page-header .renea-page-actions:has(> .renea-acao-lateral) > button { width: auto; min-width: 2.75rem; padding-inline: .75rem; flex: 0 0 auto; }
+  /* Controle que precisa da linha inteira (a data da Frota): os outros botões
+     sobem para o lado do título e ele fica abaixo das abas. */
+  #main-tab-viewport .renea-page-header:has(.renea-acao-linha) .renea-page-header__copy { flex: 1 1 auto; }
+  #main-tab-viewport .renea-page-header .renea-page-actions:has(.renea-acao-linha) { display: contents; }
+  #main-tab-viewport .renea-page-header .renea-page-actions:has(.renea-acao-linha) > * { order: 1; flex: 0 0 auto; width: auto; }
+  #main-tab-viewport .renea-page-header .renea-page-actions:has(.renea-acao-linha) > .renea-acao-linha { order: 3; flex: 1 1 100%; }
 }
 
 /* RENEA front-end v2 foundation: one calm industrial system for every module. */
@@ -789,7 +815,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 @media (max-width: 767px) {
   #main-tab-viewport > :not(.erp-dashboard) { padding-inline: .8rem; }
   .renea-page-header { padding-top: .5rem; }
-  .renea-page-actions { display: flex; flex-wrap: wrap; width: 100%; }
+  .renea-page-actions { display: flex; width: 100%; }
   .renea-page-actions > * { max-width: 100%; }
   .renea-button { min-height: 3rem; }
   .dashboard-hero { min-height: auto; }

@@ -59,7 +59,7 @@ interface PeriodFilterProps {
 export function PeriodFilter({ value, onChange, className }: PeriodFilterProps) {
   return (
     <div className={cn('flex flex-wrap items-center gap-2', className)}>
-      <div className="flex flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-white p-1">
+      <div className="flex max-w-full flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 max-sm:flex-nowrap max-sm:overflow-x-auto">
         {PRESETS.map(preset => (
           <button
             key={preset.id}
@@ -67,7 +67,7 @@ export function PeriodFilter({ value, onChange, className }: PeriodFilterProps) 
             onClick={() => onChange(buildPeriod(preset.id, value.from, value.to))}
             aria-pressed={value.preset === preset.id}
             className={cn(
-              'min-h-9 rounded-md px-3 text-xs font-bold transition-colors',
+              'min-h-9 shrink-0 rounded-md px-3 text-xs font-bold transition-colors',
               value.preset === preset.id ? 'bg-emerald-700 text-white' : 'text-slate-600 hover:bg-slate-100',
             )}
           >

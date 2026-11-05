@@ -334,7 +334,7 @@ export default function CombustivelOperacionalTab({
                 {cartao.titulo} <strong className="tabular-nums text-slate-950">{cartao.valor}</strong>
               </li>)}
             </ul>}
-            <button type="button" onClick={onOpenLubrificacao} aria-label="Lubrificação" title="Lubrificação" className={`${BOTAO_SECUNDARIO} size-10 shrink-0 justify-center !px-0`}><Droplets className="size-4 shrink-0" aria-hidden="true" /></button>
+            <button type="button" onClick={onOpenLubrificacao} aria-label="Lubrificação" title="Lubrificação" className={`renea-acao-lateral ${BOTAO_SECUNDARIO} size-10 shrink-0 justify-center !px-0`}><Droplets className="size-4 shrink-0" aria-hidden="true" /></button>
           </>} />
       </div>}
       faixa={<>

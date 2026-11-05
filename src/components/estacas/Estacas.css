@@ -75,19 +75,6 @@
   .cortina-anel, .cortina-contorno { transition: none; }
 }
 
-@media (max-width: 639px) {
-  #main-tab-viewport .estacas-header .renea-page-actions,
-  .estacas-header .renea-page-actions {
-    width: 100%;
-    margin-left: 0;
-    flex-wrap: wrap;
-  }
-  #main-tab-viewport .estacas-header .renea-page-actions > button,
-  .estacas-header .renea-page-actions > button {
-    flex: 1 1 100%;
-  }
-}
-
 @media print {
   .estacas-nao-imprime { display: none !important; }
 }

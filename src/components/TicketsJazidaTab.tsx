@@ -648,7 +648,7 @@ export default function TicketsJazidaTab({
                 Mais ações
                 <ChevronDown className="size-4 transition duration-300 group-open:rotate-180" aria-hidden="true" />
               </summary>
-              <div className="absolute right-0 z-30 mt-2 w-72 max-w-[calc(100vw-2rem)] space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_40px_-16px_rgba(15,40,31,0.35)]">
+              <div className="absolute right-0 z-30 mt-2 w-72 max-w-[calc(100vw-2rem)] space-y-1 rounded-2xl max-sm:left-0 max-sm:right-auto border border-slate-200 bg-white p-2 shadow-[0_18px_40px_-16px_rgba(15,40,31,0.35)]">
                 <p className={GRUPO_MENU}>Imprimir</p>
                 <button type="button" onClick={doMenu(() => setSequenciaAberta(true))} className={ITEM_MENU} data-testid="jazida-imprimir-sequencia"><Printer className="size-4" aria-hidden="true" />Tickets em sequência</button>
                 <button type="button" disabled={isPrintingBlank} onClick={doMenu(handlePrintBlankForm)} className={ITEM_MENU}><Printer className="size-4" aria-hidden="true" />{isPrintingBlank ? 'Gerando PDF…' : '1 ticket em branco (próximo número)'}</button>

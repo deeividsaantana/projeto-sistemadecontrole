@@ -57,7 +57,6 @@ import CadastroConfirmacaoLote, { type ItemTravado } from './cadastros/CadastroC
 import { montarRegistro, novoId, valoresIniciais, type ValoresCadastro } from './cadastros/camposCadastro';
 import { parseWorkbookFile } from './cadastros/lerPlanilhaCadastros';
 import { BOTAO_PERIGO, BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO, reduzMovimento } from './cadastros/estilos';
-import './cadastros/Cadastros.css';
 
 type ResultadoExclusao = { ok: true; exclusaoId: string } | { ok: false; usos: UsoCadastro[]; mensagem?: string };
 
@@ -681,7 +680,6 @@ export default function CadastrosTab(props: CadastrosTabProps) {
       cabecalho={(
         <div data-cadastros-reveal>
           <PageHeader
-            className="cadastros-header"
             eyebrow="Base corporativa"
             title="Cadastros"
             abas={<AbasDaTela id="cadastros" rotulo="Tipos de cadastro" abas={abas} ativa={vista} onTrocar={escolherVista} idPainel="cadastros-dados" testId="cadastro-aba" />}
@@ -700,7 +698,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
               )}
               <input ref={arquivoRef} type="file" accept=".xlsx,.xlsm,.csv,.tsv" onChange={importarArquivo} className="hidden" />
               {podeEditar && (
-                <button type="button" data-testid="cadastro-acao-principal" onClick={abrirNovo} className={`${BOTAO_PRIMARIO} max-sm:order-first px-5`}>
+                <button type="button" data-testid="cadastro-acao-principal" onClick={abrirNovo} className={`${importaPlanilha ? '' : 'renea-acao-lateral'} ${BOTAO_PRIMARIO} max-sm:order-first px-5`}>
                   <Plus className="size-5" aria-hidden="true" />
                   {categoriaAtual.acaoNovo}
                   <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>

@@ -101,8 +101,11 @@ botões soltos fazendo papel de aba.
 - Uma ação principal (`BOTAO_PRIMARIO`, ícone + texto claro), encostada à
   direita. As outras ficam em "Mais ações" ou como botões secundários.
 - Quando título, abas e ações não cabem numa linha, as ações descem para a
-  linha de baixo, ainda à direita. No celular cada parte ganha a própria
-  linha e as ações quebram linha (o botão principal nunca fica escondido).
+  linha de baixo, ainda à direita. No celular a primeira dobra é do dado: o
+  rótulo acima do título sai, uma ação só divide a linha com o título, várias
+  dividem uma linha, e controle largo (a data da Frota, classe
+  `renea-acao-linha`) fica abaixo das abas. O botão principal nunca fica
+  escondido; `tests/e2e/telas.spec.ts` limita a altura do cabeçalho.
 
 ## 4. Visual
 

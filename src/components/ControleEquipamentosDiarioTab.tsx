@@ -702,7 +702,7 @@ export default function ControleEquipamentosDiarioTab({
             {/* Dia consultado: vale para Situação do dia, Quadro, Equipamentos e Operadores. */}
             {/* Setas trocam de dia sem abrir o calendário; "Hoje" só aparece
                 quando a pessoa está olhando outro dia. */}
-            <div className="flex min-w-0 items-center gap-1 max-sm:w-full" role="group" aria-label="Dia dos lançamentos">
+            <div className="renea-acao-linha flex min-w-0 items-center gap-1" role="group" aria-label="Dia dos lançamentos">
               <button type="button" onClick={() => updateFilter('date', shiftIsoDate(filters.date, -1))} aria-label="Dia anterior" title="Dia anterior" className={`${BOTAO_SECUNDARIO} shrink-0 px-0 min-w-11 lg:min-w-10`} data-testid="frota-dia-anterior"><ChevronLeft className="size-5" aria-hidden="true" /></button>
               <label className="relative flex min-w-0 items-center max-sm:flex-1">
                 <span className="sr-only">Escolher o dia</span>
@@ -717,11 +717,11 @@ export default function ControleEquipamentosDiarioTab({
               <kbd className="text-xs">?</kbd>
             </button>}
             <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={readImport}/>
-            <details className="erp-fleet-menu group relative max-sm:flex-1" data-testid="frota-relatorios">
-              <summary className={`${BOTAO_SECUNDARIO} cursor-pointer px-3 max-sm:w-full list-none [&::-webkit-details-marker]:hidden`}>
+            <details className="erp-fleet-menu group relative" data-testid="frota-relatorios">
+              <summary aria-label="Mais ações" className={`${BOTAO_SECUNDARIO} cursor-pointer px-3 list-none [&::-webkit-details-marker]:hidden`}>
                 <FileSpreadsheet className="size-4" aria-hidden="true" />
-                Mais ações
-                <ChevronDown className="size-4 transition duration-300 group-open:rotate-180" aria-hidden="true" />
+                <span className="max-sm:hidden">Mais ações</span>
+                <ChevronDown className="size-4 transition duration-300 group-open:rotate-180 max-sm:hidden" aria-hidden="true" />
               </summary>
               <div className="absolute right-0 z-30 mt-2 w-64 min-w-60 space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_40px_-16px_rgba(15,40,31,0.35)]">
                 <p className={ROTULO_GRUPO_MENU}>Exportar</p>
@@ -748,7 +748,7 @@ export default function ControleEquipamentosDiarioTab({
                 {onOpenEquipmentRegistration && <button type="button" onClick={onOpenEquipmentRegistration} className={ITEM_MENU}><Plus className="size-4" aria-hidden="true" />Cadastrar equipamento</button>}
               </div>
             </details>
-            <button type="button" onClick={() => openNewRecord()} className={`${BOTAO_PRIMARIO} shrink-0 whitespace-nowrap px-5 max-sm:min-w-0 max-sm:flex-1 max-sm:px-3`} aria-label="Novo lançamento" data-testid="frota-novo">
+            <button type="button" onClick={() => openNewRecord()} className={`${BOTAO_PRIMARIO} shrink-0 whitespace-nowrap px-5 max-sm:px-3`} aria-label="Novo lançamento" data-testid="frota-novo">
               <Plus className="size-5" aria-hidden="true" />
               <span className="max-sm:hidden">Novo lançamento</span><span className="sm:hidden">Novo</span>
               <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>

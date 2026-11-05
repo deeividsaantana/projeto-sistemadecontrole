@@ -130,7 +130,6 @@ export default function EstacasTab({ controle, obras, onChange, responsavel = 'S
       cabecalho={(
         <div data-estacas-reveal>
           <PageHeader
-            className="estacas-header"
             eyebrow="Operação"
             title="Estacas prancha"
             abas={<AbasDaTela id="estacas" rotulo="Subtelas de estacas" abas={abas} ativa={secao} onTrocar={escolherSecao} idPainel="estacas-dados" testId="estacas-secao" />}
