@@ -476,9 +476,8 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 .erp-topbar button { min-height: 2.25rem; }
 
 /* Notebook de 1366 px: o nome do usuário cede lugar à obra (fica no title
-   do avatar). Abaixo de 1280 px o status vira só o ponto (o texto continua no
-   title e para leitor de tela) e a trilha sai, porque o título da tela e o
-   item aceso no menu já dizem onde a pessoa está. */
+   do avatar). Abaixo de 1280 px a trilha sai, porque o título da tela e o item aceso
+   no menu já dizem onde a pessoa está. O status continua escrito. */
 @media (max-width: 1439px) {
   .erp-topbar__user > span:last-child { display: none; }
   .erp-topbar__user { padding-left: .5rem; }
