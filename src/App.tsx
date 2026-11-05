@@ -169,8 +169,9 @@ import { mergeMaterialUseMovements, movementsFromMaterialUse, type MaterialUseSu
 import { fetchAllPresenceSubmissions } from './supabase/submissionRecovery';
 import { juntarPresencaBaixada, presenceBusinessKey, presencasFaltantes, resumoRecuperadas } from './utils/presencaRecuperacao';
 import { captureCloudBaseline, mergeCloudTable, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
-import { apagarDeVez, aplicarExclusoes, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from './cloud/exclusoes';
+import { apagarDeVez, aplicarExclusoes, criarExclusao, marcaRestaurada, restaurarExclusao, type ExclusaoRegistro } from './cloud/exclusoes';
 import { protegerContraEncolhimento } from './cloud/protecaoEncolhimento';
+import { comMarcasDaNuvem, comMarcasLocaisDaNuvem, comTabelasDaNuvem, marcasSoDaNuvem, recusadoPorPerfil, tabelasSoDaNuvem } from './cloud/tabelasPorPerfil';
 import { manterNovidadesLocais } from './cloud/novidadesLocais';
 import { manterEdicoesLocais } from './cloud/edicoesLocais';
 import {
@@ -459,7 +460,8 @@ export default function App() {
   // Login State
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [currentUserRole, setCurrentUserRole] = useState<UserRole>('admin');
+  // Começa no menor perfil; o real vem da associação na organização (abaixo).
+  const [currentUserRole, setCurrentUserRole] = useState<UserRole>('leitura');
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(true);
@@ -547,9 +549,10 @@ export default function App() {
   const pendingRemoteVersionRef = useRef('');
   // O último envio falhou: o pulso de checagem tenta de novo sozinho.
   const uploadPendenteRef = useRef(false);
+  const recuperacaoPorPerfilRef = useRef({ quando: 0, vezes: 0 });
   const publicTicketIdsRef = useRef<Set<string>>(new Set());
   const requestAutomaticRemoteSyncRef = useRef<(updatedAt: string) => void>(() => undefined);
-  const currentUserRoleRef = useRef<UserRole>('admin');
+  const currentUserRoleRef = useRef<UserRole>('leitura');
   // Ids por tabela da última sincronização concluída neste aparelho. A base é
   // persistida: sem ela, recarregar a página apagava a memória da exclusão e a
   // mesclagem seguinte trazia o registro remoto de volta.
@@ -1124,10 +1127,13 @@ export default function App() {
         data,
         knownCloudVersion,
         cloudBaselineRef.current,
+        // Lido do ref: os envios automáticos guardam o handler do primeiro render.
+        { tabelasDaNuvem: tabelasSoDaNuvem(currentUserRoleRef.current), marcasDaNuvem: marcasSoDaNuvem(currentUserRoleRef.current) },
       );
       // O envio pode ter mesclado dados de outro usuário antes de publicar:
       // a base válida daqui para frente é o que foi realmente publicado.
       cloudBaselineRef.current = uploadResult.publishedBaseline;
+      recuperacaoPorPerfilRef.current.vezes = 0;
       
       const nowStr = new Date(uploadResult.updatedAt).toLocaleString('pt-BR');
       setLastCloudSync(nowStr);
@@ -1169,6 +1175,16 @@ export default function App() {
       setIsCloudConnected(false);
       uploadPendenteRef.current = true;
       console.error('Falha ao sincronizar o backup na nuvem:', error);
+      // Recusa por perfil vem de diferença que o operador não causou (marca ou
+      // gestão de outro perfil neste aparelho). O ciclo automático não baixa sem
+      // versão nova, então baixa aqui: o download devolve a versão da nuvem e
+      // mantém presença e frota daqui. A espera dobra a cada recusa seguida
+      // (1 min, 2 min... até 1 h), para uma recusa por outro motivo não gastar dados.
+      const recuperacao = recuperacaoPorPerfilRef.current;
+      if (recusadoPorPerfil(error) && Date.now() - recuperacao.quando > Math.min(3_600_000, 60_000 * 2 ** recuperacao.vezes)) {
+        recuperacaoPorPerfilRef.current = { quando: Date.now(), vezes: recuperacao.vezes + 1 };
+        queueMicrotask(() => { void handleDownloadFromSupabase(); });
+      }
       if (!navigator.onLine) {
         void enqueueOfflineCommand('supabase-backup', { requestedAt: new Date().toISOString() });
       }
@@ -1215,30 +1231,45 @@ export default function App() {
         );
         const remoteExclusoes = Array.isArray(data.exclusoes) ? data.exclusoes : [];
         data.exclusoes = mergeCloudTable(remoteExclusoes, localExclusoes);
+        // Marca local de gestão ou cadastro no aparelho do operador não fica: o banco recusaria os envios dele.
+        data.exclusoes = comMarcasDaNuvem(Array.isArray(data.exclusoes) ? data.exclusoes : [], remoteExclusoes, marcasSoDaNuvem(currentUserRoleRef.current));
         Object.assign(data, aplicarExclusoes(data));
+        // Gestão como veio da nuvem: o operador não altera essas tabelas e fica com elas.
+        const gestaoDaNuvem: CloudData = { ...data };
         const downloadedBaseline = captureCloudBaseline(data);
         // Aparelho esperando o primeiro download não tem cópia confiável: o que
         // está nele é semente ou sobra de uma cópia que perdeu as marcas. Vale a
         // nuvem como está; manter "novidades" daqui repetia lançamentos na nuvem.
         const copiaLocalConfiavel = !localStorage.getItem(AGUARDANDO_PRIMEIRO_DOWNLOAD);
         // O que este aparelho criou e ainda não subiu fica, e sobe logo depois (C5).
-        const { retrato: comNovidades, mantidas: novidadesLocais } = copiaLocalConfiavel
-          ? manterNovidadesLocais(data, readStoredCloudTables(), cloudBaselineRef.current)
+        const { retrato: comNovidades, mantidas: novidadesMantidas } = copiaLocalConfiavel
+          ? manterNovidadesLocais(data, comMarcasLocaisDaNuvem(readStoredCloudTables(), remoteExclusoes, marcasSoDaNuvem(currentUserRoleRef.current)), cloudBaselineRef.current)
           : { retrato: data, mantidas: [] };
         Object.assign(data, comNovidades);
         // O que foi editado aqui e ainda não subiu fica com a versão daqui (A13).
-        const { retrato: comEdicoes, editadas: edicoesLocais } = copiaLocalConfiavel
-          ? manterEdicoesLocais(data, readStoredCloudTables(), assinaturasConhecidas)
+        const { retrato: comEdicoes, editadas: edicoesMantidas } = copiaLocalConfiavel
+          ? manterEdicoesLocais(data, comMarcasLocaisDaNuvem(readStoredCloudTables(), remoteExclusoes, marcasSoDaNuvem(currentUserRoleRef.current)), assinaturasConhecidas)
           : { retrato: data, editadas: [] };
         Object.assign(data, comEdicoes);
+        // O que volta para a versão da nuvem (gestão, no aparelho do operador) não é anunciado como mantido.
+        const descartadas = tabelasSoDaNuvem(currentUserRoleRef.current);
+        const novidadesLocais = novidadesMantidas.filter(item => !descartadas.includes(item.tabela));
+        const edicoesLocais = edicoesMantidas.filter(item => !descartadas.includes(item.tabela));
         // A nuvem veio vazia ou muito menor numa tabela que este aparelho tem
         // cheia, sem marca de exclusão: foi outro navegador que perdeu a cópia
         // e publicou por cima. Este aparelho guarda o que tem e devolve à
         // nuvem logo depois do download, em vez de apagar a própria cópia.
         const { retrato: dadosProtegidos, protegidas: devolverParaNuvem } = copiaLocalConfiavel
-          ? protegerContraEncolhimento(readLocalCloudTables(), data)
+          ? protegerContraEncolhimento(comMarcasLocaisDaNuvem(readLocalCloudTables(), remoteExclusoes, marcasSoDaNuvem(currentUserRoleRef.current)), data)
           : { retrato: data, protegidas: [] };
         Object.assign(data, dadosProtegidos);
+        // Novidade ou edição local do operador numa tabela de gestão não fica:
+        // o banco recusaria todo envio dele por causa dela.
+        const soDaNuvem = tabelasSoDaNuvem(currentUserRoleRef.current);
+        const gestaoAjustada = comTabelasDaNuvem(data, gestaoDaNuvem, soDaNuvem);
+        for (const tabela of soDaNuvem) {
+          if (tabela in gestaoAjustada) data[tabela] = gestaoAjustada[tabela];
+        }
         const syncIso = backup.updatedAt || new Date().toISOString();
         const syncDate = new Date(syncIso);
         const nowStr = Number.isNaN(syncDate.getTime())
@@ -2061,7 +2092,7 @@ export default function App() {
    */
   const handleRestaurarCadastros = (exclusaoIds: string[]): { ok: boolean; mensagem: string } => {
     const pedidos = new Set(exclusaoIds);
-    const pendentes = exclusoes.filter(item => pedidos.has(item.id) && !item.restauradoEm && !item.apagadoEm);
+    const pendentes = exclusoes.filter(item => pedidos.has(item.id) && !marcaRestaurada(item) && !item.apagadoEm);
     if (pendentes.length === 0) return { ok: false, mensagem: exclusaoIds.length === 1 ? 'Este cadastro já foi restaurado ou excluído de vez.' : 'Estes cadastros já foram restaurados ou excluídos de vez.' };
     const tabelas = tabelasCadastro();
     const agora = new Date().toISOString();
@@ -2117,7 +2148,7 @@ export default function App() {
   const handleRestaurarCadastro = (exclusaoId: string) => handleRestaurarCadastros([exclusaoId]);
 
   // Locais na Lixeira: a lista SGE de Materiais não oferece de novo o que foi apagado.
-  const locaisApagados = useMemo(() => new Set(exclusoes.filter(item => item.tabela === 'etapas' && !item.restauradoEm).map(item => item.registroId)), [exclusoes]);
+  const locaisApagados = useMemo(() => new Set(exclusoes.filter(item => item.tabela === 'etapas' && !marcaRestaurada(item)).map(item => item.registroId)), [exclusoes]);
 
   /**
    * Tira da Lixeira e joga fora a cópia guardada. A marca de exclusão fica,
@@ -2128,7 +2159,7 @@ export default function App() {
       return { ok: false, mensagem: 'Só o administrador pode excluir de vez.' };
     }
     const pedidos = new Set(exclusaoIds);
-    const alvos = exclusoes.filter(item => pedidos.has(item.id) && !item.restauradoEm && !item.apagadoEm);
+    const alvos = exclusoes.filter(item => pedidos.has(item.id) && !marcaRestaurada(item) && !item.apagadoEm);
     if (alvos.length === 0) return { ok: false, mensagem: 'Nada para excluir de vez: a Lixeira já mudou.' };
     const agora = new Date().toISOString();
     const feitos = new Set(alvos.map(item => item.id));

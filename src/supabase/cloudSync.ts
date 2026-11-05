@@ -4,6 +4,7 @@ import { protegerContraEncolhimento } from '../cloud/protecaoEncolhimento';
 import { aplicarMudancasNasAssinaturas, calcularMudancas, capturarAssinaturas, type AssinaturasNuvem } from '../cloud/mudancasNuvem';
 import { guardarAssinaturas, lerAssinaturas } from '../cloud/assinaturasGuardadas';
 import { manterEdicoesLocais } from '../cloud/edicoesLocais';
+import { NUVEM_RECUSOU_PERFIL, comMarcasDaNuvem, comTabelasDaNuvem, semTabelas } from '../cloud/tabelasPorPerfil';
 import { getSupabaseClient } from './client';
 import { resolveSupabaseClientConfig } from './config';
 
@@ -31,6 +32,7 @@ const NUVEM_RECUSOU_ENCOLHIMENTO = 'A nuvem recusou o envio porque ele apagaria 
 const normalizeSupabaseError = (error: unknown): Error => {
   const texto = String((error as { message?: unknown })?.message ?? error ?? '');
   if (texto.includes('CLOUD_SHRINK_REFUSED')) return new Error(NUVEM_RECUSOU_ENCOLHIMENTO, { cause: error });
+  if (texto.includes('ROLE_WRITE_DENIED')) return new Error(NUVEM_RECUSOU_PERFIL, { cause: error });
   if (error instanceof Error) return error;
   if (error && typeof error === 'object' && 'message' in error) {
     return new Error(String((error as { message?: unknown }).message || 'Falha no Supabase.'));
@@ -124,12 +126,13 @@ export const lerAssinaturasDaVersao = async (versao: string): Promise<Assinatura
  * quando não dá (sem assinaturas dessa versão, banco sem a função): aí quem
  * chama faz o envio inteiro.
  */
-const enviarSoMudancas = async (data: CloudData, knownCloudVersion: string): Promise<CloudUploadResult | null> => {
+const enviarSoMudancas = async (data: CloudData, knownCloudVersion: string, tabelasDaNuvem: readonly string[]): Promise<CloudUploadResult | null> => {
   if (!envioPorMudancaDisponivel || !knownCloudVersion) return null;
   const organizationId = resolveSupabaseClientConfig().organizationId;
   const assinaturas = await lerAssinaturas(organizationId);
   if (!assinaturas || !mesmaVersao(assinaturas.versao, knownCloudVersion)) return null;
-  const calculo = calcularMudancas(data, assinaturas);
+  // Tabela que este perfil não altera nem entra na comparação.
+  const calculo = calcularMudancas(semTabelas(data, tabelasDaNuvem), assinaturas);
   // Saída em massa sem marca (navegador que perdeu a cópia) segue pelo envio
   // inteiro, que já sabe segurar a nuvem e trazer os registros de volta.
   if (!calculo || calculo.protegidas.length > 0) return null;
@@ -180,10 +183,11 @@ export const uploadSupabaseBackup = async (
   data: CloudData,
   knownCloudVersion = '',
   baseline?: CloudBaseline,
+  { tabelasDaNuvem = [], marcasDaNuvem = [] }: { tabelasDaNuvem?: readonly string[]; marcasDaNuvem?: readonly string[] } = {},
 ): Promise<CloudUploadResult> => {
   // Lidas antes de qualquer download, que troca as assinaturas pela versão nova.
   const base = await lerAssinaturasDaVersao(knownCloudVersion);
-  const soMudancas = await enviarSoMudancas(data, knownCloudVersion);
+  const soMudancas = await enviarSoMudancas(data, knownCloudVersion, tabelasDaNuvem);
   if (soMudancas) return soMudancas;
 
   let payload = data;
@@ -209,6 +213,12 @@ export const uploadSupabaseBackup = async (
       // marca de exclusão: é o navegador que perdeu a cópia, não o usuário
       // que apagou. A base sai do retrato sem os devolvidos, para que o
       // próximo download os traga de volta para este aparelho.
+      // Tabela que este perfil não altera vai exatamente como está na nuvem.
+      payload = comTabelasDaNuvem(payload, remote.data, tabelasDaNuvem);
+      if (marcasDaNuvem.length) {
+        const lista = (valor: unknown) => (Array.isArray(valor) ? valor : []);
+        payload = { ...payload, exclusoes: comMarcasDaNuvem(lista(payload.exclusoes), lista(remote.data?.exclusoes), marcasDaNuvem) };
+      }
       const { retrato, protegidas } = protegerContraEncolhimento(remote.data, payload);
       const result = await publishSnapshot(retrato as CloudData, expectedVersion);
       if (protegidas.length === 0) return result;

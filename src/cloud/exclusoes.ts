@@ -100,6 +100,9 @@ const isExclusao = (valor: unknown): valor is ExclusaoRegistro => {
 
 const chave = (tabela: string, registroId: string) => `${tabela}\u0000${registroId}`;
 
+/** Restaurada é só a marca com data de restauração (mesma regra do banco, erp_recusar_por_perfil). */
+export const marcaRestaurada = (item: { restauradoEm?: unknown }) => typeof item.restauradoEm === 'string' && item.restauradoEm !== '';
+
 /**
  * Para cada cadastro, vale o evento de exclusão mais recente: excluir,
  * restaurar e excluir de novo deixa o cadastro excluído.
@@ -113,7 +116,7 @@ export const exclusoesAtivas = (exclusoes: readonly unknown[]): Map<string, Excl
     if (!atual || item.excluidoEm > atual.excluidoEm) ultimaPorRegistro.set(k, item);
   }
   for (const [k, item] of ultimaPorRegistro) {
-    if (item.restauradoEm) ultimaPorRegistro.delete(k);
+    if (marcaRestaurada(item)) ultimaPorRegistro.delete(k);
   }
   return ultimaPorRegistro;
 };
