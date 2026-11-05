@@ -39,7 +39,7 @@ class ApplicationErrorBoundary extends Component<ApplicationErrorBoundaryProps, 
 
     return (
       <main className="relative grid min-h-screen place-items-center overflow-hidden bg-white px-5 py-8 text-slate-950 sm:p-10">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-emerald-700" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-[#176b4d]" />
         <div className="pointer-events-none absolute -right-24 -top-24 size-80 rounded-full border border-emerald-100" />
         <div className="pointer-events-none absolute -bottom-36 -left-28 size-96 rounded-full border border-slate-100" />
 
@@ -67,7 +67,7 @@ class ApplicationErrorBoundary extends Component<ApplicationErrorBoundaryProps, 
                 </pre>
               )}
               <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                <button type="button" onClick={() => window.location.reload()} className="inline-flex min-h-11 items-center justify-center gap-2 bg-emerald-700 px-5 text-sm font-bold text-white transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200"><RefreshCw size={16} />Tentar novamente</button>
+                <button type="button" onClick={() => window.location.reload()} className="inline-flex min-h-11 items-center justify-center gap-2 bg-[#176b4d] px-5 text-sm font-bold text-white transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200"><RefreshCw size={16} />Tentar novamente</button>
                 <button type="button" onClick={() => window.history.back()} className="inline-flex min-h-11 items-center justify-center gap-2 border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-100"><ArrowLeft size={16} />Voltar</button>
               </div>
             </div>

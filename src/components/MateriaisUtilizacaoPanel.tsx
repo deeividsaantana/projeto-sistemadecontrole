@@ -202,7 +202,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
             <button type="button" onClick={() => void gerarLink()} className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700 active:scale-[0.98] ${focusRing}`}>
               <Link2 className="h-4 w-4" /> Link dos apontadores
             </button>
-            <button type="button" onClick={() => abrirApontar()} disabled={ramosComEntrada.length === 0} className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-emerald-700 px-4 text-xs font-bold text-white transition-colors hover:bg-emerald-800 active:scale-[0.98] disabled:bg-slate-300 ${focusRing}`}>
+            <button type="button" onClick={() => abrirApontar()} disabled={ramosComEntrada.length === 0} className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-[#176b4d] px-4 text-xs font-bold text-white transition-colors hover:opacity-90 active:scale-[0.98] disabled:bg-slate-300 ${focusRing}`}>
               <Plus className="h-4 w-4" /> Apontar uso
             </button>
           </div>
@@ -253,7 +253,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
                     </span>
                   </span>
                   <span className="block h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
-                    <span className={`block h-full origin-left rounded-full ${acima ? 'bg-[#f26a2e]' : 'bg-emerald-700'}`} style={{ transform: `scaleX(${Math.min(100, item.percentual ?? 0) / 100})` }} />
+                    <span className={`block h-full origin-left rounded-full ${acima ? 'bg-[#f26a2e]' : 'bg-[#176b4d]'}`} style={{ transform: `scaleX(${Math.min(100, item.percentual ?? 0) / 100})` }} />
                   </span>
                   <span className="text-xs text-slate-500">
                     {item.ramos} {item.ramos === 1 ? 'ramo' : 'ramos'}
@@ -288,7 +288,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
           {link.url && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <input readOnly value={link.url} onFocus={event => event.target.select()} aria-label="Endereço do link dos apontadores" className={`min-h-11 min-w-0 flex-1 rounded-xl border border-emerald-200 bg-white px-3 font-mono text-xs text-slate-700 ${focusRing}`} />
-              <button type="button" onClick={() => void copiarLink()} className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-emerald-700 px-4 text-xs font-bold text-white hover:bg-emerald-800 active:scale-[0.98] ${focusRing}`}>
+              <button type="button" onClick={() => void copiarLink()} className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-[#176b4d] px-4 text-xs font-bold text-white hover:opacity-90 active:scale-[0.98] ${focusRing}`}>
                 {link.copiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} {link.copiado ? 'Copiado' : 'Copiar'}
               </button>
               <a href={link.url} target="_blank" rel="noreferrer" className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 hover:border-emerald-500 ${focusRing}`}>
@@ -322,7 +322,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
                     <option value="">Escolha o ramo</option>
                     {etapas.map(etapa => <option key={etapa.id} value={etapa.id}>{etapa.nome}</option>)}
                   </select>
-                  <button type="button" disabled={!escolhido} onClick={() => vincular(grupo.destino, grupo.movementIds)} className={`min-h-11 rounded-xl bg-emerald-700 px-4 text-xs font-bold text-white hover:bg-emerald-800 active:scale-[0.98] disabled:bg-slate-300 ${focusRing}`}>
+                  <button type="button" disabled={!escolhido} onClick={() => vincular(grupo.destino, grupo.movementIds)} className={`min-h-11 rounded-xl bg-[#176b4d] px-4 text-xs font-bold text-white hover:opacity-90 active:scale-[0.98] disabled:bg-slate-300 ${focusRing}`}>
                     Vincular
                   </button>
                 </li>
@@ -391,7 +391,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
                           aria-label={`${percentText(row.percent)} aplicado`}
                           title={`${formatMaterialQuantity(material, row.used, row.unit)} aplicados de ${formatMaterialQuantity(material, row.received, row.unit)}`}
                         >
-                          <span className={`block h-full origin-left rounded-full transition-transform duration-500 ${acima ? 'bg-[#f26a2e]' : 'bg-emerald-700'}`} style={{ transform: `scaleX(${largura / 100})` }} />
+                          <span className={`block h-full origin-left rounded-full transition-transform duration-500 ${acima ? 'bg-[#f26a2e]' : 'bg-[#176b4d]'}`} style={{ transform: `scaleX(${largura / 100})` }} />
                         </span>
                         <span className="flex flex-wrap items-center justify-between gap-x-3 text-xs text-slate-500">
                           <span className={acima ? 'font-bold text-[#c2410c]' : ''}>
@@ -457,7 +457,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
             <span className="text-xs font-bold text-slate-500">{itensApontados.length ? `${itensApontados.length} material(is) marcado(s)` : 'Nada marcado'}</span>
             <div className="flex gap-2">
               <button type="button" onClick={() => setApontar(null)} className={`min-h-11 rounded-xl border border-slate-200 px-4 text-xs font-bold text-slate-600 ${focusRing}`}>Cancelar</button>
-              <button type="button" onClick={salvarApontamento} disabled={itensApontados.length === 0} className={`min-h-11 rounded-xl bg-emerald-700 px-5 text-xs font-bold text-white hover:bg-emerald-800 active:scale-[0.98] disabled:bg-slate-300 ${focusRing}`}>Salvar uso</button>
+              <button type="button" onClick={salvarApontamento} disabled={itensApontados.length === 0} className={`min-h-11 rounded-xl bg-[#176b4d] px-5 text-xs font-bold text-white hover:opacity-90 active:scale-[0.98] disabled:bg-slate-300 ${focusRing}`}>Salvar uso</button>
             </div>
           </div>
         )}
@@ -513,7 +513,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
                           />
                           <small className="text-xs font-bold text-slate-500">{unidade}</small>
                         </label>
-                        <button type="button" aria-label={`Aumentar ${row.materialDescription}`} onClick={() => ajustarApontado(row.materialId, 1)} className={`grid h-11 place-items-center rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 ${focusRing}`}><Plus className="h-4 w-4" /></button>
+                        <button type="button" aria-label={`Aumentar ${row.materialDescription}`} onClick={() => ajustarApontado(row.materialId, 1)} className={`grid h-11 place-items-center rounded-xl bg-[#176b4d] text-white hover:opacity-90 ${focusRing}`}><Plus className="h-4 w-4" /></button>
                       </div>
                     </li>
                   );

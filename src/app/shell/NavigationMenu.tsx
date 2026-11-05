@@ -52,7 +52,7 @@ export function NavigationMenu({
                     title={item.label}
                     className={cn(
                       'group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
-                      active ? 'bg-emerald-700 text-white shadow-sm' : 'text-slate-600 hover:translate-x-0.5 hover:bg-emerald-50 hover:text-emerald-800',
+                      active ? 'bg-[#176b4d] text-white shadow-sm' : 'text-slate-600 hover:translate-x-0.5 hover:bg-emerald-50 hover:text-emerald-800',
                     )}
                   >
                     <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-white' : 'text-slate-500 group-hover:text-emerald-600')} />

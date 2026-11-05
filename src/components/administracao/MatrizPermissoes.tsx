@@ -69,7 +69,7 @@ export default function MatrizPermissoes() {
             onClick={() => setPapel(item)}
             aria-pressed={papel === item}
             className={`min-h-10 rounded-lg border px-3 text-xs font-bold transition-colors ${papel === item
-              ? 'border-emerald-600 bg-emerald-700 text-white'
+              ? 'border-[#176b4d] bg-[#176b4d] text-white'
               : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-400'}`}
           >
             {ROTULO_PAPEL[item]}

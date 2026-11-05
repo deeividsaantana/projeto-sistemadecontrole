@@ -126,3 +126,15 @@ test('a casca começa pelo link de pular para o conteúdo', () => {
   assert.ok(link > raiz && link - raiz < 200, 'o link deve ser o primeiro item dentro de #app-root');
   assert.match(app, /id="main-tab-viewport" tabIndex=\{-1\}/);
 });
+
+test('o verde principal é um só e os componentes base usam a paleta', () => {
+  const arquivos = (pasta: string): string[] => readdirSync(new URL(pasta, import.meta.url), { recursive: true, encoding: 'utf8' })
+    .filter(nome => nome.endsWith('.tsx'))
+    .map(nome => `${pasta}${nome.split(String.fromCharCode(92)).join("/")}`);
+  const verdeSolto = ['../src/components/', '../src/shared/', '../src/app/'].flatMap(arquivos)
+    .filter(arquivo => /\bbg-emerald-[6-9]00\b/.test(readFileSync(new URL(arquivo, import.meta.url), 'utf8')));
+  assert.deepEqual(verdeSolto, [], 'use bg-[#176b4d] ou BOTAO_PRIMARIO');
+  const foraDoBase = arquivos('../src/shared/ui/')
+    .filter(arquivo => /#(087653|066344|53635c|66736e|d7dfda|dce3df|cfd8d3|d7ded9|e4e9e5|f1f4f2|f0f4f1|f0f3ef|eef1ed|20302a|30423b)\b/i.test(readFileSync(new URL(arquivo, import.meta.url), 'utf8')));
+  assert.deepEqual(foraDoBase, [], 'cor quase igual à da paleta em shared/ui');
+});

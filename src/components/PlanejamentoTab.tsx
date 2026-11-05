@@ -199,7 +199,7 @@ export default function PlanejamentoTab({
       render: item => (
         <span className="flex min-w-28 items-center justify-end gap-2">
           <span className="h-1.5 flex-1 rounded-full bg-slate-100" aria-hidden="true">
-            <span className={`block h-1.5 rounded-full ${item.atrasado ? 'bg-amber-500' : 'bg-emerald-600'}`} style={{ width: `${Math.min(100, item.aderencia)}%` }} />
+            <span className={`block h-1.5 rounded-full ${item.atrasado ? 'bg-amber-500' : 'bg-[#176b4d]'}`} style={{ width: `${Math.min(100, item.aderencia)}%` }} />
           </span>
           <span className="font-bold text-slate-700">{numero(item.aderencia, 1)}%</span>
         </span>
@@ -322,7 +322,7 @@ export default function PlanejamentoTab({
         footer={(
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button type="button" onClick={() => setAberto(false)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar</button>
-            <button type="button" onClick={salvar} className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800">Salvar previsto</button>
+            <button type="button" onClick={salvar} className="min-h-11 rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white hover:opacity-90">Salvar previsto</button>
           </div>
         )}
       >

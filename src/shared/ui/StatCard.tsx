@@ -60,7 +60,7 @@ export function StatCard({ label, value, icon: Icon, trend, tone = 'neutral', on
     <Root
       {...(onClick ? { type: 'button' as const, onClick } : {})}
       className={cn(
-        'renea-stat group relative overflow-hidden rounded-[3px] border border-[#cfd8d3] bg-white p-4 text-left transition-colors duration-200 hover:border-[#85978e] hover:bg-[#fbfcfa] sm:p-5',
+        'renea-stat group relative overflow-hidden rounded-[3px] border border-[#e2e8e4] bg-white p-4 text-left transition-colors duration-200 hover:border-[#85978e] hover:bg-[#fbfcfa] sm:p-5',
         onClick && 'w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40',
         className,
       )}

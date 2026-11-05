@@ -68,7 +68,7 @@ export function PeriodFilter({ value, onChange, className }: PeriodFilterProps) 
             aria-pressed={value.preset === preset.id}
             className={cn(
               'min-h-9 rounded-md px-3 text-xs font-bold transition-colors',
-              value.preset === preset.id ? 'bg-emerald-700 text-white' : 'text-slate-600 hover:bg-slate-100',
+              value.preset === preset.id ? 'bg-[#176b4d] text-white' : 'text-slate-600 hover:bg-slate-100',
             )}
           >
             {preset.label}

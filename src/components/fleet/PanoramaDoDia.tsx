@@ -120,7 +120,7 @@ export default function PanoramaDoDia({ metrics, status, onStatus, canteiros, ca
     return !atual;
   });
   const fatias: Fatia[] = [
-    { rotulo: 'Em operação', valor: metrics.operating, status: FLEET_OPERATIONAL_STATUS.operating, traco: 'stroke-emerald-600', ponto: 'bg-emerald-600' },
+    { rotulo: 'Em operação', valor: metrics.operating, status: FLEET_OPERATIONAL_STATUS.operating, traco: 'stroke-emerald-600', ponto: 'bg-[#176b4d]' },
     { rotulo: 'Manutenção', valor: metrics.maintenance + metrics.waitingMaintenance, status: FLEET_OPERATIONAL_STATUS.maintenance, traco: 'stroke-rose-500', ponto: 'bg-rose-500' },
     { rotulo: 'À disposição', valor: metrics.available, status: FLEET_OPERATIONAL_STATUS.available, traco: 'stroke-sky-500', ponto: 'bg-sky-500' },
     { rotulo: 'A confirmar', valor: metrics.pending, status: FLEET_OPERATIONAL_STATUS.pending, traco: 'stroke-amber-400', ponto: 'bg-amber-400' },
@@ -205,7 +205,7 @@ export default function PanoramaDoDia({ metrics, status, onStatus, canteiros, ca
                       <span className="font-bold tabular-nums text-slate-950">{item.total}</span>
                     </span>
                     <span className="flex h-2 overflow-hidden rounded-full bg-slate-100" style={{ width: `${Math.max(12, (item.total / maiorCanteiro) * 100)}%` }} aria-hidden="true">
-                      <span className="bg-emerald-600" style={{ flexGrow: item.operando }} />
+                      <span className="bg-[#176b4d]" style={{ flexGrow: item.operando }} />
                       <span className="bg-rose-500" style={{ flexGrow: item.manutencao }} />
                       <span className="bg-slate-300" style={{ flexGrow: outros }} />
                     </span>

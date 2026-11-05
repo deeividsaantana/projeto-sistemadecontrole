@@ -83,14 +83,14 @@ export default function SpreadsheetImportReview({
   const rodape = batchPreview ? (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm font-semibold leading-relaxed text-slate-600 sm:max-w-md">Somente linhas novas e válidas serão gravadas. Duplicadas e linhas em conferência permanecem fora do lote.</p>
-      <div className="flex flex-wrap justify-end gap-2"><button type="button" onClick={onCancel} className="min-h-11 rounded-lg border border-slate-300 bg-white px-5 text-sm font-bold text-slate-700 lg:min-h-10">Fechar</button><button type="button" onClick={batchPreview.onRunDryRun} className="min-h-11 rounded-lg border border-emerald-600 bg-white px-5 text-sm font-bold text-emerald-800 lg:min-h-10">{batchPreview.dryRunRan ? 'Executar dry-run novamente' : 'Executar dry-run'}</button><button type="button" onClick={onConfirm} disabled={!batchPreview.applyAuthorized || !batchPreview.dryRunRan || validCount === 0} className="min-h-11 rounded-lg bg-emerald-700 px-5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-700 lg:min-h-10">Aplicar importação</button></div>
+      <div className="flex flex-wrap justify-end gap-2"><button type="button" onClick={onCancel} className="min-h-11 rounded-lg border border-slate-300 bg-white px-5 text-sm font-bold text-slate-700 lg:min-h-10">Fechar</button><button type="button" onClick={batchPreview.onRunDryRun} className="min-h-11 rounded-lg border border-emerald-600 bg-white px-5 text-sm font-bold text-emerald-800 lg:min-h-10">{batchPreview.dryRunRan ? 'Executar dry-run novamente' : 'Executar dry-run'}</button><button type="button" onClick={onConfirm} disabled={!batchPreview.applyAuthorized || !batchPreview.dryRunRan || validCount === 0} className="min-h-11 rounded-xl bg-[#176b4d] px-5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-700 lg:min-h-10">Aplicar importação</button></div>
     </div>
   ) : (
     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <button type="button" onClick={onCancel} disabled={confirming} className="min-h-11 rounded-lg border border-slate-300 bg-white px-5 text-sm font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-50 lg:min-h-10">
         Cancelar
       </button>
-      <button type="button" onClick={onConfirm} disabled={confirming || validCount === 0} className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-5 text-sm font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-700 lg:min-h-10">
+      <button type="button" onClick={onConfirm} disabled={confirming || validCount === 0} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#176b4d] px-5 text-sm font-bold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-700 lg:min-h-10">
         {confirming ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Check className="h-4 w-4" aria-hidden="true" />}
         {confirming ? 'Importando...' : `Confirmar ${validCount} registro(s)`}
       </button>

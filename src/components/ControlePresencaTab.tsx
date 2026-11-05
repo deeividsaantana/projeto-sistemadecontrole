@@ -109,7 +109,7 @@ const FOCO = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visib
 const ROTULO_CAMPO = 'block text-xs font-bold text-[#5b6870]';
 const FIELD = 'min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-emerald-700 focus:ring-4 focus:ring-emerald-700/10';
 const SECONDARY_BUTTON = `inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-emerald-700 hover:text-emerald-800 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-45 ${FOCO}`;
-const PRIMARY_BUTTON = `inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white transition hover:bg-emerald-800 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-45 ${FOCO}`;
+const PRIMARY_BUTTON = `inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white transition hover:opacity-90 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-45 ${FOCO}`;
 
 interface ControlePresencaTabProps {
   empresas: Empresa[];
@@ -1103,7 +1103,7 @@ export default function ControlePresencaTab({
           <Filter className="h-4 w-4 text-emerald-800" aria-hidden="true" />
           Filtros
           {filtrosAtivos > 0 && (
-            <span className="rounded-full bg-emerald-700 px-1.5 text-xs font-black text-white">{filtrosAtivos}</span>
+            <span className="rounded-full bg-[#176b4d] px-1.5 text-xs font-black text-white">{filtrosAtivos}</span>
           )}
           <ChevronDown className={`h-4 w-4 transition-transform ${filtrosAbertos ? 'rotate-180' : ''}`} aria-hidden="true" />
         </button>
@@ -1295,7 +1295,7 @@ export default function ControlePresencaTab({
                 <div className="relative">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Efetivo confirmado</p>
-                    <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-800"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-700" />{metrics.latest ? `Atualizado às ${metrics.latest}` : 'Aguardando o primeiro envio'}</span>
+                    <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-800"><span className="h-2 w-2 animate-pulse rounded-full bg-[#176b4d]" />{metrics.latest ? `Atualizado às ${metrics.latest}` : 'Aguardando o primeiro envio'}</span>
                   </div>
                   <div className="mt-4 flex items-end gap-3">
                     <strong data-count={metrics.present} className="text-4xl font-black tabular-nums tracking-[-0.045em] text-slate-900 sm:text-5xl">0</strong>
@@ -1881,7 +1881,7 @@ export default function ControlePresencaTab({
                       setFeedback(`Presença de ${grupo.nome} lançada pelo painel.`);
                       setLancamento(null);
                     }}
-                    className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
+                    className="min-h-11 rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50"
                   >
                     Lançar presença
                   </button>
@@ -1938,7 +1938,7 @@ export default function ControlePresencaTab({
                             }))}
                             className={`min-h-10 rounded-lg border px-3 text-xs font-bold transition ${
                               atual === status
-                                ? 'border-emerald-700 bg-emerald-700 text-white'
+                                ? 'border-[#176b4d] bg-[#176b4d] text-white'
                                 : 'border-slate-200 bg-white text-slate-500 hover:border-emerald-700'
                             }`}
                           >

@@ -317,7 +317,7 @@ export default function ColaboradoresTab({
                   onAlterarSituacao(aplicarSituacao(selecionado, entrada), descreverMudanca(selecionado, entrada));
                   setMudanca(null);
                 }}
-                className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
+                className="min-h-11 rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50"
               >
                 Salvar situação
               </button>

@@ -19,9 +19,9 @@ const variantClass: Record<ButtonVariant, string> = {
   // compatibilidade do index.css converte `.text-slate-800` em tinta escura, exceto
   // para uma lista fixa de fundos — e isso deixava este botão com texto
   // invisível sobre fundo escuro.
-  primary: 'border-[#087653] bg-[#087653] text-[#ffffff] hover:bg-[#066344] hover:border-[#066344]',
-  secondary: 'border-[#bfcac4] bg-white text-[#20302a] hover:bg-[#f0f3ef] hover:border-[#87978f]',
-  subtle: 'border-[#d7ded9] bg-[#eef1ed] text-[#30423b] hover:bg-[#e4e9e5] hover:border-[#b9c5bf]',
+  primary: 'border-[#176b4d] bg-[#176b4d] text-[#ffffff] hover:bg-[#125a40] hover:border-[#125a40]',
+  secondary: 'border-[#bfcac4] bg-white text-[#17231f] hover:bg-[#f3f6f4] hover:border-[#87978f]',
+  subtle: 'border-[#e2e8e4] bg-[#f3f6f4] text-[#17231f] hover:bg-[#e2e8e4] hover:border-[#b9c5bf]',
   ghost: 'border-transparent bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900',
   danger: 'border-rose-700 bg-rose-700 text-[#ffffff] hover:bg-rose-800 hover:border-rose-800',
 };

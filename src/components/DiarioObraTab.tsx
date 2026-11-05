@@ -165,7 +165,7 @@ export default function DiarioObraTab({
               </label>
               {/* No computador o cabeçalho fica parado: salvar está sempre à vista. */}
               {podeEditar && (
-                <button type="button" onClick={salvar} className="hidden min-h-10 items-center rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white transition-colors hover:bg-emerald-800 lg:inline-flex">
+                <button type="button" onClick={salvar} className="hidden min-h-10 items-center rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white transition-colors hover:opacity-90 lg:inline-flex">
                   {diario ? 'Atualizar diário' : 'Registrar diário'}
                 </button>
               )}
@@ -273,7 +273,7 @@ export default function DiarioObraTab({
             </div>
           )}
           {podeEditar && (
-            <button type="button" onClick={salvar} className="mt-4 min-h-11 w-full rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white transition-colors hover:bg-emerald-800 sm:w-auto lg:hidden">
+            <button type="button" onClick={salvar} className="mt-4 min-h-11 w-full rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white transition-colors hover:opacity-90 sm:w-auto lg:hidden">
               {diario ? 'Atualizar diário' : 'Registrar diário'}
             </button>
           )}

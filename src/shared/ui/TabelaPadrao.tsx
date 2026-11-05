@@ -422,7 +422,7 @@ export function TabelaPadrao<T>({
                   ...(densa ? { whiteSpace: 'normal' as const } : {}),
                 }}
                 className={cn(
-                  'sticky top-0 z-[1] h-9 border-b border-slate-200 bg-[#f3f6f4] text-xs font-bold uppercase tracking-wide text-[#53635c]',
+                  'sticky top-0 z-[1] h-9 border-b border-slate-200 bg-[#f3f6f4] text-xs font-bold uppercase tracking-wide text-[#5b6870]',
                   densa ? 'px-2 leading-tight' : 'whitespace-nowrap px-3',
                   ALINHAMENTO[coluna.alinhamento ?? 'esquerda'],
                 )}
@@ -441,7 +441,7 @@ export function TabelaPadrao<T>({
             );
           })}
           {acoes && (
-            <th scope="col" className="sticky top-0 z-[1] h-9 whitespace-nowrap border-b border-slate-200 bg-[#f3f6f4] px-3 text-right text-[11px] font-bold uppercase tracking-wide text-[#53635c]">
+            <th scope="col" className="sticky top-0 z-[1] h-9 whitespace-nowrap border-b border-slate-200 bg-[#f3f6f4] px-3 text-right text-[11px] font-bold uppercase tracking-wide text-[#5b6870]">
               {tituloAcoes}
             </th>
           )}
@@ -465,7 +465,7 @@ export function TabelaPadrao<T>({
                 {...propsDaLinha(linha, indice)}
                 className={cn(
                   densa ? 'h-8' : 'h-9',
-                  'bg-white transition-colors hover:bg-[#f0f4f1]',
+                  'bg-white transition-colors hover:bg-[#f3f6f4]',
                   onAbrirLinha && `cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#176b4d]`,
                   destaque(linha, id),
                 )}

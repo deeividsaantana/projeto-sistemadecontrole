@@ -24,7 +24,7 @@ export function SaaSShell({ scope, activeModule, children }: SaaSShellProps) {
       <aside className="border-b border-slate-200 bg-white lg:min-h-screen lg:border-b-0 lg:border-r">
         <div className="flex items-center justify-between px-5 py-5 lg:block">
           <div className="flex items-center gap-3">
-            <span className="grid size-9 place-items-center bg-emerald-700 text-white"><ShieldCheck size={18} /></span>
+            <span className="grid size-9 place-items-center bg-[#176b4d] text-white"><ShieldCheck size={18} /></span>
             <span><strong className="block text-sm font-black tracking-tight">RENEA</strong><small className="text-xs font-bold uppercase tracking-[.14em] text-slate-500">SaaS operacional</small></span>
           </div>
           <div className="mt-6 hidden border-t border-slate-100 pt-4 lg:block">
@@ -35,7 +35,7 @@ export function SaaSShell({ scope, activeModule, children }: SaaSShellProps) {
         </div>
         <nav aria-label="Módulos SaaS" className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:space-y-1 lg:px-3 lg:pb-5 lg:pt-6">
           {PRIVATE_MODULES.map(module => (
-            <a key={module} href={`/app/${encodeURIComponent(scope.organizationId)}/${encodeURIComponent(scope.projectId)}/${module}`} className={`inline-flex shrink-0 items-center gap-2 px-3 py-2 text-xs font-bold transition lg:flex ${module === activeModule ? 'bg-emerald-700 text-white' : 'text-slate-600 hover:bg-emerald-50 hover:text-emerald-800'}`} aria-current={module === activeModule ? 'page' : undefined}>
+            <a key={module} href={`/app/${encodeURIComponent(scope.organizationId)}/${encodeURIComponent(scope.projectId)}/${module}`} className={`inline-flex shrink-0 items-center gap-2 px-3 py-2 text-xs font-bold transition lg:flex ${module === activeModule ? 'bg-[#176b4d] text-white' : 'text-slate-600 hover:bg-emerald-50 hover:text-emerald-800'}`} aria-current={module === activeModule ? 'page' : undefined}>
               {module === 'home' ? <LayoutDashboard size={15} /> : <ArrowRight size={15} />}{labels[module]}
             </a>
           ))}
