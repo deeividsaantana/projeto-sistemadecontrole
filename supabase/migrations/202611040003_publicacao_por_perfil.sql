@@ -31,8 +31,14 @@ as $$
 declare
   v_tabelas_gestao text[] := array['planejamentoItens', 'naoConformidades', 'medicoes', 'documentos', 'lancamentosCusto', 'orcamentoItens', 'frentesServico'];
   v_tabelas_cadastro text[] := array['empresas', 'obras', 'equipamentos', 'funcionarios', 'motoristasOperacionais', 'comboios', 'canteiros', 'combustiveis', 'lubrificantes', 'etapas', 'materiaisCadastro'];
-  v_gestao text;
-  v_cadastro text;
+  v_marcas_antes jsonb;
+  v_marcas_depois jsonb;
+  v_ativas jsonb;
+  v_tabela text;
+  v_a jsonb;
+  v_d jsonb;
+  v_gestao text[] := '{}';
+  v_cadastro text[] := '{}';
   v_marcas text;
 begin
   if coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') <> 'operador' then
@@ -50,95 +56,80 @@ begin
     return;
   end if;
 
-  -- Gestão: compara como multiconjunto (registro e quantas vezes aparece).
-  with marcadas_antes as (
-    select tabela, id from (
-      select distinct on (marca ->> 'tabela', marca ->> 'registroId')
-        marca ->> 'tabela' as tabela, marca ->> 'registroId' as id, marca -> 'restauradoEm' as restaurado
-      from jsonb_array_elements(case when jsonb_typeof(p_antes -> 'exclusoes') = 'array' then p_antes -> 'exclusoes' else '[]'::jsonb end) marca
-      order by marca ->> 'tabela', marca ->> 'registroId', marca ->> 'excluidoEm' collate "C" desc nulls last
-    ) ultima
-    where not coalesce(jsonb_typeof(restaurado) = 'string' and restaurado #>> '{}' <> '', false)
-  ),
-  tabelas as (
-    select tabela,
-      case when jsonb_typeof(p_antes -> tabela) = 'array' then p_antes -> tabela else '[]'::jsonb end as antes,
-      case when jsonb_typeof(p_depois -> tabela) = 'array' then p_depois -> tabela else '[]'::jsonb end as depois
-    from unnest(v_tabelas_gestao) tabela
-  ),
-  diferentes as (
-    select tabela, antes, depois from tabelas where antes is distinct from depois
-  ),
-  itens as (
-    select d.tabela, true as no_antes, item from diferentes d, jsonb_array_elements(d.antes) item
-    union all
-    select d.tabela, false, item from diferentes d, jsonb_array_elements(d.depois) item
-  ),
-  contagem as (
-    select i.tabela, i.item, count(*) filter (where i.no_antes) as antes, count(*) filter (where not i.no_antes) as depois,
-      bool_or(m.id is not null) as marcado
-    from itens i
-    left join marcadas_antes m on m.tabela = i.tabela and m.id = i.item ->> 'id'
-    group by i.tabela, i.item
-  )
-  select string_agg(distinct tabela, ', ' order by tabela) into v_gestao
-  from contagem
-  -- Registro com marca ativa antes pode só sair; incluir ou alterar continua recusado.
-  where antes <> depois and not (marcado and depois < antes);
+  v_marcas_antes := case when jsonb_typeof(p_antes -> 'exclusoes') = 'array' then p_antes -> 'exclusoes' else '[]'::jsonb end;
+  v_marcas_depois := case when jsonb_typeof(p_depois -> 'exclusoes') = 'array' then p_depois -> 'exclusoes' else '[]'::jsonb end;
 
-  -- Cadastro: registro que estava na lista e saiu.
-  with marcadas_antes as (
-    select tabela, id from (
-      select distinct on (marca ->> 'tabela', marca ->> 'registroId')
-        marca ->> 'tabela' as tabela, marca ->> 'registroId' as id, marca -> 'restauradoEm' as restaurado
-      from jsonb_array_elements(case when jsonb_typeof(p_antes -> 'exclusoes') = 'array' then p_antes -> 'exclusoes' else '[]'::jsonb end) marca
-      order by marca ->> 'tabela', marca ->> 'registroId', marca ->> 'excluidoEm' collate "C" desc nulls last
-    ) ultima
-    where not coalesce(jsonb_typeof(restaurado) = 'string' and restaurado #>> '{}' <> '', false)
-  ),
-  tabelas as (
-    select tabela,
-      case when jsonb_typeof(p_antes -> tabela) = 'array' then p_antes -> tabela else '[]'::jsonb end as antes,
-      case when jsonb_typeof(p_depois -> tabela) = 'array' then p_depois -> tabela else '[]'::jsonb end as depois
-    from unnest(v_tabelas_cadastro) tabela
-  ),
-  diferentes as (
-    select tabela, antes, depois from tabelas where antes is distinct from depois
-  ),
-  ids_antes as (
-    select d.tabela, item ->> 'id' as id
-    from diferentes d, jsonb_array_elements(d.antes) item
-    where coalesce(item ->> 'id', '') <> ''
-  ),
-  ids_depois as (
-    select distinct d.tabela, item ->> 'id' as id
-    from diferentes d, jsonb_array_elements(d.depois) item
-    where coalesce(item ->> 'id', '') <> ''
-  )
-  select string_agg(distinct a.tabela, ', ' order by a.tabela) into v_cadastro
-  from ids_antes a
-  left join ids_depois n on n.tabela = a.tabela and n.id = a.id
-  left join marcadas_antes m on m.tabela = a.tabela and m.id = a.id
-  where n.id is null and m.id is null;
+  -- Laço por tabela, e não uma consulta só: o retrato tem vários MB e milhares
+  -- de marcas. Em produção, a versão em consulta única levava 13 s ou mais,
+  -- segurando a fila de envios da organização. Tabela igual sai na hora.
+  foreach v_tabela in array v_tabelas_gestao || v_tabelas_cadastro loop
+    v_a := case when jsonb_typeof(p_antes -> v_tabela) = 'array' then p_antes -> v_tabela else '[]'::jsonb end;
+    v_d := case when jsonb_typeof(p_depois -> v_tabela) = 'array' then p_depois -> v_tabela else '[]'::jsonb end;
+    continue when v_a = v_d;
+
+    -- Marca ativa antes: a mais recente do registro, como no app (exclusoesAtivas).
+    if v_ativas is null then
+      select coalesce(jsonb_object_agg(tabela || chr(31) || id, true), '{}'::jsonb) into v_ativas
+      from (
+        select distinct on (marca ->> 'tabela', marca ->> 'registroId')
+          marca ->> 'tabela' as tabela, marca ->> 'registroId' as id, marca -> 'restauradoEm' as restaurado
+        from jsonb_array_elements(v_marcas_antes) marca
+        where marca ->> 'tabela' is not null and marca ->> 'registroId' is not null
+        order by marca ->> 'tabela', marca ->> 'registroId', marca ->> 'excluidoEm' collate "C" desc nulls last
+      ) ultima
+      where not coalesce(jsonb_typeof(restaurado) = 'string' and restaurado #>> '{}' <> '', false);
+    end if;
+
+    if v_tabela = any(v_tabelas_gestao) then
+      -- Gestão: compara como multiconjunto (registro e quantas vezes aparece).
+      -- Registro com marca ativa antes pode só sair; incluir ou alterar é recusado.
+      if exists (
+        select 1 from (
+          select item, count(*) filter (where no_antes) as antes, count(*) filter (where not no_antes) as depois
+          from (
+            select item, true as no_antes from jsonb_array_elements(v_a) item
+            union all
+            select item, false from jsonb_array_elements(v_d) item
+          ) itens
+          group by item
+        ) contagem
+        where antes <> depois
+          and not (depois < antes and v_ativas ? (v_tabela || chr(31) || coalesce(item ->> 'id', '')))
+      ) then
+        v_gestao := v_gestao || v_tabela;
+      end if;
+    elsif exists (
+      -- Cadastro: registro que estava na lista e saiu.
+      select 1 from (
+        select item ->> 'id' as id from jsonb_array_elements(v_a) item where coalesce(item ->> 'id', '') <> ''
+        except
+        select item ->> 'id' from jsonb_array_elements(v_d) item
+      ) saiu
+      where not v_ativas ? (v_tabela || chr(31) || id)
+    ) then
+      v_cadastro := v_cadastro || v_tabela;
+    end if;
+  end loop;
 
   -- Marca de exclusão dessas tabelas: o app do operador manda só as que vieram
   -- da nuvem (src/cloud/tabelasPorPerfil.ts). Qualquer marca que não esteja
-  -- idêntica no retrato anterior (nova, reativada ou mexida) é recusada.
-  select string_agg(distinct marca ->> 'tabela', ', ' order by marca ->> 'tabela') into v_marcas
-  from jsonb_array_elements(case when jsonb_typeof(p_depois -> 'exclusoes') = 'array' then p_depois -> 'exclusoes' else '[]'::jsonb end) marca
-  where marca ->> 'tabela' = any(v_tabelas_gestao || v_tabelas_cadastro)
-    -- Igualdade exata: contenção (@>) aceitaria a marca sem um campo, como restauradoEm.
-    and not exists (
-      select 1
-      from jsonb_array_elements(case when jsonb_typeof(p_antes -> 'exclusoes') = 'array' then p_antes -> 'exclusoes' else '[]'::jsonb end) anterior
-      where anterior = marca
-    );
+  -- idêntica no retrato anterior (nova, reativada ou mexida) é recusada. O
+  -- except compara o jsonb inteiro: contenção (@>) aceitaria marca sem um campo.
+  if v_marcas_antes <> v_marcas_depois then
+    select string_agg(distinct novas.marca ->> 'tabela', ', ' order by novas.marca ->> 'tabela') into v_marcas
+    from (
+      select marca from jsonb_array_elements(v_marcas_depois) as depois(marca)
+      except
+      select marca from jsonb_array_elements(v_marcas_antes) as antes(marca)
+    ) novas
+    where novas.marca ->> 'tabela' = any(v_tabelas_gestao || v_tabelas_cadastro);
+  end if;
 
-  if v_gestao is not null or v_cadastro is not null or v_marcas is not null then
+  if cardinality(v_gestao) > 0 or cardinality(v_cadastro) > 0 or v_marcas is not null then
     raise exception 'ROLE_WRITE_DENIED'
       using detail = concat_ws('; ',
-        case when v_gestao is not null then 'gestão alterada: ' || v_gestao end,
-        case when v_cadastro is not null then 'cadastro excluído: ' || v_cadastro end,
+        case when cardinality(v_gestao) > 0 then 'gestão alterada: ' || array_to_string(v_gestao, ', ') end,
+        case when cardinality(v_cadastro) > 0 then 'cadastro excluído: ' || array_to_string(v_cadastro, ', ') end,
         case when v_marcas is not null then 'exclusão marcada: ' || v_marcas end);
   end if;
 end;

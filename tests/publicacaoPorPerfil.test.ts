@@ -41,22 +41,28 @@ test('a regra vale só para editor com perfil operador e cobre gestão e exclus�
 
 test('sem brechas: tabela ausente conta como vazia, marca nova vale para gestão e cadastro, duplicata conta', () => {
   const corpo = ultimaDefinicao('erp_recusar_por_perfil')?.corpo || '';
-  assert.doesNotMatch(corpo, /where\s+jsonb_typeof\(\s*p_depois\s*->\s*tabela\s*\)\s*=\s*'array'/, 'tabela que falta não pode escapar da comparação');
-  assert.match(corpo, /case when jsonb_typeof\(p_depois -> tabela\) = 'array' then p_depois -> tabela else '\[\]'::jsonb end as depois/);
+  assert.match(corpo, /v_d := case when jsonb_typeof\(p_depois -> v_tabela\) = 'array' then p_depois -> v_tabela else '\[\]'::jsonb end;/, 'tabela que falta não pode escapar da comparação');
   assert.match(corpo, /any\(v_tabelas_gestao \|\| v_tabelas_cadastro\)/, 'marca de exclusão em gestão também é barrada');
-  assert.match(corpo, /count\(\*\) filter \(where i\.no_antes\)/, 'gestão compara quantas vezes cada registro aparece');
-  assert.match(corpo, /antes is distinct from depois/, 'tabela igual nem entra na conta');
+  assert.match(corpo, /count\(\*\) filter \(where no_antes\)/, 'gestão compara quantas vezes cada registro aparece');
+});
+
+test('desempenho: medido em produção, a regra roda segurando a fila de envios', () => {
+  const corpo = ultimaDefinicao('erp_recusar_por_perfil')?.corpo || '';
+  assert.match(corpo, /continue when v_a = v_d;/, 'tabela igual sai na hora');
+  assert.ok(corpo.indexOf("<> 'operador'") < corpo.indexOf('v_marcas_antes :='), 'quem não é operador não paga a leitura das marcas');
+  assert.match(corpo, /if v_marcas_antes <> v_marcas_depois then/, 'marcas iguais nem são comparadas');
+  assert.match(corpo, /except\s+select marca from jsonb_array_elements\(v_marcas_antes\)/, 'comparar marca com marca levava 13 s com 8377 marcas');
+  assert.doesNotMatch(corpo, /not exists \(\s*select 1\s+from jsonb_array_elements/, 'sem varredura aninhada de marcas');
 });
 
 test('marca ativa: a mais recente do registro, restaurada só com data; ela isenta só a saída', () => {
   const corpo = ultimaDefinicao('erp_recusar_por_perfil')?.corpo || '';
-  assert.equal((corpo.match(/distinct on \(marca ->> 'tabela', marca ->> 'registroId'\)/g) || []).length, 2, 'marca ativa antes, em gestão e cadastro');
+  assert.equal((corpo.match(/distinct on \(marca ->> 'tabela', marca ->> 'registroId'\)/g) || []).length, 1, 'marca ativa antes, calculada uma vez só');
   assert.match(corpo, /order by marca ->> 'tabela', marca ->> 'registroId', marca ->> 'excluidoEm' collate "C" desc nulls last/, 'mesma ordem do app: texto byte a byte, sem data por último');
-  assert.match(corpo, /p_antes -> 'exclusoes' else '\[\]'::jsonb end\) anterior\s+where anterior = marca/, 'marca de gestão ou cadastro só passa idêntica à de antes');
   assert.doesNotMatch(corpo, /@> jsonb_build_array\(marca\)/, 'contenção aceitaria marca sem restauradoEm');
   assert.match(corpo, /not coalesce\(jsonb_typeof\(restaurado\) = 'string' and restaurado #>> '\{\}' <> '', false\)/);
   assert.doesNotMatch(corpo, /->> 'restauradoEm' is null/, 'texto vazio não pode contar como restaurado');
-  assert.match(corpo, /where antes <> depois and not \(marcado and depois < antes\)/);
+  assert.match(corpo, /and not \(depois < antes and v_ativas \? /, 'a marca isenta só a saída do registro');
 });
 
 test('o lock_timeout de 25 s das duas funções sobrevive à redefinição', () => {
