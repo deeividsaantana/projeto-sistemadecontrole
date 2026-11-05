@@ -1,5 +1,5 @@
 import type { Abastecimento, Comboio, Empresa, Equipamento, TipoCombustivel } from '../../types';
-import { getOperationalFuelLiters } from '../../utils/fuelAnalyticsSafety';
+import { parseFuelAnalyticsNumber } from '../../utils/fuelAnalyticsSafety';
 
 export interface FuelReportFilters {
   competencias?: readonly string[];
@@ -70,7 +70,7 @@ const toIsoMonth = (date: Date) => `${date.getFullYear()}-${String(date.getMonth
 export const getFuelRecordCompetence = (record: Pick<Abastecimento, 'competencia' | 'data'>) => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(record.data || '')) {
     const date = new Date(`${record.data}T12:00:00`);
-    if (date.getDate() >= 21) date.setMonth(date.getMonth() + 1);
+    if (date.getDate() >= 21) date.setMonth(date.getMonth() + 1, 1);
     return toIsoMonth(date);
   }
   if (record.competencia && /^\d{4}-\d{2}$/.test(record.competencia)) return record.competencia;
@@ -188,7 +188,7 @@ export const buildFuelReport = (sources: FuelReportSources, filters: FuelReportF
       const equipamento = equipamentos.get(record.equipamentoId);
       const empresaId = equipamento?.empresaId || '';
       const empresa = empresas.get(empresaId);
-      const litros = getOperationalFuelLiters(record) ?? 0;
+      const litros = isActiveFuelRecord(record) ? parseFuelAnalyticsNumber(record.quantidadeLitros) ?? 0 : 0;
       const review = isFuelRecordReviewRequired(record);
       const competencia = getFuelRecordCompetence(record);
       totalLitros += litros;

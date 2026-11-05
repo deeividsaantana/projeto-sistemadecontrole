@@ -161,3 +161,23 @@ test('relatorio aceita intervalo livre de datas', () => {
 
   assert.deepEqual(filtrados.map(item => item.id), ['fuel-2', 'fuel-3']);
 });
+
+test('fim de mês cai na competência seguinte, sem pular um mês', () => {
+  const competencia = (data: string) => getFuelRecordCompetence({ data, competencia: undefined });
+  assert.equal(competencia('2026-10-31'), '2026-11');
+  assert.equal(competencia('2026-08-31'), '2026-09');
+  assert.equal(competencia('2026-05-31'), '2026-06');
+  assert.equal(competencia('2026-03-31'), '2026-04');
+  assert.equal(competencia('2026-01-29'), '2026-02');
+  assert.equal(competencia('2026-01-31'), '2026-02');
+  assert.equal(competencia('2026-12-31'), '2027-01');
+  assert.equal(competencia('2026-10-21'), '2026-11');
+  assert.equal(competencia('2026-10-20'), '2026-10');
+});
+
+test('o relatório mostra os litros como foram lançados, igual à tela', () => {
+  const registro = { id: 'x', data: '2026-10-28', hora: '10:38', equipamentoId: '', prefixoInformado: 'LO366', comboioId: '', tipoCombustivelId: '', quantidadeLitros: 24_983, status: 'OK' } as unknown as Abastecimento;
+  const relatorio = buildFuelReport({ records: [registro], equipamentos: [], empresas: [], comboios: [], combustiveis: [] });
+  assert.equal(relatorio.totalLitros, 24_983);
+  assert.equal(relatorio.linhasExcel[0].litros, 24_983);
+});
