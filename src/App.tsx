@@ -4622,7 +4622,7 @@ export default function App() {
               onClick={() => navigateTo('cadastros', true)}
               title="Abrir cadastros auxiliares"
               aria-label="Abrir cadastros auxiliares"
-              className={`p-2.5 rounded-xl border transition-all cursor-pointer ${activeTab === 'cadastros' ? 'bg-emerald-700 border-emerald-700 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-200'}`}
+              className={`p-2.5 rounded-xl border transition-all cursor-pointer ${activeTab === 'cadastros' ? 'bg-[#176b4d] border-emerald-700 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-200'}`}
             >
               <FolderPlus className="w-5 h-5" />
             </button>

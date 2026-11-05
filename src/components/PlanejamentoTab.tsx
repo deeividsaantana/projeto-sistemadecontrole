@@ -321,7 +321,7 @@ export default function PlanejamentoTab({
         onClose={() => setAberto(false)}
         footer={(
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button type="button" onClick={() => setAberto(false)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar</button>
+            <button type="button" onClick={() => setAberto(false)} className="min-h-11 rounded-xl border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar</button>
             <button type="button" onClick={salvar} className="min-h-11 rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white hover:opacity-90">Salvar previsto</button>
           </div>
         )}

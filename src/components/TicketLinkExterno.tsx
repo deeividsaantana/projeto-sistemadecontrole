@@ -143,7 +143,7 @@ const storeOwnHistory = (items: TicketJazida[]) => {
 const OwnHistoryVia = ({ type, ticket }: { type: TipoTicketJazida; ticket?: TicketJazida }) => {
   const isReceipt = type === 'Recebimento';
   return (
-    <section className={`overflow-hidden rounded-md border ${ticket ? 'border-slate-300 bg-white' : 'border-dashed border-slate-300 bg-slate-50'}`}>
+    <section className={`overflow-hidden rounded-xl border ${ticket ? 'border-slate-300 bg-white' : 'border-dashed border-slate-300 bg-slate-50'}`}>
       <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
         <div><p className="text-xs font-black uppercase text-emerald-700">Via de {type}</p><h3 className="font-black">{ticket ? `Ticket ${ticket.ticketNumero}` : 'Aguardando preenchimento'}</h3></div>
         <span className={`rounded px-2 py-1 text-xs font-black ${ticket ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>{ticket ? 'Enviado' : 'Pendente'}</span>
@@ -472,18 +472,18 @@ export default function TicketLinkExterno({
             </section>
 
             {message && (
-              <div className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
+              <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
                 <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" /> {message}
               </div>
             )}
-            {error && <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div>}
+            {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div>}
 
             <div className="grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={beginRelease}
                 disabled={isStarting}
-                className="flex min-h-32 items-center gap-4 rounded-xl bg-[#176b4d] p-5 text-left text-white shadow-sm transition hover:bg-emerald-500 disabled:opacity-60"
+                className="flex min-h-32 items-center gap-4 rounded-xl bg-[#176b4d] p-5 text-left text-white shadow-sm transition hover:opacity-90 disabled:opacity-60"
               >
                 {isStarting ? <Loader2 className="h-8 w-8 animate-spin" /> : <Truck className="h-8 w-8" />}
                 <span className="flex items-center gap-3"><i className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/15 text-sm not-italic">1</i><span><b className="block text-lg">Fazer liberação</b><small className="text-emerald-50">Quando o caminhão estiver saindo</small></span></span>
@@ -494,7 +494,7 @@ export default function TicketLinkExterno({
                   setShowReceiptSearch(true);
                   window.setTimeout(() => document.getElementById('recebimentos-pendentes')?.scrollIntoView({ behavior: 'smooth' }), 50);
                 }}
-                className="flex min-h-32 items-center gap-4 rounded-md border-2 border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-emerald-400"
+                className="flex min-h-32 items-center gap-4 rounded-xl border-2 border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-emerald-400"
               >
                 <PackageCheck className="h-8 w-8 text-emerald-600" />
                 <span className="flex items-center gap-3"><i className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-slate-100 text-sm not-italic">2</i><span><b className="block text-lg">Fazer recebimento</b><small className="text-slate-500">Quando o caminhão chegar à obra</small></span></span>
@@ -506,7 +506,7 @@ export default function TicketLinkExterno({
                 <div className="flex items-center gap-2"><FilePenLine className="h-5 w-5 text-amber-600" /><h2 className="font-black">Meus rascunhos</h2></div>
                 <div className="grid gap-2">
                   {drafts.map(draft => (
-                    <button key={draft.id} type="button" onClick={() => editDraft(draft)} className="flex items-center justify-between gap-4 rounded-md border border-amber-200 bg-amber-50 p-4 text-left">
+                    <button key={draft.id} type="button" onClick={() => editDraft(draft)} className="flex items-center justify-between gap-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-left">
                       <span><b className="block text-sm">Ticket {draft.ticketNumero} · {draft.tipoTicket}</b><small className="text-slate-500">{draft.placa || 'Placa não informada'} · {draft.prefixo || 'Prefixo não informado'}</small></span>
                       <ArrowRight className="h-5 w-5 text-amber-700" />
                     </button>
@@ -523,11 +523,11 @@ export default function TicketLinkExterno({
                 </div>
                 <div className="grid gap-2">
                   {ownHistoryPairs.slice(0, 8).map(pair => (
-                      <div key={pair.number} className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+                      <div key={pair.number} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div><b className="block text-sm text-slate-950">Ticket {pair.number}</b><small className="text-slate-500">{pair.release?.placa || pair.receipt?.placa || 'Sem placa'} · Liberação {pair.release ? 'enviada' : 'pendente'} · Recebimento {pair.receipt ? 'enviado' : 'pendente'}</small></div>
                           <div className="flex flex-wrap gap-2">
-                            <button type="button" onClick={() => setViewingOwnTicket(pair.release || pair.receipt || null)} className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-300 px-3 text-xs font-black text-slate-700"><Eye className="h-4 w-4" /> Visualizar vias</button>
+                            <button type="button" onClick={() => setViewingOwnTicket(pair.release || pair.receipt || null)} className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-300 px-3 text-xs font-black text-slate-700"><Eye className="h-4 w-4" /> Visualizar vias</button>
                             {pair.release && !pair.receipt && <button type="button" onClick={() => beginReceipt(pair.release!)} className="inline-flex h-9 items-center gap-2 rounded-xl bg-[#176b4d] px-3 text-xs font-black text-white"><PackageCheck className="h-4 w-4" /> Fazer recebimento</button>}
                           </div>
                         </div>
@@ -544,17 +544,17 @@ export default function TicketLinkExterno({
               </div>
               <label className="relative block">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar ticket, placa ou prefixo" className="h-12 w-full rounded-md border border-slate-300 bg-white pl-10 pr-4 text-sm outline-none focus:border-emerald-500" />
+                <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar ticket, placa ou prefixo" className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm outline-none focus:border-emerald-500" />
               </label>
               <div className="grid gap-2">
                 {search.trim().length < 2 ? (
-                  <div className="rounded-md border border-slate-200 bg-white p-5 text-center text-sm text-slate-500">Digite pelo menos dois caracteres para pesquisar.</div>
+                  <div className="rounded-xl border border-slate-200 bg-white p-5 text-center text-sm text-slate-500">Digite pelo menos dois caracteres para pesquisar.</div>
                 ) : isSearchingReceipts ? (
-                  <div className="flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white p-5 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Pesquisando com segurança...</div>
+                  <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Pesquisando com segurança...</div>
                 ) : remotePendingReceipts.length === 0 ? (
-                  <div className="rounded-md border border-slate-200 bg-white p-5 text-center text-sm text-slate-500">Nenhuma liberação pendente encontrada. Tickets concluídos não aparecem aqui.</div>
+                  <div className="rounded-xl border border-slate-200 bg-white p-5 text-center text-sm text-slate-500">Nenhuma liberação pendente encontrada. Tickets concluídos não aparecem aqui.</div>
                 ) : remotePendingReceipts.slice(0, 20).map(release => (
-                  <button key={release.id} type="button" onClick={() => beginReceipt(release)} className="flex items-center justify-between gap-4 rounded-md border border-slate-200 bg-white p-4 text-left shadow-sm hover:border-emerald-400">
+                  <button key={release.id} type="button" onClick={() => beginReceipt(release)} className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm hover:border-emerald-400">
                     <span><b className="block text-sm text-slate-900">Ticket {release.ticketNumero} · {release.placa}</b><small className="text-slate-500">{release.prefixo} · {release.tipoMaterial} · {release.quantidadeM3} {release.unidadeQuantidade || 'm³'}</small></span>
                     <ArrowRight className="h-5 w-5 shrink-0 text-emerald-600" />
                   </button>
@@ -568,7 +568,7 @@ export default function TicketLinkExterno({
           <div className="space-y-5">
             <div className="flex items-center justify-between gap-4">
               <button type="button" onClick={() => setScreen('home')} className="inline-flex h-10 items-center gap-2 text-sm font-bold text-slate-600"><ArrowLeft className="h-4 w-4" /> Voltar</button>
-              <span className="rounded-md bg-white px-3 py-2 text-sm font-black text-slate-800">Ticket {form.ticketNumero}</span>
+              <span className="rounded-xl bg-white px-3 py-2 text-sm font-black text-slate-800">Ticket {form.ticketNumero}</span>
             </div>
 
             <div className="grid grid-cols-4 gap-2" aria-label={`Etapa ${step} de 4`}>
@@ -576,7 +576,7 @@ export default function TicketLinkExterno({
             </div>
             <div><p className="text-xs font-black uppercase text-emerald-700">{form.tipoTicket} · etapa {step} de 4</p><h1 className="text-2xl font-black">{step === 1 ? 'Veículo e horário' : step === 2 ? 'Dados da carga' : step === 3 ? 'Responsável e assinatura' : 'Revisar e confirmar'}</h1></div>
 
-            <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
               {step === 1 && (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Prefixo" required><input value={form.prefixo} onChange={event => update('prefixo', event.target.value.toUpperCase())} className="ticket-input" placeholder="Ex.: CB-102" /></Field>
@@ -593,7 +593,7 @@ export default function TicketLinkExterno({
                   <Field label="Tipo de material" required>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {MATERIALS.map(material => (
-                        <button key={material} type="button" onClick={() => update('tipoMaterial', material)} className={`flex h-12 items-center justify-between rounded-md border px-3 text-sm font-bold ${form.tipoMaterial === material ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600'}`}>
+                        <button key={material} type="button" onClick={() => update('tipoMaterial', material)} className={`flex h-12 items-center justify-between rounded-xl border px-3 text-sm font-bold ${form.tipoMaterial === material ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600'}`}>
                           {material}{form.tipoMaterial === material && <Check className="h-4 w-4" />}
                         </button>
                       ))}
@@ -602,14 +602,14 @@ export default function TicketLinkExterno({
                   {form.tipoMaterial === 'Outros' && <Field label="Qual material?" required><input value={form.materialOutro || ''} onChange={event => update('materialOutro', event.target.value)} className="ticket-input" /></Field>}
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Quantidade" required><input type="number" min="0.01" step="0.01" value={form.quantidadeM3} onChange={event => update('quantidadeM3', Number(event.target.value))} className="ticket-input" /></Field>
-                    <Field label="Unidade" required><div className="grid h-12 grid-cols-2 rounded-md bg-slate-100 p-1">{(['m³', 'caçamba'] as const).map(unit => <button key={unit} type="button" onClick={() => update('unidadeQuantidade', unit)} className={`rounded text-sm font-black ${form.unidadeQuantidade === unit ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500'}`}>{unit}</button>)}</div></Field>
+                    <Field label="Unidade" required><div className="grid h-12 grid-cols-2 rounded-xl bg-slate-100 p-1">{(['m³', 'caçamba'] as const).map(unit => <button key={unit} type="button" onClick={() => update('unidadeQuantidade', unit)} className={`rounded text-sm font-black ${form.unidadeQuantidade === unit ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500'}`}>{unit}</button>)}</div></Field>
                   </div>
                   <Field label={form.tipoTicket === 'Liberação' ? 'Destino / obra' : 'Ramo de descarga'} required><select value={form.destinoObra} onChange={event => update('destinoObra', event.target.value)} className="ticket-input">{DESTINATIONS.map(destination => <option key={destination}>{destination}</option>)}</select></Field>
                   {form.destinoObra === 'Outros' && <Field label={form.tipoTicket === 'Liberação' ? 'Qual destino?' : 'Qual ramo de descarga?'} required><input value={form.destinoOutro || ''} onChange={event => update('destinoOutro', event.target.value)} className="ticket-input" /></Field>}
                   {form.tipoTicket === 'Recebimento' && (
                     <>
                       <Field label="Estaca"><input value={form.estaca || ''} onChange={event => update('estaca', event.target.value)} className="ticket-input" placeholder="Ex.: 120+10" /></Field>
-                      <Field label="Carga conforme?" required><div className="grid grid-cols-2 gap-2">{[true, false].map(value => <button key={String(value)} type="button" onClick={() => update('cargaConforme', value)} className={`h-12 rounded-md border text-sm font-black ${form.cargaConforme === value ? value ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-rose-500 bg-rose-50 text-rose-700' : 'border-slate-200 text-slate-500'}`}>{value ? 'Sim' : 'Não'}</button>)}</div></Field>
+                      <Field label="Carga conforme?" required><div className="grid grid-cols-2 gap-2">{[true, false].map(value => <button key={String(value)} type="button" onClick={() => update('cargaConforme', value)} className={`h-12 rounded-xl border text-sm font-black ${form.cargaConforme === value ? value ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-rose-500 bg-rose-50 text-rose-700' : 'border-slate-200 text-slate-500'}`}>{value ? 'Sim' : 'Não'}</button>)}</div></Field>
                       <Field label="Observações (opcional)"><textarea value={form.observacao} onChange={event => update('observacao', event.target.value)} className="ticket-input min-h-24 resize-y py-3" placeholder="Registre somente se necessário" /></Field>
                     </>
                   )}
@@ -620,17 +620,17 @@ export default function TicketLinkExterno({
                 <div className="space-y-5">
                   <Field label={form.tipoTicket === 'Liberação' ? 'Responsável pela liberação' : 'Responsável pelo recebimento'} required><input value={form.nomeLegivel} onChange={event => { update('nomeLegivel', event.target.value); update('responsavelLiberacao', event.target.value); }} className="ticket-input" placeholder="Nome completo e legível" /></Field>
                   <SignaturePad value={form.assinaturaDigital} onChange={value => update('assinaturaDigital', value)} />
-                  <div className="rounded-md bg-slate-50 p-4 text-xs text-slate-600"><b className="block text-slate-900">Resumo do Ticket {form.ticketNumero}</b>{form.prefixo} · {form.placa} · {form.tipoMaterial === 'Outros' ? form.materialOutro : form.tipoMaterial} · {form.quantidadeM3} {form.unidadeQuantidade}</div>
+                  <div className="rounded-xl bg-slate-50 p-4 text-xs text-slate-600"><b className="block text-slate-900">Resumo do Ticket {form.ticketNumero}</b>{form.prefixo} · {form.placa} · {form.tipoMaterial === 'Outros' ? form.materialOutro : form.tipoMaterial} · {form.quantidadeM3} {form.unidadeQuantidade}</div>
                 </div>
               )}
 
               {step === 4 && (
                 <div className="space-y-5">
-                  <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4">
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                     <h2 className="font-black text-emerald-950">Você confirma os dados que serão enviados?</h2>
                     <p className="mt-1 text-sm text-emerald-800">Confira os campos abaixo. Use “Alterar” para corrigir qualquer informação.</p>
                   </div>
-                  <div className="overflow-hidden rounded-md border border-slate-200">
+                  <div className="overflow-hidden rounded-xl border border-slate-200">
                     <ReviewSection title="Veículo e horário" onEdit={() => { setReviewConfirmed(false); setStep(1); }}>
                       <ReviewItem label="Ticket" value={form.ticketNumero} /><ReviewItem label="Prefixo" value={form.prefixo} /><ReviewItem label="Placa" value={form.placa} /><ReviewItem label="Data" value={form.data.split('-').reverse().join('/')} /><ReviewItem label={form.tipoTicket === 'Liberação' ? 'Saída' : 'Chegada'} value={form.tipoTicket === 'Liberação' ? form.horaSaida : form.horaChegada || form.horaSaida} />
                     </ReviewSection>
@@ -641,7 +641,7 @@ export default function TicketLinkExterno({
                       <ReviewItem label="Nome legível" value={form.nomeLegivel} /><ReviewItem label="Assinatura" value={form.assinaturaDigital ? 'Assinatura registrada' : 'Não informada'} />
                     </ReviewSection>
                   </div>
-                  <label className={`flex cursor-pointer items-start gap-3 rounded-md border p-4 transition-colors ${reviewConfirmed ? 'border-emerald-500 bg-emerald-50' : 'border-slate-300 bg-white'}`}>
+                  <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors ${reviewConfirmed ? 'border-emerald-500 bg-emerald-50' : 'border-slate-300 bg-white'}`}>
                     <input type="checkbox" checked={reviewConfirmed} onChange={event => { setReviewConfirmed(event.target.checked); setError(''); }} className="mt-0.5 h-5 w-5 accent-emerald-600" />
                     <span className="text-sm font-bold text-slate-800">Confirmo que revisei e que os dados acima estão corretos.</span>
                   </label>
@@ -649,12 +649,12 @@ export default function TicketLinkExterno({
               )}
             </section>
 
-            {error && <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div>}
+            {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div>}
 
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-              <button type="button" onClick={() => persist(false)} disabled={isSaving} className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-5 text-sm font-black text-slate-700"><Save className="h-4 w-4" /> Salvar rascunho</button>
+              <button type="button" onClick={() => persist(false)} disabled={isSaving} className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 text-sm font-black text-slate-700"><Save className="h-4 w-4" /> Salvar rascunho</button>
               <div className="flex gap-2">
-                {step > 1 && <button type="button" onClick={() => setStep(current => current - 1)} className="h-12 flex-1 rounded-md border border-slate-300 bg-white px-5 text-sm font-black sm:flex-none">Voltar</button>}
+                {step > 1 && <button type="button" onClick={() => setStep(current => current - 1)} className="h-12 flex-1 rounded-xl border border-slate-300 bg-white px-5 text-sm font-black sm:flex-none">Voltar</button>}
                 {step < 4 ? <button type="button" onClick={nextStep} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[#176b4d] px-6 text-sm font-black text-white sm:flex-none">{step === 3 ? 'Revisar dados' : 'Continuar'} <ArrowRight className="h-4 w-4" /></button> : <button type="button" onClick={() => persist(true)} disabled={isSaving || !reviewConfirmed} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[#176b4d] px-6 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none">{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Confirmar e enviar</button>}
               </div>
             </div>
@@ -673,8 +673,8 @@ export default function TicketLinkExterno({
             <div><p className="text-xs font-black uppercase text-emerald-700">Enviado com sucesso</p><h1 className="mt-1 text-3xl font-black">Ticket {form.ticketNumero}</h1><p className="mt-2 text-sm text-slate-500">{form.tipoTicket} registrada e disponível no painel administrativo.</p></div>
             <div className="grid gap-3">
               {form.tipoTicket === 'Liberação' && <button type="button" onClick={() => beginReceipt(form)} className="inline-flex h-14 items-center justify-center gap-3 rounded-xl bg-[#176b4d] px-5 font-black text-white"><PackageCheck className="h-5 w-5" /> Registrar recebimento agora</button>}
-              <button type="button" onClick={() => setViewingOwnTicket(form)} className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-5 font-black text-slate-700"><Eye className="h-5 w-5" /> Visualizar comprovante</button>
-              <button type="button" onClick={beginRelease} disabled={isStarting} className="inline-flex h-14 items-center justify-center gap-3 rounded-md border-2 border-slate-300 bg-white px-5 font-black text-slate-800"><Truck className="h-5 w-5" /> Próximo caminhão</button>
+              <button type="button" onClick={() => setViewingOwnTicket(form)} className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 font-black text-slate-700"><Eye className="h-5 w-5" /> Visualizar comprovante</button>
+              <button type="button" onClick={beginRelease} disabled={isStarting} className="inline-flex h-14 items-center justify-center gap-3 rounded-xl border-2 border-slate-300 bg-white px-5 font-black text-slate-800"><Truck className="h-5 w-5" /> Próximo caminhão</button>
               <button type="button" onClick={() => { setMessage(''); setForm(null); setScreen('home'); }} className="h-12 font-bold text-slate-600">Voltar ao início</button>
             </div>
           </div>
@@ -706,7 +706,7 @@ function Field({ label, required = false, children }: { label: string; required?
 }
 
 function ReviewSection({ title, onEdit, children }: { title: string; onEdit: () => void; children: React.ReactNode }) {
-  return <section className="border-b border-slate-200 p-4 last:border-b-0"><div className="mb-3 flex items-center justify-between gap-3"><h3 className="text-sm font-black text-slate-950">{title}</h3><button type="button" onClick={onEdit} className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-black text-slate-600 hover:border-emerald-500 hover:text-emerald-700">Alterar</button></div><div className="grid gap-3 sm:grid-cols-2">{children}</div></section>;
+  return <section className="border-b border-slate-200 p-4 last:border-b-0"><div className="mb-3 flex items-center justify-between gap-3"><h3 className="text-sm font-black text-slate-950">{title}</h3><button type="button" onClick={onEdit} className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-black text-slate-600 hover:border-emerald-500 hover:text-emerald-700">Alterar</button></div><div className="grid gap-3 sm:grid-cols-2">{children}</div></section>;
 }
 
 function ReviewItem({ label, value }: { label: string; value?: React.ReactNode }) {

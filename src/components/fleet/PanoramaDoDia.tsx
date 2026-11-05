@@ -120,7 +120,7 @@ export default function PanoramaDoDia({ metrics, status, onStatus, canteiros, ca
     return !atual;
   });
   const fatias: Fatia[] = [
-    { rotulo: 'Em operação', valor: metrics.operating, status: FLEET_OPERATIONAL_STATUS.operating, traco: 'stroke-emerald-600', ponto: 'bg-[#176b4d]' },
+    { rotulo: 'Em operação', valor: metrics.operating, status: FLEET_OPERATIONAL_STATUS.operating, traco: 'stroke-[#176b4d]', ponto: 'bg-[#176b4d]' },
     { rotulo: 'Manutenção', valor: metrics.maintenance + metrics.waitingMaintenance, status: FLEET_OPERATIONAL_STATUS.maintenance, traco: 'stroke-rose-500', ponto: 'bg-rose-500' },
     { rotulo: 'À disposição', valor: metrics.available, status: FLEET_OPERATIONAL_STATUS.available, traco: 'stroke-sky-500', ponto: 'bg-sky-500' },
     { rotulo: 'A confirmar', valor: metrics.pending, status: FLEET_OPERATIONAL_STATUS.pending, traco: 'stroke-amber-400', ponto: 'bg-amber-400' },

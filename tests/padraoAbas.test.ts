@@ -131,7 +131,7 @@ test('o verde principal é um só e os componentes base usam a paleta', () => {
   const arquivos = (pasta: string): string[] => readdirSync(new URL(pasta, import.meta.url), { recursive: true, encoding: 'utf8' })
     .filter(nome => nome.endsWith('.tsx'))
     .map(nome => `${pasta}${nome.split(String.fromCharCode(92)).join("/")}`);
-  const verdeSolto = ['../src/components/', '../src/shared/', '../src/app/'].flatMap(arquivos)
+  const verdeSolto = [...['../src/components/', '../src/shared/', '../src/app/'].flatMap(arquivos), '../src/App.tsx']
     .filter(arquivo => /\bbg-emerald-[6-9]00\b/.test(readFileSync(new URL(arquivo, import.meta.url), 'utf8')));
   assert.deepEqual(verdeSolto, [], 'use bg-[#176b4d] ou BOTAO_PRIMARIO');
   const foraDoBase = arquivos('../src/shared/ui/')

@@ -177,7 +177,7 @@ export default function AdministracaoTab({
         {generalLink ? (
           <div className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
             <input readOnly value={generalLink} className="min-h-11 min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 font-mono text-xs text-slate-700" />
-            <button type="button" onClick={() => void copyGeneralLink()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:border-emerald-500"><ClipboardCopy className="h-4 w-4" />Copiar</button>
+            <button type="button" onClick={() => void copyGeneralLink()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:border-emerald-500"><ClipboardCopy className="h-4 w-4" />Copiar</button>
             <button type="button" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Registre a presença da sua equipe: ${generalLink}`)}`, '_blank', 'noopener,noreferrer')} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white hover:opacity-90"><MessageCircle className="h-4 w-4" />WhatsApp</button>
           </div>
         ) : (

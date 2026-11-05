@@ -202,7 +202,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
             <button type="button" onClick={() => void gerarLink()} className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-emerald-700 active:scale-[0.98] ${focusRing}`}>
               <Link2 className="h-4 w-4" /> Link dos apontadores
             </button>
-            <button type="button" onClick={() => abrirApontar()} disabled={ramosComEntrada.length === 0} className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-[#176b4d] px-4 text-xs font-bold text-white transition-colors hover:opacity-90 active:scale-[0.98] disabled:bg-slate-300 ${focusRing}`}>
+            <button type="button" onClick={() => abrirApontar()} disabled={ramosComEntrada.length === 0} className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-[#176b4d] px-4 text-xs font-bold text-white transition-colors hover:opacity-90 disabled:hover:opacity-100 active:scale-[0.98] disabled:bg-slate-300 ${focusRing}`}>
               <Plus className="h-4 w-4" /> Apontar uso
             </button>
           </div>
@@ -322,7 +322,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
                     <option value="">Escolha o ramo</option>
                     {etapas.map(etapa => <option key={etapa.id} value={etapa.id}>{etapa.nome}</option>)}
                   </select>
-                  <button type="button" disabled={!escolhido} onClick={() => vincular(grupo.destino, grupo.movementIds)} className={`min-h-11 rounded-xl bg-[#176b4d] px-4 text-xs font-bold text-white hover:opacity-90 active:scale-[0.98] disabled:bg-slate-300 ${focusRing}`}>
+                  <button type="button" disabled={!escolhido} onClick={() => vincular(grupo.destino, grupo.movementIds)} className={`min-h-11 rounded-xl bg-[#176b4d] px-4 text-xs font-bold text-white hover:opacity-90 disabled:hover:opacity-100 active:scale-[0.98] disabled:bg-slate-300 ${focusRing}`}>
                     Vincular
                   </button>
                 </li>
@@ -457,7 +457,7 @@ export default function MateriaisUtilizacaoPanel({ materiais, movimentos, etapas
             <span className="text-xs font-bold text-slate-500">{itensApontados.length ? `${itensApontados.length} material(is) marcado(s)` : 'Nada marcado'}</span>
             <div className="flex gap-2">
               <button type="button" onClick={() => setApontar(null)} className={`min-h-11 rounded-xl border border-slate-200 px-4 text-xs font-bold text-slate-600 ${focusRing}`}>Cancelar</button>
-              <button type="button" onClick={salvarApontamento} disabled={itensApontados.length === 0} className={`min-h-11 rounded-xl bg-[#176b4d] px-5 text-xs font-bold text-white hover:opacity-90 active:scale-[0.98] disabled:bg-slate-300 ${focusRing}`}>Salvar uso</button>
+              <button type="button" onClick={salvarApontamento} disabled={itensApontados.length === 0} className={`min-h-11 rounded-xl bg-[#176b4d] px-5 text-xs font-bold text-white hover:opacity-90 disabled:hover:opacity-100 active:scale-[0.98] disabled:bg-slate-300 ${focusRing}`}>Salvar uso</button>
             </div>
           </div>
         )}

@@ -90,7 +90,7 @@ export default function SpreadsheetImportReview({
       <button type="button" onClick={onCancel} disabled={confirming} className="min-h-11 rounded-lg border border-slate-300 bg-white px-5 text-sm font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-50 lg:min-h-10">
         Cancelar
       </button>
-      <button type="button" onClick={onConfirm} disabled={confirming || validCount === 0} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#176b4d] px-5 text-sm font-bold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-700 lg:min-h-10">
+      <button type="button" onClick={onConfirm} disabled={confirming || validCount === 0} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#176b4d] px-5 text-sm font-bold text-white hover:opacity-90 disabled:hover:opacity-100 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-700 lg:min-h-10">
         {confirming ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Check className="h-4 w-4" aria-hidden="true" />}
         {confirming ? 'Importando...' : `Confirmar ${validCount} registro(s)`}
       </button>
