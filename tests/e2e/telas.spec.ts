@@ -1,4 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+/** Título ou botão do cabeçalho cujo texto não cabe na própria caixa. */
+const textoCortadoNoCabecalho = (page: Page) => page.evaluate(() => [...document.querySelectorAll<HTMLElement>('.renea-page-header__copy :is(h1, h2), .renea-page-actions button')]
+  .filter(item => item.offsetParent !== null && item.scrollWidth > item.clientWidth + 1)
+  .map(item => `${item.textContent?.trim()}: ${item.scrollWidth} > ${item.clientWidth}`));
 
 /**
  * Fumaça das telas: cada uma precisa montar sem erro de página, sem estourar a
@@ -585,4 +590,37 @@ test('manutenção: "Continuar além de 10 h" tira o teto do card e registra que
   await cartao.getByTestId('parada-voltar-regra').click();
   await expect(cartao.getByTestId('parada-alem-aviso')).toHaveCount(0);
   await expect(cartao).toContainText('/ 10 h');
+});
+
+for (const [tela, limite] of [['frotas', 160], ['manutencao', 110], ['cadastros', 200], ['materiais', 160], ['estacas', 150], ['planejamento', 150], ['diario-obra', 120], ['painel', 170], ['jazida', 150], ['combustivel', 120]] as const) {
+  test(`cabeçalho de ${tela} no celular deixa a primeira dobra para o dado`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/?screen=${tela}&shell=1`);
+    const cabecalho = page.locator('.renea-page-header').first();
+    await expect(cabecalho).toBeVisible();
+    const caixa = await cabecalho.boundingBox();
+    expect(caixa?.height, `altura do cabeçalho de ${tela}`).toBeLessThanOrEqual(limite);
+    const lateral = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(lateral, 'sem rolagem lateral').toBeLessThanOrEqual(0);
+  });
+}
+
+for (const largura of [320, 390, 700]) {
+  for (const tela of ['frotas', 'manutencao', 'cadastros', 'materiais', 'estacas', 'planejamento', 'diario-obra', 'painel', 'meu-dia', 'jazida', 'combustivel']) {
+    test(`cabeçalho de ${tela} a ${largura} px não corta título nem botão`, async ({ page }) => {
+      await page.setViewportSize({ width: largura, height: 844 });
+      await page.goto(`/?screen=${tela}&shell=1`);
+      await expect(page.locator('.renea-page-header').first()).toBeVisible();
+      expect(await textoCortadoNoCabecalho(page)).toEqual([]);
+    });
+  }
+}
+
+test('cadastro com rótulo longo mostra o botão principal inteiro a 320 px', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.goto('/?screen=cadastros&shell=1');
+  await page.getByRole('tab', { name: /Fornecedores/ }).first().click();
+  await page.getByRole('tab', { name: /Materiais/ }).first().click();
+  await expect(page.getByTestId('cadastro-acao-principal')).toContainText('Novo fornecedor de materiais');
+  expect(await textoCortadoNoCabecalho(page)).toEqual([]);
 });

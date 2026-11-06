@@ -151,15 +151,15 @@ export default function DiarioObraTab({
           eyebrow="Obra"
           title="Diário de Obra"
           actions={(
-            <div className="flex flex-wrap items-center gap-2">
-              <label>
+            <div className="flex flex-wrap items-center gap-2 max-sm:flex-nowrap">
+              <label className="max-sm:min-w-0 max-sm:flex-1">
                 <span className="sr-only">Obra</span>
-                <select value={obraId} onChange={event => { setObraId(event.target.value); setRascunho({}); }} className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500">
+                <select value={obraId} onChange={event => { setObraId(event.target.value); setRascunho({}); }} className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none max-sm:w-full focus:border-emerald-500">
                   <option value="">Obra geral</option>
                   {obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
                 </select>
               </label>
-              <label>
+              <label className="max-sm:min-w-0 max-sm:flex-1">
                 <span className="sr-only">Dia do diário</span>
                 <input type="date" value={dia} onChange={event => { setDia(event.target.value || hoje); setRascunho({}); }} className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" />
               </label>

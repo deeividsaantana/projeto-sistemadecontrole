@@ -224,13 +224,13 @@ export default function PlanejamentoTab({
           actions={(
             <div className="flex flex-wrap items-center gap-1.5">
               {subtela === 'frentes' && (
-                <div className="flex items-center gap-1.5" role="group" aria-label="Escolher o dia">
+                <div className={`flex items-center gap-1.5 max-sm:min-w-0 max-sm:flex-1 ${passado ? 'max-sm:basis-full' : ''}`} role="group" aria-label="Escolher o dia">
                   <button type="button" className={`${BOTAO_SECUNDARIO} px-3`} onClick={() => setDia(atual => somarDias(atual, -1))} aria-label="Dia anterior">
                     <ChevronLeft className="size-5" aria-hidden="true" />
                   </button>
-                  <label>
+                  <label className="max-sm:min-w-0 max-sm:flex-1">
                     <span className="sr-only">Dia</span>
-                    <input type="date" className={`${CAMPO} w-40`} value={dia} max={hoje} onChange={event => { if (event.target.value) setDia(event.target.value > hoje ? hoje : event.target.value); }} />
+                    <input type="date" className={`${CAMPO} w-40 max-sm:w-full`} value={dia} max={hoje} onChange={event => { if (event.target.value) setDia(event.target.value > hoje ? hoje : event.target.value); }} />
                   </label>
                   <button type="button" className={`${BOTAO_SECUNDARIO} px-3`} onClick={() => setDia(atual => (atual < hoje ? somarDias(atual, 1) : atual))} disabled={!passado} aria-label="Próximo dia">
                     <ChevronRight className="size-5" aria-hidden="true" />
@@ -239,8 +239,8 @@ export default function PlanejamentoTab({
                 </div>
               )}
               {podeEditar && (
-                <button type="button" onClick={() => abrir()} className={BOTAO_PRIMARIO}>
-                  <Plus className="size-4" aria-hidden="true" /> Novo previsto
+                <button type="button" onClick={() => abrir()} aria-label="Novo previsto" className={`${BOTAO_PRIMARIO} max-sm:px-3`}>
+                  <Plus className="size-4" aria-hidden="true" /> <span className="max-sm:hidden">Novo previsto</span><span className="sm:hidden">Novo</span>
                 </button>
               )}
             </div>

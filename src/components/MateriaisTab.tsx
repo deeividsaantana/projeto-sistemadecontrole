@@ -453,7 +453,7 @@ export default function MateriaisTab({
                 <button type="button" onClick={() => setAtalhosAberto(true)} className={`${BOTAO_SECUNDARIO} px-3 max-lg:hidden`} aria-label="Atalhos do teclado" title="Atalhos do teclado (?)">
                   <Keyboard className="size-5" aria-hidden="true" />
                 </button>
-                <button type="button" onClick={() => abrirLancamento()} data-testid="materiais-acao-principal" aria-keyshortcuts="N" title="Novo lançamento (N)" className={`${BOTAO_PRIMARIO} max-sm:order-first px-4`}>
+                <button type="button" onClick={() => abrirLancamento()} data-testid="materiais-acao-principal" aria-keyshortcuts="N" title="Novo lançamento (N)" className={`renea-acao-lateral ${BOTAO_PRIMARIO} max-sm:order-first px-4`}>
                   <Plus className="size-5" aria-hidden="true" />
                   Novo lançamento
                 </button>
