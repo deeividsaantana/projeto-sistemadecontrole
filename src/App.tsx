@@ -4662,7 +4662,7 @@ export default function App() {
         {/* Task 8: Rota presenca-publica fora do padrão de abas */}
         {activeTab === 'presenca-publica' && (
           <div className="h-screen w-full flex flex-col">
-            <PageHeader eyebrow="Público" title="Presença" />
+          <PageHeader compact={false} eyebrow="Público" title="Presença" />
             <Suspense fallback={<ScreenLoadingFallback />}>
               <PresencaPublicaLink
                 funcionarios={funcionarios}

@@ -684,6 +684,7 @@ export default function ManutencaoTab({
         onClose={() => setFormAberto(false)}
         onSubmit={salvar}
         initialFocusRef={equipamentoFieldRef}
+        className="renea-launch-modal"
         footer={(
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button type="button" onClick={() => setFormAberto(false)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar <span className="ml-1 text-xs text-[#5b6870]">Esc</span></button>

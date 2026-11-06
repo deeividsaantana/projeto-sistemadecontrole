@@ -11,10 +11,10 @@ interface CardProps {
   className?: string;
 }
 
-/** Container padrão do sistema: borda fina, canto de 8px, fundo branco. */
+/** Container padrão do sistema: borda fina, canto e sombra definidos pelos tokens RENEA. */
 export function Card({ title, description, actions, flush = false, children, className }: CardProps) {
   return (
-    <section className={cn('renea-card overflow-hidden rounded-lg border border-[#d7dfda] bg-white', className)}>
+    <section className={cn('renea-card overflow-hidden', className)}>
       {(title || actions) && (
         <header className="flex flex-col gap-2 border-b border-[#dce3df] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">

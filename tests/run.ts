@@ -85,6 +85,7 @@ import './paginacao.test';
 import './tabelaPadrao.test';
 import './imagem.test';
 import './notificationService.test';
+import './designSystem.test';
 import './sharedUi.test';
 import './cadastrosTabUi.test';
 import './cadastrosAtalhos.test';

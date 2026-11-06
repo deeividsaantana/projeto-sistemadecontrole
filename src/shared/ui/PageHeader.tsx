@@ -11,6 +11,8 @@ interface PageHeaderProps {
   className?: string;
   /** Contexto do módulo, em caixa alta. Ex.: "Frota", "Suprimentos". */
   eyebrow?: string;
+  /** Remove o título visual quando a navegação já identifica o módulo. */
+  compact?: boolean;
 }
 
 /**
@@ -20,14 +22,16 @@ interface PageHeaderProps {
  * principal à direita, numa linha só quando couber. Dentro da área de dados
  * de outra TelaCheia (subtela que é uma tela inteira) o título vira h2.
  */
-export function PageHeader({ title, description, actions, abas, className, eyebrow }: PageHeaderProps) {
+export function PageHeader({ title, description, actions, abas, className, eyebrow, compact = true }: PageHeaderProps) {
   const Titulo = useDentroDaTelaCheia() ? 'h2' : 'h1';
   return (
-    <header className={cn('renea-page-header', abas ? 'renea-page-header--com-abas' : undefined, className)}>
+    <header className={cn('renea-page-header', compact ? 'renea-page-header--compact' : undefined, abas ? 'renea-page-header--com-abas' : undefined, className)}>
       <div className="renea-page-header__copy">
-        {eyebrow && <span className="renea-page-header__eyebrow">{eyebrow}</span>}
-        <Titulo>{title}</Titulo>
-        {description && <p>{description}</p>}
+        <span className={compact ? 'sr-only' : undefined}>
+          {eyebrow && <span className="renea-page-header__eyebrow">{eyebrow}</span>}
+          <Titulo>{title}</Titulo>
+          {description && <p>{description}</p>}
+        </span>
       </div>
       {abas && <div className="renea-page-header__abas">{abas}</div>}
       {actions && <div className="renea-page-toolbar renea-page-actions">{actions}</div>}

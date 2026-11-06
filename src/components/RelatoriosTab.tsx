@@ -5,10 +5,10 @@
  * parte de relatório daquela aba. Áreas que ainda não têm lançamento no app
  * aparecem como vazias, sem tabela de mentira.
  */
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { ChevronRight, Fuel, Hammer, Lock, Package, Truck, Users, type LucideIcon } from 'lucide-react';
+import { ChevronRight, Fuel, Hammer, Lock, Package, Search, Truck, Users, type LucideIcon } from 'lucide-react';
 import type { Abastecimento, ControleEquipamentoDiario, CravacaoEstaca, MovimentoMaterial, PresencaApontamento, Funcionario, Equipamento } from '../types';
 import { PageHeader } from '../shared/ui';
 import { TelaCheia } from '../shared/ui/TelaCheia';
@@ -49,6 +49,8 @@ export default function RelatoriosTab({
   abastecimentos, controlesEquipamentos, presencas, movimentosMaterial, cravacoes, funcionarios, equipamentos, podeAbrir, onAbrir,
 }: RelatoriosTabProps) {
   const escopo = useRef<HTMLElement>(null);
+  const [busca, setBusca] = useState('');
+  const [filtro, setFiltro] = useState<'todos' | 'com-dados' | 'sem-dados'>('todos');
 
   const itens = useMemo<ItemRelatorio[]>(() => [
     {
@@ -89,6 +91,16 @@ export default function RelatoriosTab({
     },
   ], [abastecimentos, controlesEquipamentos, movimentosMaterial, cravacoes]);
 
+  const itensVisiveis = useMemo(() => {
+    const termo = busca.trim().toLocaleLowerCase('pt-BR');
+    return itens.filter(item => {
+      if (filtro === 'com-dados' && item.base.total === 0) return false;
+      if (filtro === 'sem-dados' && item.base.total > 0) return false;
+      if (!termo) return true;
+      return `${item.titulo} ${item.onde} ${item.oQueMostra}`.toLocaleLowerCase('pt-BR').includes(termo);
+    });
+  }, [busca, filtro, itens]);
+
   useGSAP(() => {
     const raiz = escopo.current;
     if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -102,9 +114,15 @@ export default function RelatoriosTab({
   const conteudo = (
     <div className="space-y-8">
       <section data-relatorios-reveal>
-        <h2 className="mb-4 text-lg font-bold text-slate-900">Relatórios Disponíveis</h2>
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div><h2 className="text-lg font-bold text-slate-900">Relatórios disponíveis</h2><p className="mt-1 text-sm text-slate-500">Abra o relatório já na tela de origem dos dados.</p></div>
+          <div className="flex flex-wrap gap-2">
+            <label className="relative min-w-[15rem] flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" /><input value={busca} onChange={event => setBusca(event.target.value)} placeholder="Buscar relatório" aria-label="Buscar relatório" className="renea-control w-full pl-9" /></label>
+            {(['todos', 'com-dados', 'sem-dados'] as const).map(opcao => <button key={opcao} type="button" onClick={() => setFiltro(opcao)} aria-pressed={filtro === opcao} className={`min-h-11 rounded-lg border px-3 text-xs font-bold transition-colors ${filtro === opcao ? 'border-[#176b4d] bg-[#176b4d] text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-400'}`}>{opcao === 'todos' ? 'Todos' : opcao === 'com-dados' ? 'Com dados' : 'Sem dados'}</button>)}
+          </div>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {itens.map((item) => {
+          {itensVisiveis.map((item) => {
             const liberado = podeAbrir(item.aba);
             const vazio = item.base.total === 0;
             return (
@@ -140,6 +158,7 @@ export default function RelatoriosTab({
             );
           })}
         </div>
+        {!itensVisiveis.length && <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">Nenhum relatório corresponde à busca.</p>}
       </section>
 
       <section data-relatorios-reveal>

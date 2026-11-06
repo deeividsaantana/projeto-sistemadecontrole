@@ -68,7 +68,7 @@ export default function Dashboard(props: DashboardProps) {
   // referência visual das outras abas.
   return (
     <TelaCheia ref={dashboardRef} id="dashboard-tab" rotulo="Painel de Controle" longa rotuloDados="Indicadores da operação"
-      cabecalho={<PageHeader eyebrow="Visão geral" title="Painel de Controle"
+      cabecalho={<PageHeader compact={false} eyebrow="Visão geral" title="Painel de Controle"
         actions={<div data-testid="period-filter" className="flex flex-wrap items-center gap-3">
           <label className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600">Obra
             <select value={obraId} onChange={event => setObraId(event.target.value)} className="max-w-48 bg-transparent py-2 text-sm text-slate-900" aria-label="Filtrar por obra">

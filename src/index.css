@@ -9,10 +9,30 @@
   .input-dark {
     @apply w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15;
   }
+
+  .renea-card { @apply rounded-xl border border-slate-200 bg-white; box-shadow: var(--renea-shadow-card); }
+  .renea-control { @apply min-h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition-colors; }
+  .renea-control:focus-visible { border-color: var(--renea-color-primary); box-shadow: 0 0 0 3px rgb(23 107 77 / .14); }
+  .renea-button-primary { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#176b4d] px-4 text-sm font-bold text-white transition-colors hover:bg-[#0f5a3d] disabled:cursor-not-allowed disabled:opacity-50; }
+}
+
+/* Padrão único para telas de lançamento operacional. */
+.renea-launch-layout { --launch-gap: .75rem; }
+.renea-launch-step > div:first-child { min-height: 3.75rem; display: flex; align-items: center; }
+.renea-launch-summary { box-shadow: var(--renea-shadow-card); }
+.renea-launch-modal .grid { gap: .75rem; }
+.renea-launch-modal label { color: #33463d; }
+@media (max-width: 1023px) {
+  .renea-launch-summary { position: static; }
+}
+@media (max-width: 639px) {
+  .renea-launch-step > div:first-child { min-height: 3.25rem; }
+  .renea-launch-summary { order: -1; }
 }
 
 :root {
-  --renea-color-primary: #063c31;
+  --renea-color-primary: #176b4d;
+  --renea-color-primary-deep: #0f5a3d;
   --renea-color-success: #087653;
   --renea-color-warning: #8a4b08;
   --renea-color-danger: #be123c;
@@ -23,7 +43,9 @@
   --renea-space-3: 0.75rem;
   --renea-space-4: 1rem;
   --renea-radius-control: 0.75rem;
+  --renea-radius-card: 0.75rem;
   --renea-radius-panel: 1rem;
+  --renea-shadow-card: 0 1px 2px rgb(23 33 30 / .04), 0 8px 24px rgb(23 33 30 / .06);
   --renea-motion-fast: 180ms;
   --renea-motion-standard: 240ms;
   --renea-z-sticky: 10;
@@ -889,6 +911,9 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   font-size: .82rem;
   line-height: 1.4;
 }
+.renea-page-header--compact { min-height: 2.75rem; }
+.renea-page-header--compact .renea-page-header__copy { flex: 0 0 auto; width: 0; margin: 0; }
+.renea-page-header--compact .renea-page-header__abas { flex: 1 1 auto; }
 .renea-page-header .renea-page-actions {
   position: relative;
   z-index: 25;

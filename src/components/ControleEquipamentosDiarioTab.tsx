@@ -673,12 +673,12 @@ export default function ControleEquipamentosDiarioTab({
     [registros, filters.date, versaoRelacao],
   );
   const vistas: ReadonlyArray<AbaDaTela<FleetView>> = [
-    { id: 'today', rotulo: 'Situação do dia', curto: 'Dia', icone: CalendarDays },
+    { id: 'today', rotulo: 'Dia', curto: 'Dia', icone: CalendarDays },
     ...(quadro ? [{ id: 'quadro' as const, rotulo: 'Quadro', icone: LayoutGrid }] : []),
-    { id: 'equipamentos', rotulo: 'Equipamentos', icone: ClipboardCheck, contador: conferenciaDoDia.equipamentos.missing, contadorRotulo: 'a confirmar' },
-    { id: 'operadores', rotulo: 'Operadores', icone: Users, contador: conferenciaDoDia.operadores.missing, contadorRotulo: 'a confirmar' },
-    { id: 'history', rotulo: 'Histórico', icone: History },
-    { id: 'registry', rotulo: 'Motoristas', icone: Database },
+    { id: 'equipamentos', rotulo: 'Por equipamento', icone: ClipboardCheck, contador: conferenciaDoDia.equipamentos.missing, contadorRotulo: 'a confirmar' },
+    { id: 'operadores', rotulo: 'Por operador', icone: Users, contador: conferenciaDoDia.operadores.missing, contadorRotulo: 'a confirmar' },
+    { id: 'history', rotulo: 'Histórico de lançamentos', icone: History },
+    { id: 'registry', rotulo: 'Cadastro de motoristas', icone: Database },
   ];
   const ITEM_MENU = `flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-[#176b4d] disabled:opacity-50 ${FOCO}`;
   const ROTULO_GRUPO_MENU = 'px-3 pt-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-400';

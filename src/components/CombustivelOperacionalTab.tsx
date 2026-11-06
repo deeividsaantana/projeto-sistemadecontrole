@@ -326,7 +326,7 @@ export default function CombustivelOperacionalTab({
     <TelaCheia ref={escopo} id="combustivel-tab" testId="combustivel-tab" rotulo="Combustível"
       idAbaAtiva={listaSomente ? undefined : idDaAba('combustivel', abaAtiva)} idDados="combustivel-dados" chaveRolagem={abaAtiva}
       cabecalho={listaSomente ? undefined : <div data-comb-reveal>
-        <PageHeader eyebrow="Frota" title="Combustível"
+        <PageHeader compact eyebrow="Frota" title="Combustível"
           abas={<AbasDaTela id="combustivel" rotulo="Área de combustível" abas={vistas} ativa={abaAtiva} onTrocar={trocarVista} idPainel="combustivel-dados" />}
           actions={<>
             {view === 'historico' && <ul className="hidden min-w-0 flex-wrap items-center gap-1.5 md:flex" data-testid="combustivel-numeros">
