@@ -5,6 +5,7 @@ import test from 'node:test';
 // Pedido de 20/10: o que um aparelho grava tem que aparecer nos outros na hora,
 // não 5 minutos depois.
 const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
+const lifecycle = readFileSync(new URL('../src/hooks/useCloudSyncLifecycle.ts', import.meta.url), 'utf8');
 const aviso = readFileSync(new URL('../src/supabase/avisoNuvem.ts', import.meta.url), 'utf8');
 
 test('envio que deu certo avisa os outros aparelhos', () => {
@@ -14,8 +15,8 @@ test('envio que deu certo avisa os outros aparelhos', () => {
 });
 
 test('aparelho ouve as versões novas e confere a nuvem ao reconectar', () => {
-  assert.match(app, /listenCloudVersions\(versao => \{/);
-  assert.match(app, /requestAutomaticRemoteSyncRef\.current\(versao\)/);
+  assert.match(lifecycle, /listenCloudVersions\(version => \{/);
+  assert.match(app, /onVersion: versao => requestAutomaticRemoteSyncRef\.current\(versao\)/);
 });
 
 test('checagem de reserva roda a cada 30 s e reenvia o que falhou', () => {
@@ -30,5 +31,5 @@ test('o aviso leva só a versão, nunca os dados', () => {
 });
 
 test('aba escondida não baixa a nuvem a cada aviso', () => {
-  assert.match(app, /if \(document\.visibilityState === 'hidden'\) return;/);
+  assert.match(lifecycle, /if \(document\.visibilityState === 'hidden'\) return;/);
 });

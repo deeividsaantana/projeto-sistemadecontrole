@@ -86,6 +86,7 @@ import { juntarComLancamentoDoDia } from './fleet/duplicidadeDiaria';
 import type { PreviaCadastroSge } from './fleet/sgeApontamentos';
 import { enqueueOfflineCommand, flushOfflineCommands } from './utils/offlineQueue';
 import { useOfflineQueueCount } from './hooks/useOfflineQueue';
+import { useCloudSyncLifecycle } from './hooks/useCloudSyncLifecycle';
 import {
   inferFleetCategory,
   normalizeAvailabilityTarget,
@@ -105,7 +106,7 @@ import type { SecaoMateriais } from './components/materiais/MateriaisSecoes';
 import type { DestinoRelatorio } from './components/RelatoriosTab';
 
 // Subcomponents Imports
-import Dashboard from './components/Dashboard';
+const Dashboard = lazy(() => import('./components/Dashboard'));
 const CadastrosTab = lazy(() => import('./components/CadastrosTab'));
 const LancamentosTab = lazy(() => import('./components/LancamentosTab'));
 const ControlePresencaTab = lazy(() => import('./components/ControlePresencaTab'));
@@ -223,6 +224,7 @@ import {
   roleFromMembership,
   type UserRole,
 } from './app/navigation/navigation';
+import { navigationSyncTrigger } from './app/navigation/navigationSyncPolicy';
 import { NavigationMenu } from './app/shell/NavigationMenu';
 import { DesktopTopBar } from './app/shell/DesktopTopBar';
 import { NotificationCenter } from './app/shell/NotificationCenter';
@@ -1608,75 +1610,26 @@ export default function App() {
     }
   };
 
-  // Com a sincronizacao automatica ativa, verifica periodicamente se outro
-  // dispositivo publicou uma versao mais recente e atualiza este navegador.
-  useEffect(() => {
-    // Sem aguardar o login: este efeito rodava 3s após o app abrir, mesmo com
-    // a tela de login ainda na tela. Se a checagem caísse antes do token de
-    // autenticação estar pronto, o Firestore recusava a leitura por permissão
-    // — e o navegador nunca chegava a baixar os dados reais da nuvem.
-    if (!isLoggedIn || !isAutoSyncEnabled || externalPresenceToken || externalTicketLink) return;
-
-    // O que não coube na memória do navegador e voltou da cópia de
-    // recuperação num F5 sobe antes de qualquer checagem: sem isso a
-    // importação só chegava à nuvem no próximo salvamento, se chegasse.
-    const initialCheck = window.setTimeout(() => {
+  useCloudSyncLifecycle({
+    enabled: isLoggedIn && isAutoSyncEnabled && !externalPresenceToken && !externalTicketLink,
+    initialDelayMs: 3_000,
+    fallbackIntervalMs: SYNC_FALLBACK_INTERVAL_MS,
+    noticeDelayMs: AVISO_NUVEM_ESPERA_MS,
+    onInitialCheck: () => {
       const pendentes = retirarPendentesDaReserva();
       if (pendentes.length === 0) {
         void pullRemoteChanges();
         return;
       }
       void handleUploadToSupabase().then(resultado => {
-        if (!resultado.success) {
-          addNotification(
-            'Envio pendente para a nuvem',
-            `O que foi salvo antes de recarregar a página está neste aparelho, mas ainda não chegou à nuvem. Motivo: ${resultado.message}`,
-            'error',
-            'Sistema Local',
-          );
-        }
+        if (!resultado.success) addNotification('Envio pendente para a nuvem', `O que foi salvo antes de recarregar a página está neste aparelho, mas ainda não chegou à nuvem. Motivo: ${resultado.message}`, 'error', 'Sistema Local');
         return pullRemoteChanges();
       });
-    }, 3_000);
-    // Outro aparelho avisa pelo canal em tempo real quando publica: baixa na
-    // hora. Avisos em sequência viram um download só, da versão mais nova.
-    // Aba escondida não baixa: ao voltar para ela, onVisible confere a nuvem.
-    let esperaAviso: number | undefined;
-    const pararDeOuvir = listenCloudVersions(versao => {
-      window.clearTimeout(esperaAviso);
-      if (document.visibilityState === 'hidden') return;
-      esperaAviso = window.setTimeout(() => requestAutomaticRemoteSyncRef.current(versao), AVISO_NUVEM_ESPERA_MS);
-    }, () => {
-      lastSyncCheckAtRef.current = 0;
-      void pullRemoteChanges();
-    });
-    // Rede de segurança se o canal cair sem avisar.
-    const interval = window.setInterval(() => {
-      lastSyncCheckAtRef.current = 0;
-      void pullRemoteChanges();
-    }, SYNC_FALLBACK_INTERVAL_MS);
-    // O canal em tempo real do Firestore pode cair sem avisar quando o
-    // celular bloqueia a tela ou a aba fica em segundo plano por um tempo —
-    // é um comportamento conhecido do navegador, não um erro para capturar.
-    // Sem isto, só um F5 completo forçava uma checagem nova; agora voltar
-    // para a aba ou recuperar a internet já faz o mesmo.
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') void pullRemoteChanges();
-    };
-    const onReconnect = () => void pullRemoteChanges();
-    document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('online', onReconnect);
-    window.addEventListener('focus', onReconnect);
-    return () => {
-      window.clearTimeout(initialCheck);
-      window.clearInterval(interval);
-      window.clearTimeout(esperaAviso);
-      pararDeOuvir();
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('online', onReconnect);
-      window.removeEventListener('focus', onReconnect);
-    };
-  }, [isLoggedIn, isAutoSyncEnabled, externalPresenceToken, externalTicketLink]);
+    },
+    onCheck: () => { lastSyncCheckAtRef.current = 0; void pullRemoteChanges(); },
+    onVersion: versao => requestAutomaticRemoteSyncRef.current(versao),
+    onChannelError: () => { lastSyncCheckAtRef.current = 0; void pullRemoteChanges(); },
+  });
 
   const reloadExternalPresence = async (data = '') => {
     if (!externalPresenceToken) return;
@@ -4535,7 +4488,7 @@ export default function App() {
   const verOrdensDaMaquina = (prefixo: string) => { navigateTo('manutencao'); setPedidoManutencao(atual => ({ prefixo, vez: atual.vez + 1 })); };
   const verMaquinaNoQuadro = (prefixo: string) => { navigateTo('controle-equipamentos'); setPedidoFrota(atual => ({ prefixo, vez: atual.vez + 1 })); };
 
-  const navigateTo = (tab: string, closeMobile = false) => {
+  const navigateTo = (tab: string, closeMobile = false, options: { explicitRefresh?: boolean } = {}) => {
     setRelatorioPedido('');
     setPedidoFrota(atual => (atual.prefixo ? { ...atual, prefixo: '' } : atual));
     setPedidoManutencao(atual => (atual.prefixo ? { ...atual, prefixo: '' } : atual));
@@ -4550,11 +4503,7 @@ export default function App() {
       document.getElementById('main-workspace')?.scrollTo({ top: 0, behavior: 'auto' });
       window.scrollTo({ top: 0, behavior: 'auto' });
     });
-    // Abrir uma tela específica confere a nuvem na hora, em vez de confiar
-    // só no retrato que já estava carregado desde o pulso automático
-    // anterior — quem entrou em Controle de Presença agora quer o dado de
-    // agora, não o de até 60 segundos atrás.
-    void pullRemoteChanges();
+    if (navigationSyncTrigger(options) === 'refresh') void pullRemoteChanges();
   };
 
   const abrirRelatorio = (aba: DestinoRelatorio) => {

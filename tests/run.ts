@@ -243,3 +243,5 @@ import './quadroFrota.visual.test';
 import './integracaoGlobal.test';
 import './cycleHistory.test';
 import './publicPresenceSaturday.test';
+import './navigationSyncPolicy.test';
+import './lazyLoading.test';
