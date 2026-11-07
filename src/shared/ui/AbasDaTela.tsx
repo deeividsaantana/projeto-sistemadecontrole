@@ -134,7 +134,7 @@ function LinhaDeAbas({ botoes, rotulo, testId, secundaria = false, grade = false
       onKeyDown={teclar}
       data-testid={testId}
       className={cn(
-        'renea-abas flex w-full max-w-full min-w-0 items-center gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:thin] md:w-auto lg:flex-wrap lg:overflow-visible',
+        'renea-abas flex w-full max-w-full min-w-0 items-center gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:thin] md:w-auto lg:flex-wrap lg:overflow-visible max-md:[mask-image:linear-gradient(to_right,#000_calc(100%-2.5rem),transparent)]',
         secundaria ? 'renea-abas--grupo px-1' : 'rounded-xl bg-white p-1 ring-1 ring-inset ring-slate-200',
         grade && 'max-sm:grid max-sm:grid-cols-3 max-sm:overflow-visible',
       )}
