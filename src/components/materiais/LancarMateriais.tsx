@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, ClipboardList, Receipt, Rows3, SlidersHorizontal, type LucideIcon } from 'lucide-react';
+import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, ClipboardList, Keyboard, Receipt, Rows3, SlidersHorizontal, type LucideIcon } from 'lucide-react';
 import type { Empresa, EtapaServico, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../../types';
 import { numero } from '../../utils/formato';
 import { CARTAO, FOCO, reduzMovimento } from '../cadastros/estilos';
@@ -43,6 +43,8 @@ interface Props {
   onSalvarVarios: (movimentos: MovimentoMaterial[], descricao: string) => void;
   onEditar: (movimento: MovimentoMaterial) => void;
   onVerMovimentos: () => void;
+  /** Abre a lista de atalhos do teclado (tecla ?). */
+  onVerAtalhos?: () => void;
 }
 
 /**
@@ -50,7 +52,7 @@ interface Props {
  * vez e outra para várias viagens em grade. Ao lado, o que já foi lançado hoje,
  * para conferir na hora e corrigir com um toque.
  */
-export default function LancarMateriais({ hoje, materiais, movimentos, empresas, etapas, responsavel, onSalvar, onSalvarVarios, onEditar, onVerMovimentos }: Props) {
+export default function LancarMateriais({ hoje, materiais, movimentos, empresas, etapas, responsavel, onSalvar, onSalvarVarios, onEditar, onVerMovimentos, onVerAtalhos }: Props) {
   const [aba, setAba] = useState<Aba>('um');
 
   const deHoje = useMemo(() => movimentos
@@ -110,6 +112,12 @@ export default function LancarMateriais({ hoje, materiais, movimentos, empresas,
           idPainel="lancar-conteudo"
         />
         <p className="text-sm text-slate-600">{ABAS.find(item => item.id === aba)?.ajuda}</p>
+        {onVerAtalhos && (
+          <button type="button" onClick={onVerAtalhos} aria-keyshortcuts="?" title="Atalhos do teclado (?)" className={`ml-auto inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-slate-600 transition duration-200 hover:bg-emerald-50 hover:text-[#176b4d] max-lg:hidden ${FOCO}`}>
+            <Keyboard className="size-5" aria-hidden="true" />
+            Atalhos
+          </button>
+        )}
       </div>
 
       <div id="lancar-conteudo">

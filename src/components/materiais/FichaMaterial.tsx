@@ -110,7 +110,7 @@ export default function FichaMaterial({ aberto, material, posicao, movimentos, h
               </button>
             )}
           </div>
-          <ListaMovimentos movimentos={doMaterial.slice(0, HISTORICO_INICIAL)} chave={material.id} />
+          <ListaMovimentos movimentos={doMaterial.slice(0, HISTORICO_INICIAL)} materiaisPorId={new Map([[material.id, material]])} chave={material.id} />
         </div>
       </div>
     </Modal>
