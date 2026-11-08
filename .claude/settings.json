@@ -1,0 +1,18 @@
+{
+  "extraKnownMarketplaces": {
+    "thedotmack": {
+      "source": { "source": "github", "repo": "thedotmack/claude-mem" }
+    },
+    "impeccable": {
+      "source": { "source": "github", "repo": "pbakaus/impeccable" }
+    },
+    "one-skill-to-rule-them-all": {
+      "source": { "source": "github", "repo": "rebelytics/one-skill-to-rule-them-all" }
+    }
+  },
+  "enabledPlugins": {
+    "claude-mem@thedotmack": true,
+    "impeccable@impeccable": true,
+    "task-observer@one-skill-to-rule-them-all": true
+  }
+}
