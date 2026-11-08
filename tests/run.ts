@@ -125,6 +125,7 @@ import './exclusoes.test';
 import './masterDataGateway.test';
 import './operationalAttachments.test';
 import './loginRecovery.test';
+import './loginErrorMessage.test';
 import './sessionTimeout.test';
 import './excelCorporateImport.test';
 import './equipmentOperations.test';

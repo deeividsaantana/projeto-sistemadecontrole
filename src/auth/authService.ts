@@ -17,12 +17,24 @@ export const signOutCurrentUser = async (_auth: SupabaseAuth): Promise<void> => 
   if (error) throw error;
 };
 
+// O Supabase devolve `code` com sublinhado (`invalid_credentials`,
+// `over_request_rate_limit`) e `status` HTTP. Sem ler esses dois, o limite de
+// tentativas caía em "verifique sua conexão" e confundia quem estava com a
+// internet boa.
 export const getLoginErrorMessage = (error: unknown): string => {
-  const code = typeof error === 'object' && error && 'code' in error ? String((error as { code?: unknown }).code || '') : '';
-  if (code.includes('invalid-credentials') || code.includes('user-not-found')) return 'E-mail ou senha incorretos.';
-  if (code.includes('too-many-requests')) return 'Muitas tentativas. Aguarde alguns minutos.';
+  const fields = typeof error === 'object' && error ? (error as { code?: unknown; status?: unknown }) : {};
+  const code = String(fields.code || '').toLowerCase().replace(/-/g, '_');
+  const status = typeof fields.status === 'number' ? fields.status : 0;
   const message = error instanceof Error ? error.message.toLowerCase() : '';
   if (message.includes('supabase_config_missing')) return 'O ambiente Supabase ainda não foi configurado.';
-  if (message.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
+  if (code === 'invalid_credentials' || code === 'user_not_found' || message.includes('invalid login credentials')) {
+    return 'E-mail ou senha incorretos.';
+  }
+  if (status === 429 || code.startsWith('over_') || code === 'too_many_requests') {
+    return 'Muitas tentativas de entrar. Aguarde alguns minutos e tente de novo.';
+  }
+  if (code === 'email_not_confirmed') return 'Este e-mail ainda não foi confirmado. Fale com a administração.';
+  if (code === 'user_banned') return 'Este acesso está bloqueado. Fale com a administração.';
+  if (status >= 500) return 'O sistema de login está fora do ar agora. Tente de novo em alguns minutos.';
   return 'Não foi possível entrar. Verifique sua conexão e tente novamente.';
 };
