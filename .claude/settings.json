@@ -1,13 +1,48 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "NotebookEdit",
+      "WebFetch",
+      "WebSearch",
+      "mcp__github",
+      "mcp__Supabase",
+      "mcp__plugin_claude-mem_mcp-search"
+    ],
+    "deny": [
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git push origin main*)",
+      "Bash(git push * main)",
+      "Bash(rm -rf /)",
+      "Bash(rm -rf ~*)",
+      "Read(./.env)",
+      "Read(./.env.*)"
+    ]
+  },
   "extraKnownMarketplaces": {
     "thedotmack": {
-      "source": { "source": "github", "repo": "thedotmack/claude-mem" }
+      "source": {
+        "source": "github",
+        "repo": "thedotmack/claude-mem"
+      }
     },
     "impeccable": {
-      "source": { "source": "github", "repo": "pbakaus/impeccable" }
+      "source": {
+        "source": "github",
+        "repo": "pbakaus/impeccable"
+      }
     },
     "one-skill-to-rule-them-all": {
-      "source": { "source": "github", "repo": "rebelytics/one-skill-to-rule-them-all" }
+      "source": {
+        "source": "github",
+        "repo": "rebelytics/one-skill-to-rule-them-all"
+      }
     }
   },
   "enabledPlugins": {
