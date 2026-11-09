@@ -30,3 +30,12 @@ console.log('ok - mensagens de erro do login');
 const authServiceSource = readFileSync(new URL('../src/auth/authService.ts', import.meta.url), 'utf8');
 assert.match(authServiceSource, /auth\.signOut\(\{ scope: 'local' \}\)/);
 console.log('ok - sair encerra só este aparelho');
+
+// "Validando acesso seguro" não gira para sempre quando o Supabase não responde.
+const { comPrazo } = await import('../src/utils/comPrazo');
+assert.equal(await comPrazo(Promise.resolve('ok'), 50, 'demorou'), 'ok');
+await assert.rejects(comPrazo(new Promise(() => {}), 10, 'demorou'), /demorou/);
+const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
+assert.match(appSource, /comPrazo\(loadSupabaseMemberships\(\)/);
+assert.match(appSource, /O sistema demorou para confirmar seu acesso/);
+console.log('ok - validação de acesso tem prazo');

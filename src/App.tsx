@@ -143,6 +143,7 @@ import reneaLogoWhite from './assets/images/logo-renea-branco.png';
 const db = undefined;
 import { supabaseAuth as auth, type SupabaseAuthUser as User } from './auth/supabaseAuth';
 import { loadSupabaseMemberships } from './supabase/memberships';
+import { comPrazo, PRAZO_VALIDACAO_ACESSO_MS } from './utils/comPrazo';
 import {
   announceCloudVersion,
   downloadCloudBackup,
@@ -944,6 +945,17 @@ export default function App() {
     hydrateLocalData();
   }, []);
 
+  // Se o Supabase não responder, "Validando acesso seguro" não pode girar para
+  // sempre: depois do prazo a pessoa volta à tela de entrar com um aviso.
+  useEffect(() => {
+    if (!isAuthenticating || isLoggedIn) return;
+    const timer = window.setTimeout(() => {
+      setIsAuthenticating(false);
+      setLoginNotice('O sistema demorou para confirmar seu acesso. Tente entrar de novo.');
+    }, PRAZO_VALIDACAO_ACESSO_MS);
+    return () => window.clearTimeout(timer);
+  }, [isAuthenticating, isLoggedIn]);
+
   useEffect(() => auth.onAuthStateChanged(async user => {
     if (!user) {
       setCurrentUser(null);
@@ -954,7 +966,7 @@ export default function App() {
     try {
       // No Supabase, a autorização é uma associação explícita na organização;
       // A autorização vem da associação do usuário no Supabase.
-      const memberships = await loadSupabaseMemberships();
+      const memberships = await comPrazo(loadSupabaseMemberships(), PRAZO_VALIDACAO_ACESSO_MS, 'VALIDACAO_ACESSO_DEMOROU');
       const membership = memberships[0];
       if (!membership) {
         await signOutCurrentUser(auth);
