@@ -669,7 +669,6 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
    entrada continua igual; só o estado depois do fim volta a ser normal. */
 #main-tab-viewport > * { animation: renea-v3-enter 360ms cubic-bezier(.2,.8,.2,1); }
 .renea-card,
-.renea-stat { box-shadow: none !important; }
 .renea-card:hover { border-color: #aebbb4; }
 
 /* Normalize legacy screen containers without flattening dialogs and popovers. */
@@ -785,10 +784,10 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 /* Realce de ponteiro que antes vinha de gsap.quickTo com três listeners por
    cartão (RouteMotion). Em CSS o compositor resolve sozinho, sem custo de JS
    por elemento. */
-#main-tab-viewport :is(.renea-card, .renea-stat, [data-fleet-enter], .dashboard-metric) {
+#main-tab-viewport :is(.renea-card, [data-fleet-enter], .dashboard-metric) {
   transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
 }
-#main-tab-viewport :is(.renea-card, .renea-stat, [data-fleet-enter], .dashboard-metric):hover {
+#main-tab-viewport :is(.renea-card, [data-fleet-enter], .dashboard-metric):hover {
   transform: translateY(-3px);
 }
 
@@ -931,9 +930,9 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 }
 
 /* White surfaces across legacy and redesigned screens. */
-#main-tab-viewport :is(section, article, aside, .renea-card, .renea-stat):is([class~="bg-[#0f3025]"], [class~="bg-[#083c2f]"], [class~="bg-[#101a22]"]),
-#main-tab-viewport :is(section, article, aside, .renea-card, .renea-stat).bg-slate-900,
-#main-tab-viewport :is(section, article, aside, .renea-card, .renea-stat).bg-emerald-950 {
+#main-tab-viewport :is(section, article, aside, .renea-card):is([class~="bg-[#0f3025]"], [class~="bg-[#083c2f]"], [class~="bg-[#101a22]"]),
+#main-tab-viewport :is(section, article, aside, .renea-card).bg-slate-900,
+#main-tab-viewport :is(section, article, aside, .renea-card).bg-emerald-950 {
   background-color: #fff !important;
   color: #10211c !important;
 }
@@ -2181,8 +2180,7 @@ body,
 }
 
 #main-tab-viewport .renea-filter-bar,
-#main-tab-viewport .renea-card,
-#main-tab-viewport .renea-stat {
+#main-tab-viewport .renea-card {
   border-radius: 8px;
 }
 

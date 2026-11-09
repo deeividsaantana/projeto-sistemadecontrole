@@ -5,7 +5,7 @@ import { AlertOctagon, Gauge, CalendarDays, CheckCircle2, ChevronLeft, ChevronRi
 import type { Abastecimento, BlocoRotina, ControleEquipamentoDiario, Equipamento, Material, MovimentoMaterial, ModeloRotina, PendenciaRotina, RotinaDiaria } from '../types';
 import { blocosDaPessoa, concluidasNoDia, contarPorPrioridade, diaFechado, idDaRotina, pendenciasAbertas, prioridadesDeOntem, progresso, rotinaVazia, temModeloProprio } from '../modules/rotina/checklistDiario';
 import { formatarData } from '../utils/formato';
-import { CountUp, PageHeader, isoDay } from '../shared/ui';
+import { CartaoIndicador, CountUp, GradeIndicadores, PageHeader, isoDay } from '../shared/ui';
 import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { ChecklistDoDia } from './meuDia/ChecklistDoDia';
@@ -52,21 +52,6 @@ interface Props {
   controlesFrota: readonly ControleEquipamentoDiario[];
   equipamentos: readonly Equipamento[];
   onIrPara?: (aba: string) => void;
-}
-
-function Indicador({ titulo, valor, sufixo, detalhe, Icone, tom, onClick }: { titulo: string; valor: number; sufixo?: string; detalhe: string; Icone: LucideIcon; tom: string; onClick: () => void }) {
-  return (
-    <button type="button" onClick={onClick} data-meu-dia-reveal className={`meu-dia-vivo ${CARTAO} flex min-h-16 items-start gap-3 p-3 text-left lg:items-center ${FOCO}`}>
-      <span className={`grid size-10 shrink-0 place-items-center rounded-xl max-sm:hidden ${tom}`}>
-        <Icone className="size-5" aria-hidden="true" />
-      </span>
-      <span className="min-w-0">
-        <span className="block text-sm font-semibold text-slate-600">{titulo}</span>
-        <CountUp value={valor} suffix={sufixo} className="block text-2xl font-bold text-slate-900" />
-        <span className="block text-xs text-slate-500">{detalhe}</span>
-      </span>
-    </button>
-  );
 }
 
 /** Campo de texto que grava ao sair dele, para não mandar à nuvem a cada letra. */
@@ -168,12 +153,12 @@ export default function MeuDiaTab({ responsavel, rotinas, pendencias, modelos, o
           {passado && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-800 ring-1 ring-inset ring-amber-200">Dia que já passou</span>}
           <span>· {pessoa}</span>
         </p>
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
-          <Indicador titulo="Críticas em aberto" valor={porPrioridade.critico} detalhe="🔴 resolver agora" Icone={AlertOctagon} tom="bg-rose-50 text-rose-700" onClick={() => setParte('pendencias')} />
-          <Indicador titulo="Importantes em aberto" valor={porPrioridade.importante} detalhe={`🟠 hoje · ${abertas.length} no total`} Icone={Flag} tom="bg-orange-50 text-[#c2410c]" onClick={() => setParte('pendencias')} />
-          <Indicador titulo="Checklist feito" valor={conta.percentual} sufixo="%" detalhe={`${conta.feitos} de ${conta.total} itens`} Icone={ClipboardCheck} tom="bg-emerald-50 text-[#176b4d]" onClick={() => setParte('checklist')} />
-          <Indicador titulo={fechado ? 'Dia fechado' : 'Falta para fechar'} valor={fechado ? resolvidas : Math.max(itensDoFim - feitosDoFim, 0)} detalhe={fechado ? 'pendências resolvidas no dia' : 'itens do fim do dia'} Icone={fechado ? CheckCircle2 : Moon} tom={fechado ? 'bg-emerald-50 text-[#176b4d]' : 'bg-slate-100 text-[#5b6870]'} onClick={() => setParte('fechamento')} />
-        </div>
+        <GradeIndicadores rotulo="Resumo do dia">
+          <CartaoIndicador className="meu-dia-vivo" dados={{ 'data-meu-dia-reveal': true }} rotulo="Críticas em aberto" valor={<CountUp value={porPrioridade.critico} />} detalhe="resolver agora" icone={AlertOctagon} tom={porPrioridade.critico > 0 ? 'vermelho' : 'neutro'} onClick={() => setParte('pendencias')} />
+          <CartaoIndicador className="meu-dia-vivo" dados={{ 'data-meu-dia-reveal': true }} rotulo="Importantes em aberto" valor={<CountUp value={porPrioridade.importante} />} detalhe={`para hoje · ${abertas.length} no total`} icone={Flag} tom={porPrioridade.importante > 0 ? 'laranja' : 'neutro'} onClick={() => setParte('pendencias')} />
+          <CartaoIndicador className="meu-dia-vivo" dados={{ 'data-meu-dia-reveal': true }} rotulo="Checklist feito" valor={<CountUp value={conta.percentual} suffix="%" />} detalhe={`${conta.feitos} de ${conta.total} itens`} icone={ClipboardCheck} tom="verde" onClick={() => setParte('checklist')} />
+          <CartaoIndicador className="meu-dia-vivo" dados={{ 'data-meu-dia-reveal': true }} rotulo={fechado ? 'Dia fechado' : 'Falta para fechar'} valor={<CountUp value={fechado ? resolvidas : Math.max(itensDoFim - feitosDoFim, 0)} />} detalhe={fechado ? 'pendências resolvidas no dia' : 'itens do fim do dia'} icone={fechado ? CheckCircle2 : Moon} tom={fechado ? 'verde' : 'neutro'} onClick={() => setParte('fechamento')} />
+        </GradeIndicadores>
       </div>}
     >
       {deOntem && deOntem.itens.length > 0 && (

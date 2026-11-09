@@ -6,7 +6,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { Camera, CloudRain, NotebookPen, Save, Users } from 'lucide-react';
+import { Camera, ClipboardCheck, Clock, CloudRain, NotebookPen, Save, Truck, Users } from 'lucide-react';
 import MapaChuva from './MapaChuva';
 import type {
   ApontamentoOperacional,
@@ -20,7 +20,7 @@ import type {
   TicketJazida,
 } from '../types';
 import { comprimirImagem, validarFoto } from '../utils/imagem';
-import { Card, EmptyState, PageHeader, isoDay, statusTone } from '../shared/ui';
+import { Card, CartaoIndicador, EmptyState, PageHeader, isoDay, statusTone } from '../shared/ui';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { formatarData } from '../utils/formato';
@@ -175,18 +175,11 @@ export default function DiarioObraTab({
         />
       </div>}
     >
-      <section ref={escopoIndicadores} aria-label="Números do dia" className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-        {[
-          { label: 'Presentes', valor: String(resumo.presentes) },
-          { label: 'Equipes com apontamento', valor: String(resumo.equipes) },
-          { label: 'Frota informada', valor: String(resumo.frota.length) },
-          { label: 'Horas apontadas', valor: `${resumo.horasApontadas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h` },
-        ].map(item => (
-          <div key={item.label} data-linha-lista className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
-        ))}
+      <section ref={escopoIndicadores} aria-label="Números do dia" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <CartaoIndicador dados={{ 'data-linha-lista': true }} rotulo="Presentes" valor={resumo.presentes} detalhe="pessoas na obra" icone={Users} tom={resumo.presentes > 0 ? 'verde' : 'neutro'} />
+        <CartaoIndicador dados={{ 'data-linha-lista': true }} rotulo="Equipes com apontamento" valor={resumo.equipes} detalhe="equipes que lançaram" icone={ClipboardCheck} />
+        <CartaoIndicador dados={{ 'data-linha-lista': true }} rotulo="Frota informada" valor={resumo.frota.length} detalhe="equipamentos do dia" icone={Truck} />
+        <CartaoIndicador dados={{ 'data-linha-lista': true }} rotulo="Horas apontadas" valor={`${resumo.horasApontadas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`} detalhe="somadas das equipes" icone={Clock} />
       </section>
 
       <input ref={inputFoto} type="file" accept="image/*" capture="environment" hidden onChange={event => void receberFoto(event.target.files?.[0])} />

@@ -26,6 +26,8 @@ import {
   Trash2,
   Undo2,
   Users,
+  UserX,
+  Clock,
   X,
   PieChart,
 } from 'lucide-react';
@@ -37,7 +39,7 @@ import {
   type TeamSyncPlan,
 } from '../utils/teamSpreadsheetSync';
 import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
-import { ConfirmDialog, Modal, PageHeader } from '../shared/ui';
+import { CartaoIndicador, ConfirmDialog, Modal, PageHeader } from '../shared/ui';
 import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { BuscaColaborador } from './shared/BuscaColaborador';
@@ -1306,17 +1308,10 @@ export default function ControlePresencaTab({
                 </div>
               </article>
               <div className="grid grid-cols-2 gap-3">
-                {[
-                  ['Ausentes', metrics.absent, 'text-rose-700'],
-                  ['Justificados', metrics.justified, 'text-amber-700'],
-                  ['Equipes pendentes', metrics.pending, 'text-slate-900'],
-                  ['Equipes ativas', activeGroups.length, 'text-emerald-800'],
-                ].map(([label, value, tone]) => (
-                  <article key={String(label)} className={`${PANEL} p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_-16px_rgba(16,24,32,0.3)] sm:p-5`}>
-                    <strong data-count={value} className={`block text-3xl font-black tabular-nums ${tone}`}>0</strong>
-                    <span className="mt-1 block text-xs font-bold uppercase tracking-[0.12em] text-slate-500 sm:text-xs">{label}</span>
-                  </article>
-                ))}
+                <CartaoIndicador dados={{ 'data-cartao-painel': true }} rotulo="Ausentes" valor={<span data-count={metrics.absent}>0</span>} detalhe="faltaram no dia" icone={UserX} tom={metrics.absent > 0 ? 'vermelho' : 'neutro'} />
+                <CartaoIndicador dados={{ 'data-cartao-painel': true }} rotulo="Justificados" valor={<span data-count={metrics.justified}>0</span>} detalhe="ausências com motivo" icone={FileText} tom={metrics.justified > 0 ? 'laranja' : 'neutro'} />
+                <CartaoIndicador dados={{ 'data-cartao-painel': true }} rotulo="Equipes pendentes" valor={<span data-count={metrics.pending}>0</span>} detalhe="ainda não enviaram" icone={Clock} tom={metrics.pending > 0 ? 'laranja' : 'neutro'} />
+                <CartaoIndicador dados={{ 'data-cartao-painel': true }} rotulo="Equipes ativas" valor={<span data-count={activeGroups.length}>0</span>} detalhe="equipes cadastradas" icone={Users} tom="verde" />
               </div>
             </div>
             <div className="space-y-5">

@@ -12,8 +12,7 @@ import { registroDaEdicao } from '../../modules/frota/quadroFrota';
 import { formatarMinutos, horaLocal, horasParadasDoDia } from '../../utils/horasParadasDoDia';
 import { continuarAlemDoLimite, vemParadoDeOntem, voltarARegraDasDezHoras } from '../../utils/manutencaoLimite';
 import type { RelatorioManutencaoDia } from '../../utils/relatorioManutencaoDia';
-import { EmptyState } from '../../shared/ui';
-import { CARTAO, FOCO } from '../cadastros/estilos';
+import { CartaoIndicador, EmptyState, GradeIndicadores } from '../../shared/ui';
 import { CartaoParada } from './CartaoParada';
 
 const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -88,28 +87,20 @@ export function ManutencaoHoje({ relatorio, registros, equipamentos, motoristas,
 
   return (
     <>
-      <section aria-label="Números de hoje" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {contadores.map(item => {
-          const tom = item.destaque === 'amber' ? 'border-amber-200 bg-amber-50' : item.destaque === 'rose' ? 'border-rose-200 bg-rose-50' : 'border-slate-100 bg-white';
-          const bgIcon = item.destaque === 'amber' ? 'bg-amber-100 text-amber-700' : item.destaque === 'rose' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-50 text-emerald-700';
-          const conteudo = (
-            <>
-              <span className="flex items-start justify-between gap-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{item.rotulo}</span>
-                <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${bgIcon}`}>
-                  <item.Icone className="size-5" aria-hidden="true" />
-                </span>
-              </span>
-              <strong className="mt-4 block text-3xl font-black leading-tight tracking-tight tabular-nums text-slate-950">{item.valor}</strong>
-              <span className="mt-1.5 block text-xs font-medium text-slate-600">{item.detalhe}</span>
-            </>
-          );
-          const classe = `${CARTAO} ${tom} block min-w-0 p-5 text-left border transition-all duration-200`;
-          return item.aoClicar
-            ? <button key={item.id} type="button" data-manutencao-reveal data-testid={`manutencao-contador-${item.id}`} onClick={item.aoClicar} className={`${classe} hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-sm active:scale-[0.98] ${FOCO}`}>{conteudo}</button>
-            : <div key={item.id} data-manutencao-reveal data-testid={`manutencao-contador-${item.id}`} className={classe}>{conteudo}</div>;
-        })}
-      </section>
+      <GradeIndicadores rotulo="Números de hoje">
+        {contadores.map(item => (
+          <CartaoIndicador
+            key={item.id}
+            dados={{ 'data-manutencao-reveal': true, 'data-testid': `manutencao-contador-${item.id}` }}
+            rotulo={item.rotulo}
+            valor={item.valor}
+            detalhe={item.detalhe}
+            icone={item.Icone}
+            tom={item.destaque === 'rose' ? 'vermelho' : item.destaque === 'amber' ? 'laranja' : 'neutro'}
+            onClick={item.aoClicar}
+          />
+        ))}
+      </GradeIndicadores>
 
       <section aria-labelledby="manutencao-hoje-titulo" className="mt-8">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4 pb-4 border-b border-slate-100">

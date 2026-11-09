@@ -28,7 +28,7 @@ import {
   type VolumeColecao,
 } from '../utils/diagnostico';
 import { APP_VERSION_LABEL } from '../app/version';
-import { PageHeader, TabelaPadrao, type ColunaTabela } from '../shared/ui';
+import { CartaoIndicador, PageHeader, TabelaPadrao, type ColunaTabela } from '../shared/ui';
 import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
@@ -134,11 +134,11 @@ export default function AdministracaoTab({
 
       {secao === 'dados' && (
         <TabelaPadrao
-          titulo="Dados guardados neste aparelho, por coleção"
+          titulo="Dados guardados neste aparelho, por tipo"
           linhas={volumes}
           colunas={COLUNAS_VOLUME}
           idDaLinha={item => item.chave}
-          nomeDoItem={{ um: 'coleção', varios: 'coleções' }}
+          nomeDoItem={{ um: 'tipo de dado', varios: 'tipos de dado' }}
           vazio="Nenhum dado guardado neste aparelho."
         />
       )}
@@ -186,17 +186,17 @@ export default function AdministracaoTab({
         {linkFeedback && <p role="status" className="mt-2 text-xs font-semibold text-emerald-800">{linkFeedback}</p>}
       </section>
 
-      <div data-admin-reveal className={`rounded-lg border px-4 py-3 ${divergencias.length === 0 ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'}`}>
+      <div data-admin-reveal className={`rounded-2xl border px-4 py-3 ${divergencias.length === 0 ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'}`}>
         {divergencias.length === 0 ? (
           <p className="flex items-center gap-2 text-xs font-bold text-emerald-900">
             <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-            Todas as coleções de dados estão no backup e na sincronização com a nuvem.
+            Todos os tipos de dado estão no backup e são enviados para a nuvem.
           </p>
         ) : (
           <>
             <p className="flex items-center gap-2 text-xs font-bold text-rose-900">
               <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
-              {divergencias.length} coleção(ões) mal registrada(s) — dado gravado aqui pode não chegar à nuvem
+              {divergencias.length} tipo(s) de dado sem ligação com a nuvem: o que for gravado aqui pode não chegar à nuvem
             </p>
             <ul className="mt-1 space-y-0.5 text-xs text-rose-800">
               {divergencias.map(item => (
@@ -207,18 +207,11 @@ export default function AdministracaoTab({
         )}
       </div>
 
-      <section data-admin-reveal aria-label="Armazenamento neste aparelho" className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-        {[
-          { label: 'Coleções', valor: String(resumo.colecoes) },
-          { label: 'Registros', valor: resumo.registros.toLocaleString('pt-BR') },
-          { label: 'Uso local', valor: formatarBytes(resumo.bytes) },
-          { label: 'Coleções vazias', valor: String(resumo.vazias) },
-        ].map(item => (
-          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-xs font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block truncate text-xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
-        ))}
+      <section data-admin-reveal aria-label="Armazenamento neste aparelho" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <CartaoIndicador rotulo="Tipos de dado" valor={resumo.colecoes} detalhe="listas que o sistema guarda" icone={Database} />
+        <CartaoIndicador rotulo="Registros salvos" valor={resumo.registros.toLocaleString('pt-BR')} detalhe="neste aparelho" icone={HardDrive} />
+        <CartaoIndicador rotulo="Espaço usado" valor={formatarBytes(resumo.bytes)} detalhe="neste aparelho" icone={HardDrive} />
+        <CartaoIndicador rotulo="Listas vazias" valor={resumo.vazias} detalhe="ainda sem nenhum registro" icone={Database} tom={resumo.vazias > 0 ? 'laranja' : 'neutro'} />
       </section>
 
       <section data-admin-reveal aria-label="Versão e sincronização" className="grid gap-2.5 sm:grid-cols-3">
@@ -227,15 +220,15 @@ export default function AdministracaoTab({
           { label: 'Nuvem', valor: nuvemConectada ? 'Conectada' : 'Sem conexão' },
           { label: 'Última sincronização', valor: ultimaSincronizacao || 'Ainda não sincronizou nesta sessão' },
         ].map(item => (
-          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1 block truncate text-sm font-bold text-slate-800">{item.valor}</strong>
+          <div key={item.label} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-sm font-bold text-slate-600">{item.label}</p>
+            <strong className="mt-1 block truncate text-sm font-bold text-slate-900">{item.valor}</strong>
           </div>
         ))}
       </section>
 
       <button type="button" onClick={() => setSecao('dados')} className="inline-flex min-h-10 w-fit items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 hover:border-emerald-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)">
-        <HardDrive className="h-4 w-4" aria-hidden="true" /> Ver os dados por coleção
+        <HardDrive className="h-4 w-4" aria-hidden="true" /> Ver os dados por tipo
       </button>
       </>)}
     </TelaCheia>

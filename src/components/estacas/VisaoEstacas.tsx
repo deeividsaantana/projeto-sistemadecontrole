@@ -10,7 +10,7 @@ import {
   type FrenteEstacas,
 } from '../../modules/estacas/avancoEstacas';
 import { formatarData, numero } from '../../utils/formato';
-import { CountUp } from '../../shared/ui';
+import { CartaoIndicador, CountUp } from '../../shared/ui';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CARTAO, FOCO } from '../cadastros/estilos';
 import CortinaEstacas from './CortinaEstacas';
 
@@ -67,9 +67,9 @@ export default function VisaoEstacas({ hoje, estacas, frentes, frenteAtual, onFr
   }
 
   const cartoes = [
-    { nome: 'Total a cravar', valor: total.previstas, ajuda: 'Estacas previstas em todas as frentes', Icone: Target, tom: 'text-slate-900' },
-    { nome: 'Já cravadas', valor: total.cravadas, ajuda: `${numero(total.metrosCravados, 1)} m dentro da terra`, Icone: Hammer, tom: 'text-[#176b4d]' },
-    { nome: 'Faltam', valor: total.faltam, ajuda: total.metrosACravar ? `${numero(total.metrosACravar, 1)} m de estaca` : 'Estacas ainda a cravar', Icone: Ruler, tom: total.faltam ? 'text-[#c2410c]' : 'text-[#176b4d]' },
+    { nome: 'Total a cravar', valor: total.previstas, ajuda: 'Estacas previstas em todas as frentes', Icone: Target, tom: 'neutro' as const },
+    { nome: 'Já cravadas', valor: total.cravadas, ajuda: `${numero(total.metrosCravados, 1)} m dentro da terra`, Icone: Hammer, tom: 'verde' as const },
+    { nome: 'Faltam', valor: total.faltam, ajuda: total.metrosACravar ? `${numero(total.metrosACravar, 1)} m de estaca` : 'Estacas ainda a cravar', Icone: Ruler, tom: total.faltam ? 'laranja' as const : 'verde' as const },
   ];
 
   return (
@@ -86,11 +86,16 @@ export default function VisaoEstacas({ hoje, estacas, frentes, frenteAtual, onFr
           </div>
         </div>
         {cartoes.map(({ nome, valor, ajuda, Icone, tom }) => (
-          <div key={nome} data-estacas-reveal className={`${CARTAO} estacas-vivo p-4 ${nome === 'Faltam' ? 'max-sm:col-span-2' : ''}`}>
-            <p className="flex items-center gap-2 text-sm font-semibold text-slate-600"><Icone className="size-4 text-[#5b6870]" aria-hidden="true" /> {nome}</p>
-            <p className={`mt-1 text-3xl font-black tabular-nums ${tom}`}><CountUp value={valor} /></p>
-            <p className="text-xs text-slate-500">{ajuda}</p>
-          </div>
+          <CartaoIndicador
+            key={nome}
+            className={`estacas-vivo ${nome === 'Faltam' ? 'max-sm:col-span-2' : ''}`}
+            dados={{ 'data-estacas-reveal': true }}
+            rotulo={nome}
+            valor={<CountUp value={valor} />}
+            detalhe={ajuda}
+            icone={Icone}
+            tom={tom}
+          />
         ))}
       </div>
 

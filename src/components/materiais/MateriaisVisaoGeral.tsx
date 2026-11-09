@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { ChevronRight, FileSpreadsheet, ListOrdered, Package, PackageMinus, PackageX, SlidersHorizontal, type LucideIcon } from 'lucide-react';
+import { FileSpreadsheet, ListOrdered, Package, PackageMinus, PackageX, SlidersHorizontal, type LucideIcon } from 'lucide-react';
 import type { EtapaServico, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../../types';
 import type { PosicaoEstoque } from '../../utils/estoque';
 import { pendenciasDeRecebimento, resumoDeRecebimento } from '../../utils/recebimentoMaterial';
@@ -11,7 +11,7 @@ import { rankingPor, type AvisoMaterial } from '../../modules/materials/avisosMa
 import { resumirBotaFora, viagensDeBotaFora } from '../../modules/materials/botaFora';
 import { normalizeComparable } from '../../utils/canonicalIdentity';
 import { formatarData, moeda, numero } from '../../utils/formato';
-import { CountUp, EmptyState, TabelaPadrao, type ColunaTabela } from '../../shared/ui';
+import { CartaoIndicador, CountUp, EmptyState, GradeIndicadores, TabelaPadrao, type ColunaTabela } from '../../shared/ui';
 import type { SecaoMateriais } from './MateriaisSecoes';
 import AvisosMateriais from './AvisosMateriais';
 import BarrasRanking from './BarrasRanking';
@@ -128,29 +128,21 @@ export default function MateriaisVisaoGeral({ hoje, materiais, movimentos, movim
 
   return (
     <div className="space-y-4">
-      <section aria-label="Indicadores de materiais" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <GradeIndicadores rotulo="Indicadores de materiais">
         {indicadores.map(({ rotulo, valor, detalhe, Icone, secao, alerta }) => (
-          <button
+          <CartaoIndicador
             key={rotulo}
-            type="button"
-            data-materiais-reveal
+            className="materiais-vivo"
+            dados={{ 'data-materiais-reveal': true }}
+            rotulo={rotulo}
+            valor={<CountUp value={valor} />}
+            detalhe={detalhe}
+            icone={Icone}
+            tom={alerta ? 'laranja' : 'neutro'}
             onClick={() => onIr(secao)}
-            className={`${CARTAO} materiais-vivo group flex min-w-0 flex-col p-4 text-left ${FOCO}`}
-          >
-            <span className="flex w-full items-start justify-between gap-2">
-              <span className="text-sm font-semibold text-slate-600">{rotulo}</span>
-              <span className={`hidden size-9 shrink-0 place-items-center rounded-xl sm:grid ${alerta ? 'bg-orange-50 text-[#c2410c]' : 'bg-emerald-50 text-[#176b4d]'}`}>
-                <Icone className="size-5" aria-hidden="true" />
-              </span>
-            </span>
-            <CountUp value={valor} className={`block text-3xl font-black tabular-nums ${alerta ? 'text-[#c2410c]' : 'text-slate-950'}`} />
-            <span className="mt-auto flex items-center gap-1 text-xs text-slate-500">
-              {detalhe}
-              <ChevronRight className="size-3.5 opacity-0 transition duration-200 group-hover:translate-x-0.5 group-hover:opacity-100 motion-reduce:transition-none" aria-hidden="true" />
-            </span>
-          </button>
+          />
         ))}
-      </section>
+      </GradeIndicadores>
 
       <AvisosMateriais avisos={avisos} onVerMovimentos={onVerMovimentos} />
 

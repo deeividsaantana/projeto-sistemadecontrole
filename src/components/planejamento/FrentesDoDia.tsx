@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { HardHat, Plus, Target, TrendingUp } from 'lucide-react';
+import { AlertTriangle, HardHat, Plus, Target, TrendingUp } from 'lucide-react';
 import type { FrenteServico, PlanejamentoItem, RegistroProducao, ServicoObra } from '../../types';
 import { SEM_FRENTE, avancoPorFrente, resumoDasFrentes, type AvancoFrente, type LinhaAvanco } from '../../modules/rotina/avancoFrentes';
 import { formatarData, numero } from '../../utils/formato';
-import { EmptyState, Modal } from '../../shared/ui';
+import { CartaoIndicador, EmptyState, GradeIndicadores, Modal } from '../../shared/ui';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, ROTULO } from '../cadastros/estilos';
 
 interface Props {
@@ -95,10 +95,12 @@ export function FrentesDoDia({ dia, responsavel, frentes, servicos, registros, p
 
   return (
     <div className="space-y-4">
-      <div data-previsto-reveal className="grid grid-cols-3 gap-2 sm:gap-3">
-        <div className={`${CARTAO} p-3 sm:p-4`}><p className="text-xs font-semibold text-slate-600 sm:text-sm">Trabalharam no dia</p><strong className="text-2xl font-black tabular-nums text-slate-900">{resumo.trabalharam}</strong></div>
-        <div className={`${CARTAO} p-3 sm:p-4`}><p className="text-xs font-semibold text-slate-600 sm:text-sm">Sem produção lançada</p><strong className={`text-2xl font-black tabular-nums ${resumo.semProducao ? 'text-[#c2410c]' : 'text-slate-900'}`}>{resumo.semProducao}</strong></div>
-        <div className={`${CARTAO} p-3 sm:p-4`}><p className="text-xs font-semibold text-slate-600 sm:text-sm">Serviços sem previsto</p><strong className="text-2xl font-black tabular-nums text-slate-900">{resumo.semPrevisto}</strong></div>
+      <div data-previsto-reveal>
+        <GradeIndicadores rotulo="Resumo do dia" colunas={3}>
+          <CartaoIndicador rotulo="Trabalharam no dia" valor={resumo.trabalharam} detalhe="frentes com produção" icone={HardHat} tom={resumo.trabalharam > 0 ? 'verde' : 'neutro'} />
+          <CartaoIndicador rotulo="Sem produção lançada" valor={resumo.semProducao} detalhe="frentes sem lançamento" icone={AlertTriangle} tom={resumo.semProducao ? 'laranja' : 'neutro'} />
+          <CartaoIndicador rotulo="Serviços sem previsto" valor={resumo.semPrevisto} detalhe="falta definir a meta" icone={Target} />
+        </GradeIndicadores>
       </div>
 
       <div className="grid items-start gap-3 lg:grid-cols-2">
