@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { CycleStatus } from '../../fleet/cycleHistory';
 import { adicionarEventoAoCiclo, salvarCiclosNoStorage, carregarCiclosDoStorage } from '../../fleet/cycleHistory';
+import { CAMPO } from '../cadastros/estilos';
 
 interface Props {
   equipamentoId: string;
@@ -101,7 +102,7 @@ export const RegistrarCiclo: React.FC<Props> = ({ equipamentoId, prefixo, usuari
             value={motivo}
             onChange={e => setMotivo(e.target.value)}
             placeholder="Ex: Troca de óleo, pneu furado"
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className={`${CAMPO}`}
             disabled={salvando}
           />
         </div>
@@ -118,7 +119,7 @@ export const RegistrarCiclo: React.FC<Props> = ({ equipamentoId, prefixo, usuari
             value={operador}
             onChange={e => setOperador(e.target.value)}
             placeholder="Ex: João Silva"
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            className={`${CAMPO}`}
             disabled={salvando}
           />
         </div>
@@ -135,7 +136,7 @@ export const RegistrarCiclo: React.FC<Props> = ({ equipamentoId, prefixo, usuari
             value={motivo}
             onChange={e => setMotivo(e.target.value)}
             placeholder="Ex: Canteiro SP-066"
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={`${CAMPO}`}
             disabled={salvando}
           />
         </div>

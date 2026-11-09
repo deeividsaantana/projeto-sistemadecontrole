@@ -24,6 +24,7 @@ import { Card, CartaoIndicador, EmptyState, PageHeader, isoDay, statusTone } fro
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { formatarData } from '../utils/formato';
+import { CAMPO } from './cadastros/estilos';
 
 interface DiarioObraTabProps {
   diarios: DiarioObra[];
@@ -154,14 +155,14 @@ export default function DiarioObraTab({
             <div className="flex flex-wrap items-center gap-2">
               <label>
                 <span className="sr-only">Obra</span>
-                <select value={obraId} onChange={event => { setObraId(event.target.value); setRascunho({}); }} className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500">
+                <select value={obraId} onChange={event => { setObraId(event.target.value); setRascunho({}); }} className={`${CAMPO}`}>
                   <option value="">Obra geral</option>
                   {obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
                 </select>
               </label>
               <label>
                 <span className="sr-only">Dia do diário</span>
-                <input type="date" value={dia} onChange={event => { setDia(event.target.value || hoje); setRascunho({}); }} className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" />
+                <input type="date" value={dia} onChange={event => { setDia(event.target.value || hoje); setRascunho({}); }} className={`${CAMPO}`} />
               </label>
               {/* No computador o cabeçalho fica parado: salvar está sempre à vista. */}
               {podeEditar && (
@@ -198,7 +199,7 @@ export default function DiarioObraTab({
                   value={(valor[campo] as string) || 'Bom'}
                   disabled={!podeEditar}
                   onChange={event => setRascunho({ ...rascunho, [campo]: event.target.value as CondicaoClimatica })}
-                  className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-800 outline-none focus:border-emerald-500 disabled:bg-slate-50"
+                  className={`${CAMPO} mt-1`}
                 >
                   {CLIMAS.map(item => <option key={item}>{item}</option>)}
                 </select>
@@ -211,7 +212,7 @@ export default function DiarioObraTab({
                 value={valor.horasParadasClima ?? ''}
                 disabled={!podeEditar}
                 onChange={event => setRascunho({ ...rascunho, horasParadasClima: Number(event.target.value) })}
-                className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500 disabled:bg-slate-50"
+                className={`${CAMPO} mt-1`}
               />
             </label>
             <label className="text-xs font-bold text-slate-600">
@@ -222,7 +223,7 @@ export default function DiarioObraTab({
                 disabled={!podeEditar}
                 onChange={event => setRascunho({ ...rascunho, precipitacaoMm: Number(event.target.value) })}
                 placeholder="0"
-                className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500 disabled:bg-slate-50"
+                className={`${CAMPO} mt-1`}
               />
               <span className="mt-1 block text-xs font-medium text-[#5b6870]">Alimenta o mapa de chuvas do mês.</span>
             </label>
@@ -245,7 +246,7 @@ export default function DiarioObraTab({
                 disabled={!podeEditar}
                 onChange={event => setRascunho({ ...rascunho, visitas: event.target.value })}
                 placeholder="Quem esteve na obra"
-                className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500 disabled:bg-slate-50"
+                className={`${CAMPO} mt-1`}
               />
             </label>
             <label className="text-xs font-bold text-slate-600 sm:col-span-2">
@@ -255,7 +256,7 @@ export default function DiarioObraTab({
                 disabled={!podeEditar}
                 onChange={event => setRascunho({ ...rascunho, observacao: event.target.value })}
                 rows={3}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-emerald-500 disabled:bg-slate-50"
+                className={`${CAMPO} mt-1`}
               />
             </label>
           </div>

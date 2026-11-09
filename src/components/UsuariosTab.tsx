@@ -11,6 +11,7 @@ import {
   type ManagedUserRole,
 } from '../services/masterDataApi';
 import { TelaCheia } from '../shared/ui/TelaCheia';
+import { CAMPO } from './cadastros/estilos';
 
 const roles: Array<{ value: ManagedUserRole; label: string; faz: string }> = [
   { value: 'admin', label: 'Administrador', faz: 'Pode tudo, inclusive excluir e cuidar dos usuários.' },
@@ -135,7 +136,7 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
           value={user.role}
           disabled={saving}
           onChange={event => setPendente({ user, changes: { role: event.target.value as ManagedUserRole } })}
-          className="min-h-11 rounded-lg border border-slate-300 bg-white px-2 text-[13px] font-medium text-slate-800 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/15 disabled:bg-slate-100 md:min-h-8"
+          className={`${CAMPO}`}
           aria-label={`Perfil de ${user.fullName}`}
         >
           {roles.map(role => <option key={role.value} value={role.value}>{role.label}</option>)}

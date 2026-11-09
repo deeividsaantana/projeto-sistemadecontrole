@@ -46,7 +46,7 @@ import {
 } from '../shared/ui';
 import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
 import { TelaCheia } from '../shared/ui/TelaCheia';
-import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from './cadastros/estilos';
+import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO } from './cadastros/estilos';
 import { ManutencaoHoje } from './manutencao/ManutencaoHoje';
 import { FilaOficina } from './manutencao/FilaOficina';
 import { ConferenciaManutencao } from './manutencao/ConferenciaManutencao';
@@ -522,14 +522,14 @@ export default function ManutencaoTab({
               value={busca}
               onChange={event => setBusca(event.target.value)}
               placeholder="Número, prefixo, problema, responsável..."
-              className="min-h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all duration-150"
+              className={`${CAMPO} pl-9 pr-3`}
             />
           </label>
           <select
             value={filtroStatus}
             onChange={event => setFiltroStatus(event.target.value as (typeof STATUS_FILTRO)[number])}
             aria-label="Filtrar por situação"
-            className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all duration-150"
+            className={`${CAMPO} sm:w-auto`}
           >
             {STATUS_FILTRO.map(item => <option key={item}>{item}</option>)}
           </select>
@@ -537,7 +537,7 @@ export default function ManutencaoTab({
             value={filtroMotivo}
             onChange={event => setFiltroMotivo(event.target.value)}
             aria-label="Filtrar por motivo"
-            className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all duration-150 sm:max-w-[16rem]"
+            className={`${CAMPO} sm:w-auto sm:max-w-[16rem]`}
           >
             <option value="todos">Todos os motivos</option>
             {motivosDisponiveis.map(motivo => <option key={motivo} value={motivo}>{motivo}</option>)}
@@ -591,6 +591,7 @@ export default function ManutencaoTab({
     >
       {subtela === 'ordens' && (
         <TabelaPadrao
+          exportar={false}
           titulo="Ordens de serviço"
           linhas={lista}
           colunas={colunasOrdens}
@@ -699,7 +700,7 @@ export default function ManutencaoTab({
               ref={equipamentoFieldRef}
               value={form.equipamentoId}
               onChange={event => setForm({ ...form, equipamentoId: event.target.value })}
-              className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-800 outline-none focus:border-emerald-500"
+              className={`${CAMPO} mt-1`}
             >
               <option value="">Selecione</option>
               {[...equipamentos]
@@ -709,51 +710,51 @@ export default function ManutencaoTab({
           </label>
           <label className="text-xs font-bold text-slate-600">
             Categoria
-            <select value={form.tipo} onChange={event => setForm({ ...form, tipo: event.target.value as OrdemServico['tipo'] })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-800 outline-none focus:border-emerald-500">
+            <select value={form.tipo} onChange={event => setForm({ ...form, tipo: event.target.value as OrdemServico['tipo'] })} className={`${CAMPO} mt-1`}>
               {TIPOS.map(item => <option key={item}>{item}</option>)}
             </select>
           </label>
           <label className="text-xs font-bold text-slate-600">
             Prioridade
-            <select value={form.prioridade} onChange={event => setForm({ ...form, prioridade: event.target.value as OrdemServico['prioridade'] })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-800 outline-none focus:border-emerald-500">
+            <select value={form.prioridade} onChange={event => setForm({ ...form, prioridade: event.target.value as OrdemServico['prioridade'] })} className={`${CAMPO} mt-1`}>
               {PRIORIDADES.map(item => <option key={item}>{item}</option>)}
             </select>
           </label>
           <label className="text-xs font-bold text-slate-600">
             Oficina
-            <input value={form.oficina} onChange={event => setForm({ ...form, oficina: event.target.value })} placeholder="Interna ou terceiro" className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <input value={form.oficina} onChange={event => setForm({ ...form, oficina: event.target.value })} placeholder="Interna ou terceiro" className={`${CAMPO} mt-1`} />
           </label>
           <label className="text-xs font-bold text-slate-600">
             Data de abertura
-            <input type="date" value={form.dataAbertura} onChange={event => setForm({ ...form, dataAbertura: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <input type="date" value={form.dataAbertura} onChange={event => setForm({ ...form, dataAbertura: event.target.value })} className={`${CAMPO} mt-1`} />
           </label>
           <label className="text-xs font-bold text-slate-600">
             Hora de abertura
-            <input type="time" value={form.horaAbertura} onChange={event => setForm({ ...form, horaAbertura: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <input type="time" value={form.horaAbertura} onChange={event => setForm({ ...form, horaAbertura: event.target.value })} className={`${CAMPO} mt-1`} />
           </label>
           <label className="text-xs font-bold text-slate-600 sm:col-span-2">
             Problema
-            <input value={form.motivo} onChange={event => setForm({ ...form, motivo: event.target.value })} placeholder="Quebra, preventiva, pneu, elétrica..." className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <input value={form.motivo} onChange={event => setForm({ ...form, motivo: event.target.value })} placeholder="Quebra, preventiva, pneu, elétrica..." className={`${CAMPO} mt-1`} />
           </label>
           <label className="text-xs font-bold text-slate-600 sm:col-span-2">
             Descrição
-            <textarea value={form.descricao} onChange={event => setForm({ ...form, descricao: event.target.value })} rows={3} placeholder="O que aconteceu e o que precisa ser atendido" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <textarea value={form.descricao} onChange={event => setForm({ ...form, descricao: event.target.value })} rows={3} placeholder="O que aconteceu e o que precisa ser atendido" className={`${CAMPO} mt-1`} />
           </label>
           <label className="text-xs font-bold text-slate-600 sm:col-span-2">
             Solução
-            <textarea value={form.solucao} onChange={event => setForm({ ...form, solucao: event.target.value })} rows={2} placeholder="O que foi feito para liberar o equipamento" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <textarea value={form.solucao} onChange={event => setForm({ ...form, solucao: event.target.value })} rows={2} placeholder="O que foi feito para liberar o equipamento" className={`${CAMPO} mt-1`} />
           </label>
           <label className="text-xs font-bold text-slate-600">
             Data de liberação
-            <input type="date" value={form.dataConclusao} onChange={event => setForm({ ...form, dataConclusao: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <input type="date" value={form.dataConclusao} onChange={event => setForm({ ...form, dataConclusao: event.target.value })} className={`${CAMPO} mt-1`} />
           </label>
           <label className="text-xs font-bold text-slate-600">
             Hora de liberação
-            <input type="time" value={form.horaConclusao} onChange={event => setForm({ ...form, horaConclusao: event.target.value })} disabled={!form.dataConclusao} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-emerald-500 disabled:bg-slate-50" />
+            <input type="time" value={form.horaConclusao} onChange={event => setForm({ ...form, horaConclusao: event.target.value })} disabled={!form.dataConclusao} className={`${CAMPO} mt-1`} />
           </label>
           <label className="text-xs font-bold text-slate-600 sm:col-span-2">
             Observação
-            <textarea value={form.observacao} onChange={event => setForm({ ...form, observacao: event.target.value })} rows={2} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-emerald-500" />
+            <textarea value={form.observacao} onChange={event => setForm({ ...form, observacao: event.target.value })} rows={2} className={`${CAMPO} mt-1`} />
           </label>
         </div>
         {editando && horasDaOrdem(editando) !== undefined && (

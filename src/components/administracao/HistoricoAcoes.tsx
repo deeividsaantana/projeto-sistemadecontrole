@@ -5,7 +5,7 @@
  * existe contador salvo que possa divergir do histórico.
  */
 import { useMemo, useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
+import { History, ShieldAlert, ShieldCheck, Trash2, Users } from 'lucide-react';
 import type { HistoryLog } from '../../types';
 import {
   contarPor,
@@ -17,6 +17,7 @@ import {
 } from '../../utils/auditoria';
 import {
   Badge,
+  CartaoIndicador,
   EmptyState,
   PeriodFilter,
   TabelaPadrao,
@@ -24,6 +25,7 @@ import {
   type ColunaTabela,
   type PeriodValue,
 } from '../../shared/ui';
+import { CAMPO } from '../cadastros/estilos';
 
 interface HistoricoAcoesProps {
   logs: HistoryLog[];
@@ -78,24 +80,17 @@ export default function HistoricoAcoes({ logs }: HistoricoAcoesProps) {
         <PeriodFilter value={period} onChange={setPeriod} />
       </div>
 
-      <section data-admin-reveal className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-        {[
-          { label: 'Ações no período', valor: String(resumo.total) },
-          { label: 'Ações sensíveis', valor: String(resumo.sensiveis) },
-          { label: 'Exclusões', valor: String(resumo.exclusoes) },
-          { label: 'Usuários ativos', valor: String(resumo.usuarios) },
-        ].map(item => (
-          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-xs font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
-            <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
-          </div>
-        ))}
+      <section data-admin-reveal aria-label="Resumo do período" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <CartaoIndicador rotulo="Ações no período" valor={resumo.total} detalhe="tudo o que foi alterado" icone={History} />
+        <CartaoIndicador rotulo="Ações sensíveis" valor={resumo.sensiveis} detalhe="acessos, permissões e dados" icone={ShieldAlert} tom={resumo.sensiveis > 0 ? 'laranja' : 'neutro'} />
+        <CartaoIndicador rotulo="Exclusões" valor={resumo.exclusoes} detalhe="registros apagados" icone={Trash2} tom={resumo.exclusoes > 0 ? 'vermelho' : 'neutro'} />
+        <CartaoIndicador rotulo="Usuários ativos" valor={resumo.usuarios} detalhe="pessoas que mexeram" icone={Users} />
       </section>
 
       <div data-admin-reveal className="grid gap-3 lg:grid-cols-2">
         {[['Por usuário', porUsuario], ['Por tela', porTela]].map(([titulo, dados]) => (
-          <section key={String(titulo)} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">{String(titulo)}</h2>
+          <section key={String(titulo)} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4">
+            <h2 className="text-sm font-bold text-slate-600">{String(titulo)}</h2>
             {(dados as Array<{ grupo: string; quantidade: number }>).length === 0 ? (
               <p className="mt-2 text-xs text-slate-500">Sem registros no período.</p>
             ) : (
@@ -115,14 +110,14 @@ export default function HistoricoAcoes({ logs }: HistoricoAcoesProps) {
       <div data-admin-reveal className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-xs font-bold text-slate-600">
           Usuário
-          <select value={usuario} onChange={event => { setUsuario(event.target.value); }} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500">
+          <select value={usuario} onChange={event => { setUsuario(event.target.value); }} className={`${CAMPO} mt-1`}>
             <option value="">Todos</option>
             {usuariosDosLogs(logs).map(item => <option key={item} value={item}>{item}</option>)}
           </select>
         </label>
         <label className="text-xs font-bold text-slate-600">
           Tela
-          <select value={tela} onChange={event => { setTela(event.target.value); }} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500">
+          <select value={tela} onChange={event => { setTela(event.target.value); }} className={`${CAMPO} mt-1`}>
             <option value="">Todas</option>
             {telasDosLogs(logs).map(item => <option key={item} value={item}>{item}</option>)}
           </select>
@@ -133,7 +128,7 @@ export default function HistoricoAcoes({ logs }: HistoricoAcoesProps) {
             value={busca}
             onChange={event => { setBusca(event.target.value); }}
             placeholder="Ação, tela, usuário ou descrição"
-            className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500"
+            className={`${CAMPO} mt-1`}
           />
         </label>
         <label className="flex items-end gap-2 text-xs font-bold text-slate-600">

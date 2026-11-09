@@ -4,6 +4,7 @@ import type { EquipmentCycle, CycleStatus } from '../../fleet/cycleHistory';
 import { calcularMetricasCiclos, extrairFasesCiclo } from '../../fleet/cycleHistory';
 import { imprimirCiclos, baixarCsvCiclos } from '../../fleet/exportarCiclosPdf';
 import { CycleTimeline } from './CycleTimeline';
+import { CAMPO } from '../cadastros/estilos';
 
 interface Props {
   ciclos: EquipmentCycle[];
@@ -171,7 +172,7 @@ export const HistoricoCiclos: React.FC<Props> = ({ ciclos, equipamentos }) => {
             <select
               value={filtros.equipamentoId}
               onChange={e => setFiltros({ ...filtros, equipamentoId: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`${CAMPO}`}
             >
               <option value="">Todos</option>
               {equipamentosUnicos.map(eq => (
@@ -189,7 +190,7 @@ export const HistoricoCiclos: React.FC<Props> = ({ ciclos, equipamentos }) => {
               type="date"
               value={filtros.dataInicio}
               onChange={e => setFiltros({ ...filtros, dataInicio: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`${CAMPO}`}
             />
           </div>
 
@@ -200,7 +201,7 @@ export const HistoricoCiclos: React.FC<Props> = ({ ciclos, equipamentos }) => {
               type="date"
               value={filtros.dataFim}
               onChange={e => setFiltros({ ...filtros, dataFim: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`${CAMPO}`}
             />
           </div>
 
@@ -210,7 +211,7 @@ export const HistoricoCiclos: React.FC<Props> = ({ ciclos, equipamentos }) => {
             <select
               value={filtros.status}
               onChange={e => setFiltros({ ...filtros, status: e.target.value as CycleStatus | '' })}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`${CAMPO}`}
             >
               <option value="">Todos</option>
               <option value="Em operação">Em operação</option>
@@ -228,7 +229,7 @@ export const HistoricoCiclos: React.FC<Props> = ({ ciclos, equipamentos }) => {
               value={filtros.busca}
               onChange={e => setFiltros({ ...filtros, busca: e.target.value })}
               placeholder="Prefixo..."
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`${CAMPO}`}
             />
           </div>
 
