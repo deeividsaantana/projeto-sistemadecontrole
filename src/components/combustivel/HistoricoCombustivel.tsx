@@ -524,6 +524,7 @@ export default function HistoricoCombustivel({
 
         <div data-comb-reveal className="flex min-h-[22rem] min-w-0 flex-1 flex-col">
           <TabelaPadrao
+            exportar={false}
             titulo={tituloLista}
             linhas={linhasTabela}
             colunas={colunasTabela}

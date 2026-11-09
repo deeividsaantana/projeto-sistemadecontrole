@@ -60,6 +60,7 @@ export default function CadastroLista({ titulo, linhas, colunas, mostrarSituacao
 
   return (
     <TabelaPadrao
+      exportar={false}
       titulo={titulo}
       linhas={linhas}
       colunas={colunasTabela}

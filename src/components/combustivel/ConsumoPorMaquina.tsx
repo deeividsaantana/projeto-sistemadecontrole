@@ -260,6 +260,7 @@ export default function ConsumoPorMaquina({ abastecimentos, equipamentos, empres
           </header>
           <div className="flex min-h-[18rem] flex-1 flex-col xl:min-h-0">
             <TabelaPadrao
+              exportar={false}
               titulo="Consumo de diesel por máquina"
               linhas={visiveis}
               colunas={COLUNAS_CONSUMO}

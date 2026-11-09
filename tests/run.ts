@@ -246,3 +246,4 @@ import './cycleHistory.test';
 import './publicPresenceSaturday.test';
 import './navigationSyncPolicy.test';
 import './lazyLoading.test';
+import './exportarTabela.test';

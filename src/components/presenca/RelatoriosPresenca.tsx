@@ -328,6 +328,7 @@ export default function RelatoriosPresenca({ registros, funcionarios, empresas, 
           </label>
         </div>
         <TabelaPadrao
+          exportar={false}
           titulo="Presença por pessoa no período"
           linhas={colaboradoresVisiveis}
           colunas={colunasPessoas}
