@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { getLoginErrorMessage } from '../src/auth/authService';
 
 // Erros no formato que o Supabase Auth devolve: Error com `code` e `status`.
@@ -24,3 +25,8 @@ assert.equal(getLoginErrorMessage(new Error('SUPABASE_CONFIG_MISSING: url')), 'O
 assert.equal(getLoginErrorMessage(undefined), conexao);
 
 console.log('ok - mensagens de erro do login');
+
+// Sair num aparelho não pode derrubar a mesma conta nos outros aparelhos.
+const authServiceSource = readFileSync(new URL('../src/auth/authService.ts', import.meta.url), 'utf8');
+assert.match(authServiceSource, /auth\.signOut\(\{ scope: 'local' \}\)/);
+console.log('ok - sair encerra só este aparelho');

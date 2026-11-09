@@ -12,8 +12,11 @@ export const signInWithCorporateEmail = async (_auth: SupabaseAuth, email: strin
 export const sendPasswordRecoveryEmail = (_auth: SupabaseAuth, email: string) =>
   getSupabaseClient().auth.resetPasswordForEmail(normalizeLoginEmail(email));
 
+// Sair encerra só este aparelho. O padrão do Supabase ('global') derruba a
+// mesma conta no celular e no computador ao mesmo tempo, inclusive quando a
+// sessão expira por inatividade num aparelho esquecido.
 export const signOutCurrentUser = async (_auth: SupabaseAuth): Promise<void> => {
-  const { error } = await getSupabaseClient().auth.signOut();
+  const { error } = await getSupabaseClient().auth.signOut({ scope: 'local' });
   if (error) throw error;
 };
 
