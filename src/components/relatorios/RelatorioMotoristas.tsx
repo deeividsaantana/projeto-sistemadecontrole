@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { Funcionario, ControleEquipamentoDiario } from '../../types';
 import { TabelaPadrao, type ColunaTabela } from '../../shared/ui/TabelaPadrao';
+import { formatarData } from '../../utils/formato';
 
 interface Props {
   funcionarios: readonly Funcionario[];
@@ -66,38 +67,28 @@ export function RelatorioMotoristas({ funcionarios, registros }: Props) {
     },
     {
       chave: 'equipamentoUltimo',
-      titulo: 'Último Equipamento',
+      titulo: 'Último equipamento',
       render: linha => linha.equipamentoUltimo || '—',
       valorOrdenacao: linha => linha.equipamentoUltimo,
     },
     {
       chave: 'dataUltimo',
-      titulo: 'Data Último Uso',
-      render: linha => linha.dataUltimo || '—',
+      titulo: 'Último uso',
+      render: linha => (linha.dataUltimo ? formatarData(linha.dataUltimo) : '—'),
       valorOrdenacao: linha => linha.dataUltimo,
     },
   ];
 
+  // O total e o "Baixar planilha" ficam no rodapé da tabela, como em toda lista.
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-bold text-slate-950">Motoristas Cadastrados</h2>
-        <p className="mt-1 text-sm text-slate-600">
-          {dados.length}
-          {' '}
-          {dados.length === 1 ? 'motorista' : 'motoristas'}
-          {' '}
-          com atividades
-        </p>
-      </div>
-      <TabelaPadrao
-        titulo="Relatório de motoristas"
-        linhas={dados}
-        colunas={colunas}
-        idDaLinha={item => item.id}
-        nomeDoItem={{ um: 'motorista', varios: 'motoristas' }}
-        semPaginacao
-      />
-    </div>
+    <TabelaPadrao
+      titulo="Motoristas com atividade"
+      linhas={dados}
+      colunas={colunas}
+      idDaLinha={item => item.id}
+      nomeDoItem={{ um: 'motorista', varios: 'motoristas' }}
+      ordenacaoInicial={{ chave: 'quantidadeLancamentos', direcao: 'desc' }}
+      vazio="Nenhum motorista com lançamento na frota ainda."
+    />
   );
 }

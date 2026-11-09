@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { Equipamento, ControleEquipamentoDiario } from '../../types';
+import { TabelaPadrao, type ColunaTabela } from '../../shared/ui/TabelaPadrao';
 
 interface Props {
   equipamentos: readonly Equipamento[];
@@ -9,6 +10,12 @@ interface Props {
 interface EquipamentoComAtividade extends Equipamento {
   atividades: number;
 }
+
+const COLUNAS: ColunaTabela<EquipamentoComAtividade>[] = [
+  { chave: 'prefixo', titulo: 'Prefixo', valorOrdenacao: eq => eq.prefixo, render: eq => <span className="font-mono font-bold text-slate-950">{eq.prefixo}</span> },
+  { chave: 'modelo', titulo: 'Modelo', valorOrdenacao: eq => eq.modelo || null, render: eq => eq.modelo || 'Sem modelo' },
+  { chave: 'atividades', titulo: 'Lançamentos', alinhamento: 'direita', valorOrdenacao: eq => eq.atividades, render: eq => eq.atividades.toLocaleString('pt-BR') },
+];
 
 export function ListaEquipamentos({ equipamentos, registros }: Props) {
   const equipamentosComAtividade = useMemo(() => {
@@ -27,36 +34,14 @@ export function ListaEquipamentos({ equipamentos, registros }: Props) {
   }, [equipamentos, registros]);
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-bold text-slate-950">Lista de Equipamentos</h2>
-        <p className="mt-1 text-sm text-slate-600">
-          {equipamentosComAtividade.length}
-          {' '}
-          {equipamentosComAtividade.length === 1 ? 'equipamento' : 'equipamentos'}
-          {' '}
-          cadastrado
-          {equipamentosComAtividade.length !== 1 ? 's' : ''}
-        </p>
-      </div>
-
-      <div className="grid gap-3">
-        {equipamentosComAtividade.map(eq => (
-          <div
-            key={eq.id}
-            className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-4 transition hover:bg-slate-100"
-          >
-            <div>
-              <p className="font-bold text-slate-950">{eq.prefixo}</p>
-              <p className="text-xs text-slate-600">{eq.modelo || 'Sem modelo'}</p>
-            </div>
-            <div className="text-right">
-              <p className="font-bold text-emerald-700">{eq.atividades}</p>
-              <p className="text-xs text-slate-600">lançamentos</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    <TabelaPadrao
+      titulo="Equipamentos e lançamentos na frota"
+      linhas={equipamentosComAtividade}
+      colunas={COLUNAS}
+      idDaLinha={item => item.id}
+      nomeDoItem={{ um: 'equipamento', varios: 'equipamentos' }}
+      ordenacaoInicial={{ chave: 'atividades', direcao: 'desc' }}
+      vazio="Nenhum equipamento cadastrado ainda."
+    />
   );
 }
