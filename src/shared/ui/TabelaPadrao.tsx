@@ -64,9 +64,11 @@
  * - escolher colunas é só passar menos colunas: a tela guarda a escolha.
  */
 import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent, type ReactNode, type Ref } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Download } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Download, Inbox } from 'lucide-react';
 import { useTelaLarga } from '../hooks/useTelaLarga';
 import { cn } from './styles';
+import { EmptyState } from './EmptyState';
+import { LoadingState } from './LoadingState';
 import { nomeDoArquivo, tabelaParaCsv, type ValorCelula } from '../../utils/exportarTabela';
 
 export type DirecaoOrdenacao = 'asc' | 'desc';
@@ -563,10 +565,10 @@ export function TabelaPadrao<T>({
   return (
     <div className={cn('flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white', className)} data-testid={testId}>
       {carregando ? (
-        <p role="status" className="px-4 py-10 text-center text-sm font-semibold text-slate-600">Carregando…</p>
+        <LoadingState message={`Carregando ${titulo.toLocaleLowerCase('pt-BR')}…`} />
       ) : linhas.length === 0 ? (
         typeof vazio === 'string'
-          ? <p className="px-4 py-10 text-center text-sm font-semibold text-slate-600">{vazio}</p>
+          ? <EmptyState icon={Inbox} title={vazio} />
           : vazio
       ) : telaLarga ? (
         <div

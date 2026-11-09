@@ -24,7 +24,7 @@ import {
 import { getFuelCompetencePeriodLabel } from '../../modules/frota/fuelReport';
 import { nomeDoMes, tituloDaAba } from '../../modules/frota/planilhaDiesel';
 import { idsRepetidos } from '../../modules/frota/repetidosDiesel';
-import { isoDay } from '../../shared/ui';
+import { EmptyState, isoDay } from '../../shared/ui';
 import { BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO, reduzMovimento } from '../cadastros/estilos';
 
 /** Pedido de filtro vindo de fora (o relatório abre a lista já filtrada). */
@@ -570,12 +570,13 @@ export default function HistoricoCombustivel({
               </span>
             )}
             vazio={(
-              <div className="flex-1 px-4 py-14 text-center">
-                <History className="mx-auto size-8 text-slate-300" aria-hidden="true" />
-                <p className="mt-3 font-semibold text-slate-700">Nenhum abastecimento neste mês</p>
-                <p className="mt-1 text-sm text-[#5b6870]">Toque em outro mês {telaLarga ? 'no rodapé' : 'logo acima'} ou em "Ver tudo".</p>
-                <button type="button" onClick={() => { escolherAba(ABA_TUDO); limparFiltros(); }} className={`${BOTAO_SECUNDARIO} mt-4`}>Ver tudo</button>
-              </div>
+              <EmptyState
+                className="flex-1"
+                icon={History}
+                title="Nenhum abastecimento neste mês"
+                description={`Toque em outro mês ${telaLarga ? 'no rodapé' : 'logo acima'} ou em "Ver tudo".`}
+                action={<button type="button" onClick={() => { escolherAba(ABA_TUDO); limparFiltros(); }} className={BOTAO_SECUNDARIO}>Ver tudo</button>}
+              />
             )}
             testId="combustivel-lista-historico"
           />

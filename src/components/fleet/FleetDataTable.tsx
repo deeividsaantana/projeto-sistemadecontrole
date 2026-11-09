@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { Check, Pencil, Trash2, X } from 'lucide-react';
+import { Check, Pencil, SearchX, Trash2, X } from 'lucide-react';
+import { EmptyState } from '../../shared/ui/EmptyState';
 import type { FleetCurrentState } from '../../fleet/domain';
 import FleetStatusBadge from './FleetStatusBadge';
 import { FOCO, TOM_SITUACAO } from '../cadastros/estilos';
@@ -183,10 +184,7 @@ export default function FleetDataTable({
           rotulo: row => `Selecionar ${row.equipment.prefix}`,
         }}
         vazio={(
-          <div className="grid place-items-center gap-1 px-6 py-12 text-center">
-            <p className="text-base font-bold text-slate-800">Nenhum lançamento com esses filtros</p>
-            <p className="text-sm text-[#5b6870]">Troque o dia, limpe os filtros ou faça um novo lançamento.</p>
-          </div>
+          <EmptyState icon={SearchX} title="Nenhum lançamento com esses filtros" description="Troque o dia, limpe os filtros ou faça um novo lançamento." />
         )}
       />
     </div>

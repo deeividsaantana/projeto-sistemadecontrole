@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { SearchX } from 'lucide-react';
 import type { ColunaCadastro, LinhaCadastro } from '../../utils/cadastrosLista';
-import { TabelaPadrao, type ColunaTabela } from '../../shared/ui';
+import { EmptyState, TabelaPadrao, type ColunaTabela } from '../../shared/ui';
 import { BOTAO_SECUNDARIO, TOM_SITUACAO } from './estilos';
 
 interface Props {
@@ -81,11 +81,13 @@ export default function CadastroLista({ titulo, linhas, colunas, mostrarSituacao
       }}
       testId="cadastro-lista"
       vazio={(
-        <div className="flex flex-col items-center gap-2 px-6 py-12 text-center" data-testid="cadastro-lista-vazia">
-          <SearchX className="size-8 text-slate-400" aria-hidden="true" />
-          <p className="text-base font-bold text-slate-800">{vazio.titulo}</p>
-          <p className="max-w-sm text-sm text-slate-600">{vazio.texto}</p>
-          {vazio.acao && <button type="button" onClick={vazio.acao.onClick} className={`${BOTAO_SECUNDARIO} mt-2`}>{vazio.acao.label}</button>}
+        <div data-testid="cadastro-lista-vazia">
+          <EmptyState
+            icon={SearchX}
+            title={vazio.titulo}
+            description={vazio.texto}
+            action={vazio.acao && <button type="button" onClick={vazio.acao.onClick} className={BOTAO_SECUNDARIO}>{vazio.acao.label}</button>}
+          />
         </div>
       )}
     />
