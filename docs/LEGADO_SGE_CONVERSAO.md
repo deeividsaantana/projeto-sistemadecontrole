@@ -23,8 +23,10 @@ tinham cabeçalho correspondente em `Apropriação`. Elas permanecem identificad
 como órfãs e inconsistentes, preservando 100% das 9.408 linhas HP, 3.507 linhas
 HT e 1.243 linhas de produção.
 
-O arquivo convertido está em `public/legacy-data/sge-operacional.json`. Ele é
-carregado somente quando o administrador abre **Parte Diária > Legado SGE**.
+O arquivo convertido ficava em `public/legacy-data/sge-operacional.json`, mas a
+tela que o lia saiu do app e o arquivo continuava público no site, com nome e
+matrícula de operadores. Foi retirado do repositório na auditoria de 09/11/2026.
+Se a tela voltar, os dados precisam vir por uma rota com login, não de `public/`.
 
 ## Mapeamento
 
