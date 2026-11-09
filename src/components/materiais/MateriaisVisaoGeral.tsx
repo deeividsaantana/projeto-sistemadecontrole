@@ -30,8 +30,8 @@ const COLUNAS_PENDENCIAS: ColunaTabela<Pendencia>[] = [
     valorOrdenacao: item => item.material,
     render: item => (
       <>
-        <strong className="block text-slate-900">{item.material}</strong>
-        <span className="text-xs text-slate-600">{formatarData(item.data)}</span>
+        <strong className="text-slate-900">{item.material}</strong>
+        <span className="text-xs text-slate-600"> · {formatarData(item.data)}</span>
       </>
     ),
     dica: item => item.material,

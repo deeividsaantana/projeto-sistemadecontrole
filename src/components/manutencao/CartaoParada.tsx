@@ -123,7 +123,7 @@ export function CartaoParada({ registro, parada, ordemNumero, tipo, podeEditar, 
       <header className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h3 id={`${idBase}-prefixo`} className="truncate text-3xl font-black leading-tight tracking-tight text-slate-950">{registro.prefixo}</h3>
-          <p className="mt-1 truncate text-xs font-semibold uppercase tracking-wider text-slate-500">{[tipo, ordemNumero].filter(Boolean).join(' · ')}</p>
+          <p className="mt-1 break-words text-xs font-semibold uppercase tracking-wider text-slate-500">{[tipo, ordemNumero].filter(Boolean).join(' · ')}</p>
         </div>
         <SeloSituacao parada={parada} />
       </header>

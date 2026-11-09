@@ -601,13 +601,6 @@ export default function ControlePresencaTab({
       gsap.fromTo(barraEfetivo, { scaleX: 0 }, { scaleX: 1, duration: 0.8, ease: 'power3.out', delay: 0.1 });
     }
 
-    // Seta decorativa do card de efetivo: um leve vaivém contínuo sugere que o
-    // número segue vivo, sem competir com a leitura do valor.
-    const setaEfetivo = scope.querySelector<HTMLElement>('[data-seta-efetivo]');
-    if (setaEfetivo && !reduceMotion) {
-      gsap.to(setaEfetivo, { x: 5, duration: 1.3, ease: 'sine.inOut', repeat: -1, yoyo: true, delay: 0.5 });
-    }
-
     // Os cartões entram em cascata, de baixo para cima e de leve: dá ritmo à
     // leitura sem atrasar quem só quer ver o número.
     if (!reduceMotion) {
@@ -1291,7 +1284,6 @@ export default function ControlePresencaTab({
                 esse preenchimento sobrava uma faixa em branco do lado esquerdo. */}
             <div className="space-y-5">
               <article data-cartao-painel className={`renea-card ${PANEL} relative overflow-hidden p-4 transition-shadow duration-200 hover:shadow-[0_12px_28px_-16px_rgba(16,24,32,0.25)] sm:p-5`}>
-                <div data-seta-efetivo className="absolute right-5 top-5 text-emerald-800/20"><ArrowRight className="h-12 w-12" strokeWidth={1} /></div>
                 <div className="relative">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Efetivo confirmado</p>

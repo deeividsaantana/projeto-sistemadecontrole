@@ -5,7 +5,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { ArrowLeft, ClipboardCheck, Search, Truck, UserRound, UserCog, Users } from 'lucide-react';
+import { ArrowLeft, ClipboardCheck, Search, Truck, UserPlus, UserRound, UserCog, Users } from 'lucide-react';
 import type {
   ChecklistEquipamento,
   ControleEquipamentoDiario,
@@ -367,7 +367,7 @@ export default function ColaboradoresTab({
         <PageHeader
           eyebrow="Pessoas"
           title="Colaboradores"
-          actions={podeAbrir('cadastros') && <button type="button" onClick={() => onNavigate('cadastros')} className={`inline-flex min-h-11 items-center rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white transition hover:opacity-90 lg:min-h-10 ${FOCO}`}>Cadastrar colaborador</button>}
+          actions={podeAbrir('cadastros') && <button type="button" onClick={() => onNavigate('cadastros')} className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white transition hover:opacity-90 lg:min-h-10 ${FOCO}`}><UserPlus className="size-5" aria-hidden="true" /> Cadastrar colaborador</button>}
         />
       </div>}
       faixa={<div data-colaboradores-reveal className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-3 sm:flex-row">

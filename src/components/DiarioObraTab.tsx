@@ -6,7 +6,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { Camera, CloudRain, NotebookPen, Users } from 'lucide-react';
+import { Camera, CloudRain, NotebookPen, Save, Users } from 'lucide-react';
 import MapaChuva from './MapaChuva';
 import type {
   ApontamentoOperacional,
@@ -165,7 +165,8 @@ export default function DiarioObraTab({
               </label>
               {/* No computador o cabeçalho fica parado: salvar está sempre à vista. */}
               {podeEditar && (
-                <button type="button" onClick={salvar} className="hidden min-h-10 items-center rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white transition-colors hover:bg-emerald-800 lg:inline-flex">
+                <button type="button" onClick={salvar} className="hidden min-h-10 items-center gap-2 rounded-lg bg-[#176b4d] px-4 text-sm font-bold text-white transition hover:opacity-90 lg:inline-flex">
+                  <Save className="size-4" aria-hidden="true" />
                   {diario ? 'Atualizar diário' : 'Registrar diário'}
                 </button>
               )}
@@ -273,7 +274,8 @@ export default function DiarioObraTab({
             </div>
           )}
           {podeEditar && (
-            <button type="button" onClick={salvar} className="mt-4 min-h-11 w-full rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white transition-colors hover:bg-emerald-800 sm:w-auto lg:hidden">
+            <button type="button" onClick={salvar} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#176b4d] px-4 text-sm font-bold text-white transition hover:opacity-90 sm:w-auto lg:hidden">
+              <Save className="size-4" aria-hidden="true" />
               {diario ? 'Atualizar diário' : 'Registrar diário'}
             </button>
           )}

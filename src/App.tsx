@@ -667,6 +667,8 @@ export default function App() {
   const [presencaPublicaAutenticado, setPresencaPublicaAutenticado] = useState<Funcionario | null>(null);
   const [mostrarModalEscalaSabado, setMostrarModalEscalaSabado] = useState(false);
 
+  const nomeDaTelaAtual = ALL_NAVIGATION_ITEMS.find(item => item.id === activeTab)?.label;
+
   useEffect(() => {
     if (!isLoggedIn || !currentUser || externalTicketLink || externalPresenceToken) return;
     const navigationItem = ALL_NAVIGATION_ITEMS.find(item => item.id === activeTab);
@@ -4529,12 +4531,17 @@ export default function App() {
 
       {/* Mobile navigation header */}
       <header className="lg:hidden flex items-center justify-between h-[4.25rem] bg-white border-b border-slate-200 px-4 text-slate-900 print:hidden shrink-0" id="mobile-header">
-        <img
-          src={reneaLogo}
-          alt="RENEA Infraestrutura"
-          className="h-6 w-auto object-contain"
-          referrerPolicy="no-referrer"
-        />
+        {/* No celular não há menu nem trilha à vista: o nome da tela embaixo
+            da marca diz onde a pessoa está sem precisar abrir o menu. */}
+        <div className="flex min-w-0 flex-col justify-center gap-1">
+          <img
+            src={reneaLogo}
+            alt="RENEA Infraestrutura"
+            className="h-5 w-auto self-start object-contain"
+            referrerPolicy="no-referrer"
+          />
+          {nomeDaTelaAtual && <p className="truncate text-sm font-bold leading-tight text-slate-900">{nomeDaTelaAtual}</p>}
+        </div>
 
         <div
           className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-bold ${isCloudConnected ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-300 bg-amber-50 text-amber-700'}`}

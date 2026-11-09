@@ -37,7 +37,7 @@ const seloAprovacao = (row: FleetCurrentState) => {
 
 /** Texto de uma linha só: o que não couber some com reticências e fica inteiro na dica. */
 // Só na tabela (768 px ou mais): no cartão do celular o texto quebra inteiro.
-const UMA_LINHA = 'block md:truncate md:whitespace-nowrap';
+const UMA_LINHA = 'inline-block max-w-full align-bottom md:truncate md:whitespace-nowrap';
 
 const ICONE = `inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-bold transition duration-200 active:scale-[0.96] md:size-7 md:min-h-0 md:min-w-0 md:px-0 ${FOCO}`;
 
@@ -84,7 +84,7 @@ const colunas = (
     titulo: 'Situação',
     valorOrdenacao: row => row.operationalStatus,
     dica: row => row.operationalStatus,
-    render: row => <span className="block md:max-w-[8.5rem] md:whitespace-nowrap 2xl:max-w-none"><FleetStatusBadge status={row.operationalStatus} compact /></span>,
+    render: row => <span className="inline-block max-w-full md:max-w-[8.5rem] md:whitespace-nowrap 2xl:max-w-none"><FleetStatusBadge status={row.operationalStatus} compact /></span>,
   },
   {
     chave: 'departure',

@@ -134,7 +134,7 @@ function ItemConferencia({ linha, registro, registros, agora, podeEditar, podeRe
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 id={`${idBase}-prefixo`} className="truncate text-xl font-black text-slate-950">{linha.prefixo}</h3>
-          <p className="truncate text-sm font-semibold text-[#5b6870]">{[linha.tipo, linha.ordemNumero].filter(Boolean).join(' · ')}</p>
+          <p className="break-words text-sm font-semibold text-[#5b6870]">{[linha.tipo, linha.ordemNumero].filter(Boolean).join(' · ')}</p>
         </div>
         <SeloSituacao parada={parada} grupo={linha.grupo} />
       </header>
