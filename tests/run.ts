@@ -211,6 +211,7 @@ import './leituraNota.test';
 import './linkDeCampoFila.test';
 import './nuvemNaoPerdeNovidade.test';
 import './ticketsUmaTabela.test';
+import './materiaisMovimentosTabela.test';
 import './historicoVersoesNuvem.test';
 import './frotaDataPlanilha.test';
 import './dataLocalHoje.test';
