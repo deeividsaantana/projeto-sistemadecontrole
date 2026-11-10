@@ -515,6 +515,7 @@ export default function App() {
   // Quadro e Manutenção se abrem um no outro já filtrados pelo prefixo da máquina.
   const [pedidoFrota, setPedidoFrota] = useState<{ prefixo: string; vez: number }>({ prefixo: '', vez: 0 });
   const [pedidoManutencao, setPedidoManutencao] = useState<{ prefixo: string; vez: number }>({ prefixo: '', vez: 0 });
+  const [pedidoNovoColaborador, setPedidoNovoColaborador] = useState(0);
   /** Aba aberta pela aba Relatórios: ela já entra na parte de relatório. */
   // Recorte de datas do painel. Fica aqui, e não dentro do Dashboard, porque
   // o controle é renderizado na barra superior, ao lado do estado da nuvem.
@@ -4478,6 +4479,7 @@ export default function App() {
   const navigateTo = (tab: string, closeMobile = false, options: { explicitRefresh?: boolean } = {}) => {
     setPedidoFrota(atual => (atual.prefixo ? { ...atual, prefixo: '' } : atual));
     setPedidoManutencao(atual => (atual.prefixo ? { ...atual, prefixo: '' } : atual));
+    setPedidoNovoColaborador(0);
     // A busca do menu não fica filtrada depois de escolher a tela (B6).
     setMenuSearch('');
     if (tab === 'tickets-jazida') setMateriaisPedido(atual => ({ secao: 'viagens', vez: atual.vez + 1 }));
@@ -4718,6 +4720,7 @@ export default function App() {
                 podeEditar={pode(currentUserRole, 'cadastros', 'editar')}
                 podeExcluir={pode(currentUserRole, 'cadastros', 'excluir')}
                 ehAdmin={currentUserRole === 'admin'}
+                pedidoNovoColaborador={pedidoNovoColaborador}
                 gruposEquipe={gruposEquipe}
                 onSaveGrupoEquipe={handleSaveGrupoEquipe}
                 onSaveEmpresa={handleSaveEmpresa}
@@ -4859,6 +4862,7 @@ export default function App() {
                 ticketsJazida={ticketsJazidaAtivos}
                 checklists={checklists}
                 onNavigate={navigateTo}
+                onCadastrar={() => { navigateTo('cadastros'); setPedidoNovoColaborador(1); }}
                 podeAbrir={podeAbrir}
                 responsavel={activeUserName}
                 onAlterarSituacao={(proximo, descricao) => {

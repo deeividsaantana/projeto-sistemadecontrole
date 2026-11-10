@@ -896,14 +896,14 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   letter-spacing: .12em;
   text-transform: uppercase;
 }
-.renea-page-header__copy > :is(h1, h2) {
+.renea-page-header__copy :is(h1, h2) {
   color: #0d1a15;
   font-size: clamp(1.2rem, 1.05rem + .5vw, 1.6rem);
   font-weight: 750;
   line-height: 1.15;
   letter-spacing: -.015em;
 }
-.renea-page-header__copy > p {
+.renea-page-header__copy p {
   max-width: 78ch;
   margin-top: .2rem;
   color: #56635c;
@@ -1091,12 +1091,12 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   letter-spacing: .08em;
 }
 
-.renea-page-header__copy > :is(h1, h2) {
+.renea-page-header__copy :is(h1, h2) {
   font-size: clamp(1.45rem, 1.2rem + .5vw, 1.85rem);
   font-weight: 760;
 }
 
-.renea-page-header__copy > p {
+.renea-page-header__copy p {
   color: var(--erp-muted);
   font-size: .875rem;
 }
@@ -2297,13 +2297,13 @@ body,
   font-size: .75rem;
   letter-spacing: .1em;
 }
-.renea-page-header__copy > :is(h1, h2) {
+.renea-page-header__copy :is(h1, h2) {
   font-size: clamp(1.2rem, 1.05rem + .35vw, 1.45rem);
   font-weight: 750;
   line-height: 1.2;
   letter-spacing: -.01em;
 }
-.renea-page-header__copy > p {
+.renea-page-header__copy p {
   margin-top: .15rem;
   font-size: .8125rem;
   line-height: 1.4;

@@ -72,7 +72,7 @@ const dataCurta = (dia: string) => (dia ? new Date(`${dia}T12:00:00`).toLocaleDa
 const semAcento = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 const SOMENTE_LEITURA = 'flex min-h-11 w-full min-w-0 items-center rounded-xl bg-[#f7f8f6] px-3 text-base font-bold ring-1 ring-inset ring-slate-200';
-const CAMPO_GRANDE = `min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 font-mono text-lg font-bold tabular-nums text-slate-900 placeholder:font-sans placeholder:text-base placeholder:font-normal placeholder:text-slate-500 transition duration-200 focus:border-emerald-500 ${FOCO}`;
+const CAMPO_GRANDE = `min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 tabular-nums text-lg font-bold tabular-nums text-slate-900 placeholder:font-sans placeholder:text-base placeholder:font-normal placeholder:text-slate-500 transition duration-200 focus:border-emerald-500 ${FOCO}`;
 
 /** Uma linha do formulário da planilha: nome à esquerda, campo à direita. */
 function Linha({ rotulo, para, dica, children }: { rotulo: string; para?: string; dica?: ReactNode; children: ReactNode }) {
@@ -341,7 +341,7 @@ export default function LancamentoCombustivel({
                       <li key={item.id} role="option" aria-selected={indice === destaque}>
                         <button type="button" onMouseDown={event => event.preventDefault()} onClick={() => escolherMaquina(item)}
                           className={`flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left ${indice === destaque ? 'bg-emerald-50' : 'hover:bg-[#f7f8f6]'}`}>
-                          <span className="font-mono font-black text-slate-950">{item.prefixo}</span>
+                          <span className="tabular-nums font-black text-slate-950">{item.prefixo}</span>
                           <span className="min-w-0 flex-1 truncate text-sm text-slate-600">{item.nome}</span>
                         </button>
                       </li>
@@ -361,12 +361,12 @@ export default function LancamentoCombustivel({
               <Linha rotulo="KM inicial" para="lanc-km"
                 dica={kmDesde !== undefined ? `+${numeroTexto(kmDesde)} km desde ${dataCurta(contexto?.ultimoKm?.data || '')}` : contexto?.ultimoKm ? `Último: ${numeroTexto(contexto.ultimoKm.valor)} km` : undefined}>
                 <input id="lanc-km" data-campo inputMode="decimal" value={form.km} onChange={event => mudar('km', event.target.value)} onKeyDown={aoTeclar}
-                  placeholder="se tiver" className={`${CAMPO} font-mono placeholder:font-sans`} data-testid="combustivel-km" />
+                  placeholder="se tiver" className={`${CAMPO} tabular-nums`} data-testid="combustivel-km" />
               </Linha>
               <Linha rotulo="Horímetro" para="lanc-horimetro"
                 dica={horasDesde !== undefined ? `+${numeroTexto(horasDesde)} h desde ${dataCurta(contexto?.ultimoHorimetro?.data || '')}` : contexto?.ultimoHorimetro ? `Último: ${numeroTexto(contexto.ultimoHorimetro.valor)} h` : undefined}>
                 <input id="lanc-horimetro" data-campo inputMode="decimal" value={form.horimetro} onChange={event => mudar('horimetro', event.target.value)} onKeyDown={aoTeclar}
-                  placeholder="se tiver" className={`${CAMPO} font-mono placeholder:font-sans`} data-testid="combustivel-horimetro" />
+                  placeholder="se tiver" className={`${CAMPO} tabular-nums`} data-testid="combustivel-horimetro" />
               </Linha>
               <Linha rotulo="Litros" para="lanc-litros"
                 dica={gastoAlto && consumo ? <span className="text-[#c2410c]">Dá {numeroTexto(consumoAgora ?? 0)} L/h; ela costuma gastar {textoConsumo(consumo.consumoHabitual, 'L/h')}.</span> : undefined}>
@@ -399,10 +399,10 @@ export default function LancamentoCombustivel({
             <div className="grid gap-3 border-t border-slate-100 pt-2.5 md:grid-cols-2 md:gap-x-6">
               <Linha rotulo="Bomba inicial" para="lanc-bomba" dica="Vem da última bomba final do comboio.">
                 <input id="lanc-bomba" data-campo inputMode="decimal" value={form.bombaInicial} onChange={event => mudar('bombaInicial', event.target.value)} onKeyDown={aoTeclar}
-                  placeholder={form.comboioId ? 'leitura antes' : 'escolha o comboio'} className={`${CAMPO} font-mono placeholder:font-sans`} data-testid="combustivel-bomba-inicial" />
+                  placeholder={form.comboioId ? 'leitura antes' : 'escolha o comboio'} className={`${CAMPO} tabular-nums`} data-testid="combustivel-bomba-inicial" />
               </Linha>
               <Linha rotulo="Bomba final" dica="Inicial + litros.">
-                <output className={`${SOMENTE_LEITURA} font-mono font-black text-slate-900`} data-testid="combustivel-bomba-final">{bomba.bombaFinal > 0 ? numeroTexto(bomba.bombaFinal) : '—'}</output>
+                <output className={`${SOMENTE_LEITURA} tabular-nums font-black text-slate-900`} data-testid="combustivel-bomba-final">{bomba.bombaFinal > 0 ? numeroTexto(bomba.bombaFinal) : '—'}</output>
               </Linha>
             </div>
 

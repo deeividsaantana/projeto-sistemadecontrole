@@ -287,7 +287,7 @@ export default function DiarioObraTab({
             ].map(item => (
               <li key={item.rotulo} className="flex items-center justify-between gap-3 px-5 py-3">
                 <span className="text-slate-600">{item.rotulo}</span>
-                <strong className="font-mono text-slate-900">{item.valor}</strong>
+                <strong className="tabular-nums text-slate-900">{item.valor}</strong>
               </li>
             ))}
           </ul>

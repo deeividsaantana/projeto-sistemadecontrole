@@ -135,7 +135,7 @@ function EstacasPreview() {
   return <EstacasTab controle={controle} obras={fx.obras} onChange={setControle} responsavel="Deivid" />;
 }
 
-function CadastrosPreview() {
+function CadastrosPreview({ pedidoNovoColaborador = 0 }: { pedidoNovoColaborador?: number } = {}) {
   const [listas, setListas] = React.useState<Record<string, Array<{ id: string } & Record<string, unknown>>>>(() => ({
     empresas: [...fx.empresas],
     funcionarios: [...fx.funcionarios, ...fx.efetivoPresenca],
@@ -201,6 +201,7 @@ function CadastrosPreview() {
   return (
     <CadastrosTab
       ehAdmin
+      pedidoNovoColaborador={pedidoNovoColaborador}
       gruposEquipe={[fx.grupo]}
       onSaveGrupoEquipe={noop}
       empresas={listas.empresas as never}
@@ -589,6 +590,7 @@ const screens: Record<string, React.ReactNode> = {
     />
   ),
   cadastros: <CadastrosPreview />,
+  'cadastro-novo-colaborador': <CadastrosPreview pedidoNovoColaborador={1} />,
   estacas: <EstacasPreview />,
   jazida: (
     <TicketsJazidaTab

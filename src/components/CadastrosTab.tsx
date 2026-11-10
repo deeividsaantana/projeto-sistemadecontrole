@@ -82,6 +82,8 @@ interface CadastrosTabProps {
   podeExcluir: boolean;
   /** Administrador vê também Acessos (logins) e o Link de presença. */
   ehAdmin?: boolean;
+  /** Maior que zero: abre direto o formulário de colaborador novo (botão de Colaboradores). */
+  pedidoNovoColaborador?: number;
   gruposEquipe?: GrupoEquipe[];
   onSaveGrupoEquipe?: (grupo: GrupoEquipe, isNew: boolean) => void;
 
@@ -272,6 +274,19 @@ export default function CadastrosTab(props: CadastrosTabProps) {
     setDetalheId(null);
     setFormulario({ editandoId: null, valores: valoresIniciais(categoria, undefined, dados) });
   };
+
+  // "Cadastrar colaborador" na aba Colaboradores chega aqui já com o
+  // formulário aberto, em vez de deixar a pessoa procurando o botão.
+  const pedidoNovo = props.pedidoNovoColaborador ?? 0;
+  useEffect(() => {
+    if (!pedidoNovo || !podeEditar) return;
+    setVista('funcionarios');
+    setCategoria('funcionarios');
+    setDetalheId(null);
+    setErroFormulario('');
+    setFormulario({ editandoId: null, valores: valoresIniciais('funcionarios', undefined, dados) });
+    // Só o pedido abre o formulário; dados novos não podem reabri-lo.
+  }, [pedidoNovo]);
 
   const abrirEdicao = (linha: LinhaCadastro) => {
     setErroFormulario('');

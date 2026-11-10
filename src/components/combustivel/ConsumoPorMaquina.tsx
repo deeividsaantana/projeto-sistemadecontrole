@@ -62,7 +62,7 @@ function Situacao({ linha, quebra = false }: { linha: ConsumoEquipamento; quebra
 const COLUNAS_CONSUMO: ColunaTabela<ConsumoEquipamento>[] = [
   {
     chave: 'maquina', titulo: 'Máquina', larguraMinima: 90, larguraIdeal: 96,
-    render: linha => <span className="font-mono font-black text-slate-950">{linha.prefixo}</span>,
+    render: linha => <span className="tabular-nums font-black text-slate-950">{linha.prefixo}</span>,
     valorOrdenacao: linha => linha.prefixo,
     dica: linha => `${linha.prefixo} · ${linha.nome}`,
   },
@@ -317,7 +317,7 @@ function FichaMaquina({ maquina, onVoltar }: { maquina: ConsumoEquipamento; onVo
         <button type="button" onClick={onVoltar} className={`${BOTAO_SECUNDARIO} mb-2 min-h-10 px-3 xl:hidden`}><ArrowLeft className="size-4" aria-hidden="true" />Voltar à lista</button>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h2 className="font-mono text-lg font-black text-slate-950">{maquina.prefixo}</h2>
+            <h2 className="tabular-nums text-lg font-black text-slate-950">{maquina.prefixo}</h2>
             <p className="truncate text-sm text-slate-500">{maquina.nome}{maquina.empresa ? ` · ${maquina.empresa}` : ''}</p>
           </div>
           <Situacao linha={maquina} />

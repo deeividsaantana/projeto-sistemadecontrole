@@ -145,7 +145,7 @@ export function TimelineManutencao({ eventos, statusAtual }: Props) {
               <div className={`space-y-2 rounded-lg border px-3 py-2 ${corClasse}`}>
                 {/* Hora e status */}
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="font-mono text-sm font-bold">{evento.hora}</span>
+                  <span className="tabular-nums text-sm font-bold">{evento.hora}</span>
                   <span className="min-w-0 break-words text-xs font-bold opacity-75">
                     {evento.descricao}
                   </span>

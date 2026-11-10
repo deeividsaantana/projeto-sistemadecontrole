@@ -38,6 +38,8 @@ interface ColaboradoresTabProps {
   ticketsJazida: TicketJazida[];
   checklists?: ChecklistEquipamento[];
   onNavigate: (tab: string) => void;
+  /** Abre Cadastros já no formulário de colaborador novo. */
+  onCadastrar?: () => void;
   /** Quem não abre a aba não vê o botão que leva até ela. */
   podeAbrir?: (tab: string) => boolean;
   /** Ausente quando o perfil não pode mexer no cadastro: a ação nem aparece. */
@@ -61,6 +63,7 @@ export default function ColaboradoresTab({
   ticketsJazida,
   checklists = [],
   onNavigate,
+  onCadastrar,
   podeAbrir = () => true,
   onAlterarSituacao,
   responsavel = '',
@@ -368,7 +371,7 @@ export default function ColaboradoresTab({
         <PageHeader
           eyebrow="Pessoas"
           title="Colaboradores"
-          actions={podeAbrir('cadastros') && <button type="button" onClick={() => onNavigate('cadastros')} className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white transition hover:opacity-90 lg:min-h-10 ${FOCO}`}><UserPlus className="size-5" aria-hidden="true" /> Cadastrar colaborador</button>}
+          actions={podeAbrir('cadastros') && <button type="button" onClick={onCadastrar ?? (() => onNavigate('cadastros'))} className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white transition hover:opacity-90 lg:min-h-10 ${FOCO}`}><UserPlus className="size-5" aria-hidden="true" /> Cadastrar colaborador</button>}
         />
       </div>}
       faixa={<div data-colaboradores-reveal className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-3 sm:flex-row">

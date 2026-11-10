@@ -362,7 +362,7 @@ export default function HistoricoCombustivel({
     prefixo: {
       render: item => (
         <span className="inline-flex min-w-0 items-center gap-1">
-          <span className="font-mono font-black text-slate-950">{nomes.prefixo(item) || '—'}</span>
+          <span className="tabular-nums font-black text-slate-950">{nomes.prefixo(item) || '—'}</span>
           {precisaConferir(item) && <span role="img" className="size-2 shrink-0 rounded-full bg-[#f26a2e]" title="Precisa conferir" aria-label="Precisa conferir" />}
           {repetidos.has(item.id) && <span className="shrink-0 rounded bg-rose-100 px-1 text-xs font-black uppercase text-rose-700" title="Mesma máquina, mesmo dia e mesmos litros de outro lançamento">2x</span>}
         </span>
@@ -588,7 +588,7 @@ export default function HistoricoCombustivel({
           <header className="flex items-start justify-between gap-2 border-b border-slate-100 px-4 py-3">
             <div className="min-w-0">
               <p className="text-xs font-bold text-slate-500">{dataLonga(aberto.data)} · {aberto.hora || 'sem hora'}</p>
-              <h2 className="font-mono text-2xl font-black text-slate-950">{nomes.prefixo(aberto) || 'Sem prefixo'}</h2>
+              <h2 className="tabular-nums text-2xl font-black text-slate-950">{nomes.prefixo(aberto) || 'Sem prefixo'}</h2>
               <p className="truncate text-sm text-slate-600">{porId.get(aberto.equipamentoId)?.nome || 'Sem cadastro'}</p>
             </div>
             <button type="button" onClick={() => setAbertoId('')} aria-label="Fechar ficha" className={`grid size-10 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 ${FOCO}`}><X className="size-5" aria-hidden="true" /></button>
