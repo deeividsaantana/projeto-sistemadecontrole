@@ -12,17 +12,14 @@ import type {
   ObraLocal,
   Ocorrencia,
   OrdemServico,
-  PlanejamentoItem,
   PresencaApontamento,
   ControleEquipamentoDiario,
-  RegistroProducao,
   TicketJazida,
   Treinamento,
 } from '../types';
 import { situacaoDocumento } from './documentos';
 import { estaAtrasada as inspecaoAtrasada } from './inspecoes';
 import { estaAtrasada as ncAtrasada } from './naoConformidades';
-import { aderenciaDosPlanos } from './planejamento';
 import { posicaoEstoque } from './estoque';
 import { situacaoTreinamento } from './treinamentos';
 import { origensSemTratativa } from './naoConformidades';
@@ -57,8 +54,6 @@ export interface ContextoPendencias {
   naoConformidades?: NaoConformidade[];
   documentos?: DocumentoArquivo[];
   treinamentos?: Treinamento[];
-  planejamento?: PlanejamentoItem[];
-  producao?: RegistroProducao[];
   medicoes?: Medicao[];
   materiais?: Material[];
   movimentosMaterial?: MovimentoMaterial[];
@@ -79,7 +74,7 @@ export const listarPendencias = (contexto: ContextoPendencias): Pendencia[] => {
     equipamentos = [], controlesEquipamentos = [], gruposEquipe = [], presencasLink = [],
     listasPresenca = [], obras = [], ordensServico = [], ticketsJazida = [],
     fichasFvs = [], inspecoes = [], naoConformidades = [], documentos = [], treinamentos = [],
-    planejamento = [], producao = [], medicoes = [], materiais = [], movimentosMaterial = [],
+    medicoes = [], materiais = [], movimentosMaterial = [],
     ocorrencias = [],
   } = contexto;
 
@@ -187,14 +182,6 @@ export const listarPendencias = (contexto: ContextoPendencias): Pendencia[] => {
       quantidade: treinamentos.filter(item => situacaoTreinamento(item, hoje) === 'Vencido').length,
       tab: 'dds-treinamentos',
       gravidade: 'alta',
-    },
-    {
-      id: 'planos-atrasados',
-      categoria: 'Planejamento',
-      titulo: 'Planos com prazo vencido e meta não atingida',
-      quantidade: aderenciaDosPlanos(planejamento, producao, hoje).filter(item => item.atrasado).length,
-      tab: 'planejamento',
-      gravidade: 'media',
     },
     {
       id: 'medicoes-em-elaboracao',

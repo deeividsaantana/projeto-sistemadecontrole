@@ -1,6 +1,5 @@
 import {
   CalendarRange,
-  Target,
   ClipboardList,
   FolderPlus,
   Hammer,
@@ -12,8 +11,6 @@ import {
   Activity,
   Users,
   NotebookPen,
-  FileBarChart,
-  Database,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -36,7 +33,6 @@ export const NAVIGATION_GROUPS = [
   {
     label: 'Operação',
     items: [
-      { id: 'planejamento', label: 'Previsto x Executado', icon: Target },
       { id: 'diario-obra', label: 'Diário de Obra', icon: NotebookPen },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
     ],
@@ -63,16 +59,9 @@ export const NAVIGATION_GROUPS = [
     ],
   },
   {
-    label: 'Análise',
-    items: [
-      { id: 'relatorios', label: 'Relatórios', icon: FileBarChart },
-    ],
-  },
-  {
     label: 'Administração',
     items: [
       { id: 'cadastros', label: 'Cadastros', icon: FolderPlus },
-      { id: 'administracao', label: 'Administração', icon: Database },
     ],
   },
 ] as const;
@@ -86,7 +75,6 @@ export const PRIMARY_MODULE_IDS = [
   // Rotina do assistente de engenharia, pedida em 2026-09-27: checklist do
   // dia, pendências com prioridade e fechamento do dia.
   'meu-dia',
-  'planejamento',
   'diario-obra',
   // Controle de Estacas é aba própria: a importação com prévia/lote/lineage
   // vive dentro dela (decisão confirmada com o usuário em 2026-09-22). Os
@@ -99,13 +87,11 @@ export const PRIMARY_MODULE_IDS = [
   'colaboradores',
   'presenca',
   'materiais',
-  'relatorios',
   // Cadastros ficou sem caminho na limpeza de 2026-09-24: o atalho dentro de
   // Administração levava a uma aba que nenhum perfil tinha em ROLE_ACCESS, e
   // o App devolvia a pessoa ao Painel. Voltou ao menu lateral como aba
-  // própria, logo acima de Administração.
+  // própria.
   'cadastros',
-  'administracao',
 ] as const;
 
 const SIDEBAR_MODULE_IDS = new Set<string>(PRIMARY_MODULE_IDS);
@@ -125,8 +111,17 @@ export const MODULE_REDIRECTS: Readonly<Record<string, string>> = {
   // Telas antigas cortadas em 16/10/2026 (auditoria das abas, G6/G7).
   frota: 'controle-equipamentos',
   equipes: 'presenca',
-  auditoria: 'administracao',
-  permissoes: 'administracao',
+  auditoria: 'cadastros',
+  permissoes: 'cadastros',
+  // Previsto x Executado saiu do menu em 10/11/2026, a pedido do usuário. Os
+  // planos salvos continuam guardados; o endereço antigo cai no Meu dia.
+  planejamento: 'meu-dia',
+  // Relatórios saiu do menu em 10/11/2026, a pedido do usuário: cada aba já
+  // tem a sua parte de relatórios. O endereço antigo cai no Painel.
+  relatorios: 'dashboard',
+  // Administração saiu em 10/11/2026: Acessos e o Link de presença foram para
+  // Cadastros (só o administrador vê); o resto saiu junto.
+  administracao: 'cadastros',
 };
 
 const SIDEBAR_GROUP_LABELS: Record<string, string> = {
@@ -163,11 +158,11 @@ const PRESENCA_PUBLICA = 'presenca-publica';
 
 export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
   admin: [...PRIMARY_MODULE_IDS, PRESENCA_PUBLICA],
-  gestor: [...PRIMARY_MODULE_IDS.filter(id => id !== 'administracao'), PRESENCA_PUBLICA],
+  gestor: [...PRIMARY_MODULE_IDS, PRESENCA_PUBLICA],
   // Operador lança no dia a dia, mas não altera a base mestre (mesma regra
   // de antes da limpeza do menu).
-  operador: [...PRIMARY_MODULE_IDS.filter(id => id !== 'administracao' && id !== 'cadastros'), PRESENCA_PUBLICA],
-  leitura: ['dashboard', 'relatorios', PRESENCA_PUBLICA],
+  operador: [...PRIMARY_MODULE_IDS.filter(id => id !== 'cadastros'), PRESENCA_PUBLICA],
+  leitura: ['dashboard', PRESENCA_PUBLICA],
 };
 
 /**

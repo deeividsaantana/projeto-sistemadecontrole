@@ -21,6 +21,7 @@ import type {
   ObraLocal,
   ProdutoLubrificacao,
   TipoCombustivel,
+  GrupoEquipe,
 } from '../types';
 import { validateCentralRecord } from '../masterData/centralRegistry';
 import { exclusoesAtivas, type ExclusaoRegistro } from '../cloud/exclusoes';
@@ -47,7 +48,9 @@ import {
   type RegistroCadastro,
   type SituacaoLista,
 } from '../utils/cadastrosLista';
-import { abasCadastros, type VistaCadastros } from './cadastros/abasCadastros';
+import { abasCadastros, ehVistaSistema, type VistaCadastros } from './cadastros/abasCadastros';
+import LinkPresenca from './cadastros/LinkPresenca';
+import UsuariosTab from './UsuariosTab';
 import CadastroLista from './cadastros/CadastroLista';
 import CadastroDetalhe, { type UsoCadastro } from './cadastros/CadastroDetalhe';
 import CadastroFormulario from './cadastros/CadastroFormulario';
@@ -77,6 +80,10 @@ interface CadastrosTabProps {
   exclusoes: ExclusaoRegistro[];
   podeEditar: boolean;
   podeExcluir: boolean;
+  /** Administrador vê também Acessos (logins) e o Link de presença. */
+  ehAdmin?: boolean;
+  gruposEquipe?: GrupoEquipe[];
+  onSaveGrupoEquipe?: (grupo: GrupoEquipe, isNew: boolean) => void;
 
   onSaveEmpresa: (item: Empresa, isNew: boolean, onError?: (error: Error) => void) => void;
   onSaveObra: (item: ObraLocal, isNew: boolean) => void;
@@ -218,7 +225,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
     setVista(proxima);
     setDetalheId(null);
     setMarcados(new Set());
-    if (proxima === 'lixeira') return;
+    if (proxima === 'lixeira' || ehVistaSistema(proxima)) return;
     setCategoria(proxima);
     setBusca('');
     setFiltros({});
@@ -260,7 +267,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   };
 
   const abrirNovo = () => {
-    if (vista === 'lixeira') setVista(categoria);
+    if (vista === 'lixeira' || ehVistaSistema(vista)) setVista(categoria);
     setErroFormulario('');
     setDetalheId(null);
     setFormulario({ editandoId: null, valores: valoresIniciais(categoria, undefined, dados) });
@@ -286,7 +293,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
         abrirNovo();
         return;
       }
-      if (event.key === '/' && !isTyping && vista !== 'lixeira') {
+      if (event.key === '/' && !isTyping && vista !== 'lixeira' && !ehVistaSistema(vista)) {
         event.preventDefault();
         buscaRef.current?.focus();
       }
@@ -524,8 +531,9 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   const filtrosAtivos = Object.entries(filtros).filter(([, valor]) => valor);
   const temConsulta = Boolean(busca) || filtrosAtivos.length > 0 || situacao !== 'ativos';
   const emLixeira = vista === 'lixeira';
+  const emSistema = ehVistaSistema(vista);
 
-  const abas = abasCadastros(item => totais.get(item) ?? 0, podeExcluir || lixeira.length > 0);
+  const abas = abasCadastros(item => totais.get(item) ?? 0, podeExcluir || lixeira.length > 0, Boolean(props.ehAdmin));
 
   const filtrosDaLista = (
     <div data-cadastros-reveal className="space-y-2">
@@ -674,7 +682,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
       id="cadastros-tab"
       testId="cadastros-tab"
       rotulo="Cadastros"
-      longa={emLixeira}
+      longa={emLixeira || emSistema}
       idAbaAtiva={idDaAba('cadastros', vista)}
       idDados="cadastros-dados"
       chaveRolagem={vista}
@@ -685,7 +693,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
             eyebrow="Base corporativa"
             title="Cadastros"
             abas={<AbasDaTela id="cadastros" rotulo="Tipos de cadastro" abas={abas} ativa={vista} onTrocar={escolherVista} idPainel="cadastros-dados" testId="cadastro-aba" />}
-            actions={<>
+            actions={emSistema ? undefined : <>
               {!emLixeira && (
                 <button type="button" onClick={exportar} disabled={exportando || linhasFiltradas.length === 0} className={`${BOTAO_SECUNDARIO} max-sm:hidden`}>
                   <Download className="size-5" aria-hidden="true" />
@@ -710,9 +718,19 @@ export default function CadastrosTab(props: CadastrosTabProps) {
           />
         </div>
       )}
-      faixa={emLixeira ? cabecalhoDaLixeira : filtrosDaLista}
+      faixa={emSistema ? undefined : emLixeira ? cabecalhoDaLixeira : filtrosDaLista}
     >
-      {emLixeira ? (
+      {vista === 'acessos' ? (
+        <section aria-labelledby="cadastros-acessos-titulo" className="space-y-3">
+          <div>
+            <h2 id="cadastros-acessos-titulo" className="text-base font-black text-slate-900">Acessos ao sistema</h2>
+            <p className="mt-1 text-sm text-slate-600">Criar um login, trocar o perfil de alguém ou inativar quem saiu da obra.</p>
+          </div>
+          <UsuariosTab embutido />
+        </section>
+      ) : vista === 'link-presenca' ? (
+        <LinkPresenca gruposEquipe={props.gruposEquipe ?? []} onSaveGrupoEquipe={props.onSaveGrupoEquipe} />
+      ) : emLixeira ? (
         <CadastroLixeira exclusoes={lixeira} podeRestaurar={podeExcluir} restaurandoId={restaurandoId} onRestaurar={restaurar} onExcluirDeVez={item => setApagando([item])} />
       ) : (
         <section id="database-lists-viewport" aria-label={`Lista de ${categoriaAtual.label.toLowerCase()}`} className="flex min-h-0 flex-1 flex-col">

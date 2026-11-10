@@ -17,14 +17,11 @@ test('perfil administrador mantém acesso a todos os módulos atuais', () => {
 });
 
 test('perfis preservam restrições e não expõem módulos removidos', () => {
-  // Leitura tem acesso apenas a dashboard, relatorios e presenca-publica (Task 8)
-  assert.deepEqual([...ROLE_ACCESS.leitura], ['dashboard', 'relatorios', 'presenca-publica']);
+  // Leitura vê só o Painel e a presença pública (Relatórios saiu em 2026-11-10).
+  assert.deepEqual([...ROLE_ACCESS.leitura], ['dashboard', 'presenca-publica']);
 
-  // Administração é exclusiva do admin
-  assert.equal(ROLE_ACCESS.admin.includes('administracao'), true);
-  assert.equal(ROLE_ACCESS.gestor.includes('administracao'), false);
-  assert.equal(ROLE_ACCESS.operador.includes('administracao'), false);
-  assert.equal(ROLE_ACCESS.leitura.includes('administracao'), false);
+  // Administração saiu em 2026-11-10: nenhum perfil abre essa aba.
+  for (const perfil of ['admin', 'gestor', 'operador', 'leitura'] as const) assert.equal(ROLE_ACCESS[perfil].includes('administracao'), false);
 
   // Cadastros mestres: admin e gestor alteram a base, operador e leitura não
   assert.equal(ROLE_ACCESS.admin.includes('cadastros'), true);

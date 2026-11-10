@@ -216,8 +216,7 @@ test('o padrão antigo de tabela não volta: só a TabelaPadrao desenha tabela c
 
 test('telas já migradas usam a TabelaPadrao e não montam <table> à mão', () => {
   const migradas = [
-    'ManutencaoTab.tsx', 'PlanejamentoTab.tsx', 'AdministracaoTab.tsx', 'MateriaisTab.tsx', 'UsuariosTab.tsx',
-    'administracao/HistoricoAcoes.tsx', 'administracao/MatrizPermissoes.tsx',
+    'ManutencaoTab.tsx', 'MateriaisTab.tsx', 'UsuariosTab.tsx',
     'materiais/MateriaisListas.tsx', 'cadastros/CadastroLista.tsx',
     'materiais/ApontadoresMateriais.tsx', 'materiais/BotaForaMateriais.tsx', 'materiais/LocaisMateriais.tsx', 'materiais/MateriaisVisaoGeral.tsx',
   ];

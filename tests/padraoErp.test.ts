@@ -47,7 +47,6 @@ const PENDENCIAS: Record<string, Contagem> = {
   'ciclosEquipamento/CycleTimeline.tsx': { 'emoji': 4 },
   'ciclosEquipamento/HistoricoCiclos.tsx': { 'botao-sem-type': 3, 'cartao-fora': 2, 'emoji': 2 },
   'ciclosEquipamento/RegistrarCiclo.tsx': { 'botao-sem-type': 2, 'cartao-fora': 1 },
-  'relatorios/RelatorioUnificado.tsx': { 'botao-sem-type': 2, 'tabela-manual': 1 },
 };
 
 const RAIZ = new URL('../src/components/', import.meta.url);

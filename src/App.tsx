@@ -103,7 +103,6 @@ import {
   shouldResetLocalFuel,
 } from './utils/localFuelReset';
 import type { SecaoMateriais } from './components/materiais/MateriaisSecoes';
-import type { DestinoRelatorio } from './components/RelatoriosTab';
 
 // Subcomponents Imports
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -120,9 +119,6 @@ const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
 const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
 const MeuDiaTab = lazy(() => import('./components/MeuDiaTab'));
 const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
-const PlanejamentoTab = lazy(() => import('./components/PlanejamentoTab'));
-const RelatoriosTab = lazy(() => import('./components/RelatoriosTab'));
-const AdministracaoTab = lazy(() => import('./components/AdministracaoTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -520,7 +516,6 @@ export default function App() {
   const [pedidoFrota, setPedidoFrota] = useState<{ prefixo: string; vez: number }>({ prefixo: '', vez: 0 });
   const [pedidoManutencao, setPedidoManutencao] = useState<{ prefixo: string; vez: number }>({ prefixo: '', vez: 0 });
   /** Aba aberta pela aba Relatórios: ela já entra na parte de relatório. */
-  const [relatorioPedido, setRelatorioPedido] = useState<DestinoRelatorio | ''>('');
   // Recorte de datas do painel. Fica aqui, e não dentro do Dashboard, porque
   // o controle é renderizado na barra superior, ao lado do estado da nuvem.
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
@@ -3817,13 +3812,11 @@ export default function App() {
     naoConformidades,
     documentos,
     treinamentos,
-    planejamento: planejamentoItens,
-    producao: producaoRegistros,
     medicoes,
     materiais: materiaisCadastro,
     movimentosMaterial: materiaisMovimentosVigentes,
     ocorrencias,
-  }), [equipamentos, controleEquipamentosDiario, gruposEquipe, presencasLink, listasPresenca, obras, ordensServico, ticketsJazida, fichasFvs, inspecoes, naoConformidades, documentos, treinamentos, planejamentoItens, producaoRegistros, medicoes, materiaisCadastro, materiaisMovimentosVigentes, ocorrencias]);
+  }), [equipamentos, controleEquipamentosDiario, gruposEquipe, presencasLink, listasPresenca, obras, ordensServico, ticketsJazida, fichasFvs, inspecoes, naoConformidades, documentos, treinamentos, medicoes, materiaisCadastro, materiaisMovimentosVigentes, ocorrencias]);
 
   // Alerta sem tela para resolver (FVS, documentos e outras que saíram do
   // app) ou de tela que o perfil não abre fica fora do sino (M6, M7).
@@ -3832,14 +3825,6 @@ export default function App() {
       .filter(alerta => destinoDaAba(alerta.tab, ROLE_ACCESS[currentUserRole]) !== null),
     [alertasSistema, preferenciasNotificacao, currentUserRole],
   );
-
-  const handleSavePlanejamento = (plano: PlanejamentoItem, isNew: boolean) => {
-    const updated = isNew ? [plano, ...planejamentoItens] : planejamentoItens.map(item => item.id === plano.id ? plano : item);
-    saveAndLog('Planejamento', isNew ? 'Criou' : 'Editou', `${isNew ? 'Planejou' : 'Editou'} ${plano.quantidadePlanejada} ${plano.unidade} de ${plano.servicoDescricao} entre ${plano.dataInicio} e ${plano.dataFim}.`, historyLogs, () => {
-      setPlanejamentoItens(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.planejamentoItens, JSON.stringify(updated));
-    });
-  };
 
   const handleSaveFrente = (frente: FrenteServico, isNew: boolean) => {
     const updated = isNew ? [frente, ...frentesServico] : frentesServico.map(item => item.id === frente.id ? frente : item);
@@ -4491,7 +4476,6 @@ export default function App() {
   const verMaquinaNoQuadro = (prefixo: string) => { navigateTo('controle-equipamentos'); setPedidoFrota(atual => ({ prefixo, vez: atual.vez + 1 })); };
 
   const navigateTo = (tab: string, closeMobile = false, options: { explicitRefresh?: boolean } = {}) => {
-    setRelatorioPedido('');
     setPedidoFrota(atual => (atual.prefixo ? { ...atual, prefixo: '' } : atual));
     setPedidoManutencao(atual => (atual.prefixo ? { ...atual, prefixo: '' } : atual));
     // A busca do menu não fica filtrada depois de escolher a tela (B6).
@@ -4506,12 +4490,6 @@ export default function App() {
       window.scrollTo({ top: 0, behavior: 'auto' });
     });
     if (navigationSyncTrigger(options) === 'refresh') void pullRemoteChanges();
-  };
-
-  const abrirRelatorio = (aba: DestinoRelatorio) => {
-    navigateTo(aba);
-    if (aba === 'materiais') setMateriaisPedido(atual => ({ secao: 'relatorios', vez: atual.vez + 1 }));
-    else setRelatorioPedido(aba);
   };
 
   const renderNavigation = (mobile = false) => (
@@ -4739,6 +4717,9 @@ export default function App() {
                 exclusoes={exclusoes}
                 podeEditar={pode(currentUserRole, 'cadastros', 'editar')}
                 podeExcluir={pode(currentUserRole, 'cadastros', 'excluir')}
+                ehAdmin={currentUserRole === 'admin'}
+                gruposEquipe={gruposEquipe}
+                onSaveGrupoEquipe={handleSaveGrupoEquipe}
                 onSaveEmpresa={handleSaveEmpresa}
                 onSaveObra={handleSaveObra}
                 onSaveEquipamento={handleSaveEquipamento}
@@ -4792,46 +4773,6 @@ export default function App() {
                 onOpenControle={allowedTabs.includes('controle-equipamentos') ? () => navigateTo('controle-equipamentos') : undefined}
                 combustivelInicial={combustivelViewInicial}
                 combustivelListaSomente={combustivelListaSomente}
-                combustivelPorMaquina={relatorioPedido === 'lancamentos'}
-              />
-            )}
-
-            {activeTab === 'administracao' && (
-              <AdministracaoTab
-                ultimaSincronizacao={lastCloudSync}
-                nuvemConectada={isCloudConnected}
-                gruposEquipe={gruposEquipe}
-                onSaveGrupoEquipe={handleSaveGrupoEquipe}
-                logs={historyLogs}
-              />
-            )}
-
-            {activeTab === 'relatorios' && (
-              <RelatoriosTab
-                abastecimentos={abastecimentosAtivos}
-                controlesEquipamentos={controleEquipamentosDiario}
-                presencas={presencasLinkAtivas}
-                movimentosMaterial={materiaisMovimentosVigentes}
-                cravacoes={controleEstacas.cravacoes}
-                funcionarios={funcionarios}
-                equipamentos={equipamentos}
-                podeAbrir={aba => allowedTabs.includes(aba)}
-                onAbrir={abrirRelatorio}
-              />
-            )}
-
-            {activeTab === 'planejamento' && (
-              <PlanejamentoTab
-                planos={planejamentoItens}
-                servicos={servicosObra}
-                producao={producaoRegistros}
-                obras={obras}
-                frentes={frentesServico}
-                gruposEquipe={gruposEquipe}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'planejamento', 'editar')}
-                onSave={handleSavePlanejamento}
-                onSaveProducao={pode(currentUserRole, 'producao', 'editar') ? handleSaveProducao : undefined}
               />
             )}
 
@@ -5020,7 +4961,6 @@ export default function App() {
                 onReativarPresencaLink={handleReativarPresencaLink}
                 onResetPresencaDia={handleResetPresencaDia}
                 onSyncEquipesPlanilha={handleSyncEquipesPlanilha}
-                viewInicial={relatorioPedido === 'presenca' ? 'relatorios' : undefined}
               />
             )}
 
@@ -5030,7 +4970,6 @@ export default function App() {
                 obras={obras}
                 onChange={handleChangeControleEstacas}
                 responsavel={activeUserName}
-                secaoInicial={relatorioPedido === 'estacas' ? 'relatorios' : undefined}
               />
             )}
 

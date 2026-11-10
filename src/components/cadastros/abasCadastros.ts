@@ -1,9 +1,14 @@
-import { Building2, ClipboardList, Construction, Droplets, Fuel, GitBranch, HardHat, MapPin, Package, Route, Tent, Trash2, Truck, Users, type LucideIcon } from 'lucide-react';
+import { Building2, ClipboardList, Construction, Droplets, Fuel, GitBranch, HardHat, Link2, MapPin, Package, Route, ShieldCheck, Tent, Trash2, Truck, Users, type LucideIcon } from 'lucide-react';
 import type { ItemDasAbas } from '../../shared/ui/AbasDaTela';
 import { CADASTRO_GRUPOS, categoriasDoGrupo, type CadastroCategoriaId, type CadastroGrupoId } from '../../utils/cadastrosCategorias';
 
-/** Subtela aberta na aba Cadastros: um tipo de cadastro ou a Lixeira. */
-export type VistaCadastros = CadastroCategoriaId | 'lixeira';
+/** Partes do administrador que vieram da antiga aba Administração (10/11/2026). */
+export type VistaSistema = 'acessos' | 'link-presenca';
+
+/** Subtela aberta na aba Cadastros: um tipo de cadastro, a Lixeira ou uma parte do administrador. */
+export type VistaCadastros = CadastroCategoriaId | 'lixeira' | VistaSistema;
+
+export const ehVistaSistema = (vista: VistaCadastros): vista is VistaSistema => vista === 'acessos' || vista === 'link-presenca';
 
 const ICONE_DO_GRUPO: Record<CadastroGrupoId, LucideIcon> = {
   pessoas: Users,
@@ -39,12 +44,13 @@ const CURTO_DO_GRUPO: Partial<Record<CadastroGrupoId, string>> = { pessoas: 'Pes
 /**
  * Subtelas de Cadastros como abas no topo (AbasDaTela), na ordem e nos grupos
  * de cadastrosCategorias: Pessoas e empresas, Fornecedores, Frota, Obra,
- * Insumos e, por fim, a Lixeira. Cada aba mostra quantos cadastros ativos o
+ * Insumos, a Lixeira e, só para o administrador, Acessos e o Link de presença. Cada aba mostra quantos cadastros ativos o
  * tipo tem (selo neutro); a Lixeira, quantos itens guarda.
  */
 export const abasCadastros = (
   contar: (vista: VistaCadastros) => number,
   mostrarLixeira: boolean,
+  mostrarSistema = false,
 ): ItemDasAbas<VistaCadastros>[] => [
   ...CADASTRO_GRUPOS.map(grupo => ({
     grupo: grupo.id,
@@ -69,5 +75,15 @@ export const abasCadastros = (
     contadorRotulo: 'na Lixeira',
     tom: 'neutro' as const,
     testId: 'cadastro-categoria-lixeira',
+  }] : []),
+  ...(mostrarSistema ? [{
+    grupo: 'sistema',
+    rotulo: 'Acessos e link',
+    curto: 'Acessos',
+    icone: ShieldCheck,
+    abas: [
+      { id: 'acessos' as const, rotulo: 'Acessos', icone: ShieldCheck, testId: 'cadastro-categoria-acessos' },
+      { id: 'link-presenca' as const, rotulo: 'Link de presença', icone: Link2, testId: 'cadastro-categoria-link-presenca' },
+    ],
   }] : []),
 ];

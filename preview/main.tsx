@@ -1,4 +1,4 @@
-import type { EtapaServico, HistoryLog, FrenteServico, ModeloRotina, PendenciaRotina, PlanejamentoItem, PrevistoMaterial, RegistroProducao, RotinaDiaria, ServicoObra } from '../src/types';
+import type { EtapaServico, HistoryLog, FrenteServico, ModeloRotina, PendenciaRotina, PrevistoMaterial, RegistroProducao, RotinaDiaria, ServicoObra } from '../src/types';
 import MeuDiaTab from '../src/components/MeuDiaTab';
 import { planoCargaSge } from '../src/modules/materials/locaisSge';
 import React from 'react';
@@ -23,9 +23,6 @@ import MateriaisUtilizacaoPanel from '../src/components/MateriaisUtilizacaoPanel
 import MaterialLinkApontador from '../src/components/MaterialLinkApontador';
 import { buildFieldView } from '../api/_shared/material-usage.js';
 import DiarioObraTab from '../src/components/DiarioObraTab';
-import PlanejamentoTab from '../src/components/PlanejamentoTab';
-import RelatoriosTab from '../src/components/RelatoriosTab';
-import AdministracaoTab from '../src/components/AdministracaoTab';
 import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
@@ -203,6 +200,9 @@ function CadastrosPreview() {
   };
   return (
     <CadastrosTab
+      ehAdmin
+      gruposEquipe={[fx.grupo]}
+      onSaveGrupoEquipe={noop}
       empresas={listas.empresas as never}
       obras={listas.obras as never}
       equipamentos={listas.equipamentos as never}
@@ -382,49 +382,6 @@ function MateriaisPreview() {
   );
 }
 
-function PlanejamentoPreview() {
-  const hoje = new Date().toISOString().slice(0, 10);
-  const ontem = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
-  const carimbo = { criadoEm: `${ontem}T10:00:00Z`, atualizadoEm: `${ontem}T10:00:00Z`, ativo: true };
-  const inicioMes = `${hoje.slice(0, 8)}01`;
-  const fimMes = new Date(Date.UTC(Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7)), 0)).toISOString().slice(0, 10);
-  const frentes: FrenteServico[] = [
-    { ...carimbo, id: 'f900', nome: 'Ramo 900', servico: 'Aterro e espinha', responsavel: 'Carlos', situacao: 'Em execução' },
-    { ...carimbo, id: 'f700', nome: 'Ramo 700', servico: 'Corte', responsavel: 'Marcos', situacao: 'Em execução' },
-    { ...carimbo, id: 'f1400', nome: 'Ramo 1400', servico: 'Base de reforço', situacao: 'Em execução' },
-  ];
-  const servicos: ServicoObra[] = [
-    { ...carimbo, id: 'aterro', descricao: 'Aterro compactado', unidade: 'm³', situacao: 'Ativo' },
-    { ...carimbo, id: 'corte', descricao: 'Corte e carga', unidade: 'm³', situacao: 'Ativo' },
-    { ...carimbo, id: 'brita', descricao: 'Coluna de brita', unidade: 'm', situacao: 'Ativo' },
-  ];
-  const [producao, setProducao] = React.useState<RegistroProducao[]>(() => [
-    { ...carimbo, id: 'r1', data: inicioMes, servicoId: 'aterro', servicoDescricao: 'Aterro compactado', unidade: 'm³', quantidade: 3200, frente: 'Ramo 900', responsavel: 'Deivid Santana' },
-    { ...carimbo, id: 'r2', data: hoje, servicoId: 'aterro', servicoDescricao: 'Aterro compactado', unidade: 'm³', quantidade: 480, frente: 'Ramo 900', responsavel: 'Deivid Santana' },
-    { ...carimbo, id: 'r3', data: hoje, servicoId: 'brita', servicoDescricao: 'Coluna de brita', unidade: 'm', quantidade: 96, frente: 'Ramo 900', responsavel: 'Deivid Santana' },
-    { ...carimbo, id: 'r4', data: ontem, servicoId: 'corte', servicoDescricao: 'Corte e carga', unidade: 'm³', quantidade: 1500, frente: 'Ramo 700', responsavel: 'Deivid Santana' },
-  ]);
-  const [planos, setPlanos] = React.useState<PlanejamentoItem[]>(() => [
-    { ...carimbo, id: 'p1', dataInicio: inicioMes, dataFim: fimMes, servicoId: 'aterro', servicoDescricao: 'Aterro compactado', unidade: 'm³', quantidadePlanejada: 12000, frente: 'Ramo 900', responsavel: 'Deivid Santana', situacao: 'Em execução' },
-    { ...carimbo, id: 'p2', dataInicio: inicioMes, dataFim: fimMes, servicoId: 'corte', servicoDescricao: 'Corte e carga', unidade: 'm³', quantidadePlanejada: 6000, frente: 'Ramo 700', responsavel: 'Deivid Santana', situacao: 'Em execução' },
-  ]);
-  const trocar = <T extends { id: string }>(lista: T[], item: T) => (lista.some(atual => atual.id === item.id) ? lista.map(atual => (atual.id === item.id ? item : atual)) : [...lista, item]);
-  return (
-    <PlanejamentoTab
-      planos={planos}
-      servicos={servicos}
-      producao={producao}
-      obras={fx.obras}
-      frentes={frentes}
-      gruposEquipe={[fx.grupo]}
-      responsavel="Deivid Santana"
-      podeEditar
-      onSave={plano => setPlanos(atual => trocar(atual, plano))}
-      onSaveProducao={registro => setProducao(atual => [registro, ...atual])}
-    />
-  );
-}
-
 // Molde da TelaCheia com 18 subtelas agrupadas (Materiais, Estacas e
 // Cadastros na fase 2): prova que as abas cabem a 1366 px sem rolagem lateral
 // e que a área de dados ocupa o resto da tela e rola por dentro.
@@ -581,12 +538,6 @@ function CombustivelVivo() {
   );
 }
 
-const historicoPreview: HistoryLog[] = [
-  { id: 'h1', timestamp: `${new Date().toISOString().slice(0, 10)}T08:12:00`, usuario: 'Deivid', acao: 'Criou', tela: 'Combustível', descricao: 'Abastecimento de 180 L na ESC-04' },
-  { id: 'h2', timestamp: `${new Date().toISOString().slice(0, 10)}T09:40:00`, usuario: 'Deivid', acao: 'Editou', tela: 'Cadastros', descricao: 'Equipamento CB-12 mudou de obra' },
-  { id: 'h3', timestamp: `${new Date().toISOString().slice(0, 10)}T10:05:00`, usuario: 'Gestor', acao: 'Excluiu', tela: 'Presença', descricao: 'Registro repetido da equipe SILLAME' },
-];
-
 const screens: Record<string, React.ReactNode> = {
   molde: <MoldePreview />,
   'meu-dia': <MeuDiaPreview />,
@@ -715,13 +666,6 @@ const screens: Record<string, React.ReactNode> = {
       onDeleteLubrificacao={noop}
     />
   ),
-  administracao: (
-    <AdministracaoTab ultimaSincronizacao="" nuvemConectada={false} logs={historicoPreview} />
-  ),
-  relatorios: (
-    <RelatoriosTab abastecimentos={fx.abastecimentos} controlesEquipamentos={fx.controlesEquipamentos} presencas={fx.registrosEnviados} movimentosMaterial={[]} cravacoes={[]} funcionarios={fx.funcionarios} equipamentos={fx.equipamentos} podeAbrir={aba => aba !== 'estacas'} onAbrir={noop} />
-  ),
-  planejamento: <PlanejamentoPreview />,
   'diario-obra': (
     <DiarioObraTab
       diarios={fx.diariosChuva}

@@ -48,8 +48,8 @@ test('aba Cadastros segue o padrão: cabeçalho, ação principal no topo e GSAP
   assert.match(tabSource, /\[data-cadastros-reveal\]/);
   // Tipos (abas no topo) e filtros vêm antes da lista; a central de planilha mestre saiu da tela
   assert.ok(tabSource.indexOf('label="Filtros de cadastros"') < tabSource.indexOf('<TelaCheia'));
-  assert.ok(tabSource.indexOf('<AbasDaTela id="cadastros"') < tabSource.indexOf('faixa={emLixeira ? cabecalhoDaLixeira : filtrosDaLista}'));
-  assert.ok(tabSource.indexOf('faixa={emLixeira ? cabecalhoDaLixeira : filtrosDaLista}') < tabSource.indexOf('id="database-lists-viewport"'));
+  assert.ok(tabSource.indexOf('<AbasDaTela id="cadastros"') < tabSource.indexOf('faixa={emSistema ? undefined : emLixeira ? cabecalhoDaLixeira : filtrosDaLista}'));
+  assert.ok(tabSource.indexOf('faixa={emSistema ? undefined : emLixeira ? cabecalhoDaLixeira : filtrosDaLista}') < tabSource.indexOf('id="database-lists-viewport"'));
   assert.doesNotMatch(tabSource, /MasterDataReviewCenter|Baixar base completa/);
 });
 
