@@ -47,7 +47,7 @@ export function CartaoIndicador({ rotulo, valor, detalhe, icone: Icone, tom = 'n
   const conteudo = (
     <>
       <span className="flex items-start justify-between gap-3">
-        <span className="min-w-0 text-sm font-bold leading-snug text-slate-600">{rotulo}</span>
+        <span className="min-w-0 text-sm font-bold leading-snug text-slate-600 [overflow-wrap:anywhere]">{rotulo}</span>
         {Icone && (
           <span className={cn('grid size-8 shrink-0 place-items-center rounded-lg', COR_DO_ICONE[tom])}>
             <Icone className="size-4" aria-hidden="true" />

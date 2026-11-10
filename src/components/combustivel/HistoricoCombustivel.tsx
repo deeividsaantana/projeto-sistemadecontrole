@@ -10,8 +10,8 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { gsap } from 'gsap';
 import {
-  CalendarDays, CheckSquare, Columns3, Copy, CopyX, Download, FileSpreadsheet, FileText,
-  Filter, History, Layers, ListChecks, Pencil, Search, Trash2, X,
+  AlertTriangle, CalendarDays, CheckSquare, Columns3, Copy, CopyX, Download, FileSpreadsheet, FileText,
+  Droplets, Filter, Fuel, History, Layers, ListChecks, Pencil, Search, Trash2, Truck, X,
 } from 'lucide-react';
 import { OPCOES_POR_PAGINA, TabelaPadrao, paginarLinhas, type ColunaTabela } from '../../shared/ui/TabelaPadrao';
 import { useTelaLarga } from '../../shared/hooks/useTelaLarga';
@@ -24,7 +24,7 @@ import {
 import { getFuelCompetencePeriodLabel } from '../../modules/frota/fuelReport';
 import { nomeDoMes, tituloDaAba } from '../../modules/frota/planilhaDiesel';
 import { idsRepetidos } from '../../modules/frota/repetidosDiesel';
-import { EmptyState, isoDay } from '../../shared/ui';
+import { CartaoIndicador, EmptyState, GradeIndicadores, isoDay } from '../../shared/ui';
 import { BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO, reduzMovimento } from '../cadastros/estilos';
 
 /** Pedido de filtro vindo de fora (o relatório abre a lista já filtrada). */
@@ -118,7 +118,8 @@ const guardarPreferencias = (preferencias: Preferencias) => {
 
 const NUMERICAS: ReadonlySet<ColunaHistorico> = new Set(['km', 'horimetro', 'litros', 'bombaInicial', 'bombaFinal']);
 /** No cartão do celular ficam só os campos que a pessoa confere no campo. */
-const FORA_DO_CARTAO: ReadonlySet<ColunaHistorico> = new Set(['combustivel', 'bombaInicial', 'bombaFinal', 'responsavel', 'observacao']);
+// No celular o cartão mostra só o que se confere de olho: data, máquina, horímetro e litros.
+const FORA_DO_CARTAO: ReadonlySet<ColunaHistorico> = new Set(['km', 'empresa', 'comboio', 'hora', 'combustivel', 'bombaInicial', 'bombaFinal', 'responsavel', 'observacao']);
 
 const semAcento = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const numeroTexto = (valor: number) => valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
@@ -480,20 +481,12 @@ export default function HistoricoCombustivel({
           )}
         </section>
 
-        <section data-comb-reveal aria-label="Resultado" className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-4 lg:hidden">
-          {[
-            ['Abastecimentos', filtrados.length.toLocaleString('pt-BR'), textoPeriodo, 'text-slate-950'],
-            ['Litros', litrosTexto(totalLitros), filtrados.length ? `média ${litrosTexto(totalLitros / filtrados.length)}` : 'nenhum lançamento', 'text-[#176b4d]'],
-            ['Máquinas', maquinas.toLocaleString('pt-BR'), 'abastecidas no período', 'text-slate-950'],
-            ['A conferir', conferir.toLocaleString('pt-BR'), conferir ? 'toque em Filtros para ver só eles' : 'tudo certo', conferir ? 'text-[#c2410c]' : 'text-slate-950'],
-          ].map(([rotulo, valor, ajuda, cor]) => (
-            <div key={rotulo} className={`${CARTAO} px-3 py-2`}>
-              <p className="text-xs font-bold text-slate-500">{rotulo}</p>
-              <p className={`text-xl font-black tabular-nums ${cor}`}>{valor}</p>
-              <p className="truncate text-xs text-slate-500">{ajuda}</p>
-            </div>
-          ))}
-        </section>
+        <GradeIndicadores rotulo="Resultado" className="shrink-0 lg:hidden">
+          <CartaoIndicador rotulo="Lançamentos" valor={filtrados.length.toLocaleString('pt-BR')} detalhe={textoPeriodo} icone={Fuel} dados={{ 'data-comb-reveal': '' }} />
+          <CartaoIndicador rotulo="Litros" valor={litrosTexto(totalLitros)} detalhe={filtrados.length ? `média ${litrosTexto(totalLitros / filtrados.length)}` : 'nenhum lançamento'} tom="verde" icone={Droplets} dados={{ 'data-comb-reveal': '' }} />
+          <CartaoIndicador rotulo="Máquinas" valor={maquinas.toLocaleString('pt-BR')} detalhe="abastecidas no período" icone={Truck} dados={{ 'data-comb-reveal': '' }} />
+          <CartaoIndicador rotulo="A conferir" valor={conferir.toLocaleString('pt-BR')} detalhe={conferir ? 'toque em Filtros para ver só eles' : 'tudo certo'} tom={conferir ? 'laranja' : 'neutro'} icone={AlertTriangle} dados={{ 'data-comb-reveal': '' }} />
+        </GradeIndicadores>
 
         {selecionadosLista.length > 0 && (
           <div role="region" aria-label="Selecionados" className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl bg-[#176b4d] px-3 py-2 text-sm font-semibold text-white" data-testid="historico-selecao">
