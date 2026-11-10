@@ -100,6 +100,23 @@ const isExclusao = (valor: unknown): valor is ExclusaoRegistro => {
 
 const chave = (tabela: string, registroId: string) => `${tabela}\u0000${registroId}`;
 
+/**
+ * Tabelas que saíram do sistema em 10/11/2026 (Materiais e Jazida). As marcas
+ * de exclusão delas não servem mais: o banco já as descarta, e o aparelho para
+ * de reenviá-las a cada salvamento.
+ */
+export const TABELAS_REMOVIDAS: ReadonlySet<string> = new Set(['materiaisCadastro', 'materiaisMovimentos', 'materiaisPrevistos', 'materiaisRegistros', 'ticketsJazida']);
+
+export const semTabelasRemovidas = <T>(exclusoes: readonly T[]): T[] => exclusoes.filter(item => (
+  !item || typeof item !== 'object' || !TABELAS_REMOVIDAS.has(String((item as { tabela?: unknown }).tabela))
+));
+
+/** Chaves do navegador que só as telas de Materiais e Jazida usavam. */
+export const CHAVES_LOCAIS_REMOVIDAS = [
+  'renea_tickets_jazida', 'renea_materiais_cadastro', 'renea_materiais_movimentos', 'renea_materiais_previstos',
+  'renea_materiais_registros', 'renea_jazida_printed_batches', 'renea_ticket_link_drafts_v2', 'renea_ticket_link_history_v1',
+] as const;
+
 /** Restaurada é só a marca com data de restauração (mesma regra do banco, erp_recusar_por_perfil). */
 export const marcaRestaurada = (item: { restauradoEm?: unknown }) => typeof item.restauradoEm === 'string' && item.restauradoEm !== '';
 

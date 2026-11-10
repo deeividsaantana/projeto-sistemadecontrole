@@ -1,7 +1,7 @@
 /** URL contract only. A valid URL never grants access to its organization. */
 export const PRIVATE_MODULES = [
-  'home', 'pending', 'registries', 'materials', 'inventory', 'equipment',
-  'fleet', 'fuel', 'travels', 'stakes', 'field', 'presence', 'rdo',
+  'home', 'pending', 'registries', 'equipment',
+  'fleet', 'fuel', 'stakes', 'field', 'presence', 'rdo',
   'maintenance', 'reports', 'management', 'admin',
 ] as const;
 

@@ -2,8 +2,9 @@ import { useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { List, ListOrdered } from 'lucide-react';
-import type { Fatia, Pizza } from '../../modules/materials/graficosMateriais';
+import type { Fatia, Pizza } from '../../utils/pizza';
 import { BOTAO_SECUNDARIO, CARTAO, FOCO, reduzMovimento } from '../cadastros/estilos';
+
 
 const CENTRO = 100;
 const RAIO_FORA = 92;

@@ -8,7 +8,6 @@ import {
   INITIAL_EQUIPAMENTOS,
   INITIAL_FUNCIONARIOS,
   INITIAL_GRUPOS_EQUIPES,
-  INITIAL_TICKETS_JAZIDA,
 } from '../src/utils/initialData';
 import { INITIAL_CONTROLE_ESTACAS } from '../src/utils/initialEstacasData';
 
@@ -19,7 +18,6 @@ test('navegador novo não grava empresas, comboios, combustível, jazida nem est
   assert.deepEqual(INITIAL_COMBOIOS, []);
   assert.deepEqual(INITIAL_EQUIPAMENTOS, []);
   assert.deepEqual(INITIAL_ABASTECIMENTOS, []);
-  assert.deepEqual(INITIAL_TICKETS_JAZIDA, []);
   assert.deepEqual(INITIAL_CONTROLE_ESTACAS, { lotes: [], cravacoes: [] });
 });
 

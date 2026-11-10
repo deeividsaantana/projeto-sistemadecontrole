@@ -1,40 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  buildPublicTicketPath,
-  getPublicTicketAccessToken,
-  requirePublicTicketAccess,
-} from '../api/_shared/public-access.js';
-import {
   estabilizarLinksPublicos,
   isWeakPresenceToken,
   rotateWeakPublicLinkTokens,
 } from '../src/utils/publicLinkSecurity';
 import type { GrupoEquipe } from '../src/types';
-
-const secureToken = 'ticket-1234567890abcdef1234567890abcdef';
-
-test('protege ticket público com token forte em tempo constante', () => {
-  const event = { headers: { 'x-renea-ticket-access': secureToken }, queryStringParameters: {} };
-  assert.equal(getPublicTicketAccessToken(event), secureToken);
-  assert.doesNotThrow(() => requirePublicTicketAccess(event, secureToken));
-  assert.equal(buildPublicTicketPath(secureToken), `/ticket-link/${secureToken}`);
-});
-
-test('rejeita ticket público sem token, token incorreto ou segredo não configurado', () => {
-  assert.throws(
-    () => requirePublicTicketAccess({ headers: {}, queryStringParameters: {} }, secureToken),
-    (error: Error & { statusCode?: number }) => error.statusCode === 403,
-  );
-  assert.throws(
-    () => requirePublicTicketAccess({ headers: { 'x-renea-ticket-access': 'incorreto' } }, secureToken),
-    (error: Error & { statusCode?: number }) => error.statusCode === 403,
-  );
-  assert.throws(
-    () => requirePublicTicketAccess({ headers: { 'x-renea-ticket-access': secureToken } }, ''),
-    (error: Error & { statusCode?: number }) => error.statusCode === 503,
-  );
-});
 
 test('identifica tokens públicos previsíveis usados nas versões anteriores', () => {
   assert.equal(isWeakPresenceToken('renea-encarregado-terraplenagem-1'), true);

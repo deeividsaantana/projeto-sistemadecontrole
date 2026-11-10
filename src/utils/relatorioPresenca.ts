@@ -1,5 +1,5 @@
 import type { Empresa, Funcionario, PresencaApontamento, PresencaStatus } from '../types';
-import { COR_OUTROS, montarPizza, porcentagensInteiras, type Pizza } from '../modules/materials/graficosMateriais';
+import { COR_OUTROS, montarPizza, porcentagensInteiras, type Pizza } from './pizza';
 
 /**
  * Números da seção Relatórios da Presença. Leem um período inteiro, não um dia:

@@ -41,7 +41,7 @@ export interface ImportPreviewRow<T> {
   readonly existingReference?: string;
 }
 
-export type ImportDomain = 'materials-receipts' | 'materials-movements' | 'stakes' | 'travels';
+export type ImportDomain = 'stakes';
 
 export interface ImportColumnMapping {
   readonly column: string;

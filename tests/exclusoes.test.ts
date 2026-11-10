@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { apagarDeVez, aplicarExclusoes, criarExclusao, exclusoesAtivas, restaurarExclusao } from '../src/cloud/exclusoes';
+import { apagarDeVez, aplicarExclusoes, criarExclusao, exclusoesAtivas, restaurarExclusao, semTabelasRemovidas } from '../src/cloud/exclusoes';
 import { mergeCloudSnapshotsWithBaseline, resolvePublishPayload } from '../src/cloudMerge';
 
 const josue = { id: 'COL-0163', nome: 'Josué Pereira', matricula: '01063' };
@@ -104,4 +104,13 @@ test('excluir de vez vale nos outros aparelhos, mesmo com a nuvem ainda guardand
   assert.equal(marca.apagadoEm, '2026-09-26T12:00:00.000Z');
   assert.deepEqual(marca.registro, {});
   assert.deepEqual((publicado.funcionarios as { id: string }[]).map(item => item.id), ['COL-0144']);
+});
+
+test('marcas de Materiais e Jazida não sobem mais; as das outras tabelas ficam', () => {
+  const marcas = [
+    { id: 'a', tabela: 'ticketsJazida', registroId: 't1' },
+    { id: 'b', tabela: 'materiaisMovimentos', registroId: 'm1' },
+    { id: 'c', tabela: 'funcionarios', registroId: 'COL-1' },
+  ];
+  assert.deepEqual(semTabelasRemovidas(marcas).map(item => item.id), ['c']);
 });

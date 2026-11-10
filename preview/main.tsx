@@ -1,6 +1,5 @@
-import type { EtapaServico, HistoryLog, FrenteServico, ModeloRotina, PendenciaRotina, PrevistoMaterial, RegistroProducao, RotinaDiaria, ServicoObra } from '../src/types';
+import type { EtapaServico, HistoryLog, FrenteServico, ModeloRotina, PendenciaRotina, RegistroProducao, RotinaDiaria, ServicoObra } from '../src/types';
 import MeuDiaTab from '../src/components/MeuDiaTab';
-import { planoCargaSge } from '../src/modules/materials/locaisSge';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -17,13 +16,7 @@ import ControleEquipamentosDiarioTab from '../src/components/ControleEquipamento
 import QuadroFrota from '../src/components/quadroFrota/QuadroFrota';
 import ManutencaoTab from '../src/components/ManutencaoTab';
 import ColaboradoresTab from '../src/components/ColaboradoresTab';
-import MateriaisTab from '../src/components/MateriaisTab';
-import type { SecaoMateriais } from '../src/components/materiais/MateriaisSecoes';
-import MateriaisUtilizacaoPanel from '../src/components/MateriaisUtilizacaoPanel';
-import MaterialLinkApontador from '../src/components/MaterialLinkApontador';
-import { buildFieldView } from '../api/_shared/material-usage.js';
 import DiarioObraTab from '../src/components/DiarioObraTab';
-import TicketsJazidaTab from '../src/components/TicketsJazidaTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
 import { PRIMARY_MODULE_IDS, ROLE_ACCESS, SIDEBAR_NAVIGATION_GROUPS, destinoDaAba } from '../src/app/navigation/navigation';
@@ -128,7 +121,6 @@ const previewNotifications = [
 // em lançamentos, para conferir a janela que trava a exclusão; com
 // ?emUso=alguns só um em cada três fica travado, para conferir o lote misto.
 const algunsEmUso = new URLSearchParams(location.search).get('emUso') === 'alguns';
-const comListaSge = new URLSearchParams(location.search).get('sge') === '1';
 // Com ?vazio=1 abre sem nenhuma estaca, para conferir o primeiro uso.
 function EstacasPreview() {
   const [controle, setControle] = React.useState(() => (new URLSearchParams(window.location.search).get('vazio') ? { lotes: [], cravacoes: [] } : fx.controleEstacas));
@@ -144,8 +136,7 @@ function CadastrosPreview({ pedidoNovoColaborador = 0 }: { pedidoNovoColaborador
     comboios: [...fx.comboios],
     combustiveis: [...fx.combustiveis],
     lubrificantes: [...fx.lubrificantes],
-    // Com ?sge=1 os ramos vêm com a lista SGE carregada, para conferir classes e códigos.
-    etapas: comListaSge ? [...fx.etapasRamos, ...planoCargaSge(fx.etapasRamos).novas] : [...fx.etapasRamos],
+    etapas: [...fx.etapasRamos],
     frentesServico: [
       { id: 'FRE-1', nome: 'Aterro Ramo 900', ramoLocal: 'Ramo 900', servico: 'Aterro compactado', responsavel: 'Encarregado Paulo', situacao: 'Em execução', ativo: true, criadoEm: '', atualizadoEm: '' },
       { id: 'FRE-2', nome: 'Corte Ramo 1400', ramoLocal: 'Ramo 1400', servico: 'Escavação e carga', situacao: 'Paralisada', ativo: true, criadoEm: '', atualizadoEm: '' },
@@ -297,92 +288,6 @@ function PresencaFluxoCompleto() {
   );
 }
 
-// O link do apontador lê o mesmo cálculo do servidor, sobre os dados da prévia.
-const materialLinkView = buildFieldView({
-  etapas: fx.etapasRamos,
-  materiais: fx.materiaisUtilizacao,
-  movimentos: fx.movimentosUtilizacao,
-  pendentes: [],
-  today: '2026-09-24',
-});
-
-// Fotos de mentira para a prévia do Painel: no app elas vêm do Storage.
-const fotoPrevia = (fundo: string, terra: string) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 90"><rect width="90" height="90" fill="${fundo}"/><path d="M0 60 Q30 45 90 58 V90 H0Z" fill="${terra}"/><circle cx="46" cy="64" r="11" fill="#9aa39e" stroke="#6f7873" stroke-width="3"/></svg>`)}`;
-const fotosPorEnvio: Record<string, string[]> = {
-  u3: [fotoPrevia('#b9d3e6', '#8a6a4a'), fotoPrevia('#c9dbe8', '#7a5c3e')],
-  u4: [fotoPrevia('#d6e2ea', '#94704f')],
-  u7: [fotoPrevia('#bcd0dd', '#80603f'), fotoPrevia('#cfdde6', '#8f6b48'), fotoPrevia('#c4d6e2', '#7d5a3b')],
-};
-const movimentosComFotos = fx.movimentosUtilizacao.map(item => ({ ...item, fotos: fotosPorEnvio[item.id] }));
-
-// Materiais com estado: importar, lançar e ligar local mudam a tela como no
-// app. Os ramos começam vazios para conferir a carga da lista SGE.
-function MateriaisPreview() {
-  const [materiais, setMateriais] = React.useState(() => [...fx.materiaisObra]);
-  // Os usos do link entram junto para a parte Apontadores ter envios e fotos.
-  const [movimentos, setMovimentos] = React.useState(() => [
-    ...fx.movimentosMateriaisObra,
-    ...movimentosComFotos.filter(item => item.origemApontamentoId),
-    // Nomes que nenhum local conhece, para a parte Ramos e locais ter o que criar.
-    ...['BOTA-FORA ESTRADA VELHA', 'ATERRO RAMO 1300', 'PÁTIO CENTRAL'].map((destino, posicao) => ({ ...fx.movimentosMateriaisObra[0], id: `sem-local-${posicao}`, destino, etapaServicoId: undefined, etapaServicoNome: undefined })),
-  ]);
-  const [etapas, setEtapas] = React.useState<EtapaServico[]>([]);
-  const [previstos, setPrevistos] = React.useState<PrevistoMaterial[]>([]);
-  const lixeira = React.useRef(new Map<string, EtapaServico>());
-  const [apagados, setApagados] = React.useState<Set<string>>(new Set());
-  const juntar = <T extends { id: string }>(atuais: T[], novos: T[]) => {
-    const porId = new Map(novos.map(item => [item.id, item]));
-    const ids = new Set(atuais.map(item => item.id));
-    return [...atuais.map(item => porId.get(item.id) ?? item), ...novos.filter(item => !ids.has(item.id))];
-  };
-  return (
-    <MateriaisTab
-      materiais={materiais}
-      movimentos={movimentos}
-      empresas={fx.empresas}
-      etapas={etapas}
-      responsavel="Deivid Santana"
-      podeEditar
-      onSaveMaterial={material => setMateriais(atual => juntar(atual, [material]))}
-      onSaveMovimento={movimento => setMovimentos(atual => [movimento, ...atual])}
-      onSaveMovimentos={novos => setMovimentos(atual => [...novos, ...atual])}
-      onUpdateMovimentos={alterados => setMovimentos(atual => juntar(atual, alterados))}
-      onApplyImport={(novosMateriais, novosMovimentos) => { setMateriais(atual => juntar(atual, novosMateriais)); setMovimentos(atual => juntar(atual, novosMovimentos)); }}
-      onSaveEtapas={itens => setEtapas(atual => juntar(atual, itens))}
-      onExcluirLocal={id => {
-        const alvo = etapas.find(item => item.id === id);
-        if (alvo) lixeira.current.set(`lixo-${id}`, alvo);
-        setApagados(atual => new Set([...atual, id]));
-        setEtapas(atual => atual.filter(item => item.id !== id));
-        return { ok: true, exclusaoId: `lixo-${id}` };
-      }}
-      locaisApagados={apagados}
-      onRestaurarLocal={exclusaoId => {
-        const volta = lixeira.current.get(exclusaoId);
-        if (volta) { setEtapas(atual => [...atual, volta]); setApagados(atual => new Set([...atual].filter(id => id !== volta.id))); }
-        return { ok: Boolean(volta), mensagem: volta ? `${volta.nome} voltou para a lista.` : 'Já foi restaurado.' };
-      }}
-      secaoInicial={(new URLSearchParams(window.location.search).get('secao') || undefined) as SecaoMateriais | undefined}
-      viagensJazida={(
-        <TicketsJazidaTab
-          tickets={fx.ticketsJazida}
-          equipamentos={fx.equipamentos}
-          controlesEquipamentos={fx.controlesEquipamentos}
-          obras={fx.obras}
-          onSaveTicket={noop}
-          onDeleteTicket={noop}
-          onDeleteTickets={noop}
-          onImportTickets={noop}
-          onReserveTicketNumber={async () => '2400'}
-          onReserveTicketNumbers={async count => Array.from({ length: count }, (_, i) => String(2400 + i))}
-        />
-      )}
-      previstos={previstos}
-      onSavePrevistos={itens => setPrevistos(atual => juntar(atual, itens))}
-    />
-  );
-}
-
 // Molde da TelaCheia com 18 subtelas agrupadas (Materiais, Estacas e
 // Cadastros na fase 2): prova que as abas cabem a 1366 px sem rolagem lateral
 // e que a área de dados ocupa o resto da tela e rola por dentro.
@@ -441,12 +346,6 @@ function MeuDiaPreview() {
       onSaveRotina={rotina => setRotinas(atual => trocar(atual, rotina))}
       onSavePendencia={pendencia => setPendencias(atual => trocar(atual, pendencia))}
       onSaveModelo={modelo => setModelos(atual => trocar(atual, modelo))}
-      materiais={fx.materiaisObra}
-      movimentosMaterial={[
-        ...fx.movimentosMateriaisObra.map((item, posicao) => (posicao < 6 ? { ...item, data: hoje } : item)),
-        ...movimentosComFotos.filter(item => item.origemApontamentoId).map(item => ({ ...item, data: hoje })),
-        { ...fx.movimentosMateriaisObra[0], id: 'envio-ontem', data: ontem, origemApontamentoId: 'envio-ontem', apontadoPor: 'Ricardo', tipo: 'Saída' as const },
-      ]}
       abastecimentos={fx.abastecimentos.map(item => ({ ...item, data: hoje }))}
       controlesFrota={[...fx.controlesEquipamentos.map(item => ({ ...item, data: hoje })), { ...fx.controlesEquipamentos[0], id: 'sem-motivo', prefixo: 'RE-03', status: 'Aguardando motorista' as const, motivoManutencao: undefined, observacao: '', data: hoje }]}
       equipamentos={fx.equipamentos}
@@ -592,20 +491,6 @@ const screens: Record<string, React.ReactNode> = {
   cadastros: <CadastrosPreview />,
   'cadastro-novo-colaborador': <CadastrosPreview pedidoNovoColaborador={1} />,
   estacas: <EstacasPreview />,
-  jazida: (
-    <TicketsJazidaTab
-      tickets={fx.ticketsJazida}
-      equipamentos={fx.equipamentos}
-      controlesEquipamentos={fx.controlesEquipamentos}
-      obras={fx.obras}
-      onSaveTicket={noop}
-      onDeleteTicket={noop}
-      onDeleteTickets={noop}
-      onImportTickets={noop}
-      onReserveTicketNumber={async () => '2400'}
-      onReserveTicketNumbers={async count => Array.from({ length: count }, (_, i) => String(2400 + i))}
-    />
-  ),
   frotas: (
     <ControleEquipamentosDiarioTab
       registros={[...fx.controlesEquipamentos, ...fx.controlesQuadro, ...fx.controlesBasculantes]}
@@ -676,31 +561,9 @@ const screens: Record<string, React.ReactNode> = {
       presencasLink={fx.presencasHistorico}
       controlesEquipamentos={fx.controlesEquipamentos}
       apontamentos={[]}
-      movimentosMaterial={[]}
-      ticketsJazida={fx.ticketsJazida}
       responsavel="Deivid Santana"
       podeEditar
       onSave={noop}
-    />
-  ),
-  materiais: <MateriaisPreview />,
-  'materiais-utilizacao': (
-    <MateriaisUtilizacaoPanel
-      materiais={fx.materiaisUtilizacao}
-      movimentos={fx.movimentosUtilizacao}
-      etapas={fx.etapasRamos}
-      responsavel="Deivid Santana"
-      podeEditar
-      classe=""
-      onClasse={noop}
-      onSaveMovimentos={noop}
-      onUpdateMovimentos={noop}
-    />
-  ),
-  'material-link': (
-    <MaterialLinkApontador
-      loadView={async () => materialLinkView}
-      submitUse={async () => ({ message: 'Uso salvo.' })}
     />
   ),
   colaboradores: (
@@ -710,7 +573,6 @@ const screens: Record<string, React.ReactNode> = {
       gruposEquipe={[fx.grupo]}
       presencasLink={fx.presencasHistorico}
       controlesEquipamentos={fx.controlesEquipamentos}
-      ticketsJazida={fx.ticketsJazida}
       onNavigate={noop}
       responsavel="Preview"
       onAlterarSituacao={noop}
@@ -728,7 +590,6 @@ const screens: Record<string, React.ReactNode> = {
       gruposEquipe={[fx.grupo]}
       presencasLink={[]}
       controlesEquipamentos={[]}
-      ticketsJazida={[]}
       onNavigate={noop}
     />
   ),
@@ -746,11 +607,9 @@ const screens: Record<string, React.ReactNode> = {
       lubrificacoes={[]}
       historyLogs={[]}
       ordensServico={fx.ordensServico}
-      ticketsJazida={fx.ticketsJazida}
       presencasLink={fx.registrosEnviados}
       controlesEquipamentos={fx.controlesEquipamentos}
       gruposEquipe={equipesPainel}
-      movimentosMaterial={movimentosComFotos}
       onNavigate={noop}
     />
   ),
@@ -803,7 +662,7 @@ const key = new URLSearchParams(location.search).get('screen') || 'usuarios';
 const comShell = new URLSearchParams(location.search).get('shell') === '1';
 const ABA_DO_PREVIEW: Record<string, string> = {
   painel: 'dashboard', combustivel: 'lancamentos', 'combustivel-operador': 'lancamentos', 'combustivel-consumo': 'lancamentos',
-  frotas: 'controle-equipamentos', 'presenca-admin': 'presenca', 'colaboradores-lote': 'colaboradores', 'materiais-utilizacao': 'materiais',
+  frotas: 'controle-equipamentos', 'presenca-admin': 'presenca', 'colaboradores-lote': 'colaboradores',
 };
 const abaAtiva = ABA_DO_PREVIEW[key] || key;
 const previewQueryClient = new QueryClient();
@@ -813,7 +672,7 @@ const previewQueryClient = new QueryClient();
 // fora dele no App.
 // O link de presença também: no app ele tem a página só para ele, com uma
 // <main> só (auditoria de 21/10/2026, M2).
-const isPublicScreen = ['material-link', 'pesquisa', 'presenca', 'presenca-fluxo', 'presenca-enviada'].includes(key);
+const isPublicScreen = ['pesquisa', 'presenca', 'presenca-fluxo', 'presenca-enviada'].includes(key);
 
 createRoot(document.getElementById('app-root')!).render(
   <QueryClientProvider client={previewQueryClient}>

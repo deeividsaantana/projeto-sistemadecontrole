@@ -5,14 +5,12 @@ import type {
   FrenteServico,
   Funcionario,
   Inspecao,
-  Material,
   Medicao,
   NaoConformidade,
   ObraLocal,
   Ocorrencia,
   OrdemServico,
   ServicoObra,
-  TicketJazida,
 } from '../types';
 import { normalizeComparable } from './canonicalIdentity';
 
@@ -31,9 +29,7 @@ export interface FontesBusca {
   obras?: ObraLocal[];
   frentes?: FrenteServico[];
   servicos?: ServicoObra[];
-  materiais?: Material[];
   ordensServico?: OrdemServico[];
-  ticketsJazida?: TicketJazida[];
   fichasFvs?: FichaVerificacaoServico[];
   inspecoes?: Inspecao[];
   naoConformidades?: NaoConformidade[];
@@ -73,15 +69,9 @@ export const buscarGlobal = (busca: string, fontes: FontesBusca): ResultadoBusca
     (fontes.servicos || [])
       .filter(item => item.ativo !== false && combina(termo, item.descricao, item.codigo))
       .map(item => ({ id: `sv-${item.id}`, tipo: 'Serviço', titulo: item.descricao, subtitulo: item.unidade, tab: 'producao' })),
-    (fontes.materiais || [])
-      .filter(item => item.ativo !== false && combina(termo, item.descricao, item.codigo, item.categoria))
-      .map(item => ({ id: `mt-${item.id}`, tipo: 'Material', titulo: item.descricao, subtitulo: item.categoria, tab: 'materiais' })),
     (fontes.ordensServico || [])
       .filter(item => combina(termo, item.numero, item.motivo, item.descricao, item.responsavel))
       .map(item => ({ id: `os-${item.id}`, tipo: 'Ordem de serviço', titulo: item.numero, subtitulo: [item.status, item.motivo].filter(Boolean).join(' · '), tab: 'manutencao' })),
-    (fontes.ticketsJazida || [])
-      .filter(item => combina(termo, item.ticketNumero, item.placa, item.motoristaNome, item.tipoMaterial, item.prefixo))
-      .map(item => ({ id: `tk-${item.id}`, tipo: 'Ticket', titulo: item.ticketNumero || item.id, subtitulo: [item.data, item.placa].filter(Boolean).join(' · '), tab: 'tickets-jazida' })),
     (fontes.fichasFvs || [])
       .filter(item => item.ativo !== false && combina(termo, item.numero, item.local, item.servicoDescricao))
       .map(item => ({ id: `fvs-${item.id}`, tipo: 'FVS', titulo: item.numero, subtitulo: [item.local, item.situacao].filter(Boolean).join(' · '), tab: 'fvs' })),

@@ -1,6 +1,6 @@
 /**
  * Identidade da obra em um lugar só. Antes o nome estava escrito à mão em oito
- * arquivos — painel, controle diário, ticket da jazida, relatório de frota,
+ * arquivos — painel, controle diário, relatório de frota,
  * PDF diário, PDF semanal, Excel semanal e Excel operacional — e cada troca de
  * nome exigia caçar string por string, com o risco de sobrar a antiga num
  * relatório que o cliente recebe.

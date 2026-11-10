@@ -23,7 +23,7 @@ import {
   downloadCorporateWorkbook,
   styleCorporateWorksheet,
 } from '../../utils/excelCorporate';
-import GraficoPizza from '../materiais/GraficoPizza';
+import GraficoPizza from './GraficoPizza';
 import GraficoLinhasPresenca from './GraficoLinhasPresenca';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, reduzMovimento } from '../cadastros/estilos';
 

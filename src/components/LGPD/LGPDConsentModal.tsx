@@ -107,7 +107,7 @@ export default function LGPDConsentModal() {
                 <strong>Presença:</strong> Data, horário, localização (obra/frente)
               </li>
               <li className="list-disc">
-                <strong>Operacional:</strong> Equipamentos operados, viagens de jazida
+                <strong>Operacional:</strong> Equipamentos operados
               </li>
             </ul>
           </div>

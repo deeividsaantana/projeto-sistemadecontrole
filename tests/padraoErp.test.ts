@@ -57,11 +57,8 @@ const ARQUIVOS = readdirSync(RAIZ, { recursive: true, encoding: 'utf8' })
 
 const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu;
 const SEM_TABELA_PADRAO = /(ReportLayout|Grafico)[^/]*\.tsx$/;
-/**
- * Tabelas que não são lista: a grade de digitação de viagens (cada célula é
- * um campo, cola do Excel) e as folhas que só existem na impressão.
- */
-const TABELA_DE_OUTRO_TIPO = new Set(['materiais/GradeViagens.tsx', 'estacas/RelatoriosEstacas.tsx', 'materiais/RelatoriosMateriais.tsx']);
+/** Tabelas que não são lista: as folhas que só existem na impressão. */
+const TABELA_DE_OUTRO_TIPO = new Set(['estacas/RelatoriosEstacas.tsx']);
 /** "uppercase" junto de qualquer tracking largo na mesma lista de classes. */
 const ESPACADO = String.raw`\btracking-(?:widest|wider|wide|\[[^\]]*\])`;
 const CAIXA_ALTA_ESPACADA = new RegExp(String.raw`\buppercase\b[^'"\x60\n{}]*?${ESPACADO}|${ESPACADO}[^'"\x60\n{}]*?\buppercase\b`, 'g');

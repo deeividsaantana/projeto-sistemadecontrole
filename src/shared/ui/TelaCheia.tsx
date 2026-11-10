@@ -24,7 +24,7 @@ import { cn } from './styles';
  * conteúdo rola por dentro com o respiro entre os blocos, entra no Tab do
  * teclado e ganha nome para o leitor de tela.
  *
- * Subtela que é uma tela inteira (Viagens da jazida dentro de Materiais): a
+ * Subtela que é uma tela inteira dentro de outra: a
  * TelaCheia de dentro percebe que está na área de dados de outra, ocupa só
  * essa área em vez de pedir a altura da janela, e o PageHeader dela vira h2
  * (um h1 só por página).

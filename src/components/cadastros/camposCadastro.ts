@@ -8,13 +8,27 @@
  * Salvar parte sempre do registro anterior: campo que a tela não mostra
  * (vínculos, datas de criação, classes da planilha mestre) continua igual.
  */
-import type { Canteiro, Comboio, Empresa, Equipamento, EtapaServico, FrenteServico, Funcionario, ObraLocal, ProdutoLubrificacao, ServicoObra, TipoCombustivel } from '../../types';
+import type { Canteiro, Comboio, Empresa, Equipamento, EtapaServico, TipoLocalObra, FrenteServico, Funcionario, ObraLocal, ProdutoLubrificacao, ServicoObra, TipoCombustivel } from '../../types';
 import { normalizarBusca } from '../../utils/cadastrosLista';
 import { EMPRESA_CLASSES, isSubSupplier, isSupplier, nextMasterId, type EmpresaTipo } from '../../masterData/centralRegistry';
 import { validateEquipmentMasterRecord } from '../../utils/equipmentOperations';
 import { TIPOS_POR_CATEGORIA_EMPRESA, isCategoriaEmpresa, type CadastroCategoriaId } from '../../utils/cadastrosCategorias';
-import { EXPLICA_TIPO, TIPOS_LOCAL } from '../../modules/materials/locaisSge';
 import { TABELA_DA_CATEGORIA, type DadosCadastros, type RegistroCadastro } from '../../utils/cadastrosLista';
+
+const TIPOS_LOCAL: readonly TipoLocalObra[] = ['Ramo', 'Frente', 'Origem', 'Bota-fora', 'Bota-espera', 'Estoque', 'Canteiro', 'Serviço'];
+
+/** O que cada tipo quer dizer, para quem escolhe na tela. */
+const EXPLICA_TIPO: Record<TipoLocalObra, string> = {
+  Ramo: 'O ramo em si',
+  Frente: 'Parte de um ramo: espinha, coluna de brita, aterro',
+  Origem: 'De onde o material sai: pedreira, jazida',
+  'Bota-fora': 'Para onde vai lixo e solo',
+  'Bota-espera': 'Onde o material espera antes de ir',
+  Estoque: 'Pilha guardada para usar depois',
+  Canteiro: 'Canteiro, pátio e fábrica',
+  Serviço: 'Código só de horas, sem lugar de material',
+};
+
 
 export type ValorCampo = string | boolean | string[];
 export type ValoresCadastro = Record<string, ValorCampo>;

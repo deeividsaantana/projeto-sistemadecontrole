@@ -5,9 +5,9 @@ import { PRIVATE_MODULES, type PrivateModule } from '../routing/privateRoutes';
 import { PularParaConteudo } from '../../shared/ui/PularParaConteudo';
 
 const labels: Record<PrivateModule, string> = {
-  home: 'Início', pending: 'Pendências', registries: 'Cadastros', materials: 'Materiais',
-  inventory: 'Estoque', equipment: 'Equipamentos', fleet: 'Frota', fuel: 'Combustível',
-  travels: 'Viagens', stakes: 'Estacas', field: 'Campo', presence: 'Presença', rdo: 'RDO',
+  home: 'Início', pending: 'Pendências', registries: 'Cadastros',
+  equipment: 'Equipamentos', fleet: 'Frota', fuel: 'Combustível',
+  stakes: 'Estacas', field: 'Campo', presence: 'Presença', rdo: 'RDO',
   maintenance: 'Manutenção', reports: 'Relatórios', management: 'Gestão', admin: 'Administração',
 };
 

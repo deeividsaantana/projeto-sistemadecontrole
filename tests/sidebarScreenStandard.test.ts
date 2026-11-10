@@ -14,7 +14,6 @@ const primaryScreens = [
   ['lancamentos', 'src/components/LancamentosTab.tsx'],
   ['colaboradores', 'src/components/ColaboradoresTab.tsx'],
   ['presenca', 'src/components/ControlePresencaTab.tsx'],
-  ['materiais', 'src/components/MateriaisTab.tsx'],
 ] as const;
 
 test('as 14 abas primarias usam o mesmo envelope de tamanho', () => {

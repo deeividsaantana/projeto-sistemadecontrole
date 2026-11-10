@@ -45,7 +45,7 @@ test('M35: sem dado aparece "—", não 0%, e a média ignora dia vazio', () => 
 });
 
 test('A28: Meu dia não conta abastecimento inativado', () => {
-  assert.match(ler('src/App.tsx'), /movimentosMaterial=\{materiaisMovimentos\}\s*abastecimentos=\{abastecimentosAtivos\}\s*controlesFrota=/);
+  assert.match(ler('src/App.tsx'), /onSaveModelo=\{handleSaveModeloRotina\}\s*abastecimentos=\{abastecimentosAtivos\}\s*controlesFrota=/);
 });
 
 test('M37: a planilha não desmobiliza outra empresa e reativa quem volta', () => {

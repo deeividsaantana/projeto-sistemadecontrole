@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { AlertOctagon, Gauge, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, ClipboardCheck, Flag, ListChecks, ListTodo, Moon, NotebookPen, type LucideIcon } from 'lucide-react';
-import type { Abastecimento, BlocoRotina, ControleEquipamentoDiario, Equipamento, Material, MovimentoMaterial, ModeloRotina, PendenciaRotina, RotinaDiaria } from '../types';
+import type { Abastecimento, BlocoRotina, ControleEquipamentoDiario, Equipamento, ModeloRotina, PendenciaRotina, RotinaDiaria } from '../types';
 import { blocosDaPessoa, concluidasNoDia, contarPorPrioridade, diaFechado, idDaRotina, pendenciasAbertas, prioridadesDeOntem, progresso, rotinaVazia, temModeloProprio } from '../modules/rotina/checklistDiario';
 import { formatarData } from '../utils/formato';
 import { CartaoIndicador, CountUp, GradeIndicadores, PageHeader, isoDay } from '../shared/ui';
@@ -45,9 +45,7 @@ interface Props {
   onSaveRotina: (rotina: RotinaDiaria) => void;
   onSavePendencia: (pendencia: PendenciaRotina, descricao: string, acao: AcaoPendencia) => void;
   onSaveModelo: (modelo: ModeloRotina, descricao: string) => void;
-  /** O que o sistema já sabe do dia: materiais, envios, frota e diesel. */
-  materiais: readonly Material[];
-  movimentosMaterial: readonly MovimentoMaterial[];
+  /** O que o sistema já sabe do dia: frota e diesel. */
   abastecimentos: readonly Abastecimento[];
   controlesFrota: readonly ControleEquipamentoDiario[];
   equipamentos: readonly Equipamento[];
@@ -74,7 +72,7 @@ function Anotacao({ rotulo, ajuda, valor, onGravar, linhas = 4 }: { rotulo: stri
   );
 }
 
-export default function MeuDiaTab({ responsavel, rotinas, pendencias, modelos, onSaveRotina, onSavePendencia, onSaveModelo, materiais, movimentosMaterial, abastecimentos, controlesFrota, equipamentos, onIrPara }: Props) {
+export default function MeuDiaTab({ responsavel, rotinas, pendencias, modelos, onSaveRotina, onSavePendencia, onSaveModelo, abastecimentos, controlesFrota, equipamentos, onIrPara }: Props) {
   const pessoa = responsavel.trim() || 'Sem nome';
   const hoje = isoDay(new Date());
   const [dia, setDia] = useState(hoje);
@@ -181,7 +179,7 @@ export default function MeuDiaTab({ responsavel, rotinas, pendencias, modelos, o
         )}
 
         {parte === 'obra' && (
-          <ObraNoDia dia={dia} materiais={materiais} movimentos={movimentosMaterial} abastecimentos={abastecimentos} controles={controlesFrota} equipamentos={equipamentos} onIrPara={onIrPara} />
+          <ObraNoDia dia={dia} abastecimentos={abastecimentos} controles={controlesFrota} equipamentos={equipamentos} onIrPara={onIrPara} />
         )}
 
 

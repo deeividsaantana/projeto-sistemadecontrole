@@ -5,18 +5,16 @@ import { Activity, ClipboardList, Truck, Users } from 'lucide-react';
 import type {
   Abastecimento, Comboio, ControleEquipamentoDiario, ControleEstacas, Empresa,
   Equipamento, FichaVerificacaoServico, FrenteServico, Funcionario, GrupoEquipe,
-  HistoryLog, Inspecao, LancamentoCusto, ListaPresenca, Lubrificacao, Material,
-  Medicao, MovimentoMaterial, NaoConformidade, ObraLocal, OrcamentoItem,
+  HistoryLog, Inspecao, LancamentoCusto, ListaPresenca, Lubrificacao,
+  Medicao, NaoConformidade, ObraLocal, OrcamentoItem,
   OrdemServico, PlanejamentoItem, PresencaApontamento, ProdutoLubrificacao,
-  RegistroProducao, TicketJazida, TipoCombustivel,
+  RegistroProducao, TipoCombustivel,
 } from '../types';
 import { PageHeader, PeriodFilter, buildPeriod, type PeriodValue } from '../shared/ui';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { buildDashboardGeneralViewModel } from '../utils/dashboardGeneral';
 import { AvailabilityTrend, FleetDonut } from './dashboard/OperationalVisuals';
 import { TeamActivity } from './dashboard/TeamActivity';
-import { FieldReports } from './dashboard/FieldReports';
-import { fieldReportsFromMovements } from '../utils/fieldReports';
 
 interface DashboardProps {
   empresas: Empresa[]; obras: ObraLocal[]; equipamentos: Equipamento[];
@@ -24,11 +22,11 @@ interface DashboardProps {
   lubrificantes: ProdutoLubrificacao[]; abastecimentos: Abastecimento[];
   lubrificacoes: Lubrificacao[]; historyLogs: HistoryLog[];
   listasPresenca?: ListaPresenca[]; ordensServico?: OrdemServico[];
-  ticketsJazida?: TicketJazida[]; estacas?: ControleEstacas;
+  estacas?: ControleEstacas;
   presencasLink?: PresencaApontamento[]; controlesEquipamentos?: ControleEquipamentoDiario[];
   gruposEquipe?: GrupoEquipe[]; planejamento?: PlanejamentoItem[];
-  producao?: RegistroProducao[]; medicoes?: Medicao[]; materiais?: Material[];
-  movimentosMaterial?: MovimentoMaterial[]; fichasFvs?: FichaVerificacaoServico[];
+  producao?: RegistroProducao[]; medicoes?: Medicao[];
+  fichasFvs?: FichaVerificacaoServico[];
   inspecoes?: Inspecao[]; naoConformidades?: NaoConformidade[];
   lancamentosCusto?: LancamentoCusto[]; orcamento?: OrcamentoItem[];
   frentes?: FrenteServico[]; onNavigate: (tab: string) => void;
@@ -51,7 +49,6 @@ export default function Dashboard(props: DashboardProps) {
   const dashboardRef = useRef<HTMLElement>(null);
   const view = useMemo(() => buildDashboardGeneralViewModel({ obraId, from: periodo.from, to: periodo.to }, props),
     [obraId, periodo.from, periodo.to, props.equipamentos, props.controlesEquipamentos, props.producao, props.abastecimentos, props.presencasLink, props.gruposEquipe, props.funcionarios, props.ordensServico]);
-  const fieldReports = useMemo(() => fieldReportsFromMovements(props.movimentosMaterial || [], { from: periodo.from, to: periodo.to }), [props.movimentosMaterial, periodo.from, periodo.to]);
   const display = (value: number | null, unit = '') => value === null ? 'Sem registro' : `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value)}${unit ? ` ${unit}` : ''}`;
   const getTone = (value: string | number | null, defaultTone: 'green' | 'blue' | 'orange' | 'slate'): 'green' | 'blue' | 'orange' | 'slate' => {
     if (value === 'Sem posição' || value === 'Sem registro') return 'slate';
@@ -94,7 +91,6 @@ export default function Dashboard(props: DashboardProps) {
 
       <TeamActivity view={view} onNavigate={props.onNavigate} />
 
-      <FieldReports reports={fieldReports} onNavigate={props.onNavigate} />
     </TelaCheia>
   );
 }

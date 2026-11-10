@@ -93,7 +93,7 @@ test('recusa por perfil faz o aparelho baixar a nuvem na hora, com espera cresce
 test('Lixeira e restauração usam a mesma regra de marca restaurada', () => {
   const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(app, /!item\.restauradoEm/);
-  assert.equal((app.match(/!marcaRestaurada\(item\)/g) || []).length, 3);
+  assert.equal((app.match(/!marcaRestaurada\(item\)/g) || []).length, 2);
 });
 
 test('envio e download usam as tabelas e marcas da nuvem para o operador, pelo perfil atual', () => {

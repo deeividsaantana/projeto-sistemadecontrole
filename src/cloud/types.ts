@@ -19,12 +19,12 @@ export interface CloudDownloadResult { data: CloudData | null; source: string; u
 export const INTERMEDIATE_TABLE_IDS = [
   'empresas', 'obras', 'equipamentos', 'funcionarios', 'motoristasOperacionais', 'comboios',
   'canteiros', 'combustiveis', 'lubrificantes', 'etapas', 'abastecimentos', 'lubrificacoes',
-  'ticketsJazida', 'listasPresenca', 'ordensServico', 'gruposEquipe', 'presencasLink',
+  'listasPresenca', 'ordensServico', 'gruposEquipe', 'presencasLink',
   'historicoPresencas', 'checklists', 'apontamentosOperacionais', 'registrosDds', 'treinamentos',
-  'modelosChecklist', 'apontamentoRamos', 'apontamentoRamoRegistros', 'materiaisCadastro',
-  'materiaisMovimentos', 'materiaisPrevistos', 'rotinasDiarias', 'pendenciasRotina', 'modelosRotina',
+  'modelosChecklist', 'apontamentoRamos', 'apontamentoRamoRegistros',
+  'rotinasDiarias', 'pendenciasRotina', 'modelosRotina',
   'frentesServico', 'diariosObra', 'servicosObra', 'producaoRegistros', 'planejamentoItens',
   'modelosFvs', 'fichasFvs', 'inspecoes', 'naoConformidades', 'medicoes', 'documentos', 'ocorrencias',
-  'lancamentosCusto', 'orcamentoItens', 'materiaisRegistros', 'controleEquipamentosDiario',
+  'lancamentosCusto', 'orcamentoItens', 'controleEquipamentosDiario',
   'periodosArquivados', 'notifications', 'historyLogs', 'vinculosOperadorEquipamento', 'exclusoes',
 ] as const;

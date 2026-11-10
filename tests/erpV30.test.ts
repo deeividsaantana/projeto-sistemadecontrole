@@ -37,7 +37,7 @@ test('associa perfil ao lote disponível e confere nota fiscal', () => {
 
 test('snapshot detecta alteração posterior ao fechamento', () => {
   const dados: PeriodoArquivado['dados'] = {
-    abastecimentos: [], lubrificacoes: [], ticketsJazida: [], listasPresenca: [],
+    abastecimentos: [], lubrificacoes: [], listasPresenca: [],
     ordensServico: [], presencasLink: [], historicoPresencas: [],
     estacas: control,
   };

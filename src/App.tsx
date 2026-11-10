@@ -26,13 +26,11 @@ import {
   ChecklistEquipamento,
   ApontamentoOperacional,
   RegistroDDS,
-  Material,
   FrenteServico,
   DiarioObra,
   ServicoObra,
   RegistroProducao,
   PlanejamentoItem,
-  PrevistoMaterial,
   RotinaDiaria,
   PendenciaRotina,
   ModeloRotina,
@@ -45,14 +43,12 @@ import {
   Ocorrencia,
   LancamentoCusto,
   OrcamentoItem,
-  MovimentoMaterial,
   Treinamento,
   ModeloChecklist,
   GrupoEquipe,
   PresencaApontamento,
   PresencaStatus,
   HistoricoPresenca,
-  TicketJazida,
   ControleEquipamentoDiario,
   PeriodoArquivado,
   ControleEstacas
@@ -76,7 +72,6 @@ import {
   INITIAL_FRENTES_SERVICO,
   INITIAL_PRESENCAS_LINK,
   INITIAL_HISTORICO_PRESENCAS,
-  INITIAL_TICKETS_JAZIDA,
 } from './utils/initialData';
 import { registrosComCanteiroRenomeado } from './utils/frenteServico';
 import { INITIAL_CONTROLE_ESTACAS } from './utils/initialEstacasData';
@@ -102,21 +97,17 @@ import {
   LOCAL_FUEL_RESET_VERSION,
   shouldResetLocalFuel,
 } from './utils/localFuelReset';
-import type { SecaoMateriais } from './components/materiais/MateriaisSecoes';
 
 // Subcomponents Imports
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const CadastrosTab = lazy(() => import('./components/CadastrosTab'));
 const LancamentosTab = lazy(() => import('./components/LancamentosTab'));
 const ControlePresencaTab = lazy(() => import('./components/ControlePresencaTab'));
-const TicketsJazidaTab = lazy(() => import('./components/TicketsJazidaTab'));
 const PresencaTempoRealPublica = lazy(() => import('./components/PresencaTempoRealPublica'));
-const TicketLinkExterno = lazy(() => import('./components/TicketLinkExterno'));
 const ControleEquipamentosDiarioTab = lazy(() => import('./components/ControleEquipamentosDiarioTab'));
 const QuadroFrota = lazy(() => import('./components/quadroFrota/QuadroFrota'));
 const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
-const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
 const MeuDiaTab = lazy(() => import('./components/MeuDiaTab'));
 const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
@@ -127,8 +118,6 @@ import { BuscaColaborador } from './components/shared/BuscaColaborador';
 import { PresencaPublicaLink } from './components/presenca/PresencaPublicaLink';
 import { EscalaSabado } from './components/presenca/EscalaSabado';
 
-// A base histórica de materiais fica em um chunk separado para não pesar no
-// login e nas demais telas. Ela é carregada antes da hidratação dos dados.
 // Motion and Logo Import
 import reneaLogo from './assets/images/logo-renea-transparent.png';
 import reneaLogoWhite from './assets/images/logo-renea-branco.png';
@@ -150,23 +139,14 @@ import {
   type CloudData,
 } from './cloud/cloudSyncGateway';
 import {
-  deletePublicTicket,
-  subscribePublicTickets,
-  reservePublicTicketNumber,
-  reservePublicTicketNumbers,
-  savePublicTicket,
-} from './supabase/tickets';
-import {
   markPublicSubmissionsProcessed,
-  subscribePendingMaterialUses,
   subscribePendingPublicSubmissions,
   type PublicSubmission,
 } from './supabase/submissions';
-import { mergeMaterialUseMovements, movementsFromMaterialUse, type MaterialUseSubmission } from './modules/materials/materialFieldUse';
 import { fetchAllPresenceSubmissions } from './supabase/submissionRecovery';
 import { juntarPresencaBaixada, presenceBusinessKey, presencasFaltantes, resumoRecuperadas } from './utils/presencaRecuperacao';
 import { captureCloudBaseline, mergeCloudTable, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
-import { apagarDeVez, aplicarExclusoes, criarExclusao, marcaRestaurada, restaurarExclusao, type ExclusaoRegistro } from './cloud/exclusoes';
+import { CHAVES_LOCAIS_REMOVIDAS, apagarDeVez, aplicarExclusoes, criarExclusao, marcaRestaurada, restaurarExclusao, semTabelasRemovidas, type ExclusaoRegistro } from './cloud/exclusoes';
 import { protegerContraEncolhimento } from './cloud/protecaoEncolhimento';
 import { comMarcasDaNuvem, comMarcasLocaisDaNuvem, comTabelasDaNuvem, marcasSoDaNuvem, recusadoPorPerfil, tabelasSoDaNuvem } from './cloud/tabelasPorPerfil';
 import { manterNovidadesLocais } from './cloud/novidadesLocais';
@@ -177,12 +157,8 @@ import {
   removePublicPresenceMember,
   updatePublicPresenceDayNote,
   loadPublicPresenceConfig,
-  reservePublicTicketNumberViaApi,
-  savePublicTicketViaApi,
-  searchPendingPublicTickets,
   submitPublicPresence,
   updatePublicPresenceRecord,
-  validatePublicTicketAccess,
 } from './publicApi';
 import { enrichFuelDataset } from './utils/fuelOperations';
 import { estabilizarLinksPublicos } from './utils/publicLinkSecurity';
@@ -208,9 +184,6 @@ import { rotuloAbastecimento } from './modules/frota/lixeiraCombustivel';
 import { usosDoCadastro } from './masterData/registryDependencies';
 import { mergeEmpresaImport, mergeEquipamentoImport, mergeFuncionarioImport } from './masterData/registryImportMerge';
 import { TIPOS_POR_CATEGORIA_EMPRESA, categoriaCadastro, isCategoriaEmpresa, type CadastroCategoriaId } from './utils/cadastrosCategorias';
-import { appendMovement, applyMaterialImport, saveMaterial } from './modules/materials/materialCommands';
-import { desfazerNotasRepetidas } from './modules/materials/notaDuplicada';
-import { ticketsRepetidosParaExcluir } from './utils/ticketDuplicateDetection';
 import { recordTabUsage } from './usageTelemetry';
 import {
   ALL_NAVIGATION_ITEMS,
@@ -236,8 +209,6 @@ import { DesktopSidebar } from './app/shell/DesktopSidebar';
 import { APP_VERSION_LABEL } from './app/version';
 import {
   getPresenceTokenFromUrl,
-  getTicketAccessTokenFromUrl,
-  isTicketLinkUrl,
 } from './app/routing/publicRoutes';
 import { ScreenLoadingFallback } from './shared/components/feedback/ScreenLoadingFallback';
 import { ToastViewport } from './shared/components/feedback/ToastViewport';
@@ -304,12 +275,6 @@ const numberFromImport = (value: string) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const mergeTicketCollections = (current: TicketJazida[], incoming: TicketJazida[]) => {
-  const indexed = new Map(current.map(item => [item.id, item]));
-  incoming.forEach(item => indexed.set(item.id, item));
-  return Array.from(indexed.values());
-};
-
 const mergeRecordsById = <T extends { id: string }>(current: T[], incoming: T[]): T[] => {
   const indexed = new Map(current.map(item => [item.id, item]));
   incoming.forEach(item => indexed.set(item.id, item));
@@ -334,7 +299,6 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['etapas', 'renea_etapas'],
   ['abastecimentos', 'renea_abastecimentos'],
   ['lubrificacoes', 'renea_lubrificacoes'],
-  ['ticketsJazida', 'renea_tickets_jazida'],
   ['listasPresenca', 'renea_listas_presenca'],
   ['ordensServico', 'renea_ordens_servico'],
   ['gruposEquipe', 'renea_grupos_equipes'],
@@ -345,9 +309,6 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['apontamentosOperacionais', STORAGE_KEYS.apontamentosOperacionais],
   ['registrosDds', STORAGE_KEYS.registrosDds],
   ['treinamentos', STORAGE_KEYS.treinamentos],
-  ['materiaisCadastro', STORAGE_KEYS.materiaisCadastro],
-  ['materiaisMovimentos', STORAGE_KEYS.materiaisMovimentos],
-  ['materiaisPrevistos', STORAGE_KEYS.materiaisPrevistos],
   ['rotinasDiarias', STORAGE_KEYS.rotinasDiarias],
   ['pendenciasRotina', STORAGE_KEYS.pendenciasRotina],
   ['modelosRotina', STORAGE_KEYS.modelosRotina],
@@ -483,7 +444,7 @@ export default function App() {
   // (M9). Roda antes do efeito do Combustível abaixo, que lê o mesmo endereço.
   const abaJaNoEndereco = useRef(false);
   useEffect(() => {
-    if (!isLoggedIn || isTicketLinkUrl() || getPresenceTokenFromUrl()) return;
+    if (!isLoggedIn || getPresenceTokenFromUrl()) return;
     const url = new URL(window.location.href);
     const anterior = url.searchParams.get('tab');
     if (activeTab !== 'lancamentos') {
@@ -510,8 +471,6 @@ export default function App() {
       setActiveTab(targetTab);
     }
   }, [activeTab]);
-  // Parte de Materiais pedida por outro lugar (aviso, busca); a vez remonta a tela na parte certa.
-  const [materiaisPedido, setMateriaisPedido] = useState<{ secao?: SecaoMateriais; vez: number }>({ vez: 0 });
   // Quadro e Manutenção se abrem um no outro já filtrados pelo prefixo da máquina.
   const [pedidoFrota, setPedidoFrota] = useState<{ prefixo: string; vez: number }>({ prefixo: '', vez: 0 });
   const [pedidoManutencao, setPedidoManutencao] = useState<{ prefixo: string; vez: number }>({ prefixo: '', vez: 0 });
@@ -548,7 +507,6 @@ export default function App() {
   // O último envio falhou: o pulso de checagem tenta de novo sozinho.
   const uploadPendenteRef = useRef(false);
   const recuperacaoPorPerfilRef = useRef({ quando: 0, vezes: 0 });
-  const publicTicketIdsRef = useRef<Set<string>>(new Set());
   const requestAutomaticRemoteSyncRef = useRef<(updatedAt: string) => void>(() => undefined);
   const currentUserRoleRef = useRef<UserRole>('leitura');
   // Ids por tabela da última sincronização concluída neste aparelho. A base é
@@ -584,20 +542,12 @@ export default function App() {
   const [etapas, setEtapas] = useState<EtapaServico[]>([]);
   const [abastecimentos, setAbastecimentos] = useState<Abastecimento[]>([]);
   const [lubrificacoes, setLubrificacoes] = useState<Lubrificacao[]>([]);
-  const [ticketsJazida, setTicketsJazida] = useState<TicketJazida[]>([]);
-  const [externalPublicTickets, setExternalPublicTickets] = useState<TicketJazida[]>([]);
   const [listasPresenca, setListasPresenca] = useState<ListaPresenca[]>([]);
   const [ordensServico, setOrdensServico] = useState<OrdemServico[]>([]);
   const [checklists, setChecklists] = useState<ChecklistEquipamento[]>([]);
   const [apontamentosOperacionais, setApontamentosOperacionais] = useState<ApontamentoOperacional[]>([]);
   const [registrosDds, setRegistrosDds] = useState<RegistroDDS[]>([]);
   const [treinamentos, setTreinamentos] = useState<Treinamento[]>([]);
-  const [materiaisCadastro, setMateriaisCadastro] = useState<Material[]>([]);
-  const [materiaisMovimentos, setMateriaisMovimentos] = useState<MovimentoMaterial[]>([]);
-  // Lançamento desfeito continua guardado para o histórico, mas nenhuma outra
-  // tela soma ele: só a aba Materiais mostra o registro, marcado como desfeito.
-  const materiaisMovimentosVigentes = useMemo(() => materiaisMovimentos.filter(item => !item.canceladoEm), [materiaisMovimentos]);
-  const [materiaisPrevistos, setMateriaisPrevistos] = useState<PrevistoMaterial[]>([]);
   const [rotinasDiarias, setRotinasDiarias] = useState<RotinaDiaria[]>([]);
   const [pendenciasRotina, setPendenciasRotina] = useState<PendenciaRotina[]>([]);
   const [modelosRotina, setModelosRotina] = useState<ModeloRotina[]>([]);
@@ -626,7 +576,6 @@ export default function App() {
   // que é o que vai para o armazenamento e para a nuvem.
   const canteirosNomes = useMemo(() => canteiros.map(item => item.nome), [canteiros]);
   const abastecimentosAtivos = useMemo(() => somenteAtivos(abastecimentos), [abastecimentos]);
-  const ticketsJazidaAtivos = useMemo(() => somenteAtivos(ticketsJazida), [ticketsJazida]);
   const presencasLinkAtivas = useMemo(() => somenteAtivos(presencasLink), [presencasLink]);
   const presencasLinkInativas = useMemo(() => presencasLink.filter(item => !estaAtivo(item)), [presencasLink]);
   const [historicoPresencas, setHistoricoPresencas] = useState<HistoricoPresenca[]>([]);
@@ -650,14 +599,10 @@ export default function App() {
   const [externalObservacaoDia, setExternalObservacaoDia] = useState('');
   const [externalPresenceHistory, setExternalPresenceHistory] = useState<Record<string, PresencaApontamento[]>>({});
   const [externalPresenceDayNotes, setExternalPresenceDayNotes] = useState<Record<string, string>>({});
-  const [isExternalTicketLoading, setIsExternalTicketLoading] = useState<boolean>(isTicketLinkUrl());
-  const [externalTicketLoadError, setExternalTicketLoadError] = useState('');
   const [publicLinksRotationPending, setPublicLinksRotationPending] = useState(
     () => readStoredFlag(localStorage, STORAGE_KEYS.publicLinksRotationPendingV31),
   );
   const externalPresenceToken = getPresenceTokenFromUrl();
-  const externalTicketAccessToken = getTicketAccessTokenFromUrl();
-  const externalTicketLink = isTicketLinkUrl();
 
   // Task 8: presenca-publica rota state
   const [presencaPublicaAutenticado, setPresencaPublicaAutenticado] = useState<Funcionario | null>(null);
@@ -666,14 +611,14 @@ export default function App() {
   const nomeDaTelaAtual = ALL_NAVIGATION_ITEMS.find(item => item.id === activeTab)?.label;
 
   useEffect(() => {
-    if (!isLoggedIn || !currentUser || externalTicketLink || externalPresenceToken) return;
+    if (!isLoggedIn || !currentUser || externalPresenceToken) return;
     const navigationItem = ALL_NAVIGATION_ITEMS.find(item => item.id === activeTab);
     if (!navigationItem) return;
     const timer = window.setTimeout(() => {
       void recordTabUsage(navigationItem.id, navigationItem.label);
     }, 800);
     return () => window.clearTimeout(timer);
-  }, [activeTab, isLoggedIn, currentUser, externalTicketLink, externalPresenceToken]);
+  }, [activeTab, isLoggedIn, currentUser, externalPresenceToken]);
 
   useEffect(() => {
     // Endereço antigo guardado (F5, favorito) abre a tela onde o dado mora hoje.
@@ -685,11 +630,11 @@ export default function App() {
   // Hydrate states from localstorage on mount
   useEffect(() => {
     const hydrateLocalData = () => {
-      if (externalTicketLink || externalPresenceToken) return;
+      if (externalPresenceToken) return;
 
       const isDataLoadedV2 = readStoredFlag(localStorage, STORAGE_KEYS.dataLoadedV2);
-      // Navegador sem dados não recebe mais base de exemplo (empresas, comboios,
-      // viagens da jazida e estacas de agosto): começa vazio, fica marcado como
+      // Navegador sem dados não recebe mais base de exemplo (empresas, comboios
+      // e estacas de agosto): começa vazio, fica marcado como
       // aguardando o primeiro download e só envia depois de baixar a nuvem.
 
     if (!isDataLoadedV2) {
@@ -705,7 +650,6 @@ export default function App() {
         { key: 'renea_etapas', value: JSON.stringify(INITIAL_ETAPAS_SERVICO) },
         { key: 'renea_abastecimentos', value: JSON.stringify(INITIAL_ABASTECIMENTOS) },
         { key: 'renea_lubrificacoes', value: JSON.stringify(INITIAL_LUBRIFICACOES) },
-        { key: 'renea_tickets_jazida', value: JSON.stringify(INITIAL_TICKETS_JAZIDA) },
         { key: 'renea_listas_presenca', value: JSON.stringify(INITIAL_PRESENCAS) },
         { key: 'renea_ordens_servico', value: JSON.stringify(INITIAL_ORDENS_SERVICO) },
         { key: 'renea_grupos_equipes', value: JSON.stringify(INITIAL_GRUPOS_EQUIPES) },
@@ -740,7 +684,6 @@ export default function App() {
       setEtapas(INITIAL_ETAPAS_SERVICO);
       setAbastecimentos(INITIAL_ABASTECIMENTOS);
       setLubrificacoes(INITIAL_LUBRIFICACOES);
-      setTicketsJazida(INITIAL_TICKETS_JAZIDA);
       setListasPresenca(INITIAL_PRESENCAS);
       setOrdensServico(INITIAL_ORDENS_SERVICO);
       setGruposEquipe(INITIAL_GRUPOS_EQUIPES);
@@ -766,7 +709,6 @@ export default function App() {
       const resetLocalFuel = shouldResetLocalFuel(localStorage.getItem(LOCAL_FUEL_RESET_STORAGE_KEY));
       const savedAbastecimentos = resetLocalFuel ? '[]' : localStorage.getItem('renea_abastecimentos');
       const savedLubrificacoes = localStorage.getItem('renea_lubrificacoes');
-      const savedTicketsJazida = localStorage.getItem('renea_tickets_jazida');
       const savedListasPresenca = localStorage.getItem('renea_listas_presenca');
       const savedOrdensServico = localStorage.getItem('renea_ordens_servico');
       const savedGruposEquipe = localStorage.getItem('renea_grupos_equipes');
@@ -783,7 +725,6 @@ export default function App() {
       const parsedEmpresas = parseStoredJson(savedEmpresas, 'renea_empresas', INITIAL_EMPRESAS);
       const parsedComboios = parseStoredJson(savedComboios, 'renea_comboios', INITIAL_COMBOIOS);
       const parsedAbastecimentos = parseStoredJson(savedAbastecimentos, 'renea_abastecimentos', INITIAL_ABASTECIMENTOS);
-      const parsedTicketsJazida = parseStoredJson(savedTicketsJazida, 'renea_tickets_jazida', INITIAL_TICKETS_JAZIDA);
       const parsedControleEstacas = normalizeStakeControl(
         parseStoredJson(savedControleEstacas, 'renea_controle_estacas', INITIAL_CONTROLE_ESTACAS),
       );
@@ -818,16 +759,12 @@ export default function App() {
       setEtapas(parseStoredJson(savedEtapas, 'renea_etapas', INITIAL_ETAPAS_SERVICO));
       setAbastecimentos(resetLocalFuel ? [] : parsedAbastecimentos);
       setLubrificacoes(parseStoredJson(savedLubrificacoes, 'renea_lubrificacoes', INITIAL_LUBRIFICACOES));
-      setTicketsJazida(parsedTicketsJazida);
       setListasPresenca(parsedListasPresenca);
       setOrdensServico(parseStoredJson(savedOrdensServico, 'renea_ordens_servico', INITIAL_ORDENS_SERVICO));
       setChecklists(parseStoredJson(localStorage.getItem(STORAGE_KEYS.checklists), STORAGE_KEYS.checklists, [] as ChecklistEquipamento[]));
       setApontamentosOperacionais(parseStoredJson(localStorage.getItem(STORAGE_KEYS.apontamentosOperacionais), STORAGE_KEYS.apontamentosOperacionais, [] as ApontamentoOperacional[]));
       setRegistrosDds(parseStoredJson(localStorage.getItem(STORAGE_KEYS.registrosDds), STORAGE_KEYS.registrosDds, [] as RegistroDDS[]));
       setTreinamentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.treinamentos), STORAGE_KEYS.treinamentos, [] as Treinamento[]));
-      setMateriaisCadastro(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisCadastro), STORAGE_KEYS.materiaisCadastro, [] as Material[]));
-      setMateriaisMovimentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisMovimentos), STORAGE_KEYS.materiaisMovimentos, [] as MovimentoMaterial[]));
-      setMateriaisPrevistos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.materiaisPrevistos), STORAGE_KEYS.materiaisPrevistos, [] as PrevistoMaterial[]));
       setRotinasDiarias(parseStoredJson(localStorage.getItem(STORAGE_KEYS.rotinasDiarias), STORAGE_KEYS.rotinasDiarias, [] as RotinaDiaria[]));
       setPendenciasRotina(parseStoredJson(localStorage.getItem(STORAGE_KEYS.pendenciasRotina), STORAGE_KEYS.pendenciasRotina, [] as PendenciaRotina[]));
       setModelosRotina(parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosRotina), STORAGE_KEYS.modelosRotina, [] as ModeloRotina[]));
@@ -855,7 +792,12 @@ export default function App() {
       setPeriodosArquivados(parseStoredJson(savedPeriodosArquivados, 'renea_periodos_arquivados', [] as PeriodoArquivado[]));
       setVinculosOperadorEquipamento(parseStoredJson(savedVinculosOperadorEquipamento, 'renea_vinculos_operador_equipamento', [] as VinculoOperadorEquipamento[]));
       setHistoryLogs(parseStoredJson(savedHistory, 'renea_history_logs', [] as HistoryLog[]));
-      setExclusoes(parseStoredJson(localStorage.getItem(STORAGE_KEYS.exclusoes), STORAGE_KEYS.exclusoes, [] as ExclusaoRegistro[]));
+      // Materiais e Jazida saíram: os dados delas deixam o navegador e as marcas de exclusão param de subir.
+      CHAVES_LOCAIS_REMOVIDAS.forEach(chave => localStorage.removeItem(chave));
+      const exclusoesGuardadas = parseStoredJson(localStorage.getItem(STORAGE_KEYS.exclusoes), STORAGE_KEYS.exclusoes, [] as ExclusaoRegistro[]);
+      const exclusoesValidas = semTabelasRemovidas(exclusoesGuardadas);
+      if (exclusoesValidas.length !== exclusoesGuardadas.length) writeStorageValue(localStorage, STORAGE_KEYS.exclusoes, JSON.stringify(exclusoesValidas));
+      setExclusoes(exclusoesValidas);
       setNotifications(prependNotifications([], parseStoredJson(savedNotifications, 'renea_notifications', getInitialNotifications())));
 
       // Efetivo do EFETIVO_OBRA_3 em quem já usa o sistema. A semente acima só
@@ -1005,7 +947,7 @@ export default function App() {
     const savedLastSync = localStorage.getItem('renea_last_cloud_sync') || '';
     setLastCloudSync(savedLastSync);
 
-    if (!isLoggedIn || externalTicketLink || externalPresenceToken) {
+    if (!isLoggedIn || externalPresenceToken) {
       setIsCloudConnected(false);
       return;
     }
@@ -1025,7 +967,7 @@ export default function App() {
       }
     };
     void checkConnection();
-  }, [isLoggedIn, externalTicketLink, externalPresenceToken]);
+  }, [isLoggedIn, externalPresenceToken]);
 
   /** Le uma tabela do armazenamento local, com o padrao usado hoje como reserva. */
   const readTable = <T,>(storageKey: string, fallback: T): T =>
@@ -1050,14 +992,10 @@ export default function App() {
     etapas: readTable('renea_etapas', INITIAL_ETAPAS_SERVICO),
     abastecimentos: readTable('renea_abastecimentos', INITIAL_ABASTECIMENTOS),
     lubrificacoes: readTable('renea_lubrificacoes', INITIAL_LUBRIFICACOES),
-    ticketsJazida: readTable('renea_tickets_jazida', [] as TicketJazida[]),
     checklists: readTable(STORAGE_KEYS.checklists, [] as ChecklistEquipamento[]),
     apontamentosOperacionais: readTable(STORAGE_KEYS.apontamentosOperacionais, [] as ApontamentoOperacional[]),
     registrosDds: readTable(STORAGE_KEYS.registrosDds, [] as RegistroDDS[]),
     treinamentos: readTable(STORAGE_KEYS.treinamentos, [] as Treinamento[]),
-    materiaisCadastro: readTable(STORAGE_KEYS.materiaisCadastro, [] as Material[]),
-    materiaisMovimentos: readTable(STORAGE_KEYS.materiaisMovimentos, [] as MovimentoMaterial[]),
-    materiaisPrevistos: readTable(STORAGE_KEYS.materiaisPrevistos, [] as PrevistoMaterial[]),
     rotinasDiarias: readTable(STORAGE_KEYS.rotinasDiarias, [] as RotinaDiaria[]),
     pendenciasRotina: readTable(STORAGE_KEYS.pendenciasRotina, [] as PendenciaRotina[]),
     modelosRotina: readTable(STORAGE_KEYS.modelosRotina, [] as ModeloRotina[]),
@@ -1087,7 +1025,7 @@ export default function App() {
     masterDataReviewQueue: readTable('renea_master_data_review_queue', [] as MasterWorkbookReviewRow[]),
     notifications: readTable('renea_notifications', getInitialNotifications()),
     historyLogs: readTable('renea_history_logs', [] as HistoryLog[]),
-    exclusoes: readTable(STORAGE_KEYS.exclusoes, [] as ExclusaoRegistro[]),
+    exclusoes: semTabelasRemovidas(readTable(STORAGE_KEYS.exclusoes, [] as ExclusaoRegistro[])),
   });
 
   // Envio para a nuvem pelo gateway de migração.
@@ -1232,7 +1170,7 @@ export default function App() {
         const remoteExclusoes = Array.isArray(data.exclusoes) ? data.exclusoes : [];
         data.exclusoes = mergeCloudTable(remoteExclusoes, localExclusoes);
         // Marca local de gestão ou cadastro no aparelho do operador não fica: o banco recusaria os envios dele.
-        data.exclusoes = comMarcasDaNuvem(Array.isArray(data.exclusoes) ? data.exclusoes : [], remoteExclusoes, marcasSoDaNuvem(currentUserRoleRef.current));
+        data.exclusoes = semTabelasRemovidas(comMarcasDaNuvem(Array.isArray(data.exclusoes) ? data.exclusoes : [], remoteExclusoes, marcasSoDaNuvem(currentUserRoleRef.current)));
         Object.assign(data, aplicarExclusoes(data));
         // Gestão como veio da nuvem: o operador não altera essas tabelas e fica com elas.
         const gestaoDaNuvem: CloudData = { ...data };
@@ -1341,9 +1279,6 @@ export default function App() {
         if (Object.hasOwn(data, 'lubrificacoes')) {
           setLubrificacoes(normalizeRuntimeCollection<Lubrificacao>(data.lubrificacoes));
         }
-        if (Object.hasOwn(data, 'ticketsJazida')) {
-          setTicketsJazida(normalizeRuntimeCollection<TicketJazida>(data.ticketsJazida));
-        }
         if (Object.hasOwn(data, 'listasPresenca')) {
           setListasPresenca(normalizePresenceLists(data.listasPresenca));
         }
@@ -1361,15 +1296,6 @@ export default function App() {
         }
         if (Object.hasOwn(data, 'treinamentos')) {
           setTreinamentos(normalizeRuntimeCollection<Treinamento>(data.treinamentos));
-        }
-        if (Object.hasOwn(data, 'materiaisCadastro')) {
-          setMateriaisCadastro(normalizeRuntimeCollection<Material>(data.materiaisCadastro));
-        }
-        if (Object.hasOwn(data, 'materiaisMovimentos')) {
-          setMateriaisMovimentos(normalizeRuntimeCollection<MovimentoMaterial>(data.materiaisMovimentos));
-        }
-        if (Object.hasOwn(data, 'materiaisPrevistos')) {
-          setMateriaisPrevistos(normalizeRuntimeCollection<PrevistoMaterial>(data.materiaisPrevistos));
         }
         if (Object.hasOwn(data, 'rotinasDiarias')) {
           setRotinasDiarias(normalizeRuntimeCollection<RotinaDiaria>(data.rotinasDiarias));
@@ -1505,7 +1431,7 @@ export default function App() {
   // upload ou outro download, a versao fica pendente e e processada assim que
   // a operacao atual terminar, em vez de ser descartada para sempre.
   const requestAutomaticRemoteSync = async (updatedAt: string) => {
-    if (!updatedAt || !isAutoSyncEnabled || externalPresenceToken || externalTicketLink) return;
+    if (!updatedAt || !isAutoSyncEnabled || externalPresenceToken) return;
     pendingRemoteVersionRef.current = updatedAt;
     if (uploadsInFlightRef.current > 0 || automaticDownloadInFlightRef.current) return;
 
@@ -1582,7 +1508,7 @@ export default function App() {
   // confira a versão mais nova antes de confiar no que já estava carregado
   // localmente — em vez de esperar o próximo pulso automático.
   const pullRemoteChanges = async () => {
-    if (!isAutoSyncEnabled || externalPresenceToken || externalTicketLink) return;
+    if (!isAutoSyncEnabled || externalPresenceToken) return;
     if (isCheckingSyncRef.current) return;
     // Cada checagem é uma leitura remota. Passar por cinco telas
     // seguidas não precisa de cinco leituras: o ouvinte em tempo real já
@@ -1609,7 +1535,7 @@ export default function App() {
   };
 
   useCloudSyncLifecycle({
-    enabled: isLoggedIn && isAutoSyncEnabled && !externalPresenceToken && !externalTicketLink,
+    enabled: isLoggedIn && isAutoSyncEnabled && !externalPresenceToken,
     initialDelayMs: 3_000,
     fallbackIntervalMs: SYNC_FALLBACK_INTERVAL_MS,
     noticeDelayMs: AVISO_NUVEM_ESPERA_MS,
@@ -1661,46 +1587,6 @@ export default function App() {
     if (!externalPresenceToken) return;
     void reloadExternalPresence();
   }, [externalPresenceToken]);
-
-  useEffect(() => {
-    if (!externalTicketLink) return;
-    setExternalPublicTickets([]);
-    setExternalTicketLoadError('');
-    setIsExternalTicketLoading(true);
-    validatePublicTicketAccess(externalTicketAccessToken)
-      .catch(error => {
-        setExternalTicketLoadError(
-          error instanceof Error
-            ? error.message
-            : 'Este link de tickets é inválido, expirou ou foi substituído.',
-        );
-      })
-      .finally(() => setIsExternalTicketLoading(false));
-  }, [externalTicketAccessToken, externalTicketLink]);
-
-  // Tickets públicos chegam por listener, não por varredura periódica: reler a
-  // coleção inteira a cada 30 segundos custava centenas de milhares de leituras
-  // por dia sem nada ter mudado. O listener cobra a leitura inicial e depois só
-  // o documento que muda de fato.
-  useEffect(() => {
-    if (!isLoggedIn || externalTicketLink) return;
-    const unsubscribe = subscribePublicTickets(db, publicTickets => {
-      const incomingIds = new Set(publicTickets.map(item => item.id));
-      setTicketsJazida(current => {
-        const withoutRemovedPublicTickets = current.filter(item => (
-          !publicTicketIdsRef.current.has(item.id) || incomingIds.has(item.id)
-        ));
-        const merged = mergeTicketCollections(withoutRemovedPublicTickets, publicTickets);
-        writeStorageValue(localStorage, 'renea_tickets_jazida', JSON.stringify(merged));
-        return merged;
-      });
-      publicTicketIdsRef.current = incomingIds;
-    }, error => console.warn('Listener de tickets públicos indisponível:', error));
-    return () => unsubscribe();
-  }, [isLoggedIn, externalTicketLink]);
-
-  // Não altera nem migra tickets automaticamente ao abrir o sistema.
-  // Qualquer mudança nos tickets ocorre somente por ação manual do usuário.
 
   // Helper to save data and append to changes history
   const saveAndLog = (
@@ -1943,8 +1829,6 @@ export default function App() {
     etapas: { lista: etapas, setLista: setEtapas as (next: never[]) => void, storageKey: 'renea_etapas', tela: 'Etapas de Serviço' },
     frentesServico: { lista: frentesServico, setLista: setFrentesServico as (next: never[]) => void, storageKey: STORAGE_KEYS.frentesServico, tela: 'Frentes de Serviço' },
     servicosObra: { lista: servicosObra, setLista: setServicosObra as (next: never[]) => void, storageKey: STORAGE_KEYS.servicosObra, tela: 'Serviços da obra' },
-    // Tickets repetidos vão para a Lixeira sozinhos; daqui eles voltam se restaurados.
-    ticketsJazida: { lista: ticketsJazida as never[], setLista: setTicketsJazida as (next: never[]) => void, storageKey: 'renea_tickets_jazida', tela: 'Tickets Jazida' },
     gruposEquipe: { lista: gruposEquipe as never[], setLista: setGruposEquipe as (next: never[]) => void, storageKey: 'renea_grupos_equipes', tela: 'Grupos / Equipes' },
     // Abastecimento excluído vai para a Lixeira (A17): o Desfazer e a Lixeira devolvem por aqui.
     abastecimentos: { lista: abastecimentos as never[], setLista: setAbastecimentos as (next: never[]) => void, storageKey: 'renea_abastecimentos', tela: 'Abastecimentos' },
@@ -1968,7 +1852,6 @@ export default function App() {
     gruposEquipe,
     controleEquipamentosDiario: controleEquipamentosDiario as ReadonlyArray<ControleEquipamentoDiario & { local?: string }>,
     canteiros,
-    materiaisMovimentos,
     frentesServico,
     producao: producaoRegistros,
     planejamento: planejamentoItens,
@@ -2098,8 +1981,6 @@ export default function App() {
 
   const handleRestaurarCadastro = (exclusaoId: string) => handleRestaurarCadastros([exclusaoId]);
 
-  // Locais na Lixeira: a lista SGE de Materiais não oferece de novo o que foi apagado.
-  const locaisApagados = useMemo(() => new Set(exclusoes.filter(item => item.tabela === 'etapas' && !marcaRestaurada(item)).map(item => item.registroId)), [exclusoes]);
 
   /**
    * Tira da Lixeira e joga fora a cópia guardada. A marca de exclusão fica,
@@ -2419,33 +2300,6 @@ export default function App() {
         writeStorageValue(localStorage, 'renea_etapas', JSON.stringify(updated));
       }
     );
-  };
-
-  // Materiais grava ramos em lote (lista SGE, apelidos da planilha): um só
-  // registro no histórico e uma só gravação, sem apagar nenhum ramo.
-  const handleSaveEtapasServico = (itens: EtapaServico[], descricao: string) => {
-    if (!itens.length) return;
-    const porId = new Map(itens.map(item => [item.id, item]));
-    const existentes = new Set(etapas.map(item => item.id));
-    const updated = [...etapas.map(item => porId.get(item.id) ?? item), ...itens.filter(item => !existentes.has(item.id))];
-    saveAndLog('Etapas de Serviço', itens.some(item => !existentes.has(item.id)) ? 'Criou' : 'Editou', descricao, historyLogs, () => {
-      setEtapas(updated);
-      writeStorageValue(localStorage, 'renea_etapas', JSON.stringify(updated));
-    });
-  };
-
-  // Previsto de material por ramo e mês: grava em lote (copiar do mês anterior)
-  // com um registro só no histórico. Tirar um previsto só desliga, não apaga.
-  const handleSaveMateriaisPrevistos = (itens: PrevistoMaterial[], descricao: string) => {
-    if (!itens.length) return;
-    const porId = new Map(itens.map(item => [item.id, item]));
-    const existentes = new Set(materiaisPrevistos.map(item => item.id));
-    const updated = [...materiaisPrevistos.map(item => porId.get(item.id) ?? item), ...itens.filter(item => !existentes.has(item.id))];
-    const acao = itens.some(item => !existentes.has(item.id)) ? 'Criou' : itens.every(item => item.ativo === false) ? 'Excluiu' : 'Editou';
-    saveAndLog('Materiais', acao, descricao, historyLogs, () => {
-      setMateriaisPrevistos(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.materiaisPrevistos, JSON.stringify(updated));
-    });
   };
 
   // Rotina do assistente (Meu dia): o dia de cada pessoa e as pendências que
@@ -2898,105 +2752,6 @@ export default function App() {
     });
   };
 
-  // Tickets Jazida / Liberação de Material — Prioridade 6
-  const handleSaveTicketJazida = (item: TicketJazida, isNew: boolean) => {
-    let updated;
-    if (isNew) {
-      updated = [...ticketsJazida, item];
-    } else {
-      updated = ticketsJazida.map(x => x.id === item.id ? item : x);
-    }
-    saveAndLog(
-      'Tickets Jazida',
-      isNew ? 'Criou' : 'Editou',
-      `${isNew ? 'Registrou' : 'Editou'} ticket de ${item.tipoTicket || 'Liberação'} Nº ${item.ticketNumero} (${item.quantidadeM3} m³ de ${item.tipoMaterial}).`,
-      historyLogs,
-      () => {
-        setTicketsJazida(updated);
-        writeStorageValue(localStorage, 'renea_tickets_jazida', JSON.stringify(updated));
-      }
-    );
-    void savePublicTicket(
-      db,
-      { ...item, origemRegistro: item.origemRegistro || 'Admin' },
-      { allowOverwriteSent: true },
-    )
-      .catch(error => console.warn('Falha ao espelhar ticket no link público:', error));
-  };
-
-  // Com marca de exclusão (A12, M20): vai para a Lixeira e não volta de outro aparelho.
-  const excluirTickets = (itens: TicketJazida[]) => {
-    excluirCadastros({
-      tabela: 'ticketsJazida',
-      storageKey: 'renea_tickets_jazida',
-      tela: 'Tickets Jazida',
-      itens: itens.map(item => ({ item, rotulo: `Ticket ${item.ticketNumero || item.id}${item.data ? ` de ${item.data}` : ''}` })),
-      lista: ticketsJazida,
-      setLista: setTicketsJazida,
-    });
-    itens.forEach(item => {
-      void deletePublicTicket(db, item.id).catch(error => console.warn('Falha ao excluir ticket público:', error));
-    });
-  };
-
-  const handleDeleteTicketJazida = (id: string) => {
-    if (exclusaoRecusada(podeExcluirLancamento)) return;
-    const item = ticketsJazida.find(x => x.id === id);
-    if (!item) return;
-    excluirTickets([item]);
-  };
-
-  const handleDeleteTicketsJazida = (ids: string[]) => {
-    if (exclusaoRecusada(podeExcluirLancamento)) return;
-    const selected = new Set(ids);
-    const itens = ticketsJazida.filter(item => selected.has(item.id));
-    if (itens.length === 0) return;
-    excluirTickets(itens);
-  };
-
-  const handleImportTicketsJazida = (novosItens: TicketJazida[]) => {
-    if (!novosItens || novosItens.length === 0) return;
-    const existingIds = new Set(ticketsJazida.map(item => item.id));
-    const createdCount = novosItens.filter(item => !existingIds.has(item.id)).length;
-    const updatedCount = novosItens.length - createdCount;
-    const updated = mergeTicketCollections(ticketsJazida, novosItens);
-    saveAndLog(
-      'Tickets Jazida',
-      createdCount ? 'Criou' : 'Editou',
-      `${createdCount ? `Criou ${createdCount}` : ''}${createdCount && updatedCount ? ' e ' : ''}${updatedCount ? `atualizou ${updatedCount}` : ''} via(s) de ticket em uma única operação.`,
-      historyLogs,
-      () => {
-        setTicketsJazida(updated);
-        writeStorageValue(localStorage, 'renea_tickets_jazida', JSON.stringify(updated));
-      }
-    );
-  };
-
-  const handleReserveTicketNumber = () => reservePublicTicketNumber(db, ticketsJazida);
-  const handleReserveTicketNumbers = (count: number) => reservePublicTicketNumbers(db, ticketsJazida, count);
-
-  const handleSaveTicketLink = async (
-    item: TicketJazida,
-  ): Promise<{ success: boolean; message: string }> => {
-    try {
-      const result = await savePublicTicketViaApi(item, externalTicketAccessToken);
-      setExternalPublicTickets(current => mergeTicketCollections(current, [result.ticket]));
-      return {
-        success: true,
-        message: result.message,
-      };
-    } catch (error) {
-      console.error('Falha técnica ao salvar ticket público:', error);
-      const detail = error instanceof Error ? error.message : '';
-      return {
-        success: false,
-        message: detail.includes('já foi enviado por outra pessoa')
-          ? detail
-          : 'Não foi possível salvar agora. Verifique a internet e tente novamente.',
-      };
-    }
-  };
-
   // Notifications helpers
   const addNotification = (
     title: string, 
@@ -3013,13 +2768,10 @@ export default function App() {
     });
 
     // Exibe no máximo um aviso discreto por vez para não bloquear a navegação.
-    // Alterações em Tickets Jazida continuam registradas no sino/histórico, sem popup.
-    if (title.indexOf('Tickets Jazida') === -1) {
-      setActiveToasts([newNotif]);
-      setTimeout(() => {
-        setActiveToasts(prev => prev.filter(t => t.id !== newNotif.id));
-      }, 2500);
-    }
+    setActiveToasts([newNotif]);
+    setTimeout(() => {
+      setActiveToasts(prev => prev.filter(t => t.id !== newNotif.id));
+    }, 2500);
   };
 
   const persistPresenceNotifications = (newItems: AppNotification[]) => {
@@ -3131,7 +2883,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!publicLinksRotationPending || !isLoggedIn || externalTicketLink || externalPresenceToken) return;
+    if (!publicLinksRotationPending || !isLoggedIn || externalPresenceToken) return;
     let cancelled = false;
     let running = false;
     const publishRotation = async () => {
@@ -3159,12 +2911,11 @@ export default function App() {
   }, [
     publicLinksRotationPending,
     isLoggedIn,
-    externalTicketLink,
     externalPresenceToken,
   ]);
 
   useEffect(() => {
-    if (!isLoggedIn || externalTicketLink || externalPresenceToken) return;
+    if (!isLoggedIn || externalPresenceToken) return;
     const flush = () => {
       if (!navigator.onLine) return;
       void flushOfflineCommands({
@@ -3177,10 +2928,10 @@ export default function App() {
     window.addEventListener('online', flush);
     flush();
     return () => window.removeEventListener('online', flush);
-  }, [isLoggedIn, externalTicketLink, externalPresenceToken]);
+  }, [isLoggedIn, externalPresenceToken]);
 
   useEffect(() => {
-    if (!isLoggedIn || !currentUser || externalTicketLink || externalPresenceToken) return;
+    if (!isLoggedIn || !currentUser || externalPresenceToken) return;
     let cancelled = false;
     let running = false;
     let queuedSubmissions: PublicSubmission[] | null = null;
@@ -3359,98 +3110,7 @@ export default function App() {
       queuedSubmissions = null;
       unsubscribe();
     };
-  }, [isLoggedIn, currentUser, externalTicketLink, externalPresenceToken]);
-
-  // Uso de material apontado pelo link do apontador. Cada envio vira saídas de
-  // consumo com ID derivado do envio, então dois computadores abertos ou uma
-  // queda no meio nunca contam o mesmo uso duas vezes. Só marca o envio como
-  // processado depois que o retrato com as saídas subiu para a nuvem.
-  useEffect(() => {
-    if (!isLoggedIn || !currentUser || externalTicketLink || externalPresenceToken) return;
-    let cancelled = false;
-    let running = false;
-    let queued: MaterialUseSubmission[] | null = null;
-
-    const readStoredMovements = () => parseStoredJson<MovimentoMaterial[]>(
-      localStorage.getItem(STORAGE_KEYS.materiaisMovimentos), STORAGE_KEYS.materiaisMovimentos, [],
-    );
-    const applyIncoming = (incoming: MovimentoMaterial[]) => {
-      const merged = mergeMaterialUseMovements(readStoredMovements(), incoming);
-      writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(merged.movements));
-      setMateriaisMovimentos(merged.movements);
-      return merged.added;
-    };
-
-    const ingest = async (submissions: MaterialUseSubmission[]) => {
-      if (cancelled || submissions.length === 0) return;
-      if (running) {
-        queued = submissions;
-        return;
-      }
-      running = true;
-      const release = await acquirePresenceSync();
-      try {
-        const incoming = submissions.flatMap(movementsFromMaterialUse);
-        const added = applyIncoming(incoming);
-        if (added > 0) {
-          const storedHistory = parseStoredJson<HistoryLog[]>(localStorage.getItem('renea_history_logs'), 'renea_history_logs', []);
-          const nextHistory = mergeRecordsById(storedHistory, submissions.map(item => ({
-            id: `log-public-${item.id}`,
-            timestamp: new Date(item.createdAtIso || Date.now()).toLocaleString('pt-BR'),
-            usuario: item.payload.apontador || 'Link do apontador',
-            acao: 'Criou' as const,
-            tela: 'Materiais',
-            descricao: `Apontou uso no ${item.payload.etapaServicoNome}: ${item.payload.itens.map(uso => `${uso.quantidade} ${uso.unidade} de ${uso.materialDescricao}`).join('; ')}.`,
-          })));
-          writeStorageValue(localStorage, 'renea_history_logs', JSON.stringify(nextHistory));
-          setHistoryLogs(nextHistory);
-        }
-        let syncResult = await uploadLocalSnapshotToSupabase();
-        if (!syncResult.success && /conflito|outro computador|vers[aã]o mais recente/i.test(syncResult.message)) {
-          // Outro computador salvou antes: baixa o retrato vencedor e reaplica
-          // só as saídas deste envio por cima, sem apagar nada do que chegou.
-          const downloadResult = await handleDownloadFromSupabase();
-          if (!downloadResult.success) throw new Error(downloadResult.message);
-          applyIncoming(incoming);
-          syncResult = await uploadLocalSnapshotToSupabase();
-        }
-        if (!syncResult.success) throw new Error(syncResult.message);
-        await markPublicSubmissionsProcessed(db, submissions.map(item => item.id), currentUser.uid);
-      } catch (error) {
-        if (!cancelled) {
-          console.warn('Falha ao incorporar o uso de materiais do link; os envios continuam na fila:', error);
-          addNotification(
-            'Uso de material do link ainda não entrou',
-            `Os apontamentos chegaram e estão guardados na fila, mas não foi possível gravá-los neste painel. Motivo: ${error instanceof Error ? error.message : String(error)}`,
-            'error',
-            'Sistema Local',
-          );
-        }
-      } finally {
-        release();
-        running = false;
-        if (!cancelled && queued) {
-          const next = queued;
-          queued = null;
-          void ingest(next);
-        }
-      }
-    };
-
-    const unsubscribe = subscribePendingMaterialUses(
-      db,
-      submissions => { if (!cancelled) void ingest(submissions); },
-      error => {
-        if (cancelled) return;
-        console.warn('Falha ao acompanhar o uso de materiais do link:', error);
-      },
-    );
-    return () => {
-      cancelled = true;
-      queued = null;
-      unsubscribe();
-    };
-  }, [isLoggedIn, currentUser, externalTicketLink, externalPresenceToken]);
+  }, [isLoggedIn, currentUser, externalPresenceToken]);
 
   const handleSaveGrupoEquipe = (grupo: GrupoEquipe, isNew: boolean) => {
     const updated = isNew
@@ -3807,17 +3467,14 @@ export default function App() {
     listasPresenca,
     obras,
     ordensServico,
-    ticketsJazida,
     fichasFvs,
     inspecoes,
     naoConformidades,
     documentos,
     treinamentos,
     medicoes,
-    materiais: materiaisCadastro,
-    movimentosMaterial: materiaisMovimentosVigentes,
     ocorrencias,
-  }), [equipamentos, controleEquipamentosDiario, gruposEquipe, presencasLink, listasPresenca, obras, ordensServico, ticketsJazida, fichasFvs, inspecoes, naoConformidades, documentos, treinamentos, medicoes, materiaisCadastro, materiaisMovimentosVigentes, ocorrencias]);
+  }), [equipamentos, controleEquipamentosDiario, gruposEquipe, presencasLink, listasPresenca, obras, ordensServico, fichasFvs, inspecoes, naoConformidades, documentos, treinamentos, medicoes, ocorrencias]);
 
   // Alerta sem tela para resolver (FVS, documentos e outras que saíram do
   // app) ou de tela que o perfil não abre fica fora do sino (M6, M7).
@@ -3857,104 +3514,6 @@ export default function App() {
       setDiariosObra(updated);
       writeStorageValue(localStorage, STORAGE_KEYS.diariosObra, JSON.stringify(updated));
     });
-  };
-
-  const handleSaveMaterial = (material: Material, isNew: boolean) => {
-    const updated = saveMaterial(materiaisCadastro, material, isNew);
-    saveAndLog('Materiais', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} o material ${material.descricao}.`, historyLogs, () => {
-      setMateriaisCadastro(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.materiaisCadastro, JSON.stringify(updated));
-    });
-  };
-
-  const handleSaveMovimentoMaterial = (movimento: MovimentoMaterial) => {
-    const updated = appendMovement(materiaisMovimentos, movimento);
-    saveAndLog('Materiais', 'Criou', `${movimento.tipo} de ${movimento.quantidade} ${movimento.unidade} de ${movimento.materialDescricao}.`, historyLogs, () => {
-      setMateriaisMovimentos(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(updated));
-    });
-  };
-
-  // Vários itens de uma vez (apontamento do dia no ERP): um único saveAndLog,
-  // para o segundo item não sobrescrever o primeiro com um estado antigo.
-  const podeEditarMateriais = pode(currentUserRole, 'materiais', 'editar');
-  // Viagem da jazida com ticket repetido (mesmo número e tipo) vai sozinha para a
-  // Lixeira: fica o primeiro registrado, e o resto pode ser restaurado.
-  useEffect(() => {
-    if (!isLoggedIn || !podeEditarMateriais || ticketsJazida.length === 0) return;
-    const repetidos = ticketsRepetidosParaExcluir(ticketsJazida);
-    if (!repetidos.length) return;
-    excluirCadastros({
-      tabela: 'ticketsJazida',
-      storageKey: 'renea_tickets_jazida',
-      tela: 'Tickets Jazida',
-      itens: repetidos.map(item => ({ item: item as TicketJazida & { nome?: string }, rotulo: `Ticket ${item.tipoTicket || 'Liberação'} Nº ${item.ticketNumero} (repetido)` })),
-      lista: ticketsJazida as Array<TicketJazida & { nome?: string }>,
-      setLista: next => setTicketsJazida(next),
-    });
-    repetidos.forEach(item => {
-      void deletePublicTicket(db, item.id).catch(error => console.warn('Falha ao excluir ticket público repetido:', error));
-    });
-    addNotification('Tickets repetidos excluídos', `${repetidos.length} viagem(ns) da jazida com ticket já lançado foram para a Lixeira. Dá para restaurar de lá.`, 'info', 'Sistema Local');
-  }, [ticketsJazida, isLoggedIn, podeEditarMateriais]);
-
-  // Nota ou ticket repetido no mesmo material é desfeito sozinho, venha de onde
-  // vier (lançamento, link do apontador, importação, nuvem). Fica no histórico.
-  useEffect(() => {
-    if (!isLoggedIn || !podeEditarMateriais || materiaisMovimentos.length === 0) return;
-    const { movimentos, desfeitos } = desfazerNotasRepetidas(materiaisMovimentos, new Date().toISOString());
-    if (!desfeitos.length) return;
-    saveAndLog('Materiais', 'Excluiu', `Desfez automaticamente ${desfeitos.length} lançamento(s) com nota ou ticket repetido.`, historyLogs, () => {
-      setMateriaisMovimentos(movimentos);
-      writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(movimentos));
-    });
-    addNotification('Lançamentos repetidos desfeitos', `${desfeitos.length} lançamento(s) de material com nota ou ticket já lançado saíram do saldo. Continuam no histórico.`, 'info', 'Sistema Local');
-  // saveAndLog e historyLogs mudam a cada render; a regra só depende dos movimentos.
-  }, [materiaisMovimentos, isLoggedIn, podeEditarMateriais]);
-
-  const handleSaveMovimentosMaterial = (movimentos: MovimentoMaterial[], descricao: string) => {
-    if (movimentos.length === 0) return;
-    const updated = mergeMaterialUseMovements(materiaisMovimentos, movimentos).movements;
-    saveAndLog('Materiais', 'Criou', descricao, historyLogs, () => {
-      setMateriaisMovimentos(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(updated));
-    });
-  };
-
-  // Vincular entradas a um ramo e desfazer um uso trocam o registro pelo mesmo
-  // ID, sem apagar nenhum movimento.
-  const handleUpdateMovimentosMaterial = (alterados: MovimentoMaterial[], descricao: string, acao: 'Editou' | 'Excluiu' = 'Editou') => {
-    if (alterados.length === 0) return;
-    const porId = new Map(alterados.map(item => [item.id, item]));
-    const updated = materiaisMovimentos.map(item => porId.get(item.id) || item);
-    saveAndLog('Materiais', acao, descricao, historyLogs, () => {
-      setMateriaisMovimentos(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(updated));
-    });
-  };
-
-  const handleApplyMaterialImport = (newMaterials: Material[], newMovements: MovimentoMaterial[]) => {
-    if (newMaterials.length === 0 && newMovements.length === 0) return;
-    const { materials: updatedMaterials, movements: updatedMovements, addedMaterials, addedMovements } = applyMaterialImport(
-      materiaisCadastro, materiaisMovimentos, newMaterials, newMovements,
-    );
-    if (addedMaterials === 0 && addedMovements === 0) return;
-    // Mesmo caminho de todo outro lançamento em lote (Controle de Estacas,
-    // Tickets Jazida, Planilha Mestre): saveAndLog grava o histórico de
-    // auditoria e sincroniza com a nuvem, em vez de só atualizar o estado
-    // local sem deixar rastro de quem/quando aplicou a importação.
-    saveAndLog(
-      'Materiais',
-      'Criou',
-      `Importou ${addedMaterials} material(is) novo(s) e ${addedMovements} movimento(s) por planilha.`,
-      historyLogs,
-      () => {
-        setMateriaisCadastro(updatedMaterials);
-        setMateriaisMovimentos(updatedMovements);
-        writeStorageValue(localStorage, STORAGE_KEYS.materiaisCadastro, JSON.stringify(updatedMaterials));
-        writeStorageValue(localStorage, STORAGE_KEYS.materiaisMovimentos, JSON.stringify(updatedMovements));
-      },
-    );
   };
 
   const handleSaveOrdemServico = (recebida: OrdemServico, isNew: boolean) => {
@@ -4371,21 +3930,6 @@ export default function App() {
     );
   };
 
-  if (externalTicketLink) {
-    return (
-      <Suspense fallback={<ScreenLoadingFallback label="Abrindo tickets..." />}>
-        <TicketLinkExterno
-          tickets={externalPublicTickets}
-          isLoadingCloud={isExternalTicketLoading}
-          loadError={externalTicketLoadError}
-          onReserveNumber={() => reservePublicTicketNumberViaApi(externalTicketAccessToken)}
-          onSaveTicket={handleSaveTicketLink}
-          onSearchPendingReceipts={query => searchPendingPublicTickets(query, externalTicketAccessToken)}
-        />
-      </Suspense>
-    );
-  }
-
   if (externalPresenceToken) {
     return (
       <Suspense fallback={<ScreenLoadingFallback label="Abrindo presença..." />}>
@@ -4482,8 +4026,6 @@ export default function App() {
     setPedidoNovoColaborador(0);
     // A busca do menu não fica filtrada depois de escolher a tela (B6).
     setMenuSearch('');
-    if (tab === 'tickets-jazida') setMateriaisPedido(atual => ({ secao: 'viagens', vez: atual.vez + 1 }));
-    else if (tab === 'materiais') setMateriaisPedido(atual => (atual.secao ? { secao: undefined, vez: atual.vez } : atual));
     // Endereço antigo abre a tela onde aquele dado mora hoje.
     setActiveTab(destinoDaAba(tab, allowedTabs) || 'dashboard');
     if (closeMobile) setIsMobileMenuOpen(false);
@@ -4684,7 +4226,6 @@ export default function App() {
                 historyLogs={historyLogs}
                 listasPresenca={listasPresenca}
                 ordensServico={ordensServico}
-                ticketsJazida={ticketsJazidaAtivos}
                 estacas={controleEstacas}
                 presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
@@ -4692,8 +4233,6 @@ export default function App() {
                 planejamento={planejamentoItens}
                 producao={producaoRegistros}
                 medicoes={medicoes}
-                materiais={materiaisCadastro}
-                movimentosMaterial={materiaisMovimentosVigentes}
                 fichasFvs={fichasFvs}
                 inspecoes={inspecoes}
                 naoConformidades={naoConformidades}
@@ -4787,8 +4326,6 @@ export default function App() {
                 presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
                 apontamentos={apontamentosOperacionais}
-                movimentosMaterial={materiaisMovimentosVigentes}
-                ticketsJazida={ticketsJazidaAtivos}
                 responsavel={activeUserName}
                 podeEditar={pode(currentUserRole, 'diario-obra', 'editar')}
                 onSave={handleSaveDiarioObra}
@@ -4804,51 +4341,10 @@ export default function App() {
                 onSaveRotina={handleSaveRotinaDiaria}
                 onSavePendencia={handleSavePendenciaRotina}
                 onSaveModelo={handleSaveModeloRotina}
-                materiais={materiaisCadastro}
-                movimentosMaterial={materiaisMovimentos}
                 abastecimentos={abastecimentosAtivos}
                 controlesFrota={controleEquipamentosDiario}
                 equipamentos={equipamentos}
                 onIrPara={aba => { if (allowedTabs.includes(aba)) navigateTo(aba); }}
-              />
-            )}
-
-            {activeTab === 'materiais' && (
-              <MateriaisTab
-                key={materiaisPedido.vez}
-                secaoInicial={materiaisPedido.secao}
-                viagensJazida={(
-                  <TicketsJazidaTab
-                    tickets={ticketsJazida}
-                    equipamentos={equipamentos}
-                    controlesEquipamentos={controleEquipamentosDiario}
-                    obras={obras}
-                    responsavel={activeUserName}
-                    onSaveTicket={handleSaveTicketJazida}
-                    onDeleteTicket={podeExcluirLancamento ? handleDeleteTicketJazida : undefined}
-                    onDeleteTickets={podeExcluirLancamento ? handleDeleteTicketsJazida : undefined}
-                    onImportTickets={handleImportTicketsJazida}
-                    onReserveTicketNumber={handleReserveTicketNumber}
-                    onReserveTicketNumbers={handleReserveTicketNumbers}
-                  />
-                )}
-                materiais={materiaisCadastro}
-                movimentos={materiaisMovimentos}
-                empresas={empresas}
-                etapas={etapas}
-                responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'materiais', 'editar')}
-                onSaveMaterial={handleSaveMaterial}
-                onSaveMovimento={handleSaveMovimentoMaterial}
-                onSaveMovimentos={handleSaveMovimentosMaterial}
-                onUpdateMovimentos={handleUpdateMovimentosMaterial}
-                onApplyImport={handleApplyMaterialImport}
-                onSaveEtapas={handleSaveEtapasServico}
-                onExcluirLocal={pode(currentUserRole, 'cadastros', 'excluir') ? (id, rotulo) => handleExcluirCadastro('etapas', id, rotulo) : undefined}
-                onRestaurarLocal={handleRestaurarCadastro}
-                locaisApagados={locaisApagados}
-                previstos={materiaisPrevistos}
-                onSavePrevistos={handleSaveMateriaisPrevistos}
               />
             )}
 
@@ -4859,7 +4355,6 @@ export default function App() {
                 gruposEquipe={gruposEquipe}
                 presencasLink={presencasLinkAtivas}
                 controlesEquipamentos={controleEquipamentosDiario}
-                ticketsJazida={ticketsJazidaAtivos}
                 checklists={checklists}
                 onNavigate={navigateTo}
                 onCadastrar={() => { navigateTo('cadastros'); setPedidoNovoColaborador(1); }}
@@ -5005,9 +4500,7 @@ export default function App() {
           obras,
           frentes: frentesServico,
           servicos: servicosObra,
-          materiais: materiaisCadastro,
           ordensServico,
-          ticketsJazida,
           fichasFvs,
           inspecoes,
           naoConformidades,

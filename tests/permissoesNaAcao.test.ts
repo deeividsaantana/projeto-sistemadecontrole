@@ -12,8 +12,6 @@ test('A7: só o administrador exclui lançamento, e a recusa fica dentro de cada
   const acoes: Array<[string, string]> = [
     ['handleDeleteAbastecimentos', 'podeExcluirLancamento'],
     ['handleDeleteLubrificacao', 'podeExcluirLancamento'],
-    ['handleDeleteTicketJazida', 'podeExcluirLancamento'],
-    ['handleDeleteTicketsJazida', 'podeExcluirLancamento'],
     ['handleDeleteOrdemServico', 'podeExcluirLancamento'],
     ['handleDeleteControleEquipamentosDiario', 'podeExcluirLancamento'],
     ['handleDeleteGrupoEquipe', 'podeExcluirCadastro'],
@@ -27,7 +25,7 @@ test('A7: só o administrador exclui lançamento, e a recusa fica dentro de cada
 });
 
 test('A7: quem não pode excluir não recebe o botão de excluir', () => {
-  for (const prop of ['onDeleteAbastecimento', 'onDeleteAbastecimentos', 'onDeleteLubrificacao', 'onDeleteTicket', 'onDeleteTickets', 'onDeleteGrupoEquipe', 'onDeleteOperationalDriver']) {
+  for (const prop of ['onDeleteAbastecimento', 'onDeleteAbastecimentos', 'onDeleteLubrificacao', 'onDeleteGrupoEquipe', 'onDeleteOperationalDriver']) {
     assert.match(app, new RegExp(`${prop}=\\{podeExcluir(Lancamento|Cadastro) \\?`), `${prop} só vai para quem pode`);
   }
   assert.equal((app.match(/onDeleteMany=\{podeExcluirLancamento \?/g) || []).length, 2);
@@ -39,7 +37,7 @@ test('M1: zerar o dia e pegar o endereço dos links é de gestor ou administrado
   for (const role of ['operador', 'leitura']) {
     assert.throws(() => assertManagerRole({ role }), (error: { statusCode?: number }) => error.statusCode === 403);
   }
-  for (const rota of ['api/public-presenca.js', 'api/public-tickets.js', 'api/public-materiais.js']) {
+  for (const rota of ['api/public-presenca.js']) {
     const codigo = readFileSync(rota, 'utf8');
     assert.match(codigo, /await requireManagerUser\(event\)/, rota);
     assert.doesNotMatch(codigo, /requireStaffUser/, rota);

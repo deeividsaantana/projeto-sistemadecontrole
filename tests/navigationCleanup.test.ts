@@ -49,8 +49,8 @@ test('ROLE_ACCESS cleanup', async (suite) => {
 });
 
 test('ALL_NAVIGATION_ITEMS cleanup', async (suite) => {
-  await suite.test('should contain exactly 11 items from PRIMARY_MODULE_IDS', () => {
-    assert.strictEqual(ALL_NAVIGATION_ITEMS.length, 11, `Expected 11 items, got ${ALL_NAVIGATION_ITEMS.length}`);
+  await suite.test('should contain exactly 10 items from PRIMARY_MODULE_IDS', () => {
+    assert.strictEqual(ALL_NAVIGATION_ITEMS.length, 10, `Expected 10 items, got ${ALL_NAVIGATION_ITEMS.length}`);
   });
 
   await suite.test('should contain only primary module IDs', () => {
@@ -82,7 +82,6 @@ test('endereços antigos abrem a tela onde o dado mora hoje', async (suite) => {
   });
 
   await suite.test('telas cortadas que tinham dado levam ao lugar novo', () => {
-    assert.strictEqual(MODULE_REDIRECTS['tickets-jazida'], 'materiais');
     assert.strictEqual(MODULE_REDIRECTS.frota, 'controle-equipamentos');
     assert.strictEqual(MODULE_REDIRECTS.equipes, 'presenca');
     assert.strictEqual(MODULE_REDIRECTS.auditoria, 'cadastros');
@@ -91,5 +90,8 @@ test('endereços antigos abrem a tela onde o dado mora hoje', async (suite) => {
     assert.strictEqual(MODULE_REDIRECTS.administracao, 'cadastros');
     assert.strictEqual(MODULE_REDIRECTS.relatorios, 'dashboard');
     assert.strictEqual(MODULE_REDIRECTS.planejamento, 'meu-dia');
+    // Materiais e Jazida saíram com os dados em 2026-11-10: não há para onde levar.
+    assert.strictEqual(MODULE_REDIRECTS.materiais, undefined);
+    assert.strictEqual(MODULE_REDIRECTS['tickets-jazida'], undefined);
   });
 });

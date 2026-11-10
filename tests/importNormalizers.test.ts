@@ -3,12 +3,8 @@ import assert from 'node:assert/strict';
 import {
   normalizeImportDateOrNull,
   normalizeImportDecimalOrNull,
-  normalizeImportInvoiceOrNull,
-  normalizeImportPlateOrNull,
-  normalizeImportPrefixOrNull,
   normalizeImportTextOrNull,
   normalizeImportTimeOrNull,
-  normalizeImportUnitOrNull,
 } from '../src/imports/normalizers';
 
 assert.equal(normalizeImportDateOrNull('05/01/2026'), '2026-01-05');
@@ -26,23 +22,6 @@ assert.equal(normalizeImportDecimalOrNull(null), null);
 assert.equal(normalizeImportDecimalOrNull('N/A'), null, 'texto sem dígito não pode virar zero fabricado');
 assert.equal(normalizeImportDecimalOrNull('-'), null, 'traço sozinho não pode virar zero fabricado');
 assert.equal(normalizeImportDecimalOrNull('abc'), null);
-
-assert.equal(normalizeImportUnitOrNull('m³'), 'M3');
-// 't' minúsculo, não 'TON' — precisa bater com o código de unidade que o
-// resto do app usa (UNIDADES em MateriaisTab.tsx), senão o resumo de
-// toneladas de um movimento importado zera silenciosamente.
-assert.equal(normalizeImportUnitOrNull('Ton'), 't');
-assert.equal(normalizeImportUnitOrNull('un'), 'UN');
-assert.equal(normalizeImportUnitOrNull(''), null);
-
-assert.equal(normalizeImportInvoiceOrNull(' 12.345-6 '), '123456');
-assert.equal(normalizeImportInvoiceOrNull(''), null);
-
-assert.equal(normalizeImportPlateOrNull('abc-1d23'), 'ABC1D23');
-assert.equal(normalizeImportPlateOrNull(''), null);
-
-assert.equal(normalizeImportPrefixOrNull('cb-770'), 'CB770');
-assert.equal(normalizeImportPrefixOrNull(''), null);
 
 assert.equal(normalizeImportTextOrNull('  Solo Reforçado  '), 'Solo Reforçado');
 assert.equal(normalizeImportTextOrNull(''), null);

@@ -1,6 +1,6 @@
 /**
  * Diário de obra: guarda só o que não existe em outro lugar — clima, visitas,
- * fotos e observações. Equipes, frota, materiais e viagens do dia são lidos
+ * fotos e observações. Equipes e frota do dia são lidos
  * dos próprios módulos, para o diário nunca divergir da operação.
  */
 import { useMemo, useRef, useState } from 'react';
@@ -14,10 +14,8 @@ import type {
   ControleEquipamentoDiario,
   DiarioObra,
   GrupoEquipe,
-  MovimentoMaterial,
   ObraLocal,
   PresencaApontamento,
-  TicketJazida,
 } from '../types';
 import { comprimirImagem, validarFoto } from '../utils/imagem';
 import { Card, CartaoIndicador, EmptyState, PageHeader, isoDay, statusTone } from '../shared/ui';
@@ -33,8 +31,6 @@ interface DiarioObraTabProps {
   presencasLink: PresencaApontamento[];
   controlesEquipamentos: ControleEquipamentoDiario[];
   apontamentos: ApontamentoOperacional[];
-  movimentosMaterial: MovimentoMaterial[];
-  ticketsJazida: TicketJazida[];
   responsavel: string;
   podeEditar: boolean;
   onSave: (diario: DiarioObra, isNew: boolean) => void;
@@ -49,8 +45,6 @@ export default function DiarioObraTab({
   presencasLink,
   controlesEquipamentos,
   apontamentos,
-  movimentosMaterial,
-  ticketsJazida,
   responsavel,
   podeEditar,
   onSave,
@@ -96,10 +90,8 @@ export default function DiarioObraTab({
       operando: frota.filter(item => item.status === 'Em operação').length,
       manutencao: frota.filter(item => item.status.includes('manutenção')).length,
       horasApontadas: horas.reduce((soma, item) => soma + (Number(item.horas) || 0), 0),
-      materiais: movimentosMaterial.filter(item => item.data === dia),
-      viagens: ticketsJazida.filter(item => item.data === dia).length,
     };
-  }, [dia, presencasLink, controlesEquipamentos, apontamentos, movimentosMaterial, ticketsJazida, gruposEquipe]);
+  }, [dia, presencasLink, controlesEquipamentos, apontamentos, gruposEquipe]);
 
   // A foto é reduzida no navegador antes de entrar no diário: o backup viaja em
   // blocos, e uma foto de celular inteira dentro do JSON quebra a sincronização
@@ -282,8 +274,6 @@ export default function DiarioObraTab({
               { rotulo: 'Equipes sem apontamento', valor: String(resumo.equipesSemApontamento) },
               { rotulo: 'Frota em operação', valor: String(resumo.operando) },
               { rotulo: 'Frota em manutenção', valor: String(resumo.manutencao) },
-              { rotulo: 'Viagens', valor: String(resumo.viagens) },
-              { rotulo: 'Movimentos de material', valor: String(resumo.materiais.length) },
             ].map(item => (
               <li key={item.rotulo} className="flex items-center justify-between gap-3 px-5 py-3">
                 <span className="text-slate-600">{item.rotulo}</span>

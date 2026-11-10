@@ -8,7 +8,6 @@ const TELAS_AUDITADAS = [
   'cadastros',
   'estacas',
   'configuracoes',
-  'jazida',
   'frotas',
   'consulta',
   'periodo',

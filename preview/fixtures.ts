@@ -52,7 +52,7 @@ export const registrosDiaAnterior: PresencaApontamento[] = equipeFuncionarios.sl
 } as PresencaApontamento));
 
 // --- Painel de Controle ---
-import type { Abastecimento, Comboio, Lubrificacao, OrdemServico, ProdutoLubrificacao, TicketJazida, TipoCombustivel } from '../src/types';
+import type { Abastecimento, Comboio, Lubrificacao, OrdemServico, ProdutoLubrificacao, TipoCombustivel } from '../src/types';
 
 export const comboios: Comboio[] = [
   { id: 'cmb-1', nome: 'Comboio 01', placa: 'ABC1D23', capacidadeLitros: 8000 } as Comboio,
@@ -88,15 +88,6 @@ export const ordensServico: OrdemServico[] = [
     responsavel: 'Manutenção', observacao: '', motivo: 'Preventiva',
   },
 ];
-
-export const ticketsJazida: TicketJazida[] = Array.from({ length: 6 }, (_, i) => ({
-  id: `tk-${i}`, data: dia((i % 3) + 1), ticketNumero: String(2200 + i),
-  tipoTicket: 'Liberação', prefixo: 'CB1005', placa: 'FEJ6753',
-  horaSaida: '08:30', horaChegada: '09:15',
-  tipoMaterial: 'Solo', quantidadeM3: 12, unidadeQuantidade: 'm³',
-  destinoObra: 'Aterro', responsavelLiberacao: 'Renilson', nomeLegivel: 'Renilson',
-  empresa: 'RENEA', observacao: '', statusFluxo: 'Enviado', origemRegistro: 'Link',
-} as TicketJazida));
 
 export const controlesEquipamentos: ControleEquipamentoDiario[] = Array.from({ length: 9 }, (_, i) => ({
   id: `cd-${i + 1}`,
@@ -194,7 +185,7 @@ equipesPresenca.push({
 
 // Um mês de diário com pluviômetro, para o mapa de chuvas ter o que mostrar:
 // dias secos, chuva fraca, forte, e dias sem diário nenhum no fim do mês.
-import type { DiarioObra, Material, MovimentoMaterial } from '../src/types';
+import type { DiarioObra } from '../src/types';
 
 export const diariosChuva: DiarioObra[] = [
   { dia: 1, mm: 0 }, { dia: 2, mm: 3 }, { dia: 3, mm: 0 }, { dia: 4, mm: 12 },
@@ -215,71 +206,10 @@ export const diariosChuva: DiarioObra[] = [
   atualizadoEm: '',
 } as DiarioObra));
 
-// Recebimento de material com pendência, no formato da planilha da obra:
-// a nota promete, chega menos, e a diferença é carga paga que não está aqui.
-export const materiaisObra: Material[] = [
-  { id: 'mt-1', codigo: '1486', descricao: 'ESTACA MADEIRA C/ PONTA', categoria: 'Madeira', unidade: 'PC', ativo: true, criadoEm: '', atualizadoEm: '' },
-  { id: 'mt-2', codigo: '766', descricao: 'CHAPA PLASTIFICADO 18MM', categoria: 'Madeira', unidade: 'UN', ativo: true, criadoEm: '', atualizadoEm: '' },
-  { id: 'mt-3', codigo: 'TB-1000', descricao: 'TUBO DE CONCRETO PA3 DN1000', categoria: 'Tubos de concreto', unidade: 'MT', ativo: true, criadoEm: '', atualizadoEm: '' },
-] as Material[];
-
-export const movimentosMateriaisObra: MovimentoMaterial[] = [
-  { id: 'mv-1', data: '2026-07-02', tipo: 'Entrada', materialId: 'mt-1', materialDescricao: 'ESTACA MADEIRA C/ PONTA', quantidade: 0, quantidadeNota: 2000, unidade: 'PC', notaFiscal: '4789', solicitacaoCompra: 'SC 92998794', destino: 'Ramo 1300', responsavel: 'Deivid', criadoEm: '' },
-  { id: 'mv-2', data: '2026-07-02', tipo: 'Entrada', materialId: 'mt-2', materialDescricao: 'CHAPA PLASTIFICADO 18MM', quantidade: 50, quantidadeNota: 450, unidade: 'UN', notaFiscal: '4789', solicitacaoCompra: 'SC 92998795', destino: 'Ramo 1400', responsavel: 'Deivid', criadoEm: '' },
-  { id: 'mv-3', data: '2026-08-17', tipo: 'Entrada', materialId: 'mt-3', materialDescricao: 'TUBO DE CONCRETO PA3 DN1000', quantidade: 6, quantidadeNota: 6, unidade: 'MT', notaFiscal: '132636', solicitacaoCompra: 'SC 93011249', destino: 'Ramo 1300', responsavel: 'Deivid', criadoEm: '' },
-] as MovimentoMaterial[];
-
-// Utilização por ramo: recebimentos reais da planilha de recebimento (tubos
-// dos ramos 1300 e 1400, em metros, peça de 1,50 m). Os usos são exemplo.
+// Ramos da obra usados nos cadastros da prévia.
 export const etapasRamos = [
   { id: 'etapa-ramo-1300', nome: 'Ramo 1300' },
   { id: 'etapa-ramo-1400', nome: 'Ramo 1400' },
-];
-
-const tubo = (id: string, diametro: number, classe: string): Material => ({
-  id, codigo: '', descricao: `TUBO DE CONCRETO Ø${diametro} ${classe} 1,50 m`, categoria: 'Tubos de concreto', unidade: 'MT',
-  diametroMm: diametro, classe, comprimentoPecaM: 1.5, ativo: true, criadoEm: '', atualizadoEm: '',
-} as Material);
-
-export const materiaisUtilizacao: Material[] = [
-  tubo('tb-800-pa3', 800, 'PA3'), tubo('tb-800-pa4', 800, 'PA4'), tubo('tb-1000-pa2', 1000, 'PA2'),
-  tubo('tb-1200-pa3', 1200, 'PA3'), tubo('tb-600-pa2', 600, 'PA2'), tubo('tb-1500-pa3', 1500, 'PA3'),
-  { id: 'pead-100', codigo: '', descricao: 'TUBO PEAD KANANET DN 100', categoria: 'Tubos PEAD - PVC', unidade: 'MT', ativo: true, criadoEm: '', atualizadoEm: '' } as Material,
-  { id: 'chapa-18', codigo: '766', descricao: 'CHAPA PLASTIFICADO 18MM 1,10X2,20', categoria: 'Madeiras e Formas', unidade: 'UN', ativo: true, criadoEm: '', atualizadoEm: '' } as Material,
-];
-
-const ramo = (id: string) => etapasRamos.find(item => item.id === id)!;
-const entrada = (id: string, materialId: string, quantidade: number, etapaId: string, nota: string, data: string): MovimentoMaterial => ({
-  id, data, tipo: 'Entrada', materialId, materialDescricao: materiaisUtilizacao.find(item => item.id === materialId)!.descricao,
-  quantidade, quantidadeNota: quantidade, unidade: 'MT', notaFiscal: nota, destino: ramo(etapaId).nome,
-  etapaServicoId: etapaId, etapaServicoNome: ramo(etapaId).nome, responsavel: 'Importação', criadoEm: `${data}T08:00:00.000Z`,
-} as MovimentoMaterial);
-const uso = (id: string, materialId: string, metros: number, etapaId: string, data: string, apontador: string, link = true): MovimentoMaterial => ({
-  id, data, tipo: 'Saída', finalidade: 'Consumo', materialId, materialDescricao: materiaisUtilizacao.find(item => item.id === materialId)!.descricao,
-  quantidade: metros, unidade: 'MT', destino: ramo(etapaId).nome, etapaServicoId: etapaId, etapaServicoNome: ramo(etapaId).nome,
-  apontadoPor: apontador, responsavel: apontador, origemApontamentoId: link ? `material_uso_${id}` : undefined, criadoEm: `${data}T15:10:00.000Z`,
-} as MovimentoMaterial);
-
-export const movimentosUtilizacao: MovimentoMaterial[] = [
-  entrada('r1', 'tb-800-pa3', 21, 'etapa-ramo-1400', '132683', '2026-08-18'),
-  entrada('r2', 'tb-800-pa4', 42, 'etapa-ramo-1400', '132680', '2026-08-18'),
-  entrada('r3', 'tb-1000-pa2', 33, 'etapa-ramo-1400', '132790', '2026-08-21'),
-  entrada('r4', 'tb-1200-pa3', 27, 'etapa-ramo-1400', '132795', '2026-08-21'),
-  entrada('r5', 'pead-100', 750, 'etapa-ramo-1400', '45959', '2026-08-24'),
-  entrada('r6', 'tb-600-pa2', 40.5, 'etapa-ramo-1300', '132640', '2026-08-17'),
-  entrada('r7', 'tb-800-pa4', 99, 'etapa-ramo-1300', '132650', '2026-08-17'),
-  entrada('r8', 'tb-1200-pa3', 61.5, 'etapa-ramo-1300', '132636', '2026-08-17'),
-  entrada('r9', 'tb-1500-pa3', 37.5, 'etapa-ramo-1300', '132769', '2026-08-20'),
-  uso('u1', 'tb-800-pa3', 21, 'etapa-ramo-1400', '2026-09-10', 'Carlos Menezes'),
-  uso('u2', 'tb-800-pa4', 24, 'etapa-ramo-1400', '2026-09-22', 'Carlos Menezes'),
-  uso('u3', 'tb-800-pa4', 12, 'etapa-ramo-1400', '2026-09-24', 'Renilson Araújo'),
-  uso('u4', 'tb-1000-pa2', 12, 'etapa-ramo-1400', '2026-09-23', 'Renilson Araújo'),
-  uso('u5', 'pead-100', 320, 'etapa-ramo-1400', '2026-09-19', 'Carlos Menezes'),
-  uso('u6', 'tb-600-pa2', 43.5, 'etapa-ramo-1300', '2026-09-15', 'Deivid Santana', false),
-  uso('u7', 'tb-800-pa4', 81, 'etapa-ramo-1300', '2026-09-23', 'Josué Paiva'),
-  uso('u8', 'tb-1200-pa3', 30, 'etapa-ramo-1300', '2026-09-20', 'Josué Paiva'),
-  { id: 'm1', data: '2026-08-26', tipo: 'Entrada', materialId: 'chapa-18', materialDescricao: 'CHAPA PLASTIFICADO 18MM 1,10X2,20', quantidade: 50, unidade: 'UN', notaFiscal: '5453', destino: 'Drenagem Ramo 1400 / 1300', responsavel: 'Importação', criadoEm: '2026-08-26T08:00:00.000Z' } as MovimentoMaterial,
-  { id: 'm2', data: '2026-07-02', tipo: 'Entrada', materialId: 'chapa-18', materialDescricao: 'CHAPA PLASTIFICADO 18MM 1,10X2,20', quantidade: 400, unidade: 'UN', notaFiscal: '4789', destino: 'Ramo 1400', responsavel: 'Importação', criadoEm: '2026-07-02T08:00:00.000Z' } as MovimentoMaterial,
 ];
 
 // Estacas prancha no formato da planilha de agosto (frente em "identificação",

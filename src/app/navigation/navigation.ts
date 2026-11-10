@@ -5,7 +5,6 @@ import {
   Hammer,
   LayoutDashboard,
   SunMedium,
-  Package,
   UserRound,
   Wrench,
   Activity,
@@ -53,12 +52,6 @@ export const NAVIGATION_GROUPS = [
     ],
   },
   {
-    label: 'Materiais',
-    items: [
-      { id: 'materiais', label: 'Materiais e Estoque', icon: Package },
-    ],
-  },
-  {
     label: 'Administração',
     items: [
       { id: 'cadastros', label: 'Cadastros', icon: FolderPlus },
@@ -77,16 +70,13 @@ export const PRIMARY_MODULE_IDS = [
   'meu-dia',
   'diario-obra',
   // Controle de Estacas é aba própria: a importação com prévia/lote/lineage
-  // vive dentro dela (decisão confirmada com o usuário em 2026-09-22). Os
-  // tickets da jazida viraram a parte Viagens da jazida de Materiais em
-  // 2026-09-28.
+  // vive dentro dela (decisão confirmada com o usuário em 2026-09-22).
   'estacas',
   'controle-equipamentos',
   'manutencao',
   'lancamentos',
   'colaboradores',
   'presenca',
-  'materiais',
   // Cadastros ficou sem caminho na limpeza de 2026-09-24: o atalho dentro de
   // Administração levava a uma aba que nenhum perfil tinha em ROLE_ACCESS, e
   // o App devolvia a pessoa ao Painel. Voltou ao menu lateral como aba
@@ -105,9 +95,6 @@ export const MODULE_REDIRECTS: Readonly<Record<string, string>> = {
   // Frentes e produção vivem na parte Frentes do Meu dia.
   frentes: 'meu-dia',
   producao: 'meu-dia',
-  // Os tickets da jazida moraram numa aba própria até 28/09/2026; agora são
-  // a parte Viagens da jazida dentro de Materiais.
-  'tickets-jazida': 'materiais',
   // Telas antigas cortadas em 16/10/2026 (auditoria das abas, G6/G7).
   frota: 'controle-equipamentos',
   equipes: 'presenca',

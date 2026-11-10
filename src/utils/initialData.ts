@@ -20,13 +20,12 @@ import {
   GrupoEquipe,
   PresencaApontamento,
   HistoricoPresenca,
-  TicketJazida
 } from '../types';
 import { generateSecurePublicToken } from './publicLinkSecurity';
 import type { Canteiro, FrenteServico } from '../types';
 import { CANTEIROS_ATIVOS, RAMOS_ATIVOS } from './frenteServico';
 
-// Empresas, comboios, combustível, viagens da jazida e estacas começam vazios:
+// Empresas, comboios, combustível e estacas começam vazios:
 // navegador novo espera a nuvem em vez de gravar uma base de exemplo.
 export const INITIAL_EMPRESAS: Empresa[] = [];
 
@@ -356,7 +355,6 @@ export const INITIAL_ETAPAS_SERVICO: EtapaServico[] = [
 
 export const INITIAL_ABASTECIMENTOS: Abastecimento[] = [];
 
-export const INITIAL_TICKETS_JAZIDA: TicketJazida[] = [];
 
 export const INITIAL_LUBRIFICACOES: Lubrificacao[] = [
   { id: 'lub-1', data: '2026-06-22', hora: '06:20', equipamentoId: 'eq-ec079', horimetro: 1954, produtoLubrificacaoId: 'pl-1', compartimento: 'Pinos e Articulações', quantidade: 1, responsavel: 'Espedito Bento da Silva', observacao: 'Conferência OK' },

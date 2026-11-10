@@ -1,6 +1,6 @@
 /**
  * Colaboradores: o efetivo e a ficha individual, reunindo o que os módulos já
- * registraram sobre a pessoa — equipe, presença, frota operada e viagens.
+ * registraram sobre a pessoa — equipe, presença, frota operada e checklists.
  */
 import { useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
@@ -13,7 +13,6 @@ import type {
   Funcionario,
   GrupoEquipe,
   PresencaApontamento,
-  TicketJazida,
 } from '../types';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { displayText } from '../utils/displayText';
@@ -35,7 +34,6 @@ interface ColaboradoresTabProps {
   gruposEquipe: GrupoEquipe[];
   presencasLink: PresencaApontamento[];
   controlesEquipamentos: ControleEquipamentoDiario[];
-  ticketsJazida: TicketJazida[];
   checklists?: ChecklistEquipamento[];
   onNavigate: (tab: string) => void;
   /** Abre Cadastros já no formulário de colaborador novo. */
@@ -60,7 +58,6 @@ export default function ColaboradoresTab({
   gruposEquipe,
   presencasLink,
   controlesEquipamentos,
-  ticketsJazida,
   checklists = [],
   onNavigate,
   onCadastrar,
@@ -131,10 +128,6 @@ export default function ColaboradoresTab({
       .filter(item => item.funcionarioId === selecionado.id || normalizeComparable(item.nomeMotorista) === nomeNormalizado)
       .sort((a, b) => b.data.localeCompare(a.data));
 
-    const viagens = ticketsJazida
-      .filter(item => normalizeComparable(item.motoristaNome || '') === nomeNormalizado)
-      .sort((a, b) => b.data.localeCompare(a.data));
-
     const inspecoes = checklists
       .filter(item => normalizeComparable(item.responsavel) === nomeNormalizado)
       .sort((a, b) => `${b.data}${b.hora}`.localeCompare(`${a.data}${a.hora}`));
@@ -143,7 +136,7 @@ export default function ColaboradoresTab({
       { label: 'Situação', valor: situacaoAtual, detalhe: selecionado.situacaoRh || 'sem detalhe do RH' },
       { label: 'Presenças', valor: String(presentes), detalhe: `${presencas.length} apontamento(s)` },
       { label: 'Dias operando', valor: String(operacoes.length), detalhe: operacoes[0] ? `último em ${formatarData(operacoes[0].data)}` : 'sem lançamento' },
-      { label: 'Viagens', valor: String(viagens.length), detalhe: inspecoes.length ? `${inspecoes.length} checklist(s)` : 'sem checklist' },
+      { label: 'Checklists', valor: String(inspecoes.length), detalhe: inspecoes[0] ? `último em ${formatarData(inspecoes[0].data)}` : 'sem checklist' },
     ];
 
     return (
@@ -267,23 +260,14 @@ export default function ColaboradoresTab({
 
           <Card
             className="min-w-0"
-            title="Viagens e inspeções"
-            description={viagens.length || inspecoes.length ? `${viagens.length} viagem(ns) · ${inspecoes.length} checklist(s)` : undefined}
+            title="Checklists"
+            description={inspecoes.length ? `${inspecoes.length} checklist(s)` : undefined}
             flush
           >
-            {viagens.length === 0 && inspecoes.length === 0 ? (
-              <EmptyState icon={ClipboardCheck} title="Sem viagens ou checklists" compact />
+            {inspecoes.length === 0 ? (
+              <EmptyState icon={ClipboardCheck} title="Sem checklists" compact />
             ) : (
               <ul className="divide-y divide-slate-100">
-                {viagens.slice(0, 5).map(item => (
-                  <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3 text-xs">
-                    <span className="min-w-0">
-                      <strong className="block font-mono text-slate-900">Ticket {item.ticketNumero || '—'}</strong>
-                      <span className="block truncate text-xs text-[#5b6870]">{item.prefixo} · {item.tipoMaterial}</span>
-                    </span>
-                    <span className="shrink-0 text-slate-600">{formatarData(item.data)}</span>
-                  </li>
-                ))}
                 {inspecoes.slice(0, 5).map(item => (
                   <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3 text-xs">
                     <span className="min-w-0">
