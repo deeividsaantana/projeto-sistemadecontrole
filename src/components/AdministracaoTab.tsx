@@ -28,11 +28,12 @@ import {
   type VolumeColecao,
 } from '../utils/diagnostico';
 import { APP_VERSION_LABEL } from '../app/version';
-import { CartaoIndicador, PageHeader, TabelaPadrao, type ColunaTabela } from '../shared/ui';
+import { CartaoIndicador, ConfirmDialog, PageHeader, TabelaPadrao, type ColunaTabela } from '../shared/ui';
 import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
 import type { GrupoEquipe, HistoryLog } from '../types';
+import { CAMPO } from './cadastros/estilos';
 
 type Secao = 'geral' | 'acessos' | 'dados' | 'historico' | 'permissoes';
 
@@ -97,12 +98,17 @@ export default function AdministracaoTab({
     }
   };
 
+  const [renovandoLink, setRenovandoLink] = useState(false);
   const renewGeneralLink = () => {
     if (!linkHost || !onSaveGrupoEquipe) {
       setLinkFeedback('Crie uma equipe ativa antes de gerar o link geral.');
       return;
     }
-    if (generalToken && !window.confirm('Renovar o link geral? O endereço atual deixará de funcionar.')) return;
+    if (generalToken && !renovandoLink) {
+      setRenovandoLink(true);
+      return;
+    }
+    setRenovandoLink(false);
     onSaveGrupoEquipe({
       ...linkHost,
       tokenGeral: `geral-${generateSecurePublicToken('presenca')}`,
@@ -146,7 +152,7 @@ export default function AdministracaoTab({
       {secao === 'acessos' && (
         <section data-admin-reveal aria-labelledby="administracao-acessos-titulo" className="space-y-3">
           <div>
-            <h2 id="administracao-acessos-titulo" className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-slate-700">
+            <h2 id="administracao-acessos-titulo" className="flex items-center gap-2 text-sm font-black text-slate-700">
               <ShieldCheck className="h-4 w-4 text-emerald-700" aria-hidden="true" /> Acessos ao sistema
             </h2>
             <p className="mt-1 text-xs text-slate-600">Criar um acesso, trocar o perfil de alguém ou inativar quem saiu da obra.</p>
@@ -162,12 +168,12 @@ export default function AdministracaoTab({
 
       {secao === 'geral' && (<>
 
-      <section data-admin-reveal className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5" aria-labelledby="presence-public-link-title">
+      <section data-admin-reveal className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5" aria-labelledby="presence-public-link-title">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-50 text-emerald-700"><Link2 className="h-5 w-5" /></span>
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-800">Presença em campo</p>
+              <p className="text-xs font-bold text-emerald-800">Presença em campo</p>
               <h2 id="presence-public-link-title" className="text-base font-black text-slate-900">Link oficial de registro</h2>
             </div>
           </div>
@@ -176,12 +182,12 @@ export default function AdministracaoTab({
         <p className="mt-3 text-xs leading-5 text-slate-600">Endereço administrativo para compartilhar o lançamento de presença com os responsáveis de campo.</p>
         {generalLink ? (
           <div className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
-            <input readOnly value={generalLink} className="min-h-11 min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 font-mono text-xs text-slate-700" />
+            <input readOnly value={generalLink} className={`${CAMPO} min-w-0 font-mono`} />
             <button type="button" onClick={() => void copyGeneralLink()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:border-emerald-500"><ClipboardCopy className="h-4 w-4" />Copiar</button>
-            <button type="button" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Registre a presença da sua equipe: ${generalLink}`)}`, '_blank', 'noopener,noreferrer')} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800"><MessageCircle className="h-4 w-4" />WhatsApp</button>
+            <button type="button" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Registre a presença da sua equipe: ${generalLink}`)}`, '_blank', 'noopener,noreferrer')} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#176b4d] px-4 text-sm font-bold text-white hover:opacity-90"><MessageCircle className="h-4 w-4" />WhatsApp</button>
           </div>
         ) : (
-          <button type="button" onClick={renewGeneralLink} className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800"><Plus className="h-4 w-4" />Criar link geral</button>
+          <button type="button" onClick={renewGeneralLink} className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#176b4d] px-4 text-sm font-bold text-white hover:opacity-90"><Plus className="h-4 w-4" />Criar link geral</button>
         )}
         {linkFeedback && <p role="status" className="mt-2 text-xs font-semibold text-emerald-800">{linkFeedback}</p>}
       </section>
@@ -231,6 +237,15 @@ export default function AdministracaoTab({
         <HardDrive className="h-4 w-4" aria-hidden="true" /> Ver os dados por tipo
       </button>
       </>)}
+      <ConfirmDialog
+        open={renovandoLink}
+        tone="warning"
+        title="Renovar o link geral?"
+        description="O endereço atual deixa de funcionar. Quem usa o link antigo vai precisar do novo."
+        confirmLabel="Renovar link"
+        onConfirm={renewGeneralLink}
+        onCancel={() => setRenovandoLink(false)}
+      />
     </TelaCheia>
   );
 }

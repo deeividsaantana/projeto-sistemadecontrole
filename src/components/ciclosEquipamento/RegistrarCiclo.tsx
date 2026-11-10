@@ -18,7 +18,7 @@ const SITUACOES: CycleStatus[] = [
 ];
 
 const COR_BOTAO: Record<CycleStatus, string> = {
-  'Em operação': 'bg-green-500 hover:bg-green-600',
+  'Em operação': 'bg-green-500 hover:opacity-90',
   'Em manutenção': 'bg-orange-500 hover:bg-orange-600',
   'À disposição': 'bg-blue-500 hover:bg-blue-600',
   'Aguardando manutenção': 'bg-yellow-500 hover:bg-yellow-600',

@@ -123,14 +123,14 @@ export function CartaoParada({ registro, parada, ordemNumero, tipo, podeEditar, 
       <header className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h3 id={`${idBase}-prefixo`} className="truncate text-3xl font-black leading-tight tracking-tight text-slate-950">{registro.prefixo}</h3>
-          <p className="mt-1 break-words text-xs font-semibold uppercase tracking-wider text-slate-500">{[tipo, ordemNumero].filter(Boolean).join(' · ')}</p>
+          <p className="mt-1 break-words text-xs font-semibold text-slate-500">{[tipo, ordemNumero].filter(Boolean).join(' · ')}</p>
         </div>
         <SeloSituacao parada={parada} />
       </header>
 
       <div className="space-y-2.5 rounded-lg bg-slate-50 p-3.5">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Parado hoje</span>
+          <span className="text-xs font-bold text-slate-600">Parado hoje</span>
           <span className="whitespace-nowrap tabular-nums">
             <strong className="text-2xl font-black text-slate-950">{formatarMinutos(parada.totalMin)}</strong>
             <span className="text-xs font-semibold text-slate-600">{parada.alemDoLimite ? ' sem teto' : ` / ${LIMITE_HORAS_DIA} h`}</span>

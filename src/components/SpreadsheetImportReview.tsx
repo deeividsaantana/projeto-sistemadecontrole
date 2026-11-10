@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Check, Columns3, Loader2, Search } from 'lucide-react';
-import { Modal } from '../shared/ui';
+import { Modal, TabelaPadrao, type ColunaTabela } from '../shared/ui';
 import OperationalAnalysisPanel from './OperationalAnalysisPanel';
 import type { OperationalAnalysis } from '../utils/operationalAnalysis';
+import { CAMPO } from './cadastros/estilos';
 
 export interface SpreadsheetPreviewRow {
   [column: string]: string | number | null | undefined;
@@ -75,6 +76,14 @@ export default function SpreadsheetImportReview({
     if (!term) return rows;
     return rows.filter(row => columns.some(column => displayValue(row[column]).toLocaleLowerCase('pt-BR').includes(term)));
   }, [columns, query, rows]);
+  const linhasPrevia = useMemo(() => visibleRows.slice(0, 50).map((row, index) => ({ id: String(index), row })), [visibleRows]);
+  const colunasPrevia = useMemo<ColunaTabela<{ id: string; row: (typeof rows)[number] }>[]>(() => previewColumns.map(column => ({
+    chave: column,
+    titulo: column,
+    render: linha => <span className="inline-block max-w-52 truncate align-bottom">{displayValue(linha.row[column])}</span>,
+    dica: linha => displayValue(linha.row[column]),
+    valorOrdenacao: linha => displayValue(linha.row[column]),
+  })), [previewColumns]);
 
   // Janela comum do sistema (Modal): Esc fecha, o foco fica preso dentro e
   // ninguém fecha no meio de uma importação (busy). A prévia é uma tabela de
@@ -83,14 +92,14 @@ export default function SpreadsheetImportReview({
   const rodape = batchPreview ? (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm font-semibold leading-relaxed text-slate-600 sm:max-w-md">Somente linhas novas e válidas serão gravadas. Duplicadas e linhas em conferência permanecem fora do lote.</p>
-      <div className="flex flex-wrap justify-end gap-2"><button type="button" onClick={onCancel} className="min-h-11 rounded-lg border border-slate-300 bg-white px-5 text-sm font-bold text-slate-700 lg:min-h-10">Fechar</button><button type="button" onClick={batchPreview.onRunDryRun} className="min-h-11 rounded-lg border border-emerald-600 bg-white px-5 text-sm font-bold text-emerald-800 lg:min-h-10">{batchPreview.dryRunRan ? 'Executar dry-run novamente' : 'Executar dry-run'}</button><button type="button" onClick={onConfirm} disabled={!batchPreview.applyAuthorized || !batchPreview.dryRunRan || validCount === 0} className="min-h-11 rounded-lg bg-emerald-700 px-5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-700 lg:min-h-10">Aplicar importação</button></div>
+      <div className="flex flex-wrap justify-end gap-2"><button type="button" onClick={onCancel} className="min-h-11 rounded-lg border border-slate-300 bg-white px-5 text-sm font-bold text-slate-700 lg:min-h-10">Fechar</button><button type="button" onClick={batchPreview.onRunDryRun} className="min-h-11 rounded-lg border border-emerald-600 bg-white px-5 text-sm font-bold text-emerald-800 lg:min-h-10">{batchPreview.dryRunRan ? 'Executar dry-run novamente' : 'Executar dry-run'}</button><button type="button" onClick={onConfirm} disabled={!batchPreview.applyAuthorized || !batchPreview.dryRunRan || validCount === 0} className="min-h-11 rounded-lg bg-[#176b4d] px-5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-700 lg:min-h-10">Aplicar importação</button></div>
     </div>
   ) : (
     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <button type="button" onClick={onCancel} disabled={confirming} className="min-h-11 rounded-lg border border-slate-300 bg-white px-5 text-sm font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-50 lg:min-h-10">
         Cancelar
       </button>
-      <button type="button" onClick={onConfirm} disabled={confirming || validCount === 0} className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-5 text-sm font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-700 lg:min-h-10">
+      <button type="button" onClick={onConfirm} disabled={confirming || validCount === 0} className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#176b4d] px-5 text-sm font-bold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-700 lg:min-h-10">
         {confirming ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Check className="h-4 w-4" aria-hidden="true" />}
         {confirming ? 'Importando...' : `Confirmar ${validCount} registro(s)`}
       </button>
@@ -169,7 +178,7 @@ export default function SpreadsheetImportReview({
                     <label className="relative">
                       <span className="sr-only">Localizar na importação</span>
                       <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#5b6870]" aria-hidden="true" />
-                      <input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Localizar na importação" className="min-h-11 w-full rounded-md border border-slate-300 bg-white pl-8 pr-3 text-sm text-slate-800 outline-none focus:border-emerald-500 sm:w-56 lg:min-h-10" />
+                      <input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Localizar na importação" className={`${CAMPO} pl-8 pr-3 sm:w-56`} />
                     </label>
                     {columns.length > 6 && (
                       <button type="button" onClick={() => setShowAllColumns(value => !value)} aria-pressed={showAllColumns} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700 hover:bg-slate-100 lg:min-h-10">
@@ -178,32 +187,18 @@ export default function SpreadsheetImportReview({
                     )}
                   </div>
                 </div>
-                <div className="max-h-[44vh] overflow-auto" tabIndex={0} role="region" aria-label="Prévia das linhas da planilha">
-                  <table className="w-full min-w-[620px] border-collapse text-left text-[13px]">
-                    <caption className="sr-only">Prévia das primeiras linhas de {fileName}</caption>
-                    <thead className="sticky top-0 z-10">
-                      <tr className="bg-white">
-                        {previewColumns.map(column => (
-                          <th key={column} scope="col" className="border-b border-slate-200 bg-[#f3f6f4] px-3 py-2.5 text-xs font-bold text-slate-700">{column}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visibleRows.slice(0, 50).map((row, index) => (
-                        <tr key={index} className="odd:bg-slate-50/70">
-                          {previewColumns.map(column => (
-                            <td key={column} className="max-w-52 truncate border-b border-slate-100 px-3 py-2.5 text-slate-700" title={displayValue(row[column])}>
-                              {displayValue(row[column])}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                      {visibleRows.length === 0 && (
-                        <tr><td colSpan={Math.max(1, previewColumns.length)} className="px-4 py-8 text-center text-sm font-semibold text-slate-600">Nenhuma linha corresponde à pesquisa.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                <TabelaPadrao
+                  titulo={`Prévia das primeiras linhas de ${fileName}`}
+                  linhas={linhasPrevia}
+                  colunas={colunasPrevia}
+                  idDaLinha={linha => linha.id}
+                  nomeDoItem={{ um: 'linha', varios: 'linhas' }}
+                  vazio="Nenhuma linha corresponde à pesquisa."
+                  semPaginacao
+                  densa
+                  exportar={false}
+                  className="max-h-[44vh] overflow-auto"
+                />
               </div>}
             </div>
 

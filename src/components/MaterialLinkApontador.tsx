@@ -94,7 +94,7 @@ function Passos({ atual }: { atual: 1 | 2 | 3 }) {
         return (
           <li key={nome} aria-current={agora ? 'step' : undefined} className="min-w-0">
             <span className={`block h-1.5 rounded-full ${feito || agora ? 'bg-[#176b4d]' : 'bg-slate-200'}`} />
-            <span className={`mt-1.5 flex items-center gap-1 truncate text-xs font-bold ${agora ? 'text-[#176b4d]' : feito ? 'text-slate-700' : 'text-slate-400'}`}>
+            <span className={`mt-1.5 flex items-center gap-1 truncate text-xs font-bold ${agora ? 'text-[#176b4d]' : feito ? 'text-slate-700' : 'text-slate-500'}`}>
               {feito ? <Check className="size-3.5 shrink-0" aria-hidden="true" /> : <span aria-hidden="true">{numero}.</span>}
               {nome}
             </span>
@@ -108,7 +108,7 @@ function Passos({ atual }: { atual: 1 | 2 | 3 }) {
 function Titulo({ eyebrow, titulo, children }: { eyebrow: string; titulo: string; children?: React.ReactNode }) {
   return (
     <div className="mb-4" data-material-reveal>
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#176b4d]">{eyebrow}</p>
+      <p className="text-xs font-bold text-[#176b4d]">{eyebrow}</p>
       <h1 className="mt-1 text-[1.75rem] font-black leading-tight text-slate-950 sm:text-4xl">{titulo}</h1>
       {children && <div className="mt-1.5 text-base text-slate-600">{children}</div>}
     </div>
@@ -499,7 +499,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
           <form className={`${CARTAO} grid gap-3 p-4`} data-material-reveal onSubmit={event => { event.preventDefault(); salvarNome(); }}>
             <label htmlFor="material-link-nome" className="text-sm font-bold text-slate-700">Seu nome</label>
             <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 focus-within:border-[#176b4d] focus-within:ring-2 focus-within:ring-(--renea-focus)">
-              <UserRound className="size-5 shrink-0 text-slate-400" aria-hidden="true" />
+              <UserRound className="size-5 shrink-0 text-slate-500" aria-hidden="true" />
               <input
                 id="material-link-nome"
                 autoFocus
@@ -508,7 +508,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
                 value={nomeRascunho}
                 onChange={event => setNomeRascunho(event.target.value)}
                 placeholder="Ex.: Carlos Menezes"
-                className="min-w-0 flex-1 bg-transparent text-lg text-slate-900 outline-none placeholder:text-slate-400 focus-visible:outline-none"
+                className="min-w-0 flex-1 bg-transparent text-lg text-slate-900 outline-none placeholder:text-slate-500 focus-visible:outline-none"
               />
             </div>
             <button type="submit" className={BOTAO_PRIMARIO} disabled={nomeRascunho.trim().length < 2}>
@@ -565,9 +565,9 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
           </Titulo>
           {(view?.ramos.length || 0) > 5 && (
             <label className="mb-3 flex min-h-14 items-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 focus-within:border-[#176b4d] focus-within:ring-2 focus-within:ring-(--renea-focus)" data-material-reveal>
-              <Search className="size-5 shrink-0 text-slate-400" aria-hidden="true" />
+              <Search className="size-5 shrink-0 text-slate-500" aria-hidden="true" />
               <span className="sr-only">Buscar ramo ou material</span>
-              <input inputMode="search" enterKeyHint="search" autoComplete="off" value={busca} onChange={event => setBusca(event.target.value)} placeholder="Buscar ramo ou material" className="min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400 focus-visible:outline-none" />
+              <input inputMode="search" enterKeyHint="search" autoComplete="off" value={busca} onChange={event => setBusca(event.target.value)} placeholder="Buscar ramo ou material" className="min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-500 focus-visible:outline-none" />
             </label>
           )}
           <ul className="grid gap-2.5">
@@ -588,7 +588,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
                         {lancadosHoje ? ` · ${lancadosHoje} ${lancadosHoje === 1 ? 'lançamento' : 'lançamentos'} hoje` : ''}
                       </span>
                     </span>
-                    <ChevronRight className="size-6 shrink-0 text-slate-400" aria-hidden="true" />
+                    <ChevronRight className="size-6 shrink-0 text-slate-500" aria-hidden="true" />
                   </button>
                 </li>
               );
@@ -612,9 +612,9 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
           <Titulo eyebrow={ramo.nome} titulo="O que foi usado?">Toque no material e diga quanto usou.</Titulo>
           {ramo.materiais.length > 6 && (
             <label className="mb-3 flex min-h-14 items-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 focus-within:border-[#176b4d] focus-within:ring-2 focus-within:ring-(--renea-focus)" data-material-reveal>
-              <Search className="size-5 shrink-0 text-slate-400" aria-hidden="true" />
+              <Search className="size-5 shrink-0 text-slate-500" aria-hidden="true" />
               <span className="sr-only">Buscar material</span>
-              <input inputMode="search" autoComplete="off" value={buscaMaterial} onChange={event => setBuscaMaterial(event.target.value)} placeholder="Buscar material" className="min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400 focus-visible:outline-none" />
+              <input inputMode="search" autoComplete="off" value={buscaMaterial} onChange={event => setBuscaMaterial(event.target.value)} placeholder="Buscar material" className="min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-500 focus-visible:outline-none" />
             </label>
           )}
           <ul className="grid gap-2.5">
@@ -671,7 +671,7 @@ export default function MaterialLinkApontador({ loadView, submitUse }: Props) {
 
           {lancadosNoRamo.length > 0 && (
             <section className="mt-6" data-material-reveal aria-labelledby="material-link-hoje">
-              <h2 id="material-link-hoje" className="mb-2 text-sm font-bold uppercase tracking-wide text-[#5b6870]">Já lançado hoje neste ramo</h2>
+              <h2 id="material-link-hoje" className="mb-2 text-sm font-bold text-[#5b6870]">Já lançado hoje neste ramo</h2>
               <ul className={`${CARTAO} divide-y divide-slate-100`}>
                 {lancadosNoRamo.slice(0, 12).map(uso => {
                   const material = ramo.materiais.find(item => item.materialId === uso.materialId);

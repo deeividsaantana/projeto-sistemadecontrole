@@ -69,7 +69,7 @@ export default function MatrizPermissoes() {
             onClick={() => setPapel(item)}
             aria-pressed={papel === item}
             className={`min-h-10 rounded-lg border px-3 text-xs font-bold transition-colors ${papel === item
-              ? 'border-emerald-600 bg-emerald-700 text-white'
+              ? 'border-emerald-600 bg-[#176b4d] text-white'
               : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-400'}`}
           >
             {ROTULO_PAPEL[item]}
@@ -84,8 +84,8 @@ export default function MatrizPermissoes() {
           { label: 'Pode editar', valor: String(modulos.filter(item => pode(papel, item.id, 'editar')).length) },
           { label: 'Pode aprovar', valor: String(modulos.filter(item => pode(papel, item.id, 'aprovar')).length) },
         ].map(item => (
-          <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-xs font-bold uppercase leading-tight tracking-wide text-slate-500">{item.label}</p>
+          <div key={item.label} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-xs font-bold leading-tight text-slate-500">{item.label}</p>
             <strong className="mt-1.5 block text-2xl font-black tabular-nums text-slate-900">{item.valor}</strong>
           </div>
         ))}

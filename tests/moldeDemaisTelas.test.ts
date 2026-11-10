@@ -60,8 +60,12 @@ test('a casca usa as janelas comuns (A11)', () => {
   assert.doesNotMatch(sino, /fixed inset-0 z-40/, 'o sino não monta janela à mão');
   const importacao = ler('src/components/SpreadsheetImportReview.tsx');
   assert.match(importacao, /<Modal\b/);
-  assert.match(importacao, /<caption/);
-  assert.match(importacao, /scope="col"/);
+  // A prévia é a TabelaPadrao, que já traz legenda (caption) e cabeçalho com scope="col".
+  assert.match(importacao, /<TabelaPadrao\b/);
+  assert.doesNotMatch(importacao, /<table\b/);
+  const tabela = ler('src/shared/ui/TabelaPadrao.tsx');
+  assert.match(tabela, /<caption/);
+  assert.match(tabela, /scope="col"/);
   const pesquisa = ler('src/app/shell/PesquisaGlobal.tsx');
   assert.match(pesquisa, /aria-modal="true"/);
   assert.match(pesquisa, /role="combobox"/);

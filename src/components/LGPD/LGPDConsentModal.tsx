@@ -187,7 +187,7 @@ export default function LGPDConsentModal() {
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
               onClick={handleAccept}
-              className="flex-1 rounded-lg bg-emerald-600 px-4 py-2.5 sm:py-3 text-sm sm:text-base font-bold text-white transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              className="flex-1 rounded-lg bg-[#176b4d] px-4 py-2.5 sm:py-3 text-sm sm:text-base font-bold text-white transition-colors hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             >
               ✅ Aceito os termos e autorizo o tratamento dos meus dados
             </button>

@@ -108,12 +108,12 @@ export default function CampoEscolha({ opcoes, valor, onEscolher, recentes = [],
         onKeyDown={teclar}
         className={`${CAMPO} ${altura} pr-9`}
       />
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
       {aberto && (
         <ul
           id={listaId}
           role="listbox"
-          className="absolute left-0 right-0 z-40 mt-1 max-h-72 min-w-[14rem] overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg"
+          className="absolute left-0 right-0 z-40 mt-1 max-h-72 min-w-[14rem] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1 shadow-lg"
         >
           {itens.length === 0 && <li className="px-3 py-3 text-sm text-slate-500">Nada com esse nome no cadastro.</li>}
           {itens.map((opcao, indice) => {

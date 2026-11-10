@@ -516,7 +516,7 @@ export default function ManutencaoTab({
         <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
           <label className="relative min-w-0 flex-1 sm:min-w-56">
             <span className="sr-only">Buscar ordem de serviço</span>
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
             <input
               type="search"
               value={busca}
@@ -689,7 +689,7 @@ export default function ManutencaoTab({
         footer={(
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button type="button" onClick={() => setFormAberto(false)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar <span className="ml-1 text-xs text-[#5b6870]">Esc</span></button>
-            <button type="button" onClick={salvar} className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800">Salvar ordem <span className="ml-1 text-xs text-emerald-100">Ctrl + Enter</span></button>
+            <button type="button" onClick={salvar} className="min-h-11 rounded-lg bg-[#176b4d] px-4 text-sm font-bold text-white hover:opacity-90">Salvar ordem <span className="ml-1 text-xs text-emerald-100">Ctrl + Enter</span></button>
           </div>
         )}
       >

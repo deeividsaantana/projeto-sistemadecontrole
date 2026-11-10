@@ -88,7 +88,7 @@ export function BuscaColaborador({ funcionarios, onSelecionado, onFechado }: Pro
       <div className="w-full max-w-md" role="dialog" aria-modal="true" aria-label="Buscar colaborador">
         <div className="bg-white rounded-xl shadow-2xl overflow-hidden">
           <div className="relative p-3 border-b border-slate-200">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500" />
             <input
               ref={inputRef}
               type="text"
@@ -101,6 +101,7 @@ export function BuscaColaborador({ funcionarios, onSelecionado, onFechado }: Pro
               autoFocus
             />
             <button
+              type="button"
               onClick={fechar}
               aria-label="Fechar busca"
               className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded"
@@ -121,6 +122,7 @@ export function BuscaColaborador({ funcionarios, onSelecionado, onFechado }: Pro
                   return (
                     <li key={f.id} role="option" aria-selected={isSelected}>
                       <button
+              type="button"
                         onClick={() => handleSelecion(f)}
                         className={`w-full px-4 py-2 text-left text-sm transition ${
                           isSelected

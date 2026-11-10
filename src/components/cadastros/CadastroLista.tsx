@@ -45,7 +45,7 @@ export default function CadastroLista({ titulo, linhas, colunas, mostrarSituacao
       dica: linha => linha.colunas[coluna.id] || undefined,
       render: linha => {
         const valor = linha.colunas[coluna.id];
-        if (!valor) return <span className="text-slate-400">—</span>;
+        if (!valor) return <span className="text-slate-500">—</span>;
         if (indice === 0 || coluna.id === 'nome') return <span className={`font-semibold ${linha.ativo ? 'text-slate-900' : 'text-slate-500'}`}>{valor}</span>;
         return coluna.codigo ? <span className="tabular-nums">{valor}</span> : valor;
       },

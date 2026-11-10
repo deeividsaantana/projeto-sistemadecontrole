@@ -20,6 +20,7 @@ import reneaLogo from '../assets/images/logo-renea-branco.svg';
 import SignaturePad from './SignaturePad';
 // Direto do arquivo, não do índice de shared/ui: o link público continua leve.
 import { Modal } from '../shared/ui/Modal';
+import { CAMPO } from './cadastros/estilos';
 
 interface TicketLinkExternoProps {
   tickets: TicketJazida[];
@@ -441,7 +442,7 @@ export default function TicketLinkExterno({
   if (loadError) {
     return (
       <div className="min-h-screen bg-white text-slate-800 grid place-items-center p-6">
-        <div className="w-full max-w-lg rounded-xl border border-amber-500/30 bg-white p-6 text-center shadow-2xl">
+        <div className="w-full max-w-lg rounded-2xl border border-amber-500/30 bg-white p-6 text-center shadow-2xl">
           <img src={reneaLogo} alt="RENEA" className="mx-auto h-9 w-auto" />
           <h1 className="mt-6 text-xl font-black">Link de tickets indisponível</h1>
           <p className="mt-3 text-sm leading-6 text-slate-700">{loadError}</p>
@@ -458,7 +459,7 @@ export default function TicketLinkExterno({
           <img src={reneaLogo} alt="RENEA" className="h-8 w-auto" />
           <div className="text-right">
             <p className="text-xs font-black uppercase text-emerald-700">Tickets digitais</p>
-            <p className="text-xs text-slate-400">Liberação e recebimento</p>
+            <p className="text-xs text-slate-500">Liberação e recebimento</p>
           </div>
         </div>
       </header>
@@ -483,7 +484,7 @@ export default function TicketLinkExterno({
                 type="button"
                 onClick={beginRelease}
                 disabled={isStarting}
-                className="flex min-h-32 items-center gap-4 rounded-md bg-emerald-600 p-5 text-left text-white shadow-sm transition hover:bg-emerald-500 disabled:opacity-60"
+                className="flex min-h-32 items-center gap-4 rounded-md bg-[#176b4d] p-5 text-left text-white shadow-sm transition hover:bg-emerald-500 disabled:opacity-60"
               >
                 {isStarting ? <Loader2 className="h-8 w-8 animate-spin" /> : <Truck className="h-8 w-8" />}
                 <span className="flex items-center gap-3"><i className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/15 text-sm not-italic">1</i><span><b className="block text-lg">Fazer liberação</b><small className="text-emerald-50">Quando o caminhão estiver saindo</small></span></span>
@@ -519,7 +520,7 @@ export default function TicketLinkExterno({
               <section className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2"><History className="h-5 w-5 text-emerald-700" /><div><h2 className="font-black">Meus envios</h2><p className="text-xs text-slate-500">Somente tickets enviados neste aparelho.</p></div></div>
-                  <span className="text-xs font-bold text-slate-400">{ownHistoryPairs.length}</span>
+                  <span className="text-xs font-bold text-slate-500">{ownHistoryPairs.length}</span>
                 </div>
                 <div className="grid gap-2">
                   {ownHistoryPairs.slice(0, 8).map(pair => (
@@ -528,7 +529,7 @@ export default function TicketLinkExterno({
                           <div><b className="block text-sm text-slate-950">Ticket {pair.number}</b><small className="text-slate-500">{pair.release?.placa || pair.receipt?.placa || 'Sem placa'} · Liberação {pair.release ? 'enviada' : 'pendente'} · Recebimento {pair.receipt ? 'enviado' : 'pendente'}</small></div>
                           <div className="flex flex-wrap gap-2">
                             <button type="button" onClick={() => setViewingOwnTicket(pair.release || pair.receipt || null)} className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-300 px-3 text-xs font-black text-slate-700"><Eye className="h-4 w-4" /> Visualizar vias</button>
-                            {pair.release && !pair.receipt && <button type="button" onClick={() => beginReceipt(pair.release!)} className="inline-flex h-9 items-center gap-2 rounded-md bg-emerald-600 px-3 text-xs font-black text-white"><PackageCheck className="h-4 w-4" /> Fazer recebimento</button>}
+                            {pair.release && !pair.receipt && <button type="button" onClick={() => beginReceipt(pair.release!)} className="inline-flex h-9 items-center gap-2 rounded-md bg-[#176b4d] px-3 text-xs font-black text-white"><PackageCheck className="h-4 w-4" /> Fazer recebimento</button>}
                           </div>
                         </div>
                       </div>
@@ -543,8 +544,8 @@ export default function TicketLinkExterno({
                 <button type="button" onClick={() => { setShowReceiptSearch(false); setSearch(''); }} className="text-xs font-bold text-slate-500">Fechar</button>
               </div>
               <label className="relative block">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar ticket, placa ou prefixo" className="h-12 w-full rounded-md border border-slate-300 bg-white pl-10 pr-4 text-sm outline-none focus:border-emerald-500" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar ticket, placa ou prefixo" className={`${CAMPO} h-12 pl-10 pr-4`} />
               </label>
               <div className="grid gap-2">
                 {search.trim().length < 2 ? (
@@ -655,7 +656,7 @@ export default function TicketLinkExterno({
               <button type="button" onClick={() => persist(false)} disabled={isSaving} className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-5 text-sm font-black text-slate-700"><Save className="h-4 w-4" /> Salvar rascunho</button>
               <div className="flex gap-2">
                 {step > 1 && <button type="button" onClick={() => setStep(current => current - 1)} className="h-12 flex-1 rounded-md border border-slate-300 bg-white px-5 text-sm font-black sm:flex-none">Voltar</button>}
-                {step < 4 ? <button type="button" onClick={nextStep} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-emerald-700 px-6 text-sm font-black text-white sm:flex-none">{step === 3 ? 'Revisar dados' : 'Continuar'} <ArrowRight className="h-4 w-4" /></button> : <button type="button" onClick={() => persist(true)} disabled={isSaving || !reviewConfirmed} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-emerald-600 px-6 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none">{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Confirmar e enviar</button>}
+                {step < 4 ? <button type="button" onClick={nextStep} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-[#176b4d] px-6 text-sm font-black text-white sm:flex-none">{step === 3 ? 'Revisar dados' : 'Continuar'} <ArrowRight className="h-4 w-4" /></button> : <button type="button" onClick={() => persist(true)} disabled={isSaving || !reviewConfirmed} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-[#176b4d] px-6 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none">{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Confirmar e enviar</button>}
               </div>
             </div>
             <p className="flex items-center justify-center gap-2 text-center text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" /> O preenchimento fica salvo neste aparelho enquanto você avança.</p>
@@ -666,13 +667,13 @@ export default function TicketLinkExterno({
           <div className="mx-auto max-w-lg space-y-6 py-8 text-center">
             <div className="relative mx-auto h-24 w-24">
               <span className="renea-success-ring absolute inset-2 rounded-full border-4 border-emerald-400" />
-              <span className="renea-success-badge absolute inset-2 grid place-items-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/25">
+              <span className="renea-success-badge absolute inset-2 grid place-items-center rounded-full bg-[#176b4d] text-white shadow-lg shadow-emerald-600/25">
                 <span className="renea-success-check"><Check className="h-10 w-10" strokeWidth={4} /></span>
               </span>
             </div>
             <div><p className="text-xs font-black uppercase text-emerald-700">Enviado com sucesso</p><h1 className="mt-1 text-3xl font-black">Ticket {form.ticketNumero}</h1><p className="mt-2 text-sm text-slate-500">{form.tipoTicket} registrada e disponível no painel administrativo.</p></div>
             <div className="grid gap-3">
-              {form.tipoTicket === 'Liberação' && <button type="button" onClick={() => beginReceipt(form)} className="inline-flex h-14 items-center justify-center gap-3 rounded-md bg-emerald-600 px-5 font-black text-white"><PackageCheck className="h-5 w-5" /> Registrar recebimento agora</button>}
+              {form.tipoTicket === 'Liberação' && <button type="button" onClick={() => beginReceipt(form)} className="inline-flex h-14 items-center justify-center gap-3 rounded-md bg-[#176b4d] px-5 font-black text-white"><PackageCheck className="h-5 w-5" /> Registrar recebimento agora</button>}
               <button type="button" onClick={() => setViewingOwnTicket(form)} className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-5 font-black text-slate-700"><Eye className="h-5 w-5" /> Visualizar comprovante</button>
               <button type="button" onClick={beginRelease} disabled={isStarting} className="inline-flex h-14 items-center justify-center gap-3 rounded-md border-2 border-slate-300 bg-white px-5 font-black text-slate-800"><Truck className="h-5 w-5" /> Próximo caminhão</button>
               <button type="button" onClick={() => { setMessage(''); setForm(null); setScreen('home'); }} className="h-12 font-bold text-slate-600">Voltar ao início</button>
@@ -693,7 +694,7 @@ export default function TicketLinkExterno({
             <OwnHistoryVia type="Liberação" ticket={viewingOwnPair.release} />
             <div className="flex items-center gap-3 text-xs font-black uppercase text-slate-500"><span className="h-px flex-1 bg-slate-200" />Mesmo ticket<span className="h-px flex-1 bg-slate-200" /></div>
             <OwnHistoryVia type="Recebimento" ticket={viewingOwnPair.receipt} />
-            {viewingOwnPair.release && !viewingOwnPair.receipt && <button type="button" onClick={() => { const release = viewingOwnPair.release!; setViewingOwnTicket(null); beginReceipt(release); }} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-emerald-700 px-5 font-black text-white"><PackageCheck className="h-5 w-5" /> Fazer recebimento deste ticket</button>}
+            {viewingOwnPair.release && !viewingOwnPair.receipt && <button type="button" onClick={() => { const release = viewingOwnPair.release!; setViewingOwnTicket(null); beginReceipt(release); }} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[#176b4d] px-5 font-black text-white"><PackageCheck className="h-5 w-5" /> Fazer recebimento deste ticket</button>}
           </div>
         )}
       </Modal>

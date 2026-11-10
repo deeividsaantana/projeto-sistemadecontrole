@@ -403,7 +403,7 @@ export default function HistoricoCombustivel({
         const ativa = filtros.aba === aba;
         return (
           <button key={aba} type="button" aria-pressed={ativa} onClick={() => escolherAba(aba)} data-testid={`historico-aba-${aba}`}
-            title={aba === ABA_TUDO ? 'Todos os meses' : `${nomeDoMes(aba)}: ${getFuelCompetencePeriodLabel(aba)}`}            className={`min-h-11 shrink-0 whitespace-nowrap rounded-lg px-3 text-xs font-black uppercase tracking-wide transition md:min-h-8 ${ativa ? 'bg-white text-[#176b4d] shadow-sm ring-1 ring-inset ring-[#176b4d]/50' : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'} ${FOCO}`}>
+            title={aba === ABA_TUDO ? 'Todos os meses' : `${nomeDoMes(aba)}: ${getFuelCompetencePeriodLabel(aba)}`}            className={`min-h-11 shrink-0 whitespace-nowrap rounded-lg px-3 text-xs font-black transition md:min-h-8 ${ativa ? 'bg-white text-[#176b4d] shadow-sm ring-1 ring-inset ring-[#176b4d]/50' : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'} ${FOCO}`}>
             {aba === ABA_TUDO ? 'Tudo' : mesCurto(aba)}
           </button>
         );
@@ -417,7 +417,7 @@ export default function HistoricoCombustivel({
         <section data-comb-reveal aria-label="Filtros do histórico" className={`${CARTAO} shrink-0 p-2`}>
           <div className="flex flex-wrap items-center gap-2">
             <span className="relative min-w-[12rem] flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
               <input ref={buscaRef} type="search" value={filtros.texto} onChange={event => mudarFiltro('texto', event.target.value)} placeholder="Buscar máquina, comboio, data, observação…" aria-label="Buscar no histórico" className={`${CAMPO} pl-9`} data-testid="combustivel-busca" />
             </span>
             <div ref={menusRef} className="flex flex-wrap items-center gap-2">
@@ -429,10 +429,10 @@ export default function HistoricoCombustivel({
                   <Columns3 className="size-4" aria-hidden="true" /><span className="max-sm:sr-only">Colunas</span>
                 </button>
                 {menu === 'colunas' && (
-                  <div role="group" aria-label="Colunas que aparecem" className="absolute left-0 z-30 mt-1 max-h-[60vh] w-56 overflow-auto rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                  <div role="group" aria-label="Colunas que aparecem" className="absolute left-0 z-30 mt-1 max-h-[60vh] w-56 overflow-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-lg">
                     <p className="px-2 pb-1 text-xs font-bold text-slate-500">Escolha o que aparece</p>
                     {COLUNAS_HISTORICO.map(item => (
-                      <label key={item.id} className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-lg px-2 text-sm font-semibold ${item.fixa ? 'text-slate-400' : 'text-slate-700 hover:bg-[#f7f8f6]'}`}>
+                      <label key={item.id} className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-lg px-2 text-sm font-semibold ${item.fixa ? 'text-slate-500' : 'text-slate-700 hover:bg-[#f7f8f6]'}`}>
                         <input type="checkbox" checked={preferencias.colunas.includes(item.id)} disabled={item.fixa} onChange={() => alternarColuna(item.id)} className="size-4 accent-[#176b4d]" />
                         {item.rotulo}{item.fixa && <span className="ml-auto text-xs font-bold uppercase">sempre</span>}
                       </label>
@@ -445,7 +445,7 @@ export default function HistoricoCombustivel({
                   <Layers className="size-4" aria-hidden="true" /><span className="max-sm:sr-only">{AGRUPAMENTOS_HISTORICO.find(item => item.id === preferencias.agrupamento)?.rotulo}</span>
                 </button>
                 {menu === 'grupo' && (
-                  <div role="group" aria-label="Agrupar" className="absolute left-0 z-30 mt-1 w-48 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                  <div role="group" aria-label="Agrupar" className="absolute left-0 z-30 mt-1 w-48 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg">
                     {AGRUPAMENTOS_HISTORICO.map(item => (
                       <button key={item.id} type="button" aria-pressed={preferencias.agrupamento === item.id} onClick={() => { setPreferencias(atual => ({ ...atual, agrupamento: item.id })); setFechados(new Set()); setMenu(''); }}
                         className={`flex min-h-10 w-full items-center rounded-lg px-2 text-left text-sm font-semibold ${preferencias.agrupamento === item.id ? 'bg-emerald-50 text-[#176b4d]' : 'text-slate-700 hover:bg-[#f7f8f6]'} ${FOCO}`}>
@@ -488,7 +488,7 @@ export default function HistoricoCombustivel({
             ['A conferir', conferir.toLocaleString('pt-BR'), conferir ? 'toque em Filtros para ver só eles' : 'tudo certo', conferir ? 'text-[#c2410c]' : 'text-slate-950'],
           ].map(([rotulo, valor, ajuda, cor]) => (
             <div key={rotulo} className={`${CARTAO} px-3 py-2`}>
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{rotulo}</p>
+              <p className="text-xs font-bold text-slate-500">{rotulo}</p>
               <p className={`text-xl font-black tabular-nums ${cor}`}>{valor}</p>
               <p className="truncate text-xs text-slate-500">{ajuda}</p>
             </div>
@@ -513,7 +513,7 @@ export default function HistoricoCombustivel({
         )}
 
         <header className="flex shrink-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 px-1 md:hidden" data-testid="historico-titulo">
-          <h2 className="text-sm font-black uppercase tracking-wide text-slate-900">{tituloLista}</h2>
+          <h2 className="text-sm font-black text-slate-900">{tituloLista}</h2>
           <p className="text-sm font-semibold text-[#5b6870]">
             {/^\d{4}-\d{2}$/.test(filtros.aba) ? `${getFuelCompetencePeriodLabel(filtros.aba)} · ` : ''}
             Total <span className="font-black tabular-nums text-[#176b4d]">{litrosTexto(totalLitros)}</span>
@@ -587,7 +587,7 @@ export default function HistoricoCombustivel({
         <section ref={fichaRef} aria-label="Ficha do abastecimento" className={`${CARTAO} flex shrink-0 flex-col overflow-hidden xl:w-80`} data-testid="historico-ficha">
           <header className="flex items-start justify-between gap-2 border-b border-slate-100 px-4 py-3">
             <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{dataLonga(aberto.data)} · {aberto.hora || 'sem hora'}</p>
+              <p className="text-xs font-bold text-slate-500">{dataLonga(aberto.data)} · {aberto.hora || 'sem hora'}</p>
               <h2 className="font-mono text-2xl font-black text-slate-950">{nomes.prefixo(aberto) || 'Sem prefixo'}</h2>
               <p className="truncate text-sm text-slate-600">{porId.get(aberto.equipamentoId)?.nome || 'Sem cadastro'}</p>
             </div>

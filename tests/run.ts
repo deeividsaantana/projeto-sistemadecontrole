@@ -247,3 +247,4 @@ import './publicPresenceSaturday.test';
 import './navigationSyncPolicy.test';
 import './lazyLoading.test';
 import './exportarTabela.test';
+import './padraoErp.test';

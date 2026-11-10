@@ -172,7 +172,7 @@ export function LancarFrota({ cartoes, dia, equipamentos, registros, canteiros =
     <section aria-label="Lançar a frota do dia" data-testid="quadro-lancar" className="space-y-3 pb-24">
       <div className={`${CARTAO} space-y-2.5 p-3`} data-quadro-reveal>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="mr-1 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+          <span className="mr-1 inline-flex items-center gap-1.5 text-xs font-bold text-slate-500">
             <ListChecks className="size-4" aria-hidden="true" />
             {marcadas.size > 0 ? `${marcadas.size} selecionada(s)` : 'Atalhos'}
           </span>
@@ -202,7 +202,7 @@ export function LancarFrota({ cartoes, dia, equipamentos, registros, canteiros =
               ))}
             </div>
             <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Mover as selecionadas para o canteiro">
-              <MapPin className="size-4 text-slate-400" aria-hidden="true" />
+              <MapPin className="size-4 text-slate-500" aria-hidden="true" />
               {canteiros.map(canteiro => (
                 <button key={canteiro} type="button" onClick={() => mudar(idsAlvo(), { canteiro })} className={`min-h-10 rounded-full bg-white px-3 text-xs font-bold uppercase text-slate-600 ring-1 ring-slate-200 transition hover:bg-emerald-50 hover:text-[#176b4d] hover:ring-emerald-300 active:scale-[0.97] ${FOCO}`} data-testid={`lancar-mover-${canteiro}`}>
                   {canteiro}
@@ -218,7 +218,7 @@ export function LancarFrota({ cartoes, dia, equipamentos, registros, canteiros =
       </div>
 
       <div className={`${CARTAO} overflow-hidden`} data-quadro-reveal>
-        <div className="hidden items-center gap-3 border-b border-slate-200 bg-[#f7f8f6] px-3 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-slate-500 lg:grid lg:grid-cols-[2.75rem_minmax(13rem,1.2fr)_minmax(17rem,1.3fr)_minmax(9rem,0.9fr)_minmax(9rem,0.9fr)_minmax(11rem,1fr)]">
+        <div className="hidden items-center gap-3 border-b border-slate-200 bg-[#f7f8f6] px-3 py-2.5 text-xs font-bold text-slate-500 lg:grid lg:grid-cols-[2.75rem_minmax(13rem,1.2fr)_minmax(17rem,1.3fr)_minmax(9rem,0.9fr)_minmax(9rem,0.9fr)_minmax(11rem,1fr)]">
           <label className="grid size-11 cursor-pointer place-items-center">
             <span className="sr-only">Selecionar todas</span>
             <input type="checkbox" checked={todasMarcadas} onChange={() => setMarcadas(todasMarcadas ? new Set() : new Set(cartoes.map(cartao => cartao.equipamentoId)))} className="size-5 accent-[#176b4d]" data-testid="lancar-sel-todas" />

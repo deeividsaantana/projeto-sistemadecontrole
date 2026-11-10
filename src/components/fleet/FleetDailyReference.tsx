@@ -119,7 +119,7 @@ export default function FleetDailyReference({ records, date, onLancar, onRelacao
         <section className="flex shrink-0 flex-col gap-2 rounded-2xl border border-emerald-200 bg-emerald-50/40 p-3 [--tabela-altura-max:18rem]" aria-label="Editor da relação operacional">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-[#176b4d]">Relação esperada</p>
+              <p className="text-xs font-bold text-[#176b4d]">Relação esperada</p>
               <p className="text-sm text-emerald-900">Altere, remova ou inclua equipamentos esperados no dia.</p>
             </div>
             <button type="button" onClick={() => setReference(items => [...items, { prefix: `NOVO-${items.length + 1}`, group: 'Basculantes', equipmentType: 'Caminhão Basculante' }])} className={BOTAO_PRIMARIO}><Plus className="size-4" aria-hidden="true" />Adicionar equipamento</button>

@@ -90,7 +90,7 @@ type Aviso = { tom: 'ok' | 'erro'; texto: string } | null;
 
 const CHAVE_LOTES = 'renea_jazida_printed_batches';
 const ITEM_MENU = `flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-[#176b4d] disabled:opacity-50 ${FOCO}`;
-const GRUPO_MENU = 'px-3 pt-2 text-xs font-bold uppercase tracking-wide text-slate-500';
+const GRUPO_MENU = 'px-3 pt-2 text-xs font-bold text-slate-500';
 
 /**
  * Viagens da jazida (Materiais). Cada viagem tem um ticket com duas vias de

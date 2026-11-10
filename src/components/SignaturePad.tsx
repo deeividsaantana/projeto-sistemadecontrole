@@ -128,7 +128,7 @@ export default function SignaturePad({ value = '', onChange, disabled = false }:
           aria-label="Área para assinatura digital"
         />
         {!hasInk && (
-          <span className="pointer-events-none absolute inset-x-0 bottom-5 text-center text-xs font-medium text-slate-400">
+          <span className="pointer-events-none absolute inset-x-0 bottom-5 text-center text-xs font-medium text-slate-500">
             Assine com o dedo ou com o mouse
           </span>
         )}

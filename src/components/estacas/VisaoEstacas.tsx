@@ -103,7 +103,7 @@ export default function VisaoEstacas({ hoje, estacas, frentes, frenteAtual, onFr
         <section data-estacas-reveal className={`${CARTAO} p-4 sm:p-5`} aria-labelledby="estacas-cortina-titulo">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-wide text-[#5b6870]">Cortina de estacas</p>
+              <p className="text-xs font-bold text-[#5b6870]">Cortina de estacas</p>
               <h2 id="estacas-cortina-titulo" className="text-xl font-bold text-slate-900">{frente.frente}</h2>
               <p className="text-sm text-slate-600">
                 {frente.cravadas.toLocaleString('pt-BR')} de {frente.previstas.toLocaleString('pt-BR')} cravadas · faltam {frente.faltam.toLocaleString('pt-BR')} · {numero(frente.porcentagem, 1)}%

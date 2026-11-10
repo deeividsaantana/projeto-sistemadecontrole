@@ -43,7 +43,7 @@ function Foto({ caminho, numeroFoto, ramo }: { caminho: string; numeroFoto: numb
     return () => { ativa = false; };
   }, [caminho]);
   const moldura = 'grid size-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100';
-  if (falhou) return <span className={`${moldura} text-slate-400`} title="Foto indisponível"><ImageOff className="size-5" aria-label="Foto indisponível" /></span>;
+  if (falhou) return <span className={`${moldura} text-slate-500`} title="Foto indisponível"><ImageOff className="size-5" aria-label="Foto indisponível" /></span>;
   if (!url) return <span className={`${moldura} animate-pulse motion-reduce:animate-none`} aria-label="Carregando foto" />;
   return (
     <a href={url} target="_blank" rel="noopener noreferrer" aria-label={`Abrir foto ${numeroFoto} de ${ramo}`} className={`${moldura} transition duration-200 hover:border-emerald-500 hover:shadow-md ${FOCO}`}>

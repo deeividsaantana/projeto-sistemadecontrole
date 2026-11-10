@@ -179,7 +179,7 @@ export default function OrganizationChart({ funcionarios, empresas }: Props) {
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         <label className="relative">
           <span className="sr-only">Buscar no organograma</span>
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
           <input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Nome, matrícula ou função" className={`${CAMPO} pl-9`} />
         </label>
         {filtros.map(([label, value, setter, options]) => (
@@ -197,7 +197,7 @@ export default function OrganizationChart({ funcionarios, empresas }: Props) {
         <section aria-labelledby="organograma-escolhido" className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4" data-testid="organograma-escolhido">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-wide text-emerald-800">Colaborador</p>
+              <p className="text-xs font-bold text-emerald-800">Colaborador</p>
               <h3 id="organograma-escolhido" className="break-words text-lg font-bold text-slate-900">{selected.nome}</h3>
               <p className="text-sm text-slate-600">{selected.cargo || 'Função não definida'}</p>
             </div>
@@ -207,7 +207,7 @@ export default function OrganizationChart({ funcionarios, empresas }: Props) {
           </div>
           <dl className="grid grid-cols-2 gap-2 md:grid-cols-5">
             {[['Matrícula', selected.matricula || 'Não informada'], ['Situação', statusLabel(selected)], ['Empresa', companyName(selected)], ['Área', selected.area || fallback.area], ['Responsável', selected.responsavelArea || fallback.responsible], ['Líder', selected.liderNome || fallback.leader], ['Divisão', selected.divisao || 'Não informada'], ['Seção', selected.secao || 'Não informada'], ['Mobilização', selected.dataMobilizacao || 'Não informada'], ['Cadastro', selected.criadoEm ? new Date(selected.criadoEm).toLocaleDateString('pt-BR') : 'Não informado']].map(([label, value]) => (
-              <div key={label} className="min-w-0 rounded-xl border border-slate-200 bg-white p-2.5">
+              <div key={label} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-2.5">
                 <dt className="text-xs font-bold uppercase text-[#5b6870]">{label}</dt>
                 <dd className="mt-0.5 break-words text-sm font-semibold text-slate-800">{value}</dd>
               </div>

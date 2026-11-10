@@ -72,7 +72,7 @@ const dataCurta = (dia: string) => (dia ? new Date(`${dia}T12:00:00`).toLocaleDa
 const semAcento = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 const SOMENTE_LEITURA = 'flex min-h-11 w-full min-w-0 items-center rounded-xl bg-[#f7f8f6] px-3 text-base font-bold ring-1 ring-inset ring-slate-200';
-const CAMPO_GRANDE = `min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 font-mono text-lg font-bold tabular-nums text-slate-900 placeholder:font-sans placeholder:text-base placeholder:font-normal placeholder:text-slate-400 transition duration-200 focus:border-emerald-500 ${FOCO}`;
+const CAMPO_GRANDE = `min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 font-mono text-lg font-bold tabular-nums text-slate-900 placeholder:font-sans placeholder:text-base placeholder:font-normal placeholder:text-slate-500 transition duration-200 focus:border-emerald-500 ${FOCO}`;
 
 /** Uma linha do formulário da planilha: nome à esquerda, campo à direita. */
 function Linha({ rotulo, para, dica, children }: { rotulo: string; para?: string; dica?: ReactNode; children: ReactNode }) {
@@ -329,14 +329,14 @@ export default function LancamentoCombustivel({
 
             <Linha rotulo="Prefixo" para="lanc-prefixo">
               <span className="relative block sm:max-w-sm">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                 <input id="lanc-prefixo" ref={prefixoRef} data-campo value={form.prefixo} autoComplete="off" role="combobox" aria-expanded={listaAberta && opcoes.length > 0} aria-controls="lanc-opcoes"
                   onChange={event => { mudar('prefixo', event.target.value.toUpperCase()); setListaAberta(true); setDestaque(0); }}
                   onFocus={() => setListaAberta(true)} onBlur={() => window.setTimeout(() => setListaAberta(false), 150)} onKeyDown={aoTeclarPrefixo}
                   placeholder="Digite o prefixo, ex.: LO279" className={`${CAMPO_GRANDE} pl-10 uppercase placeholder:normal-case`} data-testid="combustivel-prefixo" />
                 {equipamento && <CheckCircle2 className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-[#176b4d]" aria-label="Máquina encontrada" />}
                 {listaAberta && !equipamento && opcoes.length > 0 && (
-                  <ul id="lanc-opcoes" role="listbox" className="absolute inset-x-0 z-30 mt-1 max-h-72 overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
+                  <ul id="lanc-opcoes" role="listbox" className="absolute inset-x-0 z-30 mt-1 max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white p-1 shadow-lg">
                     {opcoes.map((item, indice) => (
                       <li key={item.id} role="option" aria-selected={indice === destaque}>
                         <button type="button" onMouseDown={event => event.preventDefault()} onClick={() => escolherMaquina(item)}

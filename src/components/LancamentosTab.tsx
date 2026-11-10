@@ -907,10 +907,10 @@ export default function LancamentosTab({
           rows={importRows.map(row => ({
             Linha: row.linha,
             Aba: row.aba,
-            Status: row.status === 'valido' ? '✅ Válido'
-              : row.status === 'duplicado' ? '⚠ Duplicado • bloqueado'
-              : row.status === 'ignorado' ? '⚠ Ignorado • bloqueado'
-              : '❌ Erro • bloqueado',
+            Status: row.status === 'valido' ? 'Válido'
+              : row.status === 'duplicado' ? 'Duplicado · bloqueado'
+              : row.status === 'ignorado' ? 'Ignorado · bloqueado'
+              : 'Erro · bloqueado',
             Data: row.preview.Data,
             Hora: row.preview.Hora,
             Frota: row.preview.Frota,

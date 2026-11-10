@@ -235,7 +235,7 @@ export default function PrevistoMateriais({ hoje, materiais, movimentos, etapas,
         {podeEditar ? (
           <button type="button" onClick={() => abrir(linha)} aria-label={`Editar previsto de ${previsto.materialDescricao} no ${previsto.ramo}`} className={`group relative block w-full px-4 py-3 pr-10 text-left transition duration-200 hover:bg-emerald-50/60 active:bg-emerald-50 ${FOCO}`}>
             {conteudo}
-            <Pencil className="absolute right-4 top-4 size-4 text-slate-400 transition duration-200 group-hover:text-[#176b4d]" aria-hidden="true" />
+            <Pencil className="absolute right-4 top-4 size-4 text-slate-500 transition duration-200 group-hover:text-[#176b4d]" aria-hidden="true" />
           </button>
         ) : (
           <div className="px-4 py-3">{conteudo}</div>

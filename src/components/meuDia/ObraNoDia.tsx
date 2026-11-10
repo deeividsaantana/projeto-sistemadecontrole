@@ -67,7 +67,7 @@ function ListaMateriais({ titulo, linhas }: { titulo: string; linhas: LinhaMater
   if (!linhas.length) return null;
   return (
     <div className="space-y-1">
-      <p className="text-xs font-bold uppercase tracking-wide text-[#5b6870]">{titulo}</p>
+      <p className="text-xs font-bold text-[#5b6870]">{titulo}</p>
       <ul className="space-y-1">
         {linhas.slice(0, MOSTRAR).map(linha => (
           <li key={`${linha.material}-${linha.unidade}`} className="flex items-baseline justify-between gap-3">
@@ -109,7 +109,7 @@ export function ObraNoDia({ dia, materiais, movimentos, abastecimentos, controle
           <ListaMateriais titulo="Saiu" linhas={mat.saidas} />
           {mat.avisos.length > 0 && (
             <div className="space-y-1">
-              <p className="text-xs font-bold uppercase tracking-wide text-[#5b6870]">Estoque</p>
+              <p className="text-xs font-bold text-[#5b6870]">Estoque</p>
               <ul className="space-y-1">
                 {mat.avisos.slice(0, 3).map(aviso => (
                   <li key={aviso.id} className="flex gap-2">

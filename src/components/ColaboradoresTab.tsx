@@ -27,6 +27,7 @@ import {
   situacaoAtualDe,
   type SituacaoColaborador,
 } from '../utils/situacaoColaborador';
+import { CAMPO } from './cadastros/estilos';
 
 interface ColaboradoresTabProps {
   funcionarios: Funcionario[];
@@ -180,7 +181,7 @@ export default function ColaboradoresTab({
         <section data-colaboradores-reveal aria-label="Resumo do colaborador" className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
           {indicadores.map(item => (
             <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
+              <p className="text-xs font-bold text-slate-500">{item.label}</p>
               <strong className="mt-1.5 block text-lg font-black leading-tight text-slate-900">{item.valor}</strong>
               <span className="text-xs text-[#5b6870]">{item.detalhe}</span>
             </div>
@@ -203,7 +204,7 @@ export default function ColaboradoresTab({
                 ['Desmobilização', formatarData(selecionado.dataDesmobilizacao)],
               ].map(([rotulo, valor]) => (
                 <div key={rotulo} className="min-w-0">
-                  <dt className="text-xs font-bold uppercase tracking-wide text-[#5b6870]">{rotulo}</dt>
+                  <dt className="text-xs font-bold text-[#5b6870]">{rotulo}</dt>
                   <dd className="mt-0.5 break-words font-medium text-slate-800">{valor}</dd>
                 </div>
               ))}
@@ -317,7 +318,7 @@ export default function ColaboradoresTab({
                   onAlterarSituacao(aplicarSituacao(selecionado, entrada), descreverMudanca(selecionado, entrada));
                   setMudanca(null);
                 }}
-                className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
+                className="min-h-11 rounded-lg bg-[#176b4d] px-4 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50"
               >
                 Salvar situação
               </button>
@@ -326,17 +327,17 @@ export default function ColaboradoresTab({
         >
           <div className="space-y-3">
             <label className="block space-y-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Situação</span>
+              <span className="text-xs font-bold text-slate-500">Situação</span>
               <select
                 value={mudanca?.situacao || 'ATIVO'}
                 onChange={event => setMudanca(atual => atual && { ...atual, situacao: event.target.value as SituacaoColaborador })}
-                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800"
+                className={`${CAMPO}`}
               >
                 {SITUACOES_COLABORADOR.map(item => <option key={item} value={item}>{item}</option>)}
               </select>
             </label>
             <label className="block space-y-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">A partir de</span>
+              <span className="text-xs font-bold text-slate-500">A partir de</span>
               <TextInput
                 type="date"
                 value={mudanca?.data || ''}
@@ -344,7 +345,7 @@ export default function ColaboradoresTab({
               />
             </label>
             <label className="block space-y-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Motivo</span>
+              <span className="text-xs font-bold text-slate-500">Motivo</span>
               <TextInput
                 placeholder="Fim de contrato, férias programadas, atestado…"
                 value={mudanca?.motivo || ''}

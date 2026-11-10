@@ -218,7 +218,7 @@ export default function ConsumoPorMaquina({ abastecimentos, equipamentos, empres
           <label className="min-w-0 flex-1 lg:min-w-[14rem]">
             <span className={`${ROTULO} mb-1 block`}>Buscar máquina</span>
             <span className="relative block">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
               <input value={busca} onChange={event => setBusca(event.target.value)} placeholder="Prefixo, máquina ou empresa" className={`${CAMPO} pl-9`} />
             </span>
           </label>
@@ -245,7 +245,7 @@ export default function ConsumoPorMaquina({ abastecimentos, equipamentos, empres
           const Simbolo = Icone as typeof Gauge;
           return (
             <div key={titulo as string} data-comb-reveal className={`${CARTAO} px-4 py-2`}>
-              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"><Simbolo className="size-3.5" aria-hidden="true" />{titulo as string}</p>
+              <p className="flex items-center gap-1.5 text-xs font-bold text-slate-500"><Simbolo className="size-3.5" aria-hidden="true" />{titulo as string}</p>
               <p className={`text-xl font-black tabular-nums ${cor as string}`}>{valor as string}</p>
             </div>
           );

@@ -199,7 +199,7 @@ export default function PlanejamentoTab({
       render: item => (
         <span className="flex min-w-28 items-center justify-end gap-2">
           <span className="h-1.5 flex-1 rounded-full bg-slate-100" aria-hidden="true">
-            <span className={`block h-1.5 rounded-full ${item.atrasado ? 'bg-amber-500' : 'bg-emerald-600'}`} style={{ width: `${Math.min(100, item.aderencia)}%` }} />
+            <span className={`block h-1.5 rounded-full ${item.atrasado ? 'bg-amber-500' : 'bg-[#176b4d]'}`} style={{ width: `${Math.min(100, item.aderencia)}%` }} />
           </span>
           <span className="font-bold text-slate-700">{numero(item.aderencia, 1)}%</span>
         </span>
@@ -263,11 +263,11 @@ export default function PlanejamentoTab({
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <label className="text-xs font-bold text-slate-600">
               De
-              <input type="date" value={inicio} onChange={event => setInicio(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500 lg:min-h-10" />
+              <input type="date" value={inicio} onChange={event => setInicio(event.target.value)} className={`${CAMPO} mt-1`} />
             </label>
             <label className="text-xs font-bold text-slate-600">
               Até
-              <input type="date" value={fim} onChange={event => setFim(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500 lg:min-h-10" />
+              <input type="date" value={fim} onChange={event => setFim(event.target.value)} className={`${CAMPO} mt-1`} />
             </label>
             <label className="relative text-xs font-bold text-slate-600 sm:col-span-2">
               Buscar
@@ -277,7 +277,7 @@ export default function PlanejamentoTab({
                 value={busca}
                 onChange={event => setBusca(event.target.value)}
                 placeholder="Serviço, frente, equipe ou situação"
-                className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500 lg:min-h-10"
+                className={`${CAMPO} mt-1 pl-9 pr-3`}
               />
             </label>
           </div>
@@ -322,60 +322,60 @@ export default function PlanejamentoTab({
         footer={(
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button type="button" onClick={() => setAberto(false)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar</button>
-            <button type="button" onClick={salvar} className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800">Salvar previsto</button>
+            <button type="button" onClick={salvar} className="min-h-11 rounded-lg bg-[#176b4d] px-4 text-sm font-bold text-white hover:opacity-90">Salvar previsto</button>
           </div>
         )}
       >
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-xs font-bold text-slate-600">
             Início
-            <input type="date" value={form.dataInicio} onChange={event => setForm({ ...form, dataInicio: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500" />
+            <input type="date" value={form.dataInicio} onChange={event => setForm({ ...form, dataInicio: event.target.value })} className={`${CAMPO} mt-1`} />
           </label>
           <label className="text-xs font-bold text-slate-600">
             Fim
-            <input type="date" value={form.dataFim} onChange={event => setForm({ ...form, dataFim: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500" />
+            <input type="date" value={form.dataFim} onChange={event => setForm({ ...form, dataFim: event.target.value })} className={`${CAMPO} mt-1`} />
           </label>
           <label className="text-xs font-bold text-slate-600 sm:col-span-2">
             Serviço
-            <select value={form.servicoId} onChange={event => setForm({ ...form, servicoId: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500">
+            <select value={form.servicoId} onChange={event => setForm({ ...form, servicoId: event.target.value })} className={`${CAMPO} mt-1`}>
               <option value="">Selecione</option>
               {servicosAtivos.map(item => <option key={item.id} value={item.id}>{item.descricao} ({item.unidade})</option>)}
             </select>
           </label>
           <label className="text-xs font-bold text-slate-600">
             Quantidade prevista
-            <input type="number" min={0} step="0.001" value={form.quantidadePlanejada} onChange={event => setForm({ ...form, quantidadePlanejada: Number(event.target.value) })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500" />
+            <input type="number" min={0} step="0.001" value={form.quantidadePlanejada} onChange={event => setForm({ ...form, quantidadePlanejada: Number(event.target.value) })} className={`${CAMPO} mt-1`} />
           </label>
           <label className="text-xs font-bold text-slate-600">
             Situação
-            <select value={form.situacao} onChange={event => setForm({ ...form, situacao: event.target.value as SituacaoPlano })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500">
+            <select value={form.situacao} onChange={event => setForm({ ...form, situacao: event.target.value as SituacaoPlano })} className={`${CAMPO} mt-1`}>
               {SITUACOES.map(situacao => <option key={situacao} value={situacao}>{situacao}</option>)}
             </select>
           </label>
           <label className="text-xs font-bold text-slate-600">
             Equipe
-            <select value={form.grupoId} onChange={event => setForm({ ...form, grupoId: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500">
+            <select value={form.grupoId} onChange={event => setForm({ ...form, grupoId: event.target.value })} className={`${CAMPO} mt-1`}>
               <option value="">Qualquer equipe</option>
               {gruposEquipe.filter(item => item.status !== 'inativo').map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
             </select>
           </label>
           <label className="text-xs font-bold text-slate-600">
             Frente
-            <input list="planejamento-frentes" value={form.frente} onChange={event => setForm({ ...form, frente: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500" />
+            <input list="planejamento-frentes" value={form.frente} onChange={event => setForm({ ...form, frente: event.target.value })} className={`${CAMPO} mt-1`} />
             <datalist id="planejamento-frentes">
               {frentes.map(frente => <option key={frente.id} value={frente.nome} />)}
             </datalist>
           </label>
           <label className="text-xs font-bold text-slate-600 sm:col-span-2">
             Obra
-            <select value={form.obraId} onChange={event => setForm({ ...form, obraId: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500">
+            <select value={form.obraId} onChange={event => setForm({ ...form, obraId: event.target.value })} className={`${CAMPO} mt-1`}>
               <option value="">Herdar do serviço</option>
               {obras.map(obra => <option key={obra.id} value={obra.id}>{obra.nome}</option>)}
             </select>
           </label>
           <label className="text-xs font-bold text-slate-600 sm:col-span-2">
             Observação
-            <textarea value={form.observacao} onChange={event => setForm({ ...form, observacao: event.target.value })} rows={2} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal text-slate-800 outline-none focus:border-emerald-500" />
+            <textarea value={form.observacao} onChange={event => setForm({ ...form, observacao: event.target.value })} rows={2} className={`${CAMPO} mt-1 py-2`} />
           </label>
           <p className="sm:col-span-2 text-xs text-slate-500">
             O executado não é digitado: soma a produção lançada do mesmo serviço no período, filtrada por frente e equipe quando informadas.

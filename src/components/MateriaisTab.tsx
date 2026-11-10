@@ -281,20 +281,18 @@ export default function MateriaisTab({
     setMaterialAberto(false);
   };
 
-  const excluirMaterial = (material: Material) => {
-    const temMovimento = movimentos.some(item => item.materialId === material.id);
-    const confirmar = window.confirm(
-      temMovimento
-        ? `Excluir "${material.descricao}" vai inativar o cadastro e preservar o histórico de movimentos. Confirmar?`
-        : `Excluir "${material.descricao}" do cadastro?`,
-    );
-    if (!confirmar) return;
+  const [materialExcluindo, setMaterialExcluindo] = useState<Material | null>(null);
+  const excluirMaterial = (material: Material) => setMaterialExcluindo(material);
+  const confirmarExclusaoMaterial = () => {
+    if (!materialExcluindo) return;
     onSaveMaterial({
-      ...material,
+      ...materialExcluindo,
       ativo: false,
       atualizadoEm: new Date().toISOString(),
     }, false);
+    setMaterialExcluindo(null);
   };
+  const materialExcluindoTemMovimento = Boolean(materialExcluindo && movimentos.some(item => item.materialId === materialExcluindo.id));
 
   const salvarLancamento = (movimento: MovimentoMaterial, novo: boolean) => {
     if (novo) onSaveMovimento(movimento);
@@ -786,6 +784,18 @@ export default function MateriaisTab({
           {erro && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">{erro}</p>}
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={Boolean(materialExcluindo)}
+        tone="danger"
+        title={`Excluir ${materialExcluindo?.descricao || 'o material'}?`}
+        description={materialExcluindoTemMovimento
+          ? 'O cadastro fica inativo e o histórico de movimentos continua guardado.'
+          : 'O material sai do cadastro.'}
+        confirmLabel="Excluir material"
+        onConfirm={confirmarExclusaoMaterial}
+        onCancel={() => setMaterialExcluindo(null)}
+      />
 
       <ConfirmDialog
         open={desfazerAberto}

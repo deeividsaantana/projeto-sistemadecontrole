@@ -25,7 +25,7 @@ interface Props {
 
 const Kpi = ({ Icone, rotulo, valor, tom = 'text-slate-900' }: { Icone: typeof Boxes; rotulo: string; valor: string; tom?: string }) => (
   <div className={`${CARTAO} flex items-center gap-3 p-3`}>
-    <Icone className="size-8 shrink-0 text-slate-400" aria-hidden="true" />
+    <Icone className="size-8 shrink-0 text-slate-500" aria-hidden="true" />
     <div className="min-w-0">
       <p className="text-xs font-semibold text-slate-500">{rotulo}</p>
       <p className={`break-words text-base font-black tabular-nums sm:text-lg ${tom}`}>{valor}</p>

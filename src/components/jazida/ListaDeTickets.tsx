@@ -113,7 +113,7 @@ export default function ListaDeTickets({
         <button type="button" onClick={() => onEditar(t)} className={cn(BOTAO_SECUNDARIO, 'min-h-9 px-3')}><Pencil className="size-4" aria-hidden="true" />{rascunho ? 'Continuar' : 'Corrigir'}</button>
         <button type="button" onClick={() => onVer(t)} className={BOTAO_ICONE} aria-label={`Ver e imprimir a folha do ticket ${t.ticketNumero}`} title="Ver e imprimir a folha"><Eye className="size-4" aria-hidden="true" /></button>
         {tipoDoTicket(t) === 'Liberação' && (
-          <button type="button" onClick={() => onGerarRecebimento(t)} className={cn(BOTAO_ICONE, temRecebimento && 'text-slate-400')}
+          <button type="button" onClick={() => onGerarRecebimento(t)} className={cn(BOTAO_ICONE, temRecebimento && 'text-slate-500')}
             aria-label={temRecebimento ? `Recebimento do ticket ${t.ticketNumero} já existe` : `Criar o recebimento do ticket ${t.ticketNumero} com o mesmo caminhão`}
             title={temRecebimento ? 'O recebimento já existe' : 'Criar o recebimento com o mesmo caminhão'}>
             <CopyPlus className="size-4" aria-hidden="true" />
@@ -142,7 +142,7 @@ export default function ListaDeTickets({
           </div>
           <label className="relative min-w-0 flex-1 basis-60">
             <span className="sr-only">Buscar ticket</span>
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
             <input type="search" value={filtros.busca} onChange={e => onFiltros({ busca: e.target.value })} placeholder="Ticket, placa, prefixo, material, destino ou nota" className={`${CAMPO} pl-10`} data-testid="jazida-busca" />
           </label>
           <label className="flex items-center gap-2">

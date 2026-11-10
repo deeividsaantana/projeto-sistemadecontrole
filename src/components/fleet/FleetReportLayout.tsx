@@ -24,10 +24,10 @@ function ReportHeader({ viewModel }: Props) {
     <>
       <header className="grid grid-cols-[120px_1fr_120px] items-center gap-4">
         <img src={reneaLogo} alt="RENEA" className="max-h-12 max-w-[110px] object-contain object-left" />
-        <div className="text-center"><h1 className="text-base font-black uppercase tracking-wide text-slate-900">Relatório Diário de Situação Operacional</h1><h2 className="text-sm font-black uppercase text-slate-800">Frotas operacionais</h2><p className="mt-1 text-[10px] text-slate-500">{viewModel.operationName}</p></div>
+        <div className="text-center"><h1 className="text-base font-black text-slate-900">Relatório Diário de Situação Operacional</h1><h2 className="text-sm font-black uppercase text-slate-800">Frotas operacionais</h2><p className="mt-1 text-[10px] text-slate-500">{viewModel.operationName}</p></div>
         <img src={spmarLogo} alt="SPMAR" className="ml-auto max-h-12 max-w-[110px] object-contain object-right" />
       </header>
-      <div className="mt-2 h-1 bg-emerald-700" />
+      <div className="mt-2 h-1 bg-[#176b4d]" />
       <div className="mt-2 grid grid-cols-7 gap-1">{metrics(viewModel).map(metric=><div key={metric.label} className={`border border-slate-300 px-2 py-1 text-center ${metric.className}`}><p className="text-[8px] font-black uppercase text-slate-500">{metric.label}</p><strong className="text-sm text-slate-900">{metric.value}</strong></div>)}</div>
     </>
   );

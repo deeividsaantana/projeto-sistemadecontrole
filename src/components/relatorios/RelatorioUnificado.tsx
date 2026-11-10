@@ -158,7 +158,7 @@ export function RelatorioUnificado({
               >
                 <div className="flex items-start justify-between">
                   <div className="min-w-0">
-                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{kpi.titulo}</p>
+                    <p className="text-xs font-bold text-slate-500">{kpi.titulo}</p>
                     <p className="mt-2 text-2xl font-black text-slate-900 tabular-nums">
                       {typeof kpi.valor === 'number' ? kpi.valor.toLocaleString('pt-BR') : kpi.valor}
                       {kpi.sufixo && <span className="text-sm text-slate-600 ml-1">{kpi.sufixo}</span>}
@@ -186,7 +186,7 @@ export function RelatorioUnificado({
           <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
             <label className="relative flex-1 min-w-0">
               <span className="sr-only">Buscar</span>
-              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" aria-hidden="true" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500" aria-hidden="true" />
               <input
                 type="text"
                 value={busca}

@@ -95,7 +95,7 @@ export default function ListaEstacas({ estacas, frentes, onCravar, onEditar, onI
         <FilterBar label="Filtros das estacas" className="rounded-2xl border border-slate-200 bg-white p-3">
           <label className="relative block min-w-0 basis-full sm:flex-1 sm:basis-auto">
             <span className="sr-only">Buscar estaca</span>
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
             <input type="search" value={busca} onChange={event => setBusca(event.target.value)} placeholder="Estaca, frente, dia ou responsável" className={`${CAMPO} pl-11`} />
           </label>
           <label className="min-w-0 basis-full sm:w-56 sm:basis-auto">

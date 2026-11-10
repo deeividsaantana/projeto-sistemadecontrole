@@ -111,7 +111,7 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
   const confirmacao = pendente ? textoDaMudanca(pendente) : null;
 
   const selectClass = 'h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-800 shadow-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/15 disabled:bg-slate-100';
-  const labelClass = 'block text-xs font-bold uppercase tracking-wider text-slate-500';
+  const labelClass = 'block text-xs font-bold text-slate-500';
 
   const colunas: ColunaTabela<ManagedUser>[] = [
     {
@@ -160,7 +160,7 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
   const conteudo = (
     <>
       <div data-usuarios-reveal className="grid items-start gap-5 xl:grid-cols-[420px_1fr]">
-        <form onSubmit={createUser} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+        <form onSubmit={createUser} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
           <div className="flex items-center gap-2">
             <Plus className="h-5 w-5 text-emerald-700" aria-hidden="true" />
             <h2 className="font-bold text-slate-900">Novo usuário</h2>

@@ -56,7 +56,7 @@ export default function FleetFilterBar({
       <div className="flex flex-wrap items-center gap-2">
         <label className="relative min-w-0 flex-[1_1_16rem]">
           <span className="sr-only">Buscar prefixo, motorista, matrícula ou local</span>
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
           <input
             value={filters.search}
             onChange={event => onChange('search', event.target.value)}

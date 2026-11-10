@@ -533,7 +533,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
         <div className="w-full space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-0 basis-full sm:min-w-56 sm:flex-1 sm:basis-auto">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
               <input
                 ref={buscaRef}
                 type="search"

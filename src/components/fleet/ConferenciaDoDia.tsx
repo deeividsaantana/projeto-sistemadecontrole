@@ -59,7 +59,7 @@ export function ResumoConferencia({ id, Icone, data, titulo, descricao, contador
       </div>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="min-w-0 flex-1">
-          <div className="mb-1 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-[#5b6870]"><span>{rotuloProgresso}</span><span>{progresso}%</span></div>
+          <div className="mb-1 flex items-center justify-between text-xs font-bold text-[#5b6870]"><span>{rotuloProgresso}</span><span>{progresso}%</span></div>
           <div className="h-2 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-label={rotuloProgresso} aria-valuenow={progresso} aria-valuemin={0} aria-valuemax={100}>
             <div className="h-full rounded-full bg-[#176b4d] transition-[width] duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none" style={{ width: `${progresso}%` }} />
           </div>
@@ -120,7 +120,7 @@ export function GradeConferencia({ itens, nomeFaltantes, nomeLancados, vazio, te
   if (!itens.length) return <div className="grid flex-1 place-items-center">{vazio}</div>;
   const grupo = (titulo: string, lista: readonly CartaoConferencia[], tom: string) => lista.length > 0 && (
     <section aria-label={`${titulo}: ${lista.length}`} className="grid gap-2">
-      <h3 className={`flex items-center gap-2 text-sm font-bold uppercase tracking-[0.12em] ${tom}`}>
+      <h3 className={`flex items-center gap-2 text-sm font-bold ${tom}`}>
         {titulo}
         <span className="rounded-full bg-white px-2 py-0.5 text-sm tabular-nums ring-1 ring-inset ring-current/30">{lista.length}</span>
       </h3>

@@ -323,7 +323,7 @@ export default function LocaisMateriais({ etapas, movimentos, termo, podeEditar,
                           {uso.toLocaleString('pt-BR')}
                           <span className="sr-only"> movimentos</span>
                         </span>
-                        {podeEditar && <Pencil className="size-4 shrink-0 text-slate-400 transition duration-200 group-hover:text-[#176b4d]" aria-hidden="true" />}
+                        {podeEditar && <Pencil className="size-4 shrink-0 text-slate-500 transition duration-200 group-hover:text-[#176b4d]" aria-hidden="true" />}
                       </>
                     );
                     return (

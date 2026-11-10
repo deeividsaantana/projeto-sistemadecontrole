@@ -108,7 +108,7 @@ export function ManutencaoHoje({ relatorio, registros, equipamentos, motoristas,
             <h2 id="manutencao-hoje-titulo" className="text-lg font-bold text-slate-900">Equipamentos que pararam hoje</h2>
             <p className="mt-1.5 text-sm text-slate-600">Primeiro os que ainda estão na oficina. A conta para em 10 h por dia, salvo quem segue além.</p>
           </div>
-          <span className="flex-none text-xs font-semibold uppercase tracking-wide tabular-nums text-slate-500">Atualizado às {horaAgora}</span>
+          <span className="flex-none text-xs font-semibold tabular-nums text-slate-500">Atualizado às {horaAgora}</span>
         </div>
         {linhas.length === 0
           ? <EmptyState icon={CheckCircle2} title="Nenhum equipamento parou hoje" description="Quando alguém lançar uma entrada em manutenção, aqui ou no Quadro da Frota, o equipamento aparece neste quadro." />
