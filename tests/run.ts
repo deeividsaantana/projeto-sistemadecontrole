@@ -164,6 +164,7 @@ import './quadroFrotaPainelModal.test';
 import './exclusaoEquipe.test';
 import './linkDeCampoFila.test';
 import './nuvemNaoPerdeNovidade.test';
+import './remocaoMateriaisJazidaBloco.test';
 import './historicoVersoesNuvem.test';
 import './frotaDataPlanilha.test';
 import './dataLocalHoje.test';
