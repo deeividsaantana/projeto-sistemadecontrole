@@ -47,6 +47,7 @@ import {
 import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO } from './cadastros/estilos';
+import { Campo, Conferencia, Conferido, Etapa } from '../shared/ui/Lancamento';
 import { ManutencaoHoje } from './manutencao/ManutencaoHoje';
 import { FilaOficina } from './manutencao/FilaOficina';
 import { ConferenciaManutencao } from './manutencao/ConferenciaManutencao';
@@ -685,89 +686,95 @@ export default function ManutencaoTab({
       <Modal
         open={formAberto}
         title={editando ? `Editar ${editando.numero}` : 'Abrir ordem de serviço'}
-        description={editando ? undefined : 'A OS entra como Aberta e segue o fluxo até a liberação.'}
-        size="lg"
+        size="xl"
         onClose={() => setFormAberto(false)}
         onSubmit={salvar}
         initialFocusRef={equipamentoFieldRef}
-        className="renea-launch-modal"
         footer={(
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button type="button" onClick={() => setFormAberto(false)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar <span className="ml-1 text-xs text-[#5b6870]">Esc</span></button>
-            <button type="button" onClick={salvar} className="min-h-11 rounded-lg bg-[#176b4d] px-4 text-sm font-bold text-white hover:opacity-90">Salvar ordem <span className="ml-1 text-xs text-emerald-100">Ctrl + Enter</span></button>
+            <button type="button" onClick={() => setFormAberto(false)} className={BOTAO_SECUNDARIO}>Cancelar</button>
+            <button type="button" onClick={salvar} className={BOTAO_PRIMARIO}>Salvar ordem</button>
           </div>
         )}
       >
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="text-xs font-bold text-slate-600">
-            Equipamento
-            <select
-              ref={equipamentoFieldRef}
-              value={form.equipamentoId}
-              onChange={event => setForm({ ...form, equipamentoId: event.target.value })}
-              className={`${CAMPO} mt-1`}
-            >
-              <option value="">Selecione</option>
-              {[...equipamentos]
-                .sort((a, b) => a.prefixo.localeCompare(b.prefixo, 'pt-BR', { numeric: true }))
-                .map(item => <option key={item.id} value={item.id}>{item.prefixo} · {item.nome}</option>)}
-            </select>
-          </label>
-          <label className="text-xs font-bold text-slate-600">
-            Categoria
-            <select value={form.tipo} onChange={event => setForm({ ...form, tipo: event.target.value as OrdemServico['tipo'] })} className={`${CAMPO} mt-1`}>
-              {TIPOS.map(item => <option key={item}>{item}</option>)}
-            </select>
-          </label>
-          <label className="text-xs font-bold text-slate-600">
-            Prioridade
-            <select value={form.prioridade} onChange={event => setForm({ ...form, prioridade: event.target.value as OrdemServico['prioridade'] })} className={`${CAMPO} mt-1`}>
-              {PRIORIDADES.map(item => <option key={item}>{item}</option>)}
-            </select>
-          </label>
-          <label className="text-xs font-bold text-slate-600">
-            Oficina
-            <input value={form.oficina} onChange={event => setForm({ ...form, oficina: event.target.value })} placeholder="Interna ou terceiro" className={`${CAMPO} mt-1`} />
-          </label>
-          <label className="text-xs font-bold text-slate-600">
-            Data de abertura
-            <input type="date" value={form.dataAbertura} onChange={event => setForm({ ...form, dataAbertura: event.target.value })} className={`${CAMPO} mt-1`} />
-          </label>
-          <label className="text-xs font-bold text-slate-600">
-            Hora de abertura
-            <input type="time" value={form.horaAbertura} onChange={event => setForm({ ...form, horaAbertura: event.target.value })} className={`${CAMPO} mt-1`} />
-          </label>
-          <label className="text-xs font-bold text-slate-600 sm:col-span-2">
-            Problema
-            <input value={form.motivo} onChange={event => setForm({ ...form, motivo: event.target.value })} placeholder="Quebra, preventiva, pneu, elétrica..." className={`${CAMPO} mt-1`} />
-          </label>
-          <label className="text-xs font-bold text-slate-600 sm:col-span-2">
-            Descrição
-            <textarea value={form.descricao} onChange={event => setForm({ ...form, descricao: event.target.value })} rows={3} placeholder="O que aconteceu e o que precisa ser atendido" className={`${CAMPO} mt-1`} />
-          </label>
-          <label className="text-xs font-bold text-slate-600 sm:col-span-2">
-            Solução
-            <textarea value={form.solucao} onChange={event => setForm({ ...form, solucao: event.target.value })} rows={2} placeholder="O que foi feito para liberar o equipamento" className={`${CAMPO} mt-1`} />
-          </label>
-          <label className="text-xs font-bold text-slate-600">
-            Data de liberação
-            <input type="date" value={form.dataConclusao} onChange={event => setForm({ ...form, dataConclusao: event.target.value })} className={`${CAMPO} mt-1`} />
-          </label>
-          <label className="text-xs font-bold text-slate-600">
-            Hora de liberação
-            <input type="time" value={form.horaConclusao} onChange={event => setForm({ ...form, horaConclusao: event.target.value })} disabled={!form.dataConclusao} className={`${CAMPO} mt-1`} />
-          </label>
-          <label className="text-xs font-bold text-slate-600 sm:col-span-2">
-            Observação
-            <textarea value={form.observacao} onChange={event => setForm({ ...form, observacao: event.target.value })} rows={2} className={`${CAMPO} mt-1`} />
-          </label>
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_19rem]">
+          <div className="grid min-w-0 gap-4">
+            <Etapa numero={1} titulo="Qual equipamento e o que houve?" ajuda="O problema é o que a oficina lê primeiro." feita={Boolean(form.equipamentoId && form.descricao.trim())}>
+              <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+                <Campo rotulo="Equipamento" para="os-equipamento">
+                  <select id="os-equipamento" ref={equipamentoFieldRef} value={form.equipamentoId} onChange={event => setForm({ ...form, equipamentoId: event.target.value })} className={CAMPO}>
+                    <option value="">Escolha</option>
+                    {[...equipamentos]
+                      .sort((a, b) => a.prefixo.localeCompare(b.prefixo, 'pt-BR', { numeric: true }))
+                      .map(item => <option key={item.id} value={item.id}>{item.prefixo} · {item.nome}</option>)}
+                  </select>
+                </Campo>
+                <Campo rotulo="Categoria" para="os-tipo">
+                  <select id="os-tipo" value={form.tipo} onChange={event => setForm({ ...form, tipo: event.target.value as OrdemServico['tipo'] })} className={CAMPO}>
+                    {TIPOS.map(item => <option key={item}>{item}</option>)}
+                  </select>
+                </Campo>
+                <Campo rotulo="Problema" para="os-motivo" className="sm:col-span-2">
+                  <input id="os-motivo" value={form.motivo} onChange={event => setForm({ ...form, motivo: event.target.value })} placeholder="Quebra, preventiva, pneu, elétrica..." className={CAMPO} />
+                </Campo>
+                <Campo rotulo="Descrição" para="os-descricao" className="sm:col-span-2">
+                  <textarea id="os-descricao" value={form.descricao} onChange={event => setForm({ ...form, descricao: event.target.value })} rows={3} placeholder="O que aconteceu e o que precisa ser atendido" className={CAMPO} />
+                </Campo>
+              </div>
+            </Etapa>
+
+            <Etapa numero={2} titulo="Quando parou?" feita={Boolean(form.dataAbertura)}>
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <Campo rotulo="Dia" para="os-dia">
+                  <input id="os-dia" type="date" value={form.dataAbertura} onChange={event => setForm({ ...form, dataAbertura: event.target.value })} className={CAMPO} />
+                </Campo>
+                <Campo rotulo="Hora" para="os-hora">
+                  <input id="os-hora" type="time" value={form.horaAbertura} onChange={event => setForm({ ...form, horaAbertura: event.target.value })} className={CAMPO} />
+                </Campo>
+                <Campo rotulo="Prioridade" para="os-prioridade">
+                  <select id="os-prioridade" value={form.prioridade} onChange={event => setForm({ ...form, prioridade: event.target.value as OrdemServico['prioridade'] })} className={CAMPO}>
+                    {PRIORIDADES.map(item => <option key={item}>{item}</option>)}
+                  </select>
+                </Campo>
+                <Campo rotulo="Oficina" para="os-oficina">
+                  <input id="os-oficina" value={form.oficina} onChange={event => setForm({ ...form, oficina: event.target.value })} placeholder="Interna ou terceiro" className={CAMPO} />
+                </Campo>
+              </div>
+            </Etapa>
+
+            <Etapa numero={3} titulo="Quando voltou?" ajuda="Preencha só quando o equipamento for liberado." feita={Boolean(form.dataConclusao)}>
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <Campo rotulo="Dia da liberação" para="os-dia-fim">
+                  <input id="os-dia-fim" type="date" value={form.dataConclusao} onChange={event => setForm({ ...form, dataConclusao: event.target.value })} className={CAMPO} />
+                </Campo>
+                <Campo rotulo="Hora da liberação" para="os-hora-fim">
+                  <input id="os-hora-fim" type="time" value={form.horaConclusao} onChange={event => setForm({ ...form, horaConclusao: event.target.value })} disabled={!form.dataConclusao} className={CAMPO} />
+                </Campo>
+                <Campo rotulo="Solução" para="os-solucao" className="col-span-2">
+                  <textarea id="os-solucao" value={form.solucao} onChange={event => setForm({ ...form, solucao: event.target.value })} rows={2} placeholder="O que foi feito para liberar o equipamento" className={CAMPO} />
+                </Campo>
+                <Campo rotulo="Observação" para="os-obs" className="col-span-2">
+                  <textarea id="os-obs" value={form.observacao} onChange={event => setForm({ ...form, observacao: event.target.value })} rows={2} className={CAMPO} />
+                </Campo>
+              </div>
+            </Etapa>
+          </div>
+
+          <Conferencia subtitulo={editando ? editando.numero : 'A OS entra como Aberta.'}>
+            <dl className="divide-y divide-slate-100">
+              <Conferido rotulo="Equipamento" ok={Boolean(form.equipamentoId)} valor={equipamentos.find(item => item.id === form.equipamentoId)?.prefixo || 'falta'} />
+              <Conferido rotulo="Descrição" ok={Boolean(form.descricao.trim())} valor={form.descricao.trim() ? (form.motivo.trim() || 'escrita') : 'falta'} />
+              <Conferido rotulo="Parou" ok={Boolean(form.dataAbertura)} valor={form.dataAbertura ? `${form.dataAbertura.split('-').reverse().join('/')}${form.horaAbertura ? ` ${form.horaAbertura}` : ''}` : 'falta'} />
+              <Conferido rotulo="Voltou" ok valor={form.dataConclusao ? `${form.dataConclusao.split('-').reverse().join('/')}${form.horaConclusao ? ` ${form.horaConclusao}` : ''}` : 'ainda parado'} />
+            </dl>
+            {editando && horasDaOrdem(editando) !== undefined && (
+              <p className="rounded-xl bg-[#f7f8f6] px-3 py-2.5 text-sm text-slate-600">
+                Horas paradas (até 10 h por dia): <strong>{horasDaOrdem(editando)?.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} h</strong>
+              </p>
+            )}
+            {erro && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2.5 text-sm font-bold text-rose-700">{erro}</p>}
+          </Conferencia>
         </div>
-        {editando && horasDaOrdem(editando) !== undefined && (
-          <p className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-            Horas paradas pelo controle da frota (até 10 h por dia): <strong>{horasDaOrdem(editando)?.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} h</strong>
-          </p>
-        )}
-        {erro && <p className="mt-3 rounded-lg bg-rose-50 p-3 text-xs font-bold text-rose-700">{erro}</p>}
       </Modal>
 
       <ConfirmDialog
