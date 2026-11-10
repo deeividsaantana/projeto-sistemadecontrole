@@ -13,19 +13,9 @@
   .renea-button-primary { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#176b4d] px-4 text-sm font-bold text-white transition-colors hover:bg-[#0f5a3d] disabled:cursor-not-allowed disabled:opacity-50; }
 }
 
-/* Padrão único para telas de lançamento operacional. */
-.renea-launch-layout { --launch-gap: .75rem; }
-.renea-launch-step > div:first-child { min-height: 3.75rem; display: flex; align-items: center; }
-.renea-launch-summary { box-shadow: var(--renea-shadow-card); }
+/* Janela de lançamento da Manutenção (OS). */
 .renea-launch-modal .grid { gap: .75rem; }
 .renea-launch-modal label { color: #33463d; }
-@media (max-width: 1023px) {
-  .renea-launch-summary { position: static; }
-}
-@media (max-width: 639px) {
-  .renea-launch-step > div:first-child { min-height: 3.25rem; }
-  .renea-launch-summary { order: -1; }
-}
 
 :root {
   --renea-color-primary: #176b4d;

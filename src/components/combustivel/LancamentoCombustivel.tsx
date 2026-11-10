@@ -20,7 +20,8 @@ import { normalizeQuickTime } from '../../utils/combustivelValidation';
 import { getFuelRecordCompetence } from '../../modules/frota/fuelReport';
 import { nomeDoMes } from '../../modules/frota/planilhaDiesel';
 import { conferirNoDia } from '../../modules/frota/repetidosDiesel';
-import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, reduzMovimento } from '../cadastros/estilos';
+import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO, reduzMovimento } from '../cadastros/estilos';
+import { Campo, Conferencia, Conferido, Etapa } from '../../shared/ui/Lancamento';
 
 interface Props {
   abastecimentos: readonly Abastecimento[];
@@ -73,50 +74,6 @@ const semAcento = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, 
 
 const SOMENTE_LEITURA = 'flex min-h-11 w-full min-w-0 items-center rounded-xl bg-[#f7f8f6] px-3 text-base font-bold ring-1 ring-inset ring-slate-200';
 const CAMPO_GRANDE = `min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 tabular-nums text-lg font-bold tabular-nums text-slate-900 placeholder:font-sans placeholder:text-base placeholder:font-normal placeholder:text-slate-500 transition duration-200 focus:border-emerald-500 ${FOCO}`;
-
-/** Uma etapa do lançamento: número, pergunta e os campos dela. */
-function Etapa({ numero, titulo, ajuda, feita, children }: { numero: number; titulo: string; ajuda?: string; feita?: boolean; children: ReactNode }) {
-  return (
-    <section data-lanc-reveal aria-labelledby={`lanc-etapa-${numero}`} className={`${CARTAO} p-4 sm:p-5`}>
-      <header className="mb-4 flex items-start gap-3">
-        <span className={`grid size-8 shrink-0 place-items-center rounded-full text-sm font-black ${feita ? 'bg-[#176b4d] text-white' : 'bg-[#f7f8f6] text-slate-700 ring-1 ring-inset ring-slate-200'}`} aria-hidden="true">
-          {feita ? <CheckCircle2 className="size-4" /> : numero}
-        </span>
-        <div className="min-w-0">
-          <h2 id={`lanc-etapa-${numero}`} className="text-base font-black text-slate-900">{titulo}</h2>
-          {ajuda && <p className="text-sm text-slate-600">{ajuda}</p>}
-        </div>
-      </header>
-      {children}
-    </section>
-  );
-}
-
-/** Campo com o nome em cima: lê de cima para baixo, igual no celular e no computador. */
-function Campo({ rotulo, para, dica, children, className }: { rotulo: string; para?: string; dica?: ReactNode; children: ReactNode; className?: string }) {
-  return (
-    <div className={`min-w-0 ${className ?? ''}`}>
-      {para
-        ? <label htmlFor={para} className="mb-1 block text-sm font-bold text-slate-700">{rotulo}</label>
-        : <span className="mb-1 block text-sm font-bold text-slate-700">{rotulo}</span>}
-      {children}
-      {dica && <p className="mt-1 text-sm text-slate-600">{dica}</p>}
-    </div>
-  );
-}
-
-/** Linha da conferência: o que vai ser salvo, com um sinal de pronto ou pendente. */
-function Conferido({ rotulo, valor, ok, testId }: { rotulo: string; valor: ReactNode; ok: boolean; testId?: string }) {
-  return (
-    <div className="flex items-start justify-between gap-3 py-2">
-      <dt className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-        <span className={`size-2 shrink-0 rounded-full ${ok ? 'bg-[#176b4d]' : 'bg-slate-300'}`} aria-hidden="true" />
-        {rotulo}
-      </dt>
-      <dd className="min-w-0 text-right text-sm font-black tabular-nums text-slate-900" data-testid={testId}>{valor}</dd>
-    </div>
-  );
-}
 
 export default function LancamentoCombustivel({
   abastecimentos, equipamentos, empresas, comboios, combustiveis, registros = [], gruposEquipe = [], usuario,
@@ -447,11 +404,7 @@ export default function LancamentoCombustivel({
             </Etapa>
           </div>
 
-          <aside data-lanc-reveal aria-label="Conferência antes de salvar" className={`${CARTAO} grid gap-3 p-4 sm:p-5 lg:sticky lg:top-0`}>
-            <div>
-              <h2 className="text-base font-black text-slate-900">Conferência</h2>
-              <p className="text-sm text-slate-600">Mês da planilha: <output className="font-bold text-slate-900" data-testid="combustivel-mes">{nomeDoMes(getFuelRecordCompetence({ data: form.data }))}</output></p>
-            </div>
+          <Conferencia subtitulo={<>Mês da planilha: <output className="font-bold text-slate-900" data-testid="combustivel-mes">{nomeDoMes(getFuelRecordCompetence({ data: form.data }))}</output></>}>
             <dl className="divide-y divide-slate-100">
               <Conferido rotulo="Máquina" ok={maquinaOk} valor={form.prefixo.trim() ? form.prefixo.trim().toUpperCase() : 'falta'} />
               <Conferido rotulo="Litros" ok={quantoOk} valor={quantoOk ? litrosTexto(litrosDigitados) : 'falta'} />
@@ -494,7 +447,7 @@ export default function LancamentoCombustivel({
                 {lancadosAgora.length} lançado(s) agora · <span className="tabular-nums text-[#176b4d]">{litrosTexto(totalLancado)}</span>
               </p>
             )}
-          </aside>
+          </Conferencia>
         </div>
       </div>
 
