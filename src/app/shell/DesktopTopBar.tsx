@@ -64,7 +64,7 @@ export function DesktopTopBar({
   const headerRef = useRef<HTMLElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const logoutBtnRef = useRef<HTMLButtonElement>(null);
-  const userName = currentUser?.displayName || currentUser?.email || 'Usuário RENEA';
+  const userName = currentUser?.displayName || currentUser?.email || 'Usuário';
   const userInitials = userName.trim().slice(0, 2).toUpperCase();
 
   const visibleItems = useMemo(() => groups.flatMap(group => group.items), [groups]);

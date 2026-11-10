@@ -56,7 +56,7 @@ function PendingTable({ rows }: { rows: FleetCurrentState[] }) {
 }
 
 function ReportFooter({ page, viewModel }: { page: number; viewModel: FleetReportViewModel }) {
-  return <footer className="mt-auto flex justify-between border-t border-slate-300 pt-1 text-[8px] text-slate-500"><span>{viewModel.companyLabel} · Gerado pelo Sistema RENEA</span><span>Página {page} de 2</span></footer>;
+  return <footer className="mt-auto flex justify-between border-t border-slate-300 pt-1 text-[8px] text-slate-500"><span>{viewModel.companyLabel} · Gerado pelo Cintravyse</span><span>Página {page} de 2</span></footer>;
 }
 
 /**

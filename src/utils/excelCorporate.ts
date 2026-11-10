@@ -137,7 +137,7 @@ export const styleCorporateWorksheet = (
     margins: { left: 0.25, right: 0.25, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 },
   };
   worksheet.headerFooter.oddHeader = `&L&BRENEA Infraestrutura&C${options.title}&R&P de &N`;
-  worksheet.headerFooter.oddFooter = '&LGerado pelo Sistema RENEA&CConfidencial - Uso interno&R&D &T';
+  worksheet.headerFooter.oddFooter = '&LGerado pelo Cintravyse&CConfidencial - Uso interno&R&D &T';
 
   if (options.autoFit !== false) autoFitCorporateColumns(worksheet);
 

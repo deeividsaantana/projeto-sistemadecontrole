@@ -28,6 +28,7 @@ import { AbasDaTela, idDaAba, type ItemDasAbas } from '../src/shared/ui/AbasDaTe
 import { PageHeader } from '../src/shared/ui/PageHeader';
 import { PularParaConteudo } from '../src/shared/ui/PularParaConteudo';
 import { instalarGuardaDeMovimento } from '../src/shared/motion/guardaDeMovimento';
+import { LoginScreen } from '../src/auth/LoginScreen';
 import { apagarDeVez, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from '../src/cloud/exclusoes';
 
 const noop = () => {};
@@ -633,6 +634,12 @@ const screens: Record<string, React.ReactNode> = {
     />
   ),
   'presenca-fluxo': <PresencaFluxoCompleto />,
+  login: (
+    <LoginScreen
+      username="" password="" showPassword={false} isAuthenticating={false} loginError="" loginNotice=""
+      onUsernameChange={noop} onPasswordChange={noop} onTogglePasswordVisibility={noop} onSubmit={event => event.preventDefault()} onPasswordRecovery={noop}
+    />
+  ),
   'presenca-enviada': (
     <PresencaTempoRealPublica
       token="presenca-exemplo"
@@ -672,7 +679,7 @@ const previewQueryClient = new QueryClient();
 // fora dele no App.
 // O link de presença também: no app ele tem a página só para ele, com uma
 // <main> só (auditoria de 21/10/2026, M2).
-const isPublicScreen = ['pesquisa', 'presenca', 'presenca-fluxo', 'presenca-enviada'].includes(key);
+const isPublicScreen = ['login', 'pesquisa', 'presenca', 'presenca-fluxo', 'presenca-enviada'].includes(key);
 
 createRoot(document.getElementById('app-root')!).render(
   <QueryClientProvider client={previewQueryClient}>

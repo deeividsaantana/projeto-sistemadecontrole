@@ -3,7 +3,8 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { ChevronDown, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import type { NavigationGroupView } from './NavigationMenu';
-import reneaLogo from '../../assets/images/logo-renea-branco.png';
+import { MarcaProduto, SimboloProduto } from '../../shared/ui/MarcaProduto';
+import { CLIENTE } from '../../config/marca';
 import { APP_VERSION_LABEL } from '../version';
 import { reduzMovimento } from '../../components/cadastros/estilos';
 
@@ -91,8 +92,8 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
     >
       <div className={`flex min-h-[3.25rem] items-center border-b border-white/[0.06] ${collapsed ? 'justify-center px-2' : 'justify-between px-3.5'}`} title={APP_VERSION_LABEL}>
         {collapsed
-          ? <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/10 text-sm font-black text-white">R</span>
-          : <img src={reneaLogo} alt="RENEA Infraestrutura" className="h-6 w-auto object-contain" />}
+          ? <SimboloProduto className="size-8" />
+          : <MarcaProduto claro cliente={CLIENTE.nome} />}
         {!collapsed && (
           <button
             type="button"

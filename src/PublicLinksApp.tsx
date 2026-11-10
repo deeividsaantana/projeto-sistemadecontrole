@@ -214,7 +214,7 @@ export default function PublicLinksApp() {
   return (
     <main className="grid min-h-screen place-items-center bg-slate-950 p-6 text-white">
       <section className="max-w-md text-center">
-        <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-300">RENEA</p>
+        <p className="text-sm font-black text-emerald-300">Cintravyse</p>
         <h1 className="mt-3 text-2xl font-black">Link público não encontrado</h1>
         <p className="mt-3 text-sm text-slate-300">
           Confira se o endereço recebido está completo ou solicite um novo link ao administrativo.

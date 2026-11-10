@@ -119,8 +119,8 @@ import { PresencaPublicaLink } from './components/presenca/PresencaPublicaLink';
 import { EscalaSabado } from './components/presenca/EscalaSabado';
 
 // Motion and Logo Import
-import reneaLogo from './assets/images/logo-renea-transparent.png';
-import reneaLogoWhite from './assets/images/logo-renea-branco.png';
+import { MarcaProduto } from './shared/ui/MarcaProduto';
+import { CLIENTE } from './config/marca';
 
 
 
@@ -427,7 +427,7 @@ export default function App() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>('');
   const [loginNotice, setLoginNotice] = useState<string>('');
-  const activeUserName = currentUser?.displayName || currentUser?.email || 'Usuário RENEA';
+  const activeUserName = currentUser?.displayName || currentUser?.email || 'Usuário';
 
   // Notification and Toast States
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -3968,7 +3968,6 @@ export default function App() {
   if (!isLoggedIn) {
     return (
       <LoginScreen
-        logoSrc={reneaLogo}
         username={username}
         password={password}
         showPassword={showPassword}
@@ -4056,13 +4055,7 @@ export default function App() {
         {/* No celular não há menu nem trilha à vista: o nome da tela embaixo
             da marca diz onde a pessoa está sem precisar abrir o menu. */}
         <div className="flex min-w-0 flex-col justify-center gap-1">
-          <img
-            src={reneaLogo}
-            alt="RENEA Infraestrutura"
-            className="h-5 w-auto self-start object-contain"
-            referrerPolicy="no-referrer"
-          />
-          {nomeDaTelaAtual && <p className="truncate text-sm font-bold leading-tight text-slate-900">{nomeDaTelaAtual}</p>}
+          <MarcaProduto cliente={nomeDaTelaAtual || CLIENTE.nome} />
         </div>
 
         <div
@@ -4138,7 +4131,7 @@ export default function App() {
         <div className="lg:hidden fixed inset-0 z-50 bg-slate-950/85 flex justify-end print:hidden" id="mobile-drawer">
           <div className="mobile-sidebar-panel w-[18.5rem] max-w-[82vw] border-l border-slate-800 p-4 flex flex-col space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <img src={reneaLogoWhite} alt="RENEA Infraestrutura" className="h-7 w-auto object-contain" />
+              <MarcaProduto claro cliente={CLIENTE.nome} />
               <button onClick={() => setIsMobileMenuOpen(false)} className="cursor-pointer rounded-lg p-2 text-emerald-100 hover:bg-white/10 hover:text-white" aria-label="Fechar navegação">
                 <X className="w-5 h-5" />
               </button>

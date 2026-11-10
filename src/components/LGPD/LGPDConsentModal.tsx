@@ -81,7 +81,7 @@ export default function LGPDConsentModal() {
           {/* Introdução */}
           <div>
             <p className="text-sm sm:text-base text-slate-700 leading-relaxed">
-              Bem-vindo ao <strong>Sistema RENEA</strong>. Para garantir a proteção dos seus dados pessoais,
+              Bem-vindo ao <strong>Cintravyse</strong>. Para garantir a proteção dos seus dados pessoais,
               precisamos do seu <strong>consentimento expresso</strong> para coletar, armazenar e processar
               suas informações conforme a LGPD.
             </p>
