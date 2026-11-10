@@ -1,11 +1,11 @@
 /**
- * Lançar (ou corrigir) um abastecimento como no formulário da planilha
- * FORNECIMENTO DIESEL: uma janela inteira, os mesmos campos na mesma ordem
- * (mês, data, prefixo, descrição, empresa, KM, horímetro, litros, hora,
- * comboio, combustível, bombas) e os botões Salvar, Limpar e Fechar embaixo.
- * Descrição e empresa saem do cadastro, a bomba inicial é a última bomba final
- * do comboio e a final é inicial + litros. Enter passa de campo, Ctrl + S salva
- * e já deixa pronto para o próximo, Esc fecha.
+ * Lançar (ou corrigir) um abastecimento. Desenho de 10/11/2026, refeito do
+ * zero: três etapas na ordem em que o frentista pensa (qual máquina, quanto
+ * abasteceu, de onde saiu o diesel) e, ao lado, a conferência do que vai ser
+ * salvo. Os campos e as contas são os da planilha FORNECIMENTO DIESEL:
+ * descrição e empresa saem do cadastro, a bomba inicial é a última bomba
+ * final do comboio e a final é inicial + litros. Enter passa de campo,
+ * Ctrl + S salva e já deixa pronto para o próximo, Esc fecha.
  */
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { gsap } from 'gsap';
@@ -74,17 +74,46 @@ const semAcento = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, 
 const SOMENTE_LEITURA = 'flex min-h-11 w-full min-w-0 items-center rounded-xl bg-[#f7f8f6] px-3 text-base font-bold ring-1 ring-inset ring-slate-200';
 const CAMPO_GRANDE = `min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 tabular-nums text-lg font-bold tabular-nums text-slate-900 placeholder:font-sans placeholder:text-base placeholder:font-normal placeholder:text-slate-500 transition duration-200 focus:border-emerald-500 ${FOCO}`;
 
-/** Uma linha do formulário da planilha: nome à esquerda, campo à direita. */
-function Linha({ rotulo, para, dica, children }: { rotulo: string; para?: string; dica?: ReactNode; children: ReactNode }) {
+/** Uma etapa do lançamento: número, pergunta e os campos dela. */
+function Etapa({ numero, titulo, ajuda, feita, children }: { numero: number; titulo: string; ajuda?: string; feita?: boolean; children: ReactNode }) {
   return (
-    <div data-lanc-reveal className="grid gap-1 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:items-start sm:gap-3 lg:grid-cols-[9rem_minmax(0,1fr)]">
+    <section data-lanc-reveal aria-labelledby={`lanc-etapa-${numero}`} className={`${CARTAO} p-4 sm:p-5`}>
+      <header className="mb-4 flex items-start gap-3">
+        <span className={`grid size-8 shrink-0 place-items-center rounded-full text-sm font-black ${feita ? 'bg-[#176b4d] text-white' : 'bg-[#f7f8f6] text-slate-700 ring-1 ring-inset ring-slate-200'}`} aria-hidden="true">
+          {feita ? <CheckCircle2 className="size-4" /> : numero}
+        </span>
+        <div className="min-w-0">
+          <h2 id={`lanc-etapa-${numero}`} className="text-base font-black text-slate-900">{titulo}</h2>
+          {ajuda && <p className="text-sm text-slate-600">{ajuda}</p>}
+        </div>
+      </header>
+      {children}
+    </section>
+  );
+}
+
+/** Campo com o nome em cima: lê de cima para baixo, igual no celular e no computador. */
+function Campo({ rotulo, para, dica, children, className }: { rotulo: string; para?: string; dica?: ReactNode; children: ReactNode; className?: string }) {
+  return (
+    <div className={`min-w-0 ${className ?? ''}`}>
       {para
-        ? <label htmlFor={para} className="text-sm font-bold text-slate-700 sm:pt-3">{rotulo}</label>
-        : <span className="text-sm font-bold text-slate-700 sm:pt-3">{rotulo}</span>}
-      <div className="min-w-0">
-        {children}
-        {dica && <p className="mt-1 text-xs font-semibold text-slate-500">{dica}</p>}
-      </div>
+        ? <label htmlFor={para} className="mb-1 block text-sm font-bold text-slate-700">{rotulo}</label>
+        : <span className="mb-1 block text-sm font-bold text-slate-700">{rotulo}</span>}
+      {children}
+      {dica && <p className="mt-1 text-sm text-slate-600">{dica}</p>}
+    </div>
+  );
+}
+
+/** Linha da conferência: o que vai ser salvo, com um sinal de pronto ou pendente. */
+function Conferido({ rotulo, valor, ok, testId }: { rotulo: string; valor: ReactNode; ok: boolean; testId?: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3 py-2">
+      <dt className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+        <span className={`size-2 shrink-0 rounded-full ${ok ? 'bg-[#176b4d]' : 'bg-slate-300'}`} aria-hidden="true" />
+        {rotulo}
+      </dt>
+      <dd className="min-w-0 text-right text-sm font-black tabular-nums text-slate-900" data-testid={testId}>{valor}</dd>
     </div>
   );
 }
@@ -180,7 +209,7 @@ export default function LancamentoCombustivel({
   }, []);
 
   useEffect(() => {
-    const alvo = prefixoInicial || emEdicao ? document.getElementById('lanc-km') : prefixoRef.current;
+    const alvo = prefixoInicial || emEdicao ? document.getElementById('lanc-litros') : prefixoRef.current;
     window.setTimeout(() => (alvo as HTMLInputElement | null)?.focus(), 60);
     // Foco só ao abrir.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -201,7 +230,7 @@ export default function LancamentoCombustivel({
   const escolherMaquina = (maquina: Equipamento) => {
     mudar('prefixo', maquina.prefixo);
     setListaAberta(false);
-    window.setTimeout(() => document.getElementById('lanc-km')?.focus(), 30);
+    window.setTimeout(() => document.getElementById('lanc-litros')?.focus(), 30);
   };
 
   const proximoCampo = (atual: HTMLElement) => {
@@ -312,28 +341,28 @@ export default function LancamentoCombustivel({
   const gastoAlto = consumoAgora !== undefined && consumo?.consumoHabitual && consumo.unidade === 'L/h' && consumoAgora >= consumo.consumoHabitual * 1.5;
   const empresaNome = equipamento ? empresas.find(item => item.id === equipamento.empresaId)?.nome || 'Sem empresa' : '';
 
+  const comboioNome = comboios.find(item => item.id === form.comboioId)?.nome;
+  const combustivelNome = combustiveis.find(item => item.id === form.tipoCombustivelId)?.nome;
+  const maquinaOk = Boolean(equipamento || (form.prefixo.trim() && !listaAberta));
+  const quantoOk = litrosDigitados > 0;
+  const origemOk = Boolean(form.comboioId && form.tipoCombustivelId && bomba.bombaInicial > 0);
+  const mensagem = erro || (naoCadastrado ? 'Prefixo sem cadastro. Pode lançar assim; o abastecimento fica com o prefixo digitado.' : avisos[0]?.texto || (equipamento && status.startsWith('Pronto') ? 'Equipamento localizado.' : status));
+  const tomMensagem = erro ? 'bg-rose-50 text-rose-700' : naoCadastrado || avisos.length ? 'bg-amber-50 text-amber-900' : equipamento ? 'bg-emerald-50 text-[#176b4d]' : 'bg-[#f7f8f6] text-slate-600';
+
   return (
     <form ref={raiz} onFocus={event => { const alvo = event.target as HTMLElement; if (alvo instanceof HTMLInputElement && alvo.dataset.campo !== undefined && alvo.id !== 'lanc-prefixo') alvo.select(); }}
       onSubmit={event => { event.preventDefault(); salvar(); }} className="flex min-h-0 flex-1 flex-col" data-testid="combustivel-form" noValidate>
-      <div ref={corpoRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-6">
-        <section className={`${CARTAO} w-full p-4 sm:px-6 sm:py-5 lg:min-h-full lg:text-base [&_input]:lg:min-h-12 [&_input]:lg:text-base [&_select]:lg:min-h-12 [&_select]:lg:text-base`}>
-          <div className="grid gap-2.5">
-            <div className="grid gap-3 md:grid-cols-2 md:gap-x-6">
-              <Linha rotulo="Mês">
-                <output className={`${SOMENTE_LEITURA} text-slate-900`} data-testid="combustivel-mes">{nomeDoMes(getFuelRecordCompetence({ data: form.data }))}</output>
-              </Linha>
-              <Linha rotulo="Data" para="lanc-data">
-                <input id="lanc-data" type="date" value={form.data} max={isoDay(new Date())} onChange={event => mudar('data', event.target.value || isoDay(new Date()))} className={CAMPO} />
-              </Linha>
-            </div>
-
-            <Linha rotulo="Prefixo" para="lanc-prefixo">
-              <span className="relative block sm:max-w-sm">
+      <div ref={corpoRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-6 sm:py-4">
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_21rem]">
+          <div className="grid min-w-0 gap-4">
+            <Etapa numero={1} titulo="Qual máquina?" ajuda="Digite o prefixo; a lista mostra as parecidas." feita={Boolean(equipamento)}>
+              <span className="relative block max-w-xl">
+                <label htmlFor="lanc-prefixo" className="sr-only">Prefixo</label>
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                 <input id="lanc-prefixo" ref={prefixoRef} data-campo value={form.prefixo} autoComplete="off" role="combobox" aria-expanded={listaAberta && opcoes.length > 0} aria-controls="lanc-opcoes"
                   onChange={event => { mudar('prefixo', event.target.value.toUpperCase()); setListaAberta(true); setDestaque(0); }}
                   onFocus={() => setListaAberta(true)} onBlur={() => window.setTimeout(() => setListaAberta(false), 150)} onKeyDown={aoTeclarPrefixo}
-                  placeholder="Digite o prefixo, ex.: LO279" className={`${CAMPO_GRANDE} pl-10 uppercase placeholder:normal-case`} data-testid="combustivel-prefixo" />
+                  placeholder="Prefixo, ex.: LO279" className={`${CAMPO_GRANDE} pl-10 uppercase placeholder:normal-case`} data-testid="combustivel-prefixo" />
                 {equipamento && <CheckCircle2 className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-[#176b4d]" aria-label="Máquina encontrada" />}
                 {listaAberta && !equipamento && opcoes.length > 0 && (
                   <ul id="lanc-opcoes" role="listbox" className="absolute inset-x-0 z-30 mt-1 max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white p-1 shadow-lg">
@@ -349,62 +378,87 @@ export default function LancamentoCombustivel({
                   </ul>
                 )}
               </span>
-            </Linha>
-            <Linha rotulo="Descrição">
-              <output className={`${SOMENTE_LEITURA} ${naoCadastrado ? 'text-rose-600' : 'text-slate-900'}`} data-testid="combustivel-descricao"><span className="truncate">{equipamento?.nome || (naoCadastrado ? 'NÃO CADASTRADO' : '—')}</span></output>
-            </Linha>
-            <Linha rotulo="Empresa">
-              <output className={`${SOMENTE_LEITURA} ${naoCadastrado ? 'text-rose-600' : 'text-slate-900'}`} data-testid="combustivel-empresa"><span className="truncate">{equipamento ? empresaNome : naoCadastrado ? 'NÃO CADASTRADO' : '—'}</span></output>
-            </Linha>
+              <dl className={`mt-3 grid gap-x-6 gap-y-1 rounded-xl px-3 py-2.5 ring-1 ring-inset sm:grid-cols-2 ${naoCadastrado ? 'bg-amber-50 ring-amber-200' : 'bg-[#f7f8f6] ring-slate-200'}`}>
+                <div className="min-w-0">
+                  <dt className="text-sm font-semibold text-slate-600">Descrição</dt>
+                  <dd className={`truncate text-base font-bold ${naoCadastrado ? 'text-[#c2410c]' : 'text-slate-900'}`} data-testid="combustivel-descricao">{equipamento?.nome || (naoCadastrado ? 'NÃO CADASTRADO' : '—')}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-sm font-semibold text-slate-600">Empresa</dt>
+                  <dd className={`truncate text-base font-bold ${naoCadastrado ? 'text-[#c2410c]' : 'text-slate-900'}`} data-testid="combustivel-empresa">{equipamento ? empresaNome : naoCadastrado ? 'NÃO CADASTRADO' : '—'}</dd>
+                </div>
+                {consumo?.consumoHabitual ? (
+                  <p className="text-sm text-slate-600 sm:col-span-2">Costuma gastar {textoConsumo(consumo.consumoHabitual, consumo.unidade)}.</p>
+                ) : null}
+              </dl>
+            </Etapa>
 
-            <div className="grid gap-3 border-t border-slate-100 pt-2.5 md:grid-cols-2 md:gap-x-6">
-              <Linha rotulo="KM inicial" para="lanc-km"
-                dica={kmDesde !== undefined ? `+${numeroTexto(kmDesde)} km desde ${dataCurta(contexto?.ultimoKm?.data || '')}` : contexto?.ultimoKm ? `Último: ${numeroTexto(contexto.ultimoKm.valor)} km` : undefined}>
-                <input id="lanc-km" data-campo inputMode="decimal" value={form.km} onChange={event => mudar('km', event.target.value)} onKeyDown={aoTeclar}
-                  placeholder="se tiver" className={`${CAMPO} tabular-nums`} data-testid="combustivel-km" />
-              </Linha>
-              <Linha rotulo="Horímetro" para="lanc-horimetro"
-                dica={horasDesde !== undefined ? `+${numeroTexto(horasDesde)} h desde ${dataCurta(contexto?.ultimoHorimetro?.data || '')}` : contexto?.ultimoHorimetro ? `Último: ${numeroTexto(contexto.ultimoHorimetro.valor)} h` : undefined}>
-                <input id="lanc-horimetro" data-campo inputMode="decimal" value={form.horimetro} onChange={event => mudar('horimetro', event.target.value)} onKeyDown={aoTeclar}
-                  placeholder="se tiver" className={`${CAMPO} tabular-nums`} data-testid="combustivel-horimetro" />
-              </Linha>
-              <Linha rotulo="Litros" para="lanc-litros"
-                dica={gastoAlto && consumo ? <span className="text-[#c2410c]">Dá {numeroTexto(consumoAgora ?? 0)} L/h; ela costuma gastar {textoConsumo(consumo.consumoHabitual, 'L/h')}.</span> : undefined}>
-                <input id="lanc-litros" data-campo inputMode="decimal" value={form.litros} onChange={event => mudar('litros', event.target.value)} onKeyDown={aoTeclar} placeholder="0" className={`${CAMPO_GRANDE} text-[#176b4d]`} data-testid="combustivel-litros" />
-              </Linha>
-              <Linha rotulo="Hora" para="lanc-hora">
-                <span className="relative block">
-                  <input id="lanc-hora" data-campo inputMode="numeric" value={form.hora} onChange={event => mudar('hora', event.target.value)} onKeyDown={aoTeclar}
-                    onBlur={() => { const hora = normalizeQuickTime(form.hora); if (hora.valid) setForm(atual => ({ ...atual, hora: hora.value })); }} placeholder="10:05" className={`${CAMPO_GRANDE} pr-11`} data-testid="combustivel-hora" />
-                  <button type="button" onClick={() => mudar('hora', agoraHora())} aria-label="Usar a hora de agora" title="Agora" className={`absolute right-1 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-slate-500 hover:text-[#176b4d] ${FOCO}`}><Clock className="size-4" aria-hidden="true" /></button>
-                </span>
-              </Linha>
-            </div>
+            <Etapa numero={2} titulo="Quanto abasteceu?" ajuda="Litros é obrigatório. Horímetro e KM, se a máquina tiver." feita={quantoOk}>
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
+                <Campo rotulo="Litros" para="lanc-litros" className="col-span-2 xl:col-span-1"
+                  dica={gastoAlto && consumo ? <span className="font-semibold text-[#c2410c]">Dá {numeroTexto(consumoAgora ?? 0)} L/h; ela costuma gastar {textoConsumo(consumo.consumoHabitual, 'L/h')}.</span> : undefined}>
+                  <input id="lanc-litros" data-campo inputMode="decimal" value={form.litros} onChange={event => mudar('litros', event.target.value)} onKeyDown={aoTeclar} placeholder="0" className={`${CAMPO_GRANDE} text-[#176b4d]`} data-testid="combustivel-litros" />
+                </Campo>
+                <Campo rotulo="Horímetro" para="lanc-horimetro"
+                  dica={horasDesde !== undefined ? `+${numeroTexto(horasDesde)} h desde ${dataCurta(contexto?.ultimoHorimetro?.data || '')}` : contexto?.ultimoHorimetro ? `Último: ${numeroTexto(contexto.ultimoHorimetro.valor)} h` : undefined}>
+                  <input id="lanc-horimetro" data-campo inputMode="decimal" value={form.horimetro} onChange={event => mudar('horimetro', event.target.value)} onKeyDown={aoTeclar}
+                    placeholder="se tiver" className={`${CAMPO} tabular-nums`} data-testid="combustivel-horimetro" />
+                </Campo>
+                <Campo rotulo="KM" para="lanc-km"
+                  dica={kmDesde !== undefined ? `+${numeroTexto(kmDesde)} km desde ${dataCurta(contexto?.ultimoKm?.data || '')}` : contexto?.ultimoKm ? `Último: ${numeroTexto(contexto.ultimoKm.valor)} km` : undefined}>
+                  <input id="lanc-km" data-campo inputMode="decimal" value={form.km} onChange={event => mudar('km', event.target.value)} onKeyDown={aoTeclar}
+                    placeholder="se tiver" className={`${CAMPO} tabular-nums`} data-testid="combustivel-km" />
+                </Campo>
+                <Campo rotulo="Data" para="lanc-data">
+                  <input id="lanc-data" type="date" value={form.data} max={isoDay(new Date())} onChange={event => mudar('data', event.target.value || isoDay(new Date()))} className={CAMPO} />
+                </Campo>
+                <Campo rotulo="Hora" para="lanc-hora">
+                  <span className="relative block">
+                    <input id="lanc-hora" data-campo inputMode="numeric" value={form.hora} onChange={event => mudar('hora', event.target.value)} onKeyDown={aoTeclar}
+                      onBlur={() => { const hora = normalizeQuickTime(form.hora); if (hora.valid) setForm(atual => ({ ...atual, hora: hora.value })); }} placeholder="10:05" className={`${CAMPO} pr-11 tabular-nums`} data-testid="combustivel-hora" />
+                    <button type="button" onClick={() => mudar('hora', agoraHora())} aria-label="Usar a hora de agora" title="Agora" className={`absolute right-0.5 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-slate-500 hover:text-[#176b4d] ${FOCO}`}><Clock className="size-4" aria-hidden="true" /></button>
+                  </span>
+                </Campo>
+              </div>
+            </Etapa>
 
-            <div className="grid gap-3 border-t border-slate-100 pt-2.5 md:grid-cols-2 md:gap-x-6">
-              <Linha rotulo="Comboio" para="lanc-comboio">
-                <select id="lanc-comboio" value={form.comboioId} onChange={event => mudar('comboioId', event.target.value)} className={CAMPO} data-testid="combustivel-comboio">
-                  <option value="">Escolha o comboio</option>
-                  {comboios.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
-                </select>
-              </Linha>
-              <Linha rotulo="Combustível" para="lanc-tipo">
-                <select id="lanc-tipo" value={form.tipoCombustivelId} onChange={event => mudar('tipoCombustivelId', event.target.value)} className={CAMPO} data-testid="combustivel-tipo">
-                  <option value="">Escolha</option>
-                  {combustiveis.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
-                </select>
-              </Linha>
-            </div>
+            <Etapa numero={3} titulo="De onde saiu o diesel?" ajuda="A bomba inicial vem da última bomba final do comboio." feita={origemOk}>
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <Campo rotulo="Comboio" para="lanc-comboio">
+                  <select id="lanc-comboio" value={form.comboioId} onChange={event => mudar('comboioId', event.target.value)} className={CAMPO} data-testid="combustivel-comboio">
+                    <option value="">Escolha o comboio</option>
+                    {comboios.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                  </select>
+                </Campo>
+                <Campo rotulo="Combustível" para="lanc-tipo">
+                  <select id="lanc-tipo" value={form.tipoCombustivelId} onChange={event => mudar('tipoCombustivelId', event.target.value)} className={CAMPO} data-testid="combustivel-tipo">
+                    <option value="">Escolha</option>
+                    {combustiveis.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                  </select>
+                </Campo>
+                <Campo rotulo="Bomba inicial" para="lanc-bomba">
+                  <input id="lanc-bomba" data-campo inputMode="decimal" value={form.bombaInicial} onChange={event => mudar('bombaInicial', event.target.value)} onKeyDown={aoTeclar}
+                    placeholder={form.comboioId ? 'leitura antes' : 'escolha o comboio'} className={`${CAMPO} tabular-nums`} data-testid="combustivel-bomba-inicial" />
+                </Campo>
+                <Campo rotulo="Bomba final" dica="Inicial + litros.">
+                  <output className={`${SOMENTE_LEITURA} tabular-nums font-black text-slate-900`} data-testid="combustivel-bomba-final">{bomba.bombaFinal > 0 ? numeroTexto(bomba.bombaFinal) : '—'}</output>
+                </Campo>
+              </div>
+            </Etapa>
+          </div>
 
-            <div className="grid gap-3 border-t border-slate-100 pt-2.5 md:grid-cols-2 md:gap-x-6">
-              <Linha rotulo="Bomba inicial" para="lanc-bomba" dica="Vem da última bomba final do comboio.">
-                <input id="lanc-bomba" data-campo inputMode="decimal" value={form.bombaInicial} onChange={event => mudar('bombaInicial', event.target.value)} onKeyDown={aoTeclar}
-                  placeholder={form.comboioId ? 'leitura antes' : 'escolha o comboio'} className={`${CAMPO} tabular-nums`} data-testid="combustivel-bomba-inicial" />
-              </Linha>
-              <Linha rotulo="Bomba final" dica="Inicial + litros.">
-                <output className={`${SOMENTE_LEITURA} tabular-nums font-black text-slate-900`} data-testid="combustivel-bomba-final">{bomba.bombaFinal > 0 ? numeroTexto(bomba.bombaFinal) : '—'}</output>
-              </Linha>
+          <aside data-lanc-reveal aria-label="Conferência antes de salvar" className={`${CARTAO} grid gap-3 p-4 sm:p-5 lg:sticky lg:top-0`}>
+            <div>
+              <h2 className="text-base font-black text-slate-900">Conferência</h2>
+              <p className="text-sm text-slate-600">Mês da planilha: <output className="font-bold text-slate-900" data-testid="combustivel-mes">{nomeDoMes(getFuelRecordCompetence({ data: form.data }))}</output></p>
             </div>
+            <dl className="divide-y divide-slate-100">
+              <Conferido rotulo="Máquina" ok={maquinaOk} valor={form.prefixo.trim() ? form.prefixo.trim().toUpperCase() : 'falta'} />
+              <Conferido rotulo="Litros" ok={quantoOk} valor={quantoOk ? litrosTexto(litrosDigitados) : 'falta'} />
+              <Conferido rotulo="Comboio" ok={Boolean(form.comboioId)} valor={comboioNome || 'falta'} />
+              <Conferido rotulo="Combustível" ok={Boolean(form.tipoCombustivelId)} valor={combustivelNome || 'falta'} />
+              <Conferido rotulo="Bomba" ok={bomba.bombaFinal > 0} valor={bomba.bombaFinal > 0 ? `${numeroTexto(bomba.bombaInicial)} → ${numeroTexto(bomba.bombaFinal)}` : '—'} />
+            </dl>
 
             {repetido && (
               <div id="lanc-repetido" role="alert" className={`rounded-xl px-3 py-3 ring-1 ring-inset ${travado ? 'bg-rose-50 ring-rose-200' : 'bg-amber-50 ring-amber-200'}`} data-testid="combustivel-repetido">
@@ -431,26 +485,24 @@ export default function LancamentoCombustivel({
                 <span>Já abasteceu em {dataCurta(form.data)}: {noDia.doDia.map(item => `${item.hora || 'sem hora'} · ${litrosTexto(Number(item.quantidadeLitros || 0))}`).join('; ')}.</span>
               </p>
             )}
-            <p role="status" data-lanc-reveal className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold ${erro ? 'bg-rose-50 text-rose-700' : naoCadastrado || avisos.length ? 'bg-amber-50 text-amber-900' : equipamento ? 'bg-emerald-50 text-[#176b4d]' : 'bg-[#f7f8f6] text-slate-600'}`} data-testid="combustivel-status">
-              {erro || naoCadastrado || avisos.length ? <AlertTriangle className="size-4 shrink-0" aria-hidden="true" /> : <Info className="size-4 shrink-0" aria-hidden="true" />}
-              <span data-testid={erro ? 'combustivel-erro' : undefined}>{erro || (naoCadastrado ? 'Prefixo sem cadastro. Pode lançar assim; o abastecimento fica com o prefixo digitado.' : avisos[0]?.texto || (equipamento && status.startsWith('Pronto') ? 'Equipamento localizado.' : status))}</span>
+            <p role="status" className={`flex items-start gap-2 rounded-xl px-3 py-2.5 text-sm font-bold ${tomMensagem}`} data-testid="combustivel-status">
+              {erro || naoCadastrado || avisos.length ? <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" /> : <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />}
+              <span data-testid={erro ? 'combustivel-erro' : undefined}>{mensagem}</span>
             </p>
-          </div>
-        </section>
+            {!emEdicao && lancadosAgora.length > 0 && (
+              <p className="text-sm font-bold text-slate-600" data-testid="lanc-lancados">
+                {lancadosAgora.length} lançado(s) agora · <span className="tabular-nums text-[#176b4d]">{litrosTexto(totalLancado)}</span>
+              </p>
+            )}
+          </aside>
+        </div>
       </div>
 
       <footer className="shrink-0 border-t border-slate-200 bg-white px-3 py-3 sm:px-6">
-        <div className="flex w-full flex-wrap items-center gap-2">
-          {!emEdicao && lancadosAgora.length > 0 && (
-            <p className="w-full text-sm font-bold text-slate-600 sm:w-auto sm:flex-1" data-testid="lanc-lancados">
-              {lancadosAgora.length} lançado(s) agora · <span className="tabular-nums text-[#176b4d]">{litrosTexto(totalLancado)}</span>
-            </p>
-          )}
-          <div className="ml-auto grid w-full grid-cols-[1fr_1fr_1.4fr] gap-2 sm:flex sm:w-auto">
-            <button type="button" onClick={onFechar} className={`${BOTAO_SECUNDARIO} min-w-0 px-2 sm:px-4`}><X className="size-4" aria-hidden="true" />{emEdicao ? 'Cancelar' : 'Fechar'}</button>
-            <button type="button" onClick={emEdicao ? () => setForm(formularioInicial()) : limpar} className={`${BOTAO_SECUNDARIO} min-w-0 px-2 sm:px-4`}><RotateCcw className="size-4" aria-hidden="true" />Limpar</button>
-            <button type="submit" aria-disabled={travado} className={`${BOTAO_PRIMARIO} min-w-0 px-2 sm:min-w-40 sm:px-6 ${travado ? 'opacity-60' : ''}`} data-testid="combustivel-salvar"><CheckCircle2 className="size-4" aria-hidden="true" />{emEdicao ? 'Salvar correção' : 'Salvar'}</button>
-          </div>
+        <div className="ml-auto grid w-full grid-cols-[1fr_1fr_1.4fr] gap-2 sm:flex sm:w-auto sm:justify-end">
+          <button type="button" onClick={onFechar} className={`${BOTAO_SECUNDARIO} min-w-0 px-2 sm:px-4`}><X className="size-4" aria-hidden="true" />{emEdicao ? 'Cancelar' : 'Fechar'}</button>
+          <button type="button" onClick={emEdicao ? () => setForm(formularioInicial()) : limpar} className={`${BOTAO_SECUNDARIO} min-w-0 px-2 sm:px-4`}><RotateCcw className="size-4" aria-hidden="true" />Limpar</button>
+          <button type="submit" aria-disabled={travado} className={`${BOTAO_PRIMARIO} min-w-0 px-2 sm:min-w-40 sm:px-6 ${travado ? 'opacity-60' : ''}`} data-testid="combustivel-salvar"><CheckCircle2 className="size-4" aria-hidden="true" />{emEdicao ? 'Salvar correção' : 'Salvar'}</button>
         </div>
       </footer>
     </form>
