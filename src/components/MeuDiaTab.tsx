@@ -6,7 +6,7 @@ import type { Abastecimento, BlocoRotina, ControleEquipamentoDiario, Equipamento
 import { blocosDaPessoa, concluidasNoDia, contarPorPrioridade, diaFechado, idDaRotina, pendenciasAbertas, prioridadesDeOntem, progresso, rotinaVazia, temModeloProprio } from '../modules/rotina/checklistDiario';
 import { formatarData } from '../utils/formato';
 import { CartaoIndicador, CountUp, GradeIndicadores, PageHeader, isoDay } from '../shared/ui';
-import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
+import { AbasDaTela, idDaAba, type ItemDasAbas } from '../shared/ui/AbasDaTela';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { ChecklistDoDia } from './meuDia/ChecklistDoDia';
 import { PendenciasDoDia, type AcaoPendencia } from './meuDia/PendenciasDoDia';
@@ -21,7 +21,7 @@ const PARTES: ReadonlyArray<{ id: Parte; rotulo: string; curto?: string; icone: 
   { id: 'obra', rotulo: 'Obra no dia', curto: 'Obra', icone: Gauge },
   { id: 'pendencias', rotulo: 'Pendências', icone: ListTodo },
   { id: 'anotacoes', rotulo: 'Anotações', icone: NotebookPen },
-  { id: 'fechamento', rotulo: 'Fechamento', curto: 'Fim do dia', icone: Moon },
+  { id: 'fechamento', rotulo: 'Fechamento', icone: Moon },
 ];
 
 /** As perguntas da regra principal: o dia não acaba sem saber responder. */
@@ -117,7 +117,12 @@ export default function MeuDiaTab({ responsavel, rotinas, pendencias, modelos, o
 
   const passado = dia < hoje;
 
-  const abas = PARTES.map(item => (item.id === 'pendencias' ? { ...item, contador: abertas.length, contadorRotulo: 'em aberto' } : item));
+  const comContador = PARTES.map(item => (item.id === 'pendencias' ? { ...item, contador: abertas.length, contadorRotulo: 'em aberto' } : item));
+  // Anotações e Fechamento dividem a aba "Fim do dia": no máximo quatro no topo.
+  const abas: ItemDasAbas<Parte>[] = [
+    ...comContador.filter(item => item.id !== 'anotacoes' && item.id !== 'fechamento'),
+    { grupo: 'fim-do-dia', rotulo: 'Fim do dia', icone: Moon, abas: comContador.filter(item => item.id === 'anotacoes' || item.id === 'fechamento') },
+  ];
 
   return (
     <TelaCheia ref={escopo} id="meu-dia-tab" testId="meu-dia-tab" rotulo="Meu dia" className="erp-module"

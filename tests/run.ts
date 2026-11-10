@@ -79,6 +79,7 @@ import './cadastrosTabUi.test';
 import './cadastrosAtalhos.test';
 import './lancamentosLubrificacaoAtalhos.test';
 import './cadastrosCategorias.test';
+import './opcoesNoTopo.test';
 import './cadastrosLista.test';
 import './canteirosCadastro.test';
 import './planilhaAbas.test';

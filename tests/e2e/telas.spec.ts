@@ -94,7 +94,10 @@ test('cadastros exclui de verdade, guarda na Lixeira e deixa desfazer', async ({
   await dialog.getByTestId('cadastro-confirmar').click();
   const aviso = page.getByTestId('cadastro-aviso');
   await expect(aviso).toContainText('excluído');
-  // Os tipos são abas no topo, também no celular; a Lixeira é a última.
+  // Os tipos são abas no topo, também no celular. Para o administrador a
+  // Lixeira mora no grupo "Lixeira e acessos", que abre a segunda linha.
+  const grupoSistema = page.getByTestId('cadastro-aba-grupo-sistema');
+  if (await grupoSistema.isVisible()) await grupoSistema.click();
   await page.getByTestId('cadastro-categoria-lixeira').click();
   await expect(page.getByTestId('cadastro-categoria-lixeira')).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByTestId('cadastro-lixeira')).toContainText('excluído por');

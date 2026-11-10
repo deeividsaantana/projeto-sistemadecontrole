@@ -10,7 +10,6 @@ import {
   empresaTipoLabel,
   isActiveCollaborator,
   isEquipmentRentalSupplier,
-  isMaterialSupplier,
   isSubSupplier,
   isSupplier,
   isThirdPartyContractor,
@@ -76,7 +75,6 @@ export const TABELA_DA_CATEGORIA: Record<CadastroCategoriaId, keyof DadosCadastr
   terceiras: 'empresas',
   fornecedores: 'empresas',
   'fornecedores-locacao': 'empresas',
-  'fornecedores-materiais': 'empresas',
   subfornecedores: 'empresas',
   equipamentos: 'equipamentos',
   veiculos: 'equipamentos',
@@ -114,7 +112,6 @@ export const COLUNAS: Record<CadastroCategoriaId, ColunaCadastro[]> = {
   terceiras: COLUNAS_EMPRESA,
   fornecedores: COLUNAS_EMPRESA,
   'fornecedores-locacao': COLUNAS_EMPRESA,
-  'fornecedores-materiais': COLUNAS_EMPRESA,
   subfornecedores: [...COLUNAS_EMPRESA.slice(0, 2), { id: 'principal', label: 'Atende por' }, COLUNAS_EMPRESA[3]],
   equipamentos: [
     { id: 'prefixo', label: 'Prefixo', codigo: true },
@@ -175,7 +172,6 @@ export const FILTROS: Record<CadastroCategoriaId, FiltroCadastro[]> = {
   terceiras: [],
   fornecedores: [{ id: 'classe', label: 'Classe' }],
   'fornecedores-locacao': [],
-  'fornecedores-materiais': [],
   subfornecedores: [{ id: 'principal', label: 'Atende por' }],
   equipamentos: [
     { id: 'tipo', label: 'Tipo' },
@@ -210,7 +206,6 @@ export const FILTROS: Record<CadastroCategoriaId, FiltroCadastro[]> = {
 const FILTRO_EMPRESA: Partial<Record<CadastroCategoriaId, (item: Empresa) => boolean>> = {
   fornecedores: isSupplier,
   'fornecedores-locacao': isEquipmentRentalSupplier,
-  'fornecedores-materiais': isMaterialSupplier,
   subfornecedores: isSubSupplier,
   terceiras: isThirdPartyContractor,
 };

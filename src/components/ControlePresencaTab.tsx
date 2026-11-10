@@ -40,7 +40,7 @@ import {
 } from '../utils/teamSpreadsheetSync';
 import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
 import { CartaoIndicador, ConfirmDialog, Modal, PageHeader } from '../shared/ui';
-import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
+import { AbasDaTela, idDaAba, type ItemDasAbas } from '../shared/ui/AbasDaTela';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { BuscaColaborador } from './shared/BuscaColaborador';
 import { TabelaPadrao, type ColunaTabela } from '../shared/ui/TabelaPadrao';
@@ -284,11 +284,9 @@ export default function ControlePresencaTab({
   const [dashboardBranch, setDashboardBranch] = useState('todos');
   const [dashboardSite, setDashboardSite] = useState('todos');
   const [dashboardSearch, setDashboardSearch] = useState('');
-  // No celular a gaveta nasce fechada: o painel tem de mostrar gente, não
-  // formulário. No desktop sobra largura, então já abre.
-  const [filtrosAbertos, setFiltrosAbertos] = useState(
-    () => typeof window !== 'undefined' && window.innerWidth >= 1024,
-  );
+  // A gaveta de filtros nasce fechada em todo aparelho: a tela abre mostrando
+  // gente, não formulário (pedido de 10/11/2026, só o essencial à vista).
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [recordDate, setRecordDate] = useState(today);
   const [recordGroup, setRecordGroup] = useState('todos');
   const [recordStatus, setRecordStatus] = useState<'todos' | PresencaStatus>('todos');
@@ -987,12 +985,17 @@ export default function ControlePresencaTab({
     setSelectedRecordIds([]);
   };
 
-  const navItems: Array<{ id: View; rotulo: string; icone: React.ComponentType<{ className?: string }> }> = [
+  // Três opções no topo: o dia, as equipes e um grupo com tudo que é consulta.
+  const navItems: ReadonlyArray<ItemDasAbas<View>> = [
     { id: 'ao-vivo', rotulo: 'Ao vivo', icone: Radio },
-    { id: 'relatorios', rotulo: 'Relatórios', icone: PieChart },
     { id: 'equipes', rotulo: 'Equipes', icone: Users },
-    { id: 'registros', rotulo: 'Registros', icone: FileSpreadsheet },
-    { id: 'historico', rotulo: 'Histórico', icone: History },
+    {
+      grupo: 'consulta', rotulo: 'Relatórios', icone: PieChart, abas: [
+        { id: 'relatorios', rotulo: 'Resumo', icone: PieChart },
+        { id: 'registros', rotulo: 'Registros', icone: FileSpreadsheet },
+        { id: 'historico', rotulo: 'Histórico', icone: History },
+      ],
+    },
   ];
 
   // Registros e Histórico são tabelas: a área de dados fica do tamanho da tela

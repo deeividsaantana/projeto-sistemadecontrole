@@ -68,7 +68,7 @@ import FleetReportLayout from './fleet/FleetReportLayout';
 import FleetImportPreviewModal, { type FleetImportPreviewRow } from './fleet/FleetImportPreviewModal';
 import ImportacaoSge from './fleet/ImportacaoSge';
 import { ConfirmDialog, CountUp, Modal, PageHeader } from '../shared/ui';
-import { AbasDaTela, idDaAba, type AbaDaTela } from '../shared/ui/AbasDaTela';
+import { AbasDaTela, idDaAba, type ItemDasAbas } from '../shared/ui/AbasDaTela';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { TabelaPadrao, type ColunaTabela } from '../shared/ui/TabelaPadrao';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
@@ -672,13 +672,23 @@ export default function ControleEquipamentosDiarioTab({
     // versaoRelacao: a relação vem do aparelho e muda sem passar pelos registros.
     [registros, filters.date, versaoRelacao],
   );
-  const vistas: ReadonlyArray<AbaDaTela<FleetView>> = [
+  // No máximo quatro opções no topo: as duas conferências e os dois
+  // registros viram grupos que abrem a segunda linha.
+  const vistas: ReadonlyArray<ItemDasAbas<FleetView>> = [
     { id: 'today', rotulo: 'Dia', curto: 'Dia', icone: CalendarDays },
     ...(quadro ? [{ id: 'quadro' as const, rotulo: 'Quadro', icone: LayoutGrid }] : []),
-    { id: 'equipamentos', rotulo: 'Por equipamento', icone: ClipboardCheck, contador: conferenciaDoDia.equipamentos.missing, contadorRotulo: 'a confirmar' },
-    { id: 'operadores', rotulo: 'Por operador', icone: Users, contador: conferenciaDoDia.operadores.missing, contadorRotulo: 'a confirmar' },
-    { id: 'history', rotulo: 'Histórico de lançamentos', icone: History },
-    { id: 'registry', rotulo: 'Cadastro de motoristas', icone: Database },
+    {
+      grupo: 'conferencia', rotulo: 'Conferência', curto: 'Conferir', icone: ClipboardCheck, abas: [
+        { id: 'equipamentos', rotulo: 'Por equipamento', icone: ClipboardCheck, contador: conferenciaDoDia.equipamentos.missing, contadorRotulo: 'a confirmar' },
+        { id: 'operadores', rotulo: 'Por operador', icone: Users, contador: conferenciaDoDia.operadores.missing, contadorRotulo: 'a confirmar' },
+      ],
+    },
+    {
+      grupo: 'registros', rotulo: 'Histórico e motoristas', curto: 'Histórico', icone: History, abas: [
+        { id: 'history', rotulo: 'Histórico de lançamentos', curto: 'Histórico', icone: History },
+        { id: 'registry', rotulo: 'Cadastro de motoristas', curto: 'Motoristas', icone: Database },
+      ],
+    },
   ];
   const ITEM_MENU = `flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-[#176b4d] disabled:opacity-50 ${FOCO}`;
   const ROTULO_GRUPO_MENU = 'px-3 pt-2 text-xs font-bold text-slate-500';

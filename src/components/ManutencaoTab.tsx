@@ -463,9 +463,14 @@ export default function ManutencaoTab({
   const subtelas = [
     { id: 'hoje' as const, rotulo: 'Hoje', curto: 'Hoje', icone: Timer, contador: relatorioHoje.linhas.filter(linha => linha.parada.periodos.some(periodo => periodo.fim === null)).length, contadorRotulo: 'parados agora', tom: 'neutro' as const },
     { id: 'conferencia' as const, rotulo: 'Conferência', curto: 'Conferir', icone: ClipboardCheck, contador: paraConferir, contadorRotulo: 'para conferir' },
-    { id: 'relatorio' as const, rotulo: 'Relatório do dia', curto: 'Relatório', icone: BarChart3 },
     { id: 'ordens' as const, rotulo: 'Ordens de serviço', curto: 'OS', icone: ClipboardList },
-    { id: 'historico' as const, rotulo: 'Histórico', curto: 'Histórico', icone: History },
+    // Relatório do dia e Histórico dividem uma aba só: no máximo quatro no topo.
+    {
+      grupo: 'relatorios', rotulo: 'Relatórios', icone: BarChart3, abas: [
+        { id: 'relatorio' as const, rotulo: 'Relatório do dia', curto: 'Do dia', icone: BarChart3 },
+        { id: 'historico' as const, rotulo: 'Histórico', icone: History },
+      ],
+    },
   ];
   const exportaExcel = subtela === 'ordens' || subtela === 'relatorio';
   const semNadaParaExportar = subtela === 'relatorio' ? relatorioDoDia.linhas.length === 0 : lista.length === 0;
@@ -477,7 +482,7 @@ export default function ManutencaoTab({
        
         eyebrow="Frota"
         title="Manutenção"
-        abas={<AbasDaTela<Subtela> id="manutencao" rotulo="Subtelas da manutenção" abas={subtelas} ativa={subtela} onTrocar={setSubtela} idPainel="manutencao-dados" testId="manutencao-aba" gradeNoCelular />}
+        abas={<AbasDaTela<Subtela> id="manutencao" rotulo="Subtelas da manutenção" abas={subtelas} ativa={subtela} onTrocar={setSubtela} idPainel="manutencao-dados" testId="manutencao-aba" />}
         actions={<>
           {exportaExcel && (
             <button type="button" onClick={() => void exportarExcel()} disabled={exportando || semNadaParaExportar} className={BOTAO_SECUNDARIO}>
