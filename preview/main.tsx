@@ -428,7 +428,7 @@ function CombustivelVivo() {
         return [chave];
       }}
       onRestaurarAbastecimentos={chaves => {
-        const devolvidos = chaves.flatMap(chave => lixeira.current.get(chave) || []);
+        const devolvidos = chaves.flatMap(chave => lixeira.current.get(chave) ?? ([] as never[]));
         setLista(atual => [...atual, ...devolvidos]);
         return { ok: devolvidos.length > 0, mensagem: devolvidos.length ? '' : 'Nada para devolver.' };
       }}

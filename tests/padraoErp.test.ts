@@ -43,10 +43,6 @@ type Regra =
 type Contagem = Partial<Record<Regra, number>>;
 
 const PENDENCIAS: Record<string, Contagem> = {
-  'LGPD/LGPDConsentModal.tsx': { 'botao-sem-type': 2, 'emoji': 3, 'janela-do-navegador': 1 },
-  'ciclosEquipamento/CycleTimeline.tsx': { 'emoji': 4 },
-  'ciclosEquipamento/HistoricoCiclos.tsx': { 'botao-sem-type': 3, 'cartao-fora': 2, 'emoji': 2 },
-  'ciclosEquipamento/RegistrarCiclo.tsx': { 'botao-sem-type': 2, 'cartao-fora': 1 },
 };
 
 const RAIZ = new URL('../src/components/', import.meta.url);

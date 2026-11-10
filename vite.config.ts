@@ -2,7 +2,6 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
-import arquivosOcr from './scripts/viteArquivosOcr';
 
 type InfoModulo = {
   isEntry: boolean;
@@ -63,7 +62,7 @@ const lerIconesSeparados = (lerModulo: LerModulo, ids: Iterable<string>) => {
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss(), arquivosOcr()],
+    plugins: [react(), tailwindcss()],
     resolve: {
       dedupe: ['react', 'react-dom'],
       alias: {
