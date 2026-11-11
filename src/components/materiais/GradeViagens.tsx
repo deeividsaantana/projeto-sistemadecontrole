@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
-import { ClipboardPaste, Copy, Plus, Trash2 } from 'lucide-react';
+import { ClipboardPaste, Copy, Plus, Rows3, Save, Trash2 } from 'lucide-react';
 import type { Empresa, Material, MovimentoMaterial, TipoMovimentoMaterial } from '../../types';
 import {
   lerColagem,
@@ -338,14 +338,51 @@ export default function GradeViagens({ aberto, hoje, materiais, movimentos, empr
   );
 
   if (pagina) {
+    // Molde do SGE (Nova Apropriação): cabeçalho com dica do teclado e salvar
+    // à direita, a grade numa seção com "+ Adicionar linha" e a barra de total.
     return (
-      <section data-materiais-reveal aria-label="Várias viagens" className="rounded-2xl border border-slate-200 bg-white">
-        <div className="space-y-3 p-4 sm:p-5">
-          <p className="text-sm text-slate-600">{explicacao}</p>
-          {salvas && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">{salvas}</p>}
-          {corpo}
+      <section data-materiais-reveal aria-labelledby="viagens-titulo" className="flex flex-col gap-4" onKeyDown={event => {
+        if (event.key === 'F2' || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's')) {
+          event.preventDefault();
+          if (preenchidas.length) salvar();
+        }
+      }}>
+        <div className="z-10 bg-(--renea-v3-paper) lg:sticky lg:-top-0.5 lg:pt-0.5">
+          <header className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-[0_8px_18px_-16px_rgba(15,40,31,0.45)] sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h2 id="viagens-titulo" className="text-lg font-bold text-slate-900">Lançar várias viagens</h2>
+              <p className="text-sm text-slate-600">{telaLarga ? <>Dica: <kbd className="font-semibold">Enter</kbd> desce de linha; <kbd className="font-semibold">Ctrl+S</kbd> ou <kbd className="font-semibold">F2</kbd> salva. Dá para colar do Excel.</> : explicacao}</p>
+            </div>
+            <button type="button" onClick={salvar} disabled={!preenchidas.length} aria-keyshortcuts="Control+S F2" className={`${BOTAO_PRIMARIO} shrink-0 px-5`} data-testid="viagens-salvar">
+              <Save className="size-5" aria-hidden="true" />
+              {preenchidas.length ? `Salvar ${preenchidas.length.toLocaleString('pt-BR')} viagem(ns)` : 'Salvar viagens'}
+              <span className="hidden text-sm font-semibold text-white/85 lg:inline">(Ctrl+S / F2)</span>
+            </button>
+          </header>
         </div>
-        <div className="sticky bottom-0 rounded-b-2xl border-t border-slate-200 bg-white p-3 sm:px-5">{rodape}</div>
+        {salvas && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">{salvas}</p>}
+        <section aria-labelledby="viagens-secao" className="rounded-2xl border border-slate-200 bg-white">
+          <div className="flex items-center justify-between gap-2 rounded-t-2xl border-b border-slate-200 bg-slate-50/70 px-4 py-2">
+            <h3 id="viagens-secao" className="flex items-center gap-2 text-sm font-bold text-slate-900">
+              <Rows3 className="size-4 text-[#176b4d]" aria-hidden="true" />
+              Viagens
+            </h3>
+            <button type="button" onClick={adicionar} className={`${BOTAO_SECUNDARIO} px-3 lg:min-h-9`}>
+              <Plus className="size-4" aria-hidden="true" />
+              Adicionar linha
+            </button>
+          </div>
+          <div className="p-4">{corpo}</div>
+          <div className="px-4 pb-4">
+            <p className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3" aria-live="polite" data-testid="viagens-total">
+              <span className="text-xs font-bold uppercase tracking-wide text-emerald-900">Total de viagens</span>
+              <span className="flex flex-wrap items-baseline justify-end gap-x-3 text-sm text-emerald-900">
+                {totaisPorMaterial.map(item => <span key={item.nome}>{numero(item.total)} {item.unidade} de {item.nome}</span>)}
+                <strong className="rounded-lg border border-emerald-200 bg-white px-3 py-1 text-lg tabular-nums text-[#176b4d]">{preenchidas.length.toLocaleString('pt-BR')}</strong>
+              </span>
+            </p>
+          </div>
+        </section>
       </section>
     );
   }

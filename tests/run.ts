@@ -22,6 +22,7 @@ import './materialCommands.test';
 import './materialUsage.test';
 import './classesMateriais.test';
 import './materialFieldUse.test';
+import './materiaisModeloSge.test';
 import './materialsAnalytics.test';
 import './registryCommands.test';
 import './registryDependencies.test';
