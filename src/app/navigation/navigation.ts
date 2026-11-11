@@ -1,6 +1,7 @@
 import {
   CalendarRange,
   ClipboardList,
+  CloudRain,
   FolderPlus,
   Hammer,
   LayoutDashboard,
@@ -34,6 +35,7 @@ export const NAVIGATION_GROUPS = [
     label: 'Operação',
     items: [
       { id: 'diario-obra', label: 'Diário de Obra', icon: NotebookPen },
+      { id: 'pluviometro', label: 'Pluviômetro', icon: CloudRain },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
     ],
   },
@@ -76,6 +78,7 @@ export const PRIMARY_MODULE_IDS = [
   // dia, pendências com prioridade e fechamento do dia.
   'meu-dia',
   'diario-obra',
+  'pluviometro',
   // Controle de Estacas é aba própria: a importação com prévia/lote/lineage
   // vive dentro dela (decisão confirmada com o usuário em 2026-09-22).
   'estacas',

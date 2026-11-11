@@ -112,6 +112,7 @@ const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
 const MeuDiaTab = lazy(() => import('./components/MeuDiaTab'));
 const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
 const SolicitacoesTab = lazy(() => import('./components/SolicitacoesTab'));
+const PluviometroTab = lazy(() => import('./components/PluviometroTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -4437,6 +4438,16 @@ export default function App() {
                 apontamentos={apontamentosOperacionais}
                 responsavel={activeUserName}
                 podeEditar={pode(currentUserRole, 'diario-obra', 'editar')}
+                onSave={handleSaveDiarioObra}
+              />
+            )}
+
+            {activeTab === 'pluviometro' && (
+              <PluviometroTab
+                diarios={diariosObra}
+                obras={obras}
+                responsavel={activeUserName}
+                podeEditar={pode(currentUserRole, 'diario-obra', 'editar') || pode(currentUserRole, 'pluviometro', 'editar')}
                 onSave={handleSaveDiarioObra}
               />
             )}
