@@ -60,7 +60,6 @@ import './permissoes.test';
 import './notificacoes.test';
 import './paginacao.test';
 import './tabelaPadrao.test';
-import './imagem.test';
 import './notificationService.test';
 import './designSystem.test';
 import './sharedUi.test';

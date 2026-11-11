@@ -16,7 +16,7 @@ import ControleEquipamentosDiarioTab from '../src/components/ControleEquipamento
 import QuadroFrota from '../src/components/quadroFrota/QuadroFrota';
 import ManutencaoTab from '../src/components/ManutencaoTab';
 import ColaboradoresTab from '../src/components/ColaboradoresTab';
-import DiarioObraTab from '../src/components/DiarioObraTab';
+import PluviometroTab from '../src/components/PluviometroTab';
 import { SolicitacoesPreview } from './solicitacoesPreview';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
@@ -556,14 +556,10 @@ const screens: Record<string, React.ReactNode> = {
     />
   ),
   solicitacoes: <SolicitacoesPreview />,
-  'diario-obra': (
-    <DiarioObraTab
-      diarios={fx.diariosChuva}
+  pluviometro: (
+    <PluviometroTab
+      leituras={fx.diariosChuva}
       obras={fx.obras}
-      gruposEquipe={[fx.grupo]}
-      presencasLink={fx.presencasHistorico}
-      controlesEquipamentos={fx.controlesEquipamentos}
-      apontamentos={[]}
       responsavel="Deivid Santana"
       podeEditar
       onSave={noop}

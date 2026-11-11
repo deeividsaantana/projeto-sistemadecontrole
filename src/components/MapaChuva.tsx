@@ -1,7 +1,7 @@
 /**
  * Mapa de chuvas do mês: o quadro que a obra leva para justificar prazo. Cada
  * quadradinho é um dia, e a cor diz o quanto choveu. Ele lê o pluviômetro
- * lançado no diário — não guarda número próprio, para não existirem duas
+ * lançado na aba Pluviômetro — não guarda número próprio, para não existirem duas
  * verdades sobre o mesmo dia.
  */
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
@@ -105,7 +105,7 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
         { label: 'Dias com chuva', value: dados.diasComChuva },
         { label: 'Dias impraticáveis', value: dados.diasImpraticaveis },
         { label: 'Horas paradas por clima', value: dados.horasParadas.toLocaleString('pt-BR') },
-        { label: 'Dias sem diário', value: dados.diasSemDiario },
+        { label: 'Dias sem leitura', value: dados.diasSemDiario },
       ],
     });
   };
@@ -134,7 +134,7 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
             <CloudRain className="h-6 w-6 text-blue-700" aria-hidden="true" />
             <div>
               <h2 className="text-lg font-black leading-tight text-[#101a22]">Mapa de chuvas</h2>
-              <p className="text-xs text-[#5b6870]">Alimentado pelo pluviômetro lançado no diário do dia.</p>
+              <p className="text-xs text-[#5b6870]">Alimentado pelas leituras do pluviômetro.</p>
             </div>
           </div>
 
@@ -170,7 +170,7 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
           { rotulo: 'Dias com chuva', valor: String(dados.diasComChuva) },
           { rotulo: 'Dias impraticáveis', valor: String(dados.diasImpraticaveis) },
           { rotulo: 'Horas paradas', valor: dados.horasParadas.toLocaleString('pt-BR') },
-          { rotulo: 'Dias sem diário', valor: String(dados.diasSemDiario) },
+          { rotulo: 'Dias sem leitura', valor: String(dados.diasSemDiario) },
         ].map(item => (
           <div key={item.rotulo} className="min-w-0 rounded-lg border border-[#e2e8e4] p-3">
             <p className="text-xs font-bold leading-tight text-slate-500">{item.rotulo}</p>
@@ -195,7 +195,7 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
                 const faixa = faixaDaChuva(dia.milimetros);
                 const cor = CORES_FAIXA[faixa];
                 const descricao = dia.milimetros === null
-                  ? `Dia ${dia.dia}: sem diário lançado`
+                  ? `Dia ${dia.dia}: sem leitura lançada`
                   : `Dia ${dia.dia}: ${dia.milimetros.toLocaleString('pt-BR')} mm, ${ROTULO_FAIXA[faixa].toLowerCase()}${dia.impraticavel ? ', impraticável' : ''}`;
                 return (
                   <div

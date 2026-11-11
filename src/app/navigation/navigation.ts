@@ -9,7 +9,7 @@ import {
   Wrench,
   Activity,
   Users,
-  NotebookPen,
+  CloudRain,
   ShoppingCart,
   type LucideIcon,
 } from 'lucide-react';
@@ -33,7 +33,7 @@ export const NAVIGATION_GROUPS = [
   {
     label: 'Operação',
     items: [
-      { id: 'diario-obra', label: 'Diário de Obra', icon: NotebookPen },
+      { id: 'pluviometro', label: 'Pluviômetro', icon: CloudRain },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
     ],
   },
@@ -75,7 +75,9 @@ export const PRIMARY_MODULE_IDS = [
   // Rotina do assistente de engenharia, pedida em 2026-09-27: checklist do
   // dia, pendências com prioridade e fechamento do dia.
   'meu-dia',
-  'diario-obra',
+  // Pluviômetro entrou no lugar do Diário de Obra em 11/11/2026, a pedido do
+  // usuário: a leitura de chuva e o mapa de chuvas ficaram; o resto saiu.
+  'pluviometro',
   // Controle de Estacas é aba própria: a importação com prévia/lote/lineage
   // vive dentro dela (decisão confirmada com o usuário em 2026-09-22).
   'estacas',
@@ -119,6 +121,9 @@ export const MODULE_REDIRECTS: Readonly<Record<string, string>> = {
   // Administração saiu em 10/11/2026: Acessos e o Link de presença foram para
   // Cadastros (só o administrador vê); o resto saiu junto.
   administracao: 'cadastros',
+  // Diário de Obra virou Pluviômetro em 11/11/2026. Os registros continuam
+  // guardados; o endereço antigo abre o Pluviômetro.
+  'diario-obra': 'pluviometro',
 };
 
 const SIDEBAR_GROUP_LABELS: Record<string, string> = {

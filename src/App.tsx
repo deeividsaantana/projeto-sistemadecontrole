@@ -110,7 +110,7 @@ const QuadroFrota = lazy(() => import('./components/quadroFrota/QuadroFrota'));
 const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
 const MeuDiaTab = lazy(() => import('./components/MeuDiaTab'));
-const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
+const PluviometroTab = lazy(() => import('./components/PluviometroTab'));
 const SolicitacoesTab = lazy(() => import('./components/SolicitacoesTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
@@ -3604,7 +3604,7 @@ export default function App() {
 
   const handleSaveDiarioObra = (diario: DiarioObra, isNew: boolean) => {
     const updated = isNew ? [diario, ...diariosObra] : diariosObra.map(item => item.id === diario.id ? diario : item);
-    saveAndLog('Diário de Obra', isNew ? 'Criou' : 'Editou', `${isNew ? 'Registrou' : 'Editou'} o diário de ${diario.data}.`, historyLogs, () => {
+    saveAndLog('Pluviômetro', isNew ? 'Criou' : 'Editou', `${isNew ? 'Registrou' : 'Editou'} a leitura de chuva de ${diario.data}.`, historyLogs, () => {
       setDiariosObra(updated);
       writeStorageValue(localStorage, STORAGE_KEYS.diariosObra, JSON.stringify(updated));
     });
@@ -4427,16 +4427,12 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'diario-obra' && (
-              <DiarioObraTab
-                diarios={diariosObra}
+            {activeTab === 'pluviometro' && (
+              <PluviometroTab
+                leituras={diariosObra}
                 obras={obras}
-                gruposEquipe={gruposEquipe}
-                presencasLink={presencasLinkAtivas}
-                controlesEquipamentos={controleEquipamentosDiario}
-                apontamentos={apontamentosOperacionais}
                 responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'diario-obra', 'editar')}
+                podeEditar={pode(currentUserRole, 'pluviometro', 'editar')}
                 onSave={handleSaveDiarioObra}
               />
             )}
