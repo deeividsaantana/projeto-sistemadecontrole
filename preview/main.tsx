@@ -17,6 +17,7 @@ import QuadroFrota from '../src/components/quadroFrota/QuadroFrota';
 import ManutencaoTab from '../src/components/ManutencaoTab';
 import ColaboradoresTab from '../src/components/ColaboradoresTab';
 import DiarioObraTab from '../src/components/DiarioObraTab';
+import { SolicitacoesPreview } from './solicitacoesPreview';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
 import { PRIMARY_MODULE_IDS, ROLE_ACCESS, SIDEBAR_NAVIGATION_GROUPS, destinoDaAba } from '../src/app/navigation/navigation';
@@ -554,6 +555,7 @@ const screens: Record<string, React.ReactNode> = {
       onDeleteLubrificacao={noop}
     />
   ),
+  solicitacoes: <SolicitacoesPreview />,
   'diario-obra': (
     <DiarioObraTab
       diarios={fx.diariosChuva}

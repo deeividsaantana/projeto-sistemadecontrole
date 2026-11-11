@@ -28,6 +28,8 @@ export const SYSTEM_BACKUP_ARRAY_KEYS = [
   'modelosRotina',
   'frentesServico',
   'diariosObra',
+  'solicitacoes',
+  'pessoasSuprimentos',
   'servicosObra',
   'producaoRegistros',
   'planejamentoItens',

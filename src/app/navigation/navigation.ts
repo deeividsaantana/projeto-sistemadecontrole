@@ -10,6 +10,7 @@ import {
   Activity,
   Users,
   NotebookPen,
+  ShoppingCart,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -34,6 +35,12 @@ export const NAVIGATION_GROUPS = [
     items: [
       { id: 'diario-obra', label: 'Diário de Obra', icon: NotebookPen },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
+    ],
+  },
+  {
+    label: 'Suprimentos',
+    items: [
+      { id: 'solicitacoes', label: 'Solicitações e Compras', icon: ShoppingCart },
     ],
   },
   {
@@ -72,6 +79,9 @@ export const PRIMARY_MODULE_IDS = [
   // Controle de Estacas é aba própria: a importação com prévia/lote/lineage
   // vive dentro dela (decisão confirmada com o usuário em 2026-09-22).
   'estacas',
+  // Solicitações de campo → Suprimentos → aprovação → entrega, pedido em
+  // 11/11/2026. Quem faz o quê dentro dela é por pessoa (utils/solicitacoes).
+  'solicitacoes',
   'controle-equipamentos',
   'manutencao',
   'lancamentos',

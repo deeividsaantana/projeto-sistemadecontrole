@@ -53,6 +53,7 @@ import {
   PeriodoArquivado,
   ControleEstacas
 } from './types';
+import { PESSOAS_INICIAIS, type PessoaSuprimentos, type Solicitacao } from './utils/solicitacoes';
 
 import { 
   INITIAL_EMPRESAS, 
@@ -110,6 +111,7 @@ const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
 const MeuDiaTab = lazy(() => import('./components/MeuDiaTab'));
 const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
+const SolicitacoesTab = lazy(() => import('./components/SolicitacoesTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -315,6 +317,8 @@ const CLOUD_STORAGE_KEYS: Array<[string, string]> = [
   ['modelosRotina', STORAGE_KEYS.modelosRotina],
   ['frentesServico', STORAGE_KEYS.frentesServico],
   ['diariosObra', STORAGE_KEYS.diariosObra],
+  ['solicitacoes', STORAGE_KEYS.solicitacoes],
+  ['pessoasSuprimentos', STORAGE_KEYS.pessoasSuprimentos],
   ['servicosObra', STORAGE_KEYS.servicosObra],
   ['producaoRegistros', STORAGE_KEYS.producaoRegistros],
   ['planejamentoItens', STORAGE_KEYS.planejamentoItens],
@@ -556,6 +560,8 @@ export default function App() {
   const [modelosRotina, setModelosRotina] = useState<ModeloRotina[]>([]);
   const [frentesServico, setFrentesServico] = useState<FrenteServico[]>([]);
   const [diariosObra, setDiariosObra] = useState<DiarioObra[]>([]);
+  const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
+  const [pessoasSuprimentos, setPessoasSuprimentos] = useState<PessoaSuprimentos[]>(PESSOAS_INICIAIS);
   const [servicosObra, setServicosObra] = useState<ServicoObra[]>([]);
   const [producaoRegistros, setProducaoRegistros] = useState<RegistroProducao[]>([]);
   const [planejamentoItens, setPlanejamentoItens] = useState<PlanejamentoItem[]>([]);
@@ -773,6 +779,8 @@ export default function App() {
       setModelosRotina(parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosRotina), STORAGE_KEYS.modelosRotina, [] as ModeloRotina[]));
       setFrentesServico(parseStoredJson(localStorage.getItem(STORAGE_KEYS.frentesServico), STORAGE_KEYS.frentesServico, INITIAL_FRENTES_SERVICO));
       setDiariosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.diariosObra), STORAGE_KEYS.diariosObra, [] as DiarioObra[]));
+      setSolicitacoes(parseStoredJson(localStorage.getItem(STORAGE_KEYS.solicitacoes), STORAGE_KEYS.solicitacoes, [] as Solicitacao[]));
+      setPessoasSuprimentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.pessoasSuprimentos), STORAGE_KEYS.pessoasSuprimentos, PESSOAS_INICIAIS));
       setServicosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.servicosObra), STORAGE_KEYS.servicosObra, [] as ServicoObra[]));
       setProducaoRegistros(parseStoredJson(localStorage.getItem(STORAGE_KEYS.producaoRegistros), STORAGE_KEYS.producaoRegistros, [] as RegistroProducao[]));
       setPlanejamentoItens(parseStoredJson(localStorage.getItem(STORAGE_KEYS.planejamentoItens), STORAGE_KEYS.planejamentoItens, [] as PlanejamentoItem[]));
@@ -1004,6 +1012,8 @@ export default function App() {
     modelosRotina: readTable(STORAGE_KEYS.modelosRotina, [] as ModeloRotina[]),
     frentesServico: readTable(STORAGE_KEYS.frentesServico, [] as FrenteServico[]),
     diariosObra: readTable(STORAGE_KEYS.diariosObra, [] as DiarioObra[]),
+    solicitacoes: readTable(STORAGE_KEYS.solicitacoes, [] as Solicitacao[]),
+    pessoasSuprimentos: readTable(STORAGE_KEYS.pessoasSuprimentos, PESSOAS_INICIAIS),
     servicosObra: readTable(STORAGE_KEYS.servicosObra, [] as ServicoObra[]),
     producaoRegistros: readTable(STORAGE_KEYS.producaoRegistros, [] as RegistroProducao[]),
     planejamentoItens: readTable(STORAGE_KEYS.planejamentoItens, [] as PlanejamentoItem[]),
@@ -1324,6 +1334,12 @@ export default function App() {
         }
         if (Object.hasOwn(data, 'diariosObra')) {
           setDiariosObra(normalizeRuntimeCollection<DiarioObra>(data.diariosObra));
+        }
+        if (Object.hasOwn(data, 'solicitacoes')) {
+          setSolicitacoes(normalizeRuntimeCollection<Solicitacao>(data.solicitacoes));
+        }
+        if (Object.hasOwn(data, 'pessoasSuprimentos')) {
+          setPessoasSuprimentos(normalizeRuntimeCollection<PessoaSuprimentos>(data.pessoasSuprimentos));
         }
         if (Object.hasOwn(data, 'servicosObra')) {
           setServicosObra(normalizeRuntimeCollection<ServicoObra>(data.servicosObra));
@@ -3521,6 +3537,24 @@ export default function App() {
     });
   };
 
+  // Solicitações: a tela manda só os registros que mudaram; o resto fica.
+  const handleSaveSolicitacoes = (registros: Solicitacao[], descricao: string) => {
+    const ids = new Set(registros.map(item => item.id));
+    const novos = registros.filter(item => !solicitacoes.some(atual => atual.id === item.id));
+    const updated = [...novos, ...solicitacoes.map(item => (ids.has(item.id) ? registros.find(r => r.id === item.id) as Solicitacao : item))];
+    saveAndLog('Solicitações', novos.length ? 'Criou' : 'Editou', descricao, historyLogs, () => {
+      setSolicitacoes(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.solicitacoes, JSON.stringify(updated));
+    });
+  };
+
+  const handleSavePessoasSuprimentos = (pessoas: PessoaSuprimentos[]) => {
+    saveAndLog('Solicitações', 'Editou', 'Atualizou as pessoas e papéis de Solicitações.', historyLogs, () => {
+      setPessoasSuprimentos(pessoas);
+      writeStorageValue(localStorage, STORAGE_KEYS.pessoasSuprimentos, JSON.stringify(pessoas));
+    });
+  };
+
   const handleSaveDiarioObra = (diario: DiarioObra, isNew: boolean) => {
     const updated = isNew ? [diario, ...diariosObra] : diariosObra.map(item => item.id === diario.id ? diario : item);
     saveAndLog('Diário de Obra', isNew ? 'Criou' : 'Editou', `${isNew ? 'Registrou' : 'Editou'} o diário de ${diario.data}.`, historyLogs, () => {
@@ -4322,6 +4356,18 @@ export default function App() {
                 onOpenControle={allowedTabs.includes('controle-equipamentos') ? () => navigateTo('controle-equipamentos') : undefined}
                 combustivelInicial={combustivelViewInicial}
                 combustivelListaSomente={combustivelListaSomente}
+              />
+            )}
+
+            {activeTab === 'solicitacoes' && (
+              <SolicitacoesTab
+                solicitacoes={solicitacoes}
+                pessoas={pessoasSuprimentos}
+                usuario={{ nome: activeUserName, email: currentUser?.email }}
+                ehAdmin={currentUserRole === 'admin'}
+                podeEditar={pode(currentUserRole, 'solicitacoes', 'editar')}
+                onSalvar={handleSaveSolicitacoes}
+                onSalvarPessoas={handleSavePessoasSuprimentos}
               />
             )}
 
