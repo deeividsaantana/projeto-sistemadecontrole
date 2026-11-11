@@ -486,6 +486,19 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [menuSearch, setMenuSearch] = useState<string>('');
   const [pesquisaAberta, setPesquisaAberta] = useState(false);
+  useEffect(() => {
+    if (!isMobileMenuOpen) return undefined;
+    const fecharComEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsMobileMenuOpen(false);
+    };
+    document.addEventListener('keydown', fecharComEsc);
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', fecharComEsc);
+      document.body.style.overflow = overflowAnterior;
+    };
+  }, [isMobileMenuOpen]);
   // Preferência de notificação é do dispositivo: fica no navegador e não sobe
   // para a nuvem, senão silenciar no celular apagaria o alerta do gestor.
   const [preferenciasNotificacao] = useState<PreferenciasNotificacao>(
@@ -4195,11 +4208,16 @@ export default function App() {
 
       {/* Mobile Drawer Menu overlay */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-slate-950/85 flex justify-end print:hidden" id="mobile-drawer">
+        <div
+          className="lg:hidden fixed inset-0 z-50 bg-slate-950/85 flex justify-end print:hidden"
+          id="mobile-drawer"
+          role="presentation"
+          onMouseDown={event => { if (event.target === event.currentTarget) setIsMobileMenuOpen(false); }}
+        >
           <div className="mobile-sidebar-panel w-[18.5rem] max-w-[82vw] border-l border-slate-800 p-4 flex flex-col space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <MarcaProduto claro />
-              <button onClick={() => setIsMobileMenuOpen(false)} className="cursor-pointer rounded-lg p-2 text-emerald-100 hover:bg-white/10 hover:text-white" aria-label="Fechar navegação">
+              <button type="button" onClick={() => setIsMobileMenuOpen(false)} className="cursor-pointer rounded-lg p-2 text-emerald-100 hover:bg-white/10 hover:text-white" aria-label="Fechar navegação">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -4224,6 +4242,8 @@ export default function App() {
           activeTab={activeTab}
           groups={filteredNavigationGroups}
           onNavigate={tab => navigateTo(tab)}
+          userName={currentUser?.displayName || currentUser?.email || 'Usuário'}
+          onLogout={() => { void handleLogout(); }}
         />}
         <main className="erp-workspace" id="main-workspace">
         {!combustivelListaSomente && <DesktopTopBar

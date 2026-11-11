@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { ChevronDown, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ChevronDown, ChevronsLeft, ChevronsRight, LogOut } from 'lucide-react';
 import type { NavigationGroupView } from './NavigationMenu';
 import { AmbienteCliente, MarcaProduto, SimboloProduto } from '../../shared/ui/MarcaProduto';
 import { APP_VERSION_LABEL } from '../version';
@@ -11,6 +11,8 @@ interface DesktopSidebarProps {
   activeTab: string;
   groups: NavigationGroupView[];
   onNavigate: (tab: string) => void;
+  userName?: string;
+  onLogout?: () => void;
 }
 
 const COLLAPSE_KEY = 'renea_sidebar_recolhido';
@@ -42,7 +44,7 @@ const readClosedGroups = (): string[] => {
   }
 };
 
-export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebarProps) {
+export function DesktopSidebar({ activeTab, groups, onNavigate, userName = 'Usuário', onLogout }: DesktopSidebarProps) {
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [closedGroups, setClosedGroups] = useState<string[]>(readClosedGroups);
   const navRef = useRef<HTMLElement>(null);
@@ -200,12 +202,30 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
         )}
       </nav>
 
-      <div
-        className={`flex items-center border-t border-white/[0.06] py-2 text-xs font-semibold text-[#8fbfa9] ${collapsed ? 'justify-center' : 'justify-center gap-1.5'}`}
-        title={APP_VERSION_LABEL}
-      >
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#3ecb8f]" aria-hidden="true" />
-        {!collapsed && <span className="truncate">{APP_VERSION_LABEL.split(' — ')[0]}</span>}
+      <div className="border-t border-white/[0.06] p-2">
+        <div className={`flex items-center gap-2 rounded-lg bg-white/[0.05] ${collapsed ? 'justify-center p-2' : 'px-2.5 py-2'}`} title={userName}>
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#176b4d] text-xs font-black text-white" aria-hidden="true">
+            {userName.trim().slice(0, 1).toUpperCase()}
+          </span>
+          {!collapsed && (
+            <span className="min-w-0 flex-1">
+              <strong className="block truncate text-xs text-white">{userName}</strong>
+              <span className="block truncate text-xs font-medium text-[#8fbfa9]">Sessão ativa</span>
+            </span>
+          )}
+          {!collapsed && onLogout && (
+            <button type="button" onClick={onLogout} aria-label="Sair da conta" title="Sair da conta" className={`rounded-md p-1.5 text-[#8fbfa9] hover:bg-white/10 hover:text-white ${FOCO_CLARO}`}>
+              <LogOut className="h-4 w-4" strokeWidth={ICON_STROKE} />
+            </button>
+          )}
+        </div>
+        <div
+          className={`flex items-center pt-2 text-xs font-semibold text-[#8fbfa9] ${collapsed ? 'justify-center' : 'justify-center gap-1.5'}`}
+          title={APP_VERSION_LABEL}
+        >
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#3ecb8f]" aria-hidden="true" />
+          {!collapsed && <span className="truncate">{APP_VERSION_LABEL.split(' — ')[0]}</span>}
+        </div>
       </div>
     </aside>
   );
