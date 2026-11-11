@@ -4244,12 +4244,9 @@ export default function App() {
           activeTab={activeTab}
           groups={filteredNavigationGroups}
           onNavigate={tab => navigateTo(tab)}
-          userName={currentUser?.displayName || currentUser?.email || 'Usuário'}
-          onLogout={() => { void handleLogout(); }}
         />}
         <main className="erp-workspace" id="main-workspace">
         {!combustivelListaSomente && <DesktopTopBar
-          activeTab={activeTab}
           groups={filteredNavigationGroups}
           menuSearch={menuSearch}
           onMenuSearchChange={setMenuSearch}

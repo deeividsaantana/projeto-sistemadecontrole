@@ -1,6 +1,5 @@
 export { Alert } from './Alert';
 export { Badge } from './Badge';
-export { Breadcrumb, type BreadcrumbItem } from './Breadcrumb';
 export { Button } from './Button';
 export { Card } from './Card';
 export { ConfirmDialog, type ConfirmDialogProps } from './ConfirmDialog';
