@@ -3,8 +3,7 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { ChevronDown, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import type { NavigationGroupView } from './NavigationMenu';
-import { MarcaProduto, SimboloProduto } from '../../shared/ui/MarcaProduto';
-import { CLIENTE } from '../../config/marca';
+import { AmbienteCliente, MarcaProduto, SimboloProduto } from '../../shared/ui/MarcaProduto';
 import { APP_VERSION_LABEL } from '../version';
 import { reduzMovimento } from '../../components/cadastros/estilos';
 
@@ -93,7 +92,7 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
       <div className={`flex min-h-[3.25rem] items-center border-b border-white/[0.06] ${collapsed ? 'justify-center px-2' : 'justify-between px-3.5'}`} title={APP_VERSION_LABEL}>
         {collapsed
           ? <SimboloProduto className="size-8" />
-          : <MarcaProduto claro cliente={CLIENTE.nome} />}
+          : <MarcaProduto claro />}
         {!collapsed && (
           <button
             type="button"
@@ -106,6 +105,12 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
           </button>
         )}
       </div>
+
+      {!collapsed && (
+        <div className="border-b border-white/[0.06] px-3.5 py-2.5">
+          <AmbienteCliente claro />
+        </div>
+      )}
 
       {collapsed && (
         <button
