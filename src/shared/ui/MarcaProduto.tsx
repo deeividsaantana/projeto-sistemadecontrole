@@ -3,15 +3,16 @@ import logoClienteEscuro from '../../assets/images/logo-renea-dark.svg';
 import logoClienteClaro from '../../assets/images/logo-renea-branco.png';
 
 /**
- * Símbolo do produto: um quadrado verde com um C aberto e uma estaca. Fica
- * no lugar onde antes ia o logo da RENEA (menu, topo do celular, entrada).
+ * Símbolo do produto: o C da Cintravyse recebe uma rota diagonal, como uma
+ * frente de obra vista no mapa. O corte mantém o desenho legível em 16px.
  */
 export function SimboloProduto({ className = 'size-8' }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={className} aria-hidden="true" focusable="false">
-      <rect width="32" height="32" rx="8" fill="#176b4d" />
-      <path d="M21.5 10.2A8 8 0 1 0 21.5 21.8" fill="none" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" />
-      <rect x="18.6" y="14.4" width="5" height="3.2" rx="1.2" fill="#9be3c3" />
+      <rect width="32" height="32" rx="9" fill="#0b4f3d" />
+      <path d="M21.5 9.7A9 9 0 1 0 21.5 22.3" fill="none" stroke="#f4fff9" strokeWidth="3.4" strokeLinecap="round" />
+      <path d="M12.2 23.2 22.8 12.6" fill="none" stroke="#79dfb0" strokeWidth="2.4" strokeLinecap="round" />
+      <circle cx="23" cy="12.4" r="2.1" fill="#f4fff9" />
     </svg>
   );
 }

@@ -39,7 +39,7 @@ const toneIcon: Record<AlertTone, LucideIcon> = {
 export function Alert({ tone = 'info', title, children, actions, onDismiss, className }: AlertProps) {
   const Icon = toneIcon[tone];
   return (
-    <div role="status" className={cn('flex items-start gap-3 rounded-lg border px-4 py-3 text-sm', toneClass[tone], className)}>
+    <div role={tone === 'danger' ? 'alert' : 'status'} aria-live={tone === 'danger' ? 'assertive' : 'polite'} className={cn('flex items-start gap-3 rounded-lg border px-4 py-3 text-sm', toneClass[tone], className)}>
       <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', iconClass[tone])} aria-hidden="true" />
       <div className="min-w-0 flex-1">
         {title && <p className="font-bold">{title}</p>}

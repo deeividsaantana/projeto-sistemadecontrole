@@ -5,6 +5,7 @@ import { Pencil, Plus, RefreshCw, UserRound } from 'lucide-react';
 import { Button, ConfirmDialog, EmptyState, IconButton, Modal, PageHeader, TabelaPadrao, TextInput, type ColunaTabela } from '../shared/ui';
 import {
   createManagedUser,
+  deleteManagedUser,
   loadManagedUsers,
   updateManagedUser,
   type ManagedUser,
@@ -12,7 +13,7 @@ import {
   type ManagedUserRole,
 } from '../services/masterDataApi';
 import { TelaCheia } from '../shared/ui/TelaCheia';
-import { CAMPO } from './cadastros/estilos';
+import { CAMPO, CAMPO_SELECT } from './cadastros/estilos';
 
 const roles: Array<{ value: ManagedUserRole; label: string; faz: string }> = [
   { value: 'admin', label: 'Administrador', faz: 'Pode tudo, inclusive excluir e cuidar dos usuários.' },
@@ -103,6 +104,7 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
   const [pendente, setPendente] = useState<Mudanca | null>(null);
   const [form, setForm] = useState<UserForm>(vazioFormulario);
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
+  const [deletingUser, setDeletingUser] = useState<ManagedUser | null>(null);
 
   const refresh = async () => {
     setLoading(true);
@@ -177,9 +179,24 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
     });
     setEditingUser(null);
   };
+  const removeUser = async () => {
+    if (!deletingUser) return;
+    setSaving(true);
+    setErroLista('');
+    try {
+      await deleteManagedUser(deletingUser.userId);
+      setMessage(`${deletingUser.fullName} foi excluído.`);
+      await refresh();
+    } catch (caught) {
+      setErroLista(caught instanceof Error ? caught.message : 'Não foi possível excluir usuário.');
+    } finally {
+      setSaving(false);
+      setDeletingUser(null);
+    }
+  };
   const confirmacao = pendente ? textoDaMudanca(pendente) : null;
 
-  const selectClass = 'h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-800 shadow-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/15 disabled:bg-slate-100';
+  const selectClass = `${CAMPO_SELECT} text-sm font-medium`;
   const labelClass = 'block text-xs font-bold text-slate-500';
 
   const colunas: ColunaTabela<ManagedUser>[] = [
@@ -301,7 +318,7 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
                 >
                   {user.active ? 'Inativar' : 'Reativar'}
                 </Button>
-                <Button
+                    <Button
                   size="sm"
                   variant="subtle"
                   disabled={saving}
@@ -310,6 +327,15 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
                 >
                   Editar
                 </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      disabled={saving || user.role === 'admin'}
+                      onClick={() => setDeletingUser(user)}
+                      title={user.role === 'admin' ? 'Administradores não podem ser excluídos' : 'Excluir usuário'}
+                    >
+                      Excluir
+                    </Button>
               </div>
             )}
             vazio={<EmptyState icon={UserRound} title="Nenhum usuário de equipe registrado nesta organização." />}
@@ -329,7 +355,7 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1.5 sm:col-span-2"><span className={labelClass}>Nome completo</span><TextInput value={form.fullName} onChange={event => setForm({ ...form, fullName: event.target.value })} /></label>
           <label className="space-y-1.5"><span className={labelClass}>Nome de perfil</span><TextInput value={form.profileName} onChange={event => setForm({ ...form, profileName: event.target.value })} placeholder="Como aparece no sistema" /></label>
-          <label className="space-y-1.5"><span className={labelClass}>Cor do avatar</span><input type="color" value={form.avatarColor} onChange={event => setForm({ ...form, avatarColor: event.target.value })} className="h-11 w-full rounded-xl border border-slate-300 bg-white p-1 accent-[#176b4d]" /></label>
+          <label className="space-y-1.5"><span className={labelClass}>Cor do avatar</span><div className="flex items-center gap-2"><input type="color" value={form.avatarColor} onChange={event => setForm({ ...form, avatarColor: event.target.value })} className="h-11 w-full rounded-xl border border-slate-300 bg-white p-1 accent-[#176b4d]" /><Button type="button" size="sm" variant="subtle" onClick={() => setForm({ ...form, avatarColor: '#176b4d' })} disabled={saving}>Restaurar</Button></div></label>
           <label className="space-y-1.5"><span className={labelClass}>Cargo</span><TextInput value={form.jobTitle} onChange={event => setForm({ ...form, jobTitle: event.target.value })} /></label>
           <label className="space-y-1.5"><span className={labelClass}>Área</span><TextInput value={form.area} onChange={event => setForm({ ...form, area: event.target.value })} /></label>
           <label className="space-y-1.5"><span className={labelClass}>Matrícula</span><TextInput value={form.registration} onChange={event => setForm({ ...form, registration: event.target.value })} /></label>
@@ -338,6 +364,16 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
           <fieldset className="sm:col-span-2"><legend className={labelClass}>Módulos liberados</legend><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">{permissionOptions.map(permission => <label key={permission.value} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700"><input type="checkbox" checked={form.permissions.includes(permission.value)} onChange={event => setForm({ ...form, permissions: event.target.checked ? [...form.permissions, permission.value] : form.permissions.filter(item => item !== permission.value) })} />{permission.label}</label>)}</div></fieldset>
         </div>
       </Modal>
+      <ConfirmDialog
+        open={Boolean(deletingUser)}
+        tone="danger"
+        busy={saving}
+        title={deletingUser ? `Excluir ${deletingUser.fullName}?` : ''}
+        description="A conta será removida do acesso e não poderá ser recuperada por esta tela. Os lançamentos históricos permanecem registrados."
+        confirmLabel="Excluir usuário"
+        onConfirm={() => { void removeUser(); }}
+        onCancel={() => setDeletingUser(null)}
+      />
       <ConfirmDialog
         open={Boolean(confirmacao)}
         tone="warning"

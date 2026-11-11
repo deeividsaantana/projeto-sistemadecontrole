@@ -563,7 +563,11 @@ export function TabelaPadrao<T>({
   const mostrarRodape = !semPaginacao && (temLinhas || Boolean(rodapeInicio));
 
   return (
-    <div className={cn('flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white', className)} data-testid={testId}>
+    <div
+      className={cn('flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white', className)}
+      data-testid={testId}
+      aria-busy={carregando || undefined}
+    >
       {carregando ? (
         <LoadingState message={`Carregando ${titulo.toLocaleLowerCase('pt-BR')}…`} />
       ) : linhas.length === 0 ? (

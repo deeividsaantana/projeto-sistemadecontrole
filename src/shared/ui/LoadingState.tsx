@@ -20,7 +20,7 @@ interface LoadingStateProps {
 /** Estado de carregamento de uma seção inteira. */
 export function LoadingState({ message = 'Carregando…', compact = false, className }: LoadingStateProps) {
   return (
-    <div className={cn('flex flex-col items-center justify-center gap-3 px-4 text-center', compact ? 'py-6' : 'py-10', className)}>
+    <div role="status" aria-live="polite" className={cn('flex flex-col items-center justify-center gap-3 px-4 text-center', compact ? 'py-6' : 'py-10', className)}>
       <Spinner className="size-6 text-[#176b4d]" />
       <p className="text-sm font-semibold text-slate-600">{message}</p>
     </div>

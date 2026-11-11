@@ -327,6 +327,32 @@ const updateUser = async (body, context) => {
   return jsonResponse(200, { success: true, data: { uid, fullName, role, active, ...profile } });
 };
 
+const deleteUser = async (body, context) => {
+  assertAdministrator(context);
+  const uid = safeId(body.uid, 'Usuário');
+  const adminAuth = getAdminAuth();
+  const adminIds = await listOrganizationAdminIds(context.organizationId);
+  if (adminIds.includes(uid)) {
+    const user = await adminAuth.getUser(uid);
+    if (user.customClaims?.role === 'admin') {
+      const error = new Error('Não é possível excluir um administrador enquanto ele mantém este perfil.');
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+  const user = await adminAuth.getUser(uid);
+  await adminAuth.deleteUser(uid);
+  await context.database.collection(USERS_COLLECTION)
+    .doc(context.organizationId + '_' + uid)
+    .delete();
+  await writeAudit(context, 'USER_DELETE', 'users', uid, {
+    email: user.email || null,
+    displayName: user.displayName || null,
+    role: user.customClaims?.role || 'leitura',
+  }, null);
+  return jsonResponse(200, { success: true, data: { uid } });
+};
+
 const listRecords = async (event, context) => {
   assertRoleCan(context.role, 'read');
   const { entity, definition } = assertMasterDataEntity(event.queryStringParameters?.entity);
@@ -529,6 +555,7 @@ export const handler = async event => withApiTelemetry(event, 'master-data', asy
     return await withIdempotency(event, context, idempotencyKey, async () => {
     if (method === 'POST' && body.action === 'create-user') return await createUser(body, context);
     if (method === 'PATCH' && body.action === 'update-user') return await updateUser(body, context);
+    if (method === 'DELETE' && body.action === 'delete-user') return await deleteUser(body, context);
     if (method === 'POST' && body.action === 'stage-master-import') return await stageMasterImport(body, context);
     if (method === 'POST' && body.action === 'stage-fuel-import') return await stageOperationalImport(body, context, 'fuel');
     if (method === 'POST' && body.action === 'stage-travel-import') return await stageOperationalImport(body, context, 'travel');

@@ -176,6 +176,14 @@ export const updateManagedUser = async (input: {
   return response.data;
 };
 
+export const deleteManagedUser = async (uid: string): Promise<{ uid: string }> => {
+  const response = await request<{ uid: string }>(endpoint, {
+    method: 'DELETE',
+    body: JSON.stringify({ action: 'delete-user', uid }),
+  });
+  return response.data;
+};
+
 export const listMasterData = async <T extends Record<string, unknown>>(
   entity: MasterDataEntity,
   options: { search?: string; limit?: number } = {},
