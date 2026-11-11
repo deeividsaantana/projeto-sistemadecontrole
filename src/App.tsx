@@ -151,6 +151,7 @@ import { captureCloudBaseline, mergeCloudTable, normalizeCloudBaseline, type Clo
 import { CHAVES_LOCAIS_REMOVIDAS, apagarDeVez, aplicarExclusoes, criarExclusao, marcaRestaurada, restaurarExclusao, semTabelasRemovidas, type ExclusaoRegistro } from './cloud/exclusoes';
 import { protegerContraEncolhimento } from './cloud/protecaoEncolhimento';
 import { MENSAGEM_NUVEM_OCUPADA, esperaDoReenvio } from './cloud/esperaReenvio';
+import { criarEnvioSerializado } from './cloud/envioSerializado';
 import { comMarcasDaNuvem, comMarcasLocaisDaNuvem, comTabelasDaNuvem, marcasSoDaNuvem, recusadoPorPerfil, tabelasSoDaNuvem } from './cloud/tabelasPorPerfil';
 import { manterNovidadesLocais } from './cloud/novidadesLocais';
 import { manterEdicoesLocais } from './cloud/edicoesLocais';
@@ -1191,6 +1192,19 @@ export default function App() {
     return proximo;
   };
 
+  // Salvamentos de lançamento: um envio por vez; o que vier no meio sobe junto
+  // logo depois. O ref garante que o envio use sempre o handler mais novo.
+  const handleUploadRef = useRef(handleUploadToSupabase);
+  handleUploadRef.current = handleUploadToSupabase;
+  const envioSerializadoRef = useRef<ReturnType<typeof criarEnvioSerializado> | null>(null);
+  if (!envioSerializadoRef.current) {
+    envioSerializadoRef.current = criarEnvioSerializado(() => handleUploadRef.current(), {
+      segurar: () => { uploadsInFlightRef.current += 1; },
+      soltar: () => { uploadsInFlightRef.current = Math.max(0, uploadsInFlightRef.current - 1); },
+    });
+  }
+  const pedirEnvioSerializado = () => envioSerializadoRef.current!();
+
   // Download da nuvem pelo provedor autoritativo da fase atual.
   const handleDownloadFromSupabase = async (): Promise<{ success: boolean; data?: string; message: string }> => {
     try {
@@ -1689,7 +1703,7 @@ export default function App() {
     // nuvem e sobrescrever, na tela, o que acabou de ser salvo aqui. Um
     // atraso artificial antes desta chamada deixava essa proteção sem efeito
     // durante a janela de espera.
-    handleUploadToSupabase().then(res => {
+    pedirEnvioSerializado().then(res => {
       if (res.success) return;
       console.warn('Sincronização automática pendente:', res.message);
       // A falha precisa ser visível: antes disso o salvamento parecia ter
@@ -3439,7 +3453,7 @@ export default function App() {
 
     // presencasLink e historicoPresencas ja foram gravados acima; as
     // notificacoes tambem. O envio le tudo do armazenamento local.
-    void handleUploadToSupabase();
+    void pedirEnvioSerializado();
   };
 
   /**
@@ -3472,7 +3486,7 @@ export default function App() {
       'Sistema Local',
     );
     processarDesligamentosDaPresenca(situacoes, grupo.id, data);
-    void handleUploadToSupabase();
+    void pedirEnvioSerializado();
   };
 
   /**
