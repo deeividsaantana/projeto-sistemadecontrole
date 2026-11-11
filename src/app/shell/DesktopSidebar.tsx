@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { ChevronDown, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 import type { NavigationGroupView } from './NavigationMenu';
 import { AmbienteCliente, MarcaProduto, SimboloProduto } from '../../shared/ui/MarcaProduto';
 import { APP_VERSION_LABEL } from '../version';
-import { reduzMovimento } from '../../components/cadastros/estilos';
+import { FOCO, reduzMovimento } from '../../components/cadastros/estilos';
 
 interface DesktopSidebarProps {
   activeTab: string;
@@ -14,11 +14,7 @@ interface DesktopSidebarProps {
 }
 
 const COLLAPSE_KEY = 'renea_sidebar_recolhido';
-const CLOSED_GROUPS_KEY = 'renea_sidebar_grupos_fechados';
 const ICON_STROKE = 1.75;
-// Mesma borda de foco sólida do resto do sistema (FOCO em estilos.ts), mas
-// branca, porque o menu é a única superfície escura.
-const FOCO_CLARO = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
 
 const readCollapsed = () => {
   try {
@@ -28,28 +24,24 @@ const readCollapsed = () => {
     // Navegador com armazenamento bloqueado segue a largura da tela, sem quebrar.
   }
   // Sem escolha guardada, notebook pequeno e tablet deitado (abaixo de 1280 px)
-  // abrem com o menu só de ícones, para a tabela ganhar ~165 px. Quem expandir
+  // abrem com o menu só de ícones, para a tabela ganhar espaço. Quem expandir
   // uma vez fica com o menu aberto, porque a escolha passa a ser guardada.
   return typeof window !== 'undefined' && window.innerWidth < 1280;
 };
 
-const readClosedGroups = (): string[] => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(CLOSED_GROUPS_KEY) || '[]');
-    return Array.isArray(stored) ? stored.filter((item): item is string => typeof item === 'string') : [];
-  } catch {
-    return [];
-  }
-};
-
+/**
+ * Menu lateral do computador (redesenho de 11/11/2026, pedido do Deivid:
+ * "deixar profissional"). Fundo branco como o resto do sistema, grupos
+ * sempre abertos com o nome discreto (sem setas para abrir e fechar), item
+ * aberto em verde-claro com a barrinha verde à esquerda, e o ambiente do
+ * cliente num cartão logo abaixo da marca.
+ */
 export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebarProps) {
   const [collapsed, setCollapsed] = useState(readCollapsed);
-  const [closedGroups, setClosedGroups] = useState<string[]>(readClosedGroups);
   const navRef = useRef<HTMLElement>(null);
 
   // Só grava quando a pessoa aperta o botão: o padrão pela largura da tela
-  // não vira escolha guardada (senão o notebook pequeno prenderia o menu
-  // recolhido também no monitor grande).
+  // não vira escolha guardada.
   const mudarRecolhido = (valor: boolean) => {
     setCollapsed(valor);
     try {
@@ -59,153 +51,96 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
     }
   };
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(CLOSED_GROUPS_KEY, JSON.stringify(closedGroups));
-    } catch {
-      // Preferência de layout não vale interromper a navegação.
-    }
-  }, [closedGroups]);
-
-  // Só na primeira carga: um leve degradê de entrada nos itens, uma vez só.
-  // O menu em si não anima continuamente (área sempre visível, ver index.css).
+  // Só na primeira carga: uma entrada leve dos itens, uma vez só.
   useGSAP(() => {
     if (!navRef.current || reduzMovimento()) return;
     gsap.fromTo(
       navRef.current.querySelectorAll('[data-sidebar-item]'),
-      { opacity: 0, x: -6 },
-      { opacity: 1, x: 0, duration: .4, stagger: .022, ease: 'power2.out', clearProps: 'transform' },
+      { opacity: 0, x: -4 },
+      { opacity: 1, x: 0, duration: .3, stagger: .015, ease: 'power2.out', clearProps: 'transform' },
     );
   }, { scope: navRef, dependencies: [] });
 
-  const toggleGroup = (label: string) => {
-    setClosedGroups(current => (current.includes(label)
-      ? current.filter(item => item !== label)
-      : [...current, label]));
-  };
+  const versao = APP_VERSION_LABEL.split(' — ')[0];
 
   return (
     <aside
-      className={`erp-sidebar hidden shrink-0 flex-col text-[#dbeee4] lg:flex ${collapsed ? 'erp-sidebar--recolhido' : ''}`}
+      className={`erp-sidebar hidden shrink-0 flex-col lg:flex ${collapsed ? 'erp-sidebar--recolhido' : ''}`}
       aria-label="Navegação principal"
     >
-      <div className={`flex min-h-[3.25rem] items-center border-b border-white/[0.06] ${collapsed ? 'justify-center px-2' : 'justify-between px-3.5'}`} title={APP_VERSION_LABEL}>
-        {collapsed
-          ? <SimboloProduto className="size-8" />
-          : <MarcaProduto claro />}
+      <div className={`flex min-h-[3.25rem] items-center border-b border-slate-200 ${collapsed ? 'justify-center px-2' : 'justify-between pl-4 pr-2'}`}>
+        {collapsed ? <SimboloProduto className="size-8" /> : <MarcaProduto />}
         {!collapsed && (
           <button
             type="button"
             onClick={() => mudarRecolhido(true)}
             title="Recolher menu"
             aria-label="Recolher menu"
-            className={`rounded-lg p-1.5 text-[#8dc4ad] transition-colors duration-200 hover:bg-white/10 hover:text-white ${FOCO_CLARO}`}
+            className={`grid size-8 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 ${FOCO}`}
           >
-            <ChevronsLeft className="h-4 w-4" strokeWidth={ICON_STROKE} />
+            <ChevronsLeft className="size-4" strokeWidth={ICON_STROKE} />
           </button>
         )}
       </div>
 
-      {!collapsed && (
-        <div className="border-b border-white/[0.06] px-3.5 py-2.5">
-          <AmbienteCliente claro />
-        </div>
-      )}
-
-      {collapsed && (
+      {collapsed ? (
         <button
           type="button"
           onClick={() => mudarRecolhido(false)}
           title="Expandir menu"
           aria-label="Expandir menu"
-          className={`mx-auto mt-1.5 rounded-lg p-1.5 text-[#8dc4ad] transition-colors duration-200 hover:bg-white/10 hover:text-white ${FOCO_CLARO}`}
+          className={`mx-auto mt-2 grid size-8 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 ${FOCO}`}
         >
-          <ChevronsRight className="h-4 w-4" strokeWidth={ICON_STROKE} />
+          <ChevronsRight className="size-4" strokeWidth={ICON_STROKE} />
         </button>
+      ) : (
+        <div className="px-3 pt-3">
+          <div className="rounded-lg border border-slate-200 bg-[#f7f8f6] px-3 py-2">
+            <AmbienteCliente />
+          </div>
+        </div>
       )}
 
-      <nav ref={navRef} className="flex-1 overflow-y-auto px-2 py-1.5">
-        {groups.map((group, index) => {
-          const hasActive = group.items.some(item => item.id === activeTab);
-          // O grupo do módulo aberto nunca fica escondido: o usuário precisa ver onde está.
-          const open = collapsed || hasActive || !closedGroups.includes(group.label);
-          return (
-            <section
-              key={group.label}
-              className={`mb-0.5 last:mb-0 ${index > 0 ? 'border-t border-white/[0.05] pt-1' : ''}`}
-            >
-              {!collapsed && (
-                <button
-                  type="button"
-                  data-sidebar-grupo
-                  onClick={() => toggleGroup(group.label)}
-                  aria-expanded={open}
-                  className={`flex w-full items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-bold uppercase tracking-[0.1em] text-[#89b7a4] transition-colors duration-200 hover:text-white ${FOCO_CLARO}`}
-                >
-                  <ChevronDown
-                    className={`h-3 w-3 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${open ? '' : '-rotate-90'}`}
-                    strokeWidth={2.5}
-                    aria-hidden="true"
-                  />
-                  <span className="truncate">{group.label}</span>
-                </button>
-              )}
-              {open && (
-                <div className="space-y-px pb-1">
-                  {group.items.map(item => {
-                    const Icon = item.icon;
-                    const active = activeTab === item.id;
-                    return (
-                      <button
-                        type="button"
-                        key={item.id}
-                        data-sidebar-item
-                        onClick={() => onNavigate(item.id)}
-                        aria-current={active ? 'page' : undefined}
-                        title={item.label}
-                        className={`group relative flex min-h-8 w-full items-center gap-2 rounded-md px-2 text-left text-[12.5px] transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${FOCO_CLARO} ${
-                          active
-                            ? 'bg-white/[0.08] font-semibold text-white'
-                            : 'text-[#bcded0] hover:translate-x-[3px] hover:bg-white/[0.06] hover:text-white'
-                        } ${collapsed ? 'justify-center px-0 hover:translate-x-0' : ''}`}
-                      >
-                        {!collapsed && (
-                          <span
-                            aria-hidden="true"
-                            className={`absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-[#7ee0b6] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${active ? 'scale-y-100' : 'scale-y-0'}`}
-                          />
-                        )}
-                        <span
-                          className={`grid shrink-0 place-items-center rounded-[7px] transition-colors duration-200 ${
-                            collapsed ? 'h-8 w-8' : 'h-6 w-6'
-                          } ${active ? 'bg-white/10' : 'bg-transparent'}`}
-                        >
-                          <Icon
-                            className={`h-4 w-4 shrink-0 ${active ? 'text-[#7ee0b6]' : 'text-[#93bba9] group-hover:text-white'}`}
-                            strokeWidth={ICON_STROKE}
-                            aria-hidden="true"
-                          />
-                        </span>
-                        {!collapsed && <span className="truncate">{item.label}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-          );
-        })}
+      <nav ref={navRef} className={`flex-1 overflow-y-auto pb-3 pt-1 ${collapsed ? 'px-2' : 'px-3'}`}>
+        {groups.map((group, index) => (
+          <section key={group.label} aria-label={group.label} className={index > 0 && collapsed ? 'mt-2 border-t border-slate-100 pt-2' : ''}>
+            {!collapsed && (
+              <p className="px-2.5 pb-1 pt-4 text-xs font-semibold text-slate-500">{group.label}</p>
+            )}
+            <div className="space-y-0.5">
+              {group.items.map(item => {
+                const Icon = item.icon;
+                const active = activeTab === item.id;
+                return (
+                  <button
+                    type="button"
+                    key={item.id}
+                    data-sidebar-item
+                    onClick={() => onNavigate(item.id)}
+                    aria-current={active ? 'page' : undefined}
+                    title={item.label}
+                    className={`relative flex min-h-9 w-full items-center gap-2.5 rounded-lg text-left text-sm transition-colors ${FOCO} ${
+                      active
+                        ? 'bg-[#eef6f1] font-semibold text-[#176b4d]'
+                        : 'font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-950'
+                    } ${collapsed ? 'justify-center px-0' : 'px-2.5'}`}
+                  >
+                    {active && !collapsed && <span aria-hidden="true" className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-[#176b4d]" />}
+                    <Icon className={`size-[18px] shrink-0 ${active ? 'text-[#176b4d]' : 'text-slate-500'}`} strokeWidth={ICON_STROKE} aria-hidden="true" />
+                    {!collapsed && <span className="truncate">{item.label}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ))}
         {groups.length === 0 && !collapsed && (
-          <p className="px-3 text-xs text-[#8dc4ad]">Nenhum módulo encontrado.</p>
+          <p className="px-2.5 pt-4 text-sm text-slate-500">Nenhum módulo encontrado.</p>
         )}
       </nav>
 
-      <div
-        className={`flex items-center border-t border-white/[0.06] py-2 text-xs font-semibold text-[#8fbfa9] ${collapsed ? 'justify-center' : 'justify-center gap-1.5'}`}
-        title={APP_VERSION_LABEL}
-      >
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#3ecb8f]" aria-hidden="true" />
-        {!collapsed && <span className="truncate">{APP_VERSION_LABEL.split(' — ')[0]}</span>}
+      <div className={`border-t border-slate-200 py-2.5 text-xs text-slate-500 ${collapsed ? 'text-center' : 'px-5'}`} title={APP_VERSION_LABEL}>
+        {collapsed ? versao.replace(/^ERP\s*/, '') : `Cintravyse ${versao.replace(/^ERP\s*/, '')}`}
       </div>
     </aside>
   );

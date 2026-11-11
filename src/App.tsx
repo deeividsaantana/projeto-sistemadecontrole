@@ -4176,18 +4176,20 @@ export default function App() {
       {/* Mobile Drawer Menu overlay */}
       {isMobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-50 bg-slate-950/85 flex justify-end print:hidden" id="mobile-drawer">
-          <div className="mobile-sidebar-panel w-[18.5rem] max-w-[82vw] border-l border-slate-800 p-4 flex flex-col space-y-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <MarcaProduto claro />
-              <button onClick={() => setIsMobileMenuOpen(false)} className="cursor-pointer rounded-lg p-2 text-emerald-100 hover:bg-white/10 hover:text-white" aria-label="Fechar navegação">
+          <div className="mobile-sidebar-panel w-[18.5rem] max-w-[82vw] border-l border-slate-200 bg-white p-4 flex flex-col space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <MarcaProduto />
+              <button type="button" onClick={() => setIsMobileMenuOpen(false)} className="grid size-11 cursor-pointer place-items-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900" aria-label="Fechar navegação">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <AmbienteCliente claro />
+            <div className="rounded-lg border border-slate-200 bg-[#f7f8f6] px-3 py-2">
+              <AmbienteCliente />
+            </div>
 
             <nav className="flex-1 overflow-y-auto">
               {renderNavigation(true)}
-              <div className="pt-5 mt-5 border-t border-slate-800">
+              <div className="pt-5 mt-5 border-t border-slate-200">
                 <button type="button" onClick={() => { void handleLogout(); setIsMobileMenuOpen(false); }} className="w-full py-3 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-xl font-semibold text-xs flex items-center justify-center gap-2">
                   <LogOut className="w-4 h-4" /> Sair da conta
                 </button>
