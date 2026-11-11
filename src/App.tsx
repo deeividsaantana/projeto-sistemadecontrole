@@ -4194,11 +4194,11 @@ export default function App() {
           <div
             role="status"
             aria-live="polite"
-            className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-bold ${salvamento.estado === 'sincronizado' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : salvamento.estado === 'falhou' ? 'border-rose-300 bg-rose-50 text-rose-700' : 'border-amber-300 bg-amber-50 text-amber-700'}`}
+            className="flex size-8 items-center justify-center rounded-full border border-slate-200 bg-white"
             title={`${salvamento.detalhe} ${lastCloudSync ? `Última sincronização: ${lastCloudSync}` : 'Ainda sem sincronização nesta sessão.'}`}
           >
-            <span aria-hidden="true" className={`w-2 h-2 rounded-full shrink-0 ${salvamento.estado === 'sincronizado' ? 'bg-emerald-500' : salvamento.estado === 'falhou' ? 'bg-rose-500' : 'bg-amber-500'}`} />
-            <span>{salvamento.curto}</span>
+            <span aria-hidden="true" className={`size-3 rounded-full shrink-0 ${salvamento.estado === 'sincronizado' ? 'bg-emerald-500' : salvamento.estado === 'falhou' ? 'bg-rose-500' : 'bg-amber-500'}`} />
+            <span className="sr-only">{salvamento.rotulo}</span>
           </div>
           {salvamento.tentarNovamente && (
             <button type="button" onClick={tentarNovamenteEnvio} className="min-h-11 rounded-full border border-slate-300 bg-white px-3 text-xs font-bold text-slate-800">
