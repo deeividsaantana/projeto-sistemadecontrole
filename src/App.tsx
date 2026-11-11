@@ -109,7 +109,6 @@ const ControleEquipamentosDiarioTab = lazy(() => import('./components/ControleEq
 const QuadroFrota = lazy(() => import('./components/quadroFrota/QuadroFrota'));
 const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
-const MeuDiaTab = lazy(() => import('./components/MeuDiaTab'));
 const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
 const SolicitacoesTab = lazy(() => import('./components/SolicitacoesTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
@@ -571,9 +570,6 @@ export default function App() {
   const [apontamentosOperacionais, setApontamentosOperacionais] = useState<ApontamentoOperacional[]>([]);
   const [registrosDds, setRegistrosDds] = useState<RegistroDDS[]>([]);
   const [treinamentos, setTreinamentos] = useState<Treinamento[]>([]);
-  const [rotinasDiarias, setRotinasDiarias] = useState<RotinaDiaria[]>([]);
-  const [pendenciasRotina, setPendenciasRotina] = useState<PendenciaRotina[]>([]);
-  const [modelosRotina, setModelosRotina] = useState<ModeloRotina[]>([]);
   const [frentesServico, setFrentesServico] = useState<FrenteServico[]>([]);
   const [diariosObra, setDiariosObra] = useState<DiarioObra[]>([]);
   const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
@@ -790,9 +786,6 @@ export default function App() {
       setApontamentosOperacionais(parseStoredJson(localStorage.getItem(STORAGE_KEYS.apontamentosOperacionais), STORAGE_KEYS.apontamentosOperacionais, [] as ApontamentoOperacional[]));
       setRegistrosDds(parseStoredJson(localStorage.getItem(STORAGE_KEYS.registrosDds), STORAGE_KEYS.registrosDds, [] as RegistroDDS[]));
       setTreinamentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.treinamentos), STORAGE_KEYS.treinamentos, [] as Treinamento[]));
-      setRotinasDiarias(parseStoredJson(localStorage.getItem(STORAGE_KEYS.rotinasDiarias), STORAGE_KEYS.rotinasDiarias, [] as RotinaDiaria[]));
-      setPendenciasRotina(parseStoredJson(localStorage.getItem(STORAGE_KEYS.pendenciasRotina), STORAGE_KEYS.pendenciasRotina, [] as PendenciaRotina[]));
-      setModelosRotina(parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosRotina), STORAGE_KEYS.modelosRotina, [] as ModeloRotina[]));
       setFrentesServico(parseStoredJson(localStorage.getItem(STORAGE_KEYS.frentesServico), STORAGE_KEYS.frentesServico, INITIAL_FRENTES_SERVICO));
       setDiariosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.diariosObra), STORAGE_KEYS.diariosObra, [] as DiarioObra[]));
       setSolicitacoes(parseStoredJson(localStorage.getItem(STORAGE_KEYS.solicitacoes), STORAGE_KEYS.solicitacoes, [] as Solicitacao[]));
@@ -1352,15 +1345,6 @@ export default function App() {
         }
         if (Object.hasOwn(data, 'treinamentos')) {
           setTreinamentos(normalizeRuntimeCollection<Treinamento>(data.treinamentos));
-        }
-        if (Object.hasOwn(data, 'rotinasDiarias')) {
-          setRotinasDiarias(normalizeRuntimeCollection<RotinaDiaria>(data.rotinasDiarias));
-        }
-        if (Object.hasOwn(data, 'pendenciasRotina')) {
-          setPendenciasRotina(normalizeRuntimeCollection<PendenciaRotina>(data.pendenciasRotina));
-        }
-        if (Object.hasOwn(data, 'modelosRotina')) {
-          setModelosRotina(normalizeRuntimeCollection<ModeloRotina>(data.modelosRotina));
         }
         if (Object.hasOwn(data, 'frentesServico')) {
           setFrentesServico(normalizeRuntimeCollection<FrenteServico>(data.frentesServico));
@@ -2362,38 +2346,6 @@ export default function App() {
         writeStorageValue(localStorage, 'renea_etapas', JSON.stringify(updated));
       }
     );
-  };
-
-  // Rotina do assistente (Meu dia): o dia de cada pessoa e as pendências que
-  // passam de um dia para o outro. Marcar o checklist não entra no histórico
-  // para não encher a auditoria com um registro por clique.
-  const handleSaveRotinaDiaria = (rotina: RotinaDiaria) => {
-    const updated = rotinasDiarias.some(item => item.id === rotina.id)
-      ? rotinasDiarias.map(item => (item.id === rotina.id ? rotina : item))
-      : [...rotinasDiarias, rotina];
-    setRotinasDiarias(updated);
-    writeStorageValue(localStorage, STORAGE_KEYS.rotinasDiarias, JSON.stringify(updated));
-  };
-
-  // Excluir uma pendência marca excluidaEm (a nuvem não traz de volta) e só
-  // acontece quando a própria pessoa confirma na tela.
-  const handleSavePendenciaRotina = (pendencia: PendenciaRotina, descricao: string, acao: HistoryLog['acao']) => {
-    const updated = pendenciasRotina.some(item => item.id === pendencia.id)
-      ? pendenciasRotina.map(item => (item.id === pendencia.id ? pendencia : item))
-      : [...pendenciasRotina, pendencia];
-    saveAndLog('Meu dia', acao, descricao, historyLogs, () => {
-      setPendenciasRotina(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.pendenciasRotina, JSON.stringify(updated));
-    });
-  };
-
-  // O checklist do jeito de cada pessoa (um modelo por pessoa).
-  const handleSaveModeloRotina = (modelo: ModeloRotina, descricao: string) => {
-    const updated = [...modelosRotina.filter(item => item.id !== modelo.id), modelo];
-    saveAndLog('Meu dia', 'Editou', descricao, historyLogs, () => {
-      setModelosRotina(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.modelosRotina, JSON.stringify(updated));
-    });
   };
 
   const handleImportCadastros = (target: CadastroImportTarget, rows: CadastroImportRow[]) => {
@@ -4419,22 +4371,6 @@ export default function App() {
                 responsavel={activeUserName}
                 podeEditar={pode(currentUserRole, 'diario-obra', 'editar')}
                 onSave={handleSaveDiarioObra}
-              />
-            )}
-
-            {activeTab === 'meu-dia' && (
-              <MeuDiaTab
-                responsavel={activeUserName}
-                rotinas={rotinasDiarias}
-                pendencias={pendenciasRotina}
-                modelos={modelosRotina}
-                onSaveRotina={handleSaveRotinaDiaria}
-                onSavePendencia={handleSavePendenciaRotina}
-                onSaveModelo={handleSaveModeloRotina}
-                abastecimentos={abastecimentosAtivos}
-                controlesFrota={controleEquipamentosDiario}
-                equipamentos={equipamentos}
-                onIrPara={aba => { if (allowedTabs.includes(aba)) navigateTo(aba); }}
               />
             )}
 

@@ -13,6 +13,8 @@ interface PageHeaderProps {
   eyebrow?: string;
   /** Esconde o título visual quando há subtelas (as abas já identificam a tela). */
   compact?: boolean;
+  /** Título só para leitor de tela: a tela já é identificada pelo menu (Painel). */
+  tituloOculto?: boolean;
 }
 
 /**
@@ -22,11 +24,11 @@ interface PageHeaderProps {
  * principal à direita, numa linha só quando couber. Dentro da área de dados
  * de outra TelaCheia (subtela que é uma tela inteira) o título vira h2.
  */
-export function PageHeader({ title, description, actions, abas, className, compact = true }: PageHeaderProps) {
+export function PageHeader({ title, description, actions, abas, className, compact = true, tituloOculto = false }: PageHeaderProps) {
   const Titulo = useDentroDaTelaCheia() ? 'h2' : 'h1';
   // Sem subtelas, o lado esquerdo ficaria vazio: o título aparece, como no
   // Painel de Controle. Com subtelas, as abas já dizem onde a pessoa está.
-  const escondeTitulo = compact && Boolean(abas);
+  const escondeTitulo = tituloOculto || (compact && Boolean(abas));
   return (
     <header className={cn('renea-page-header', escondeTitulo ? 'renea-page-header--compact' : undefined, abas ? 'renea-page-header--com-abas' : undefined, className)}>
       <div className="renea-page-header__copy">

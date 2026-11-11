@@ -33,22 +33,23 @@ interface DashboardProps {
 }
 
 function ExecutiveCard({ label, value, detail, tone, icon: Icon, onClick }: { label: string; value: string | number; detail: string; tone: 'green' | 'blue' | 'orange' | 'slate'; icon: typeof Activity; onClick?: () => void }) {
+  // Produção não tem tela própria desde que o Meu dia saiu: o cartão só mostra o número.
+  const Elemento = onClick ? 'button' : 'div';
   // Todos os indicadores usam o mesmo cartão branco (pedido de 11/11/2026:
   // "muita aba desigual"). A cor fica só no ícone, para diferenciar o assunto.
   const icone = { green: 'bg-emerald-50 text-emerald-800', blue: 'bg-blue-50 text-blue-800', orange: 'bg-orange-50 text-orange-800', slate: 'bg-slate-100 text-slate-600' };
-  return <button type="button" onClick={onClick} data-dashboard-reveal className="dashboard-kpi group min-w-0 rounded-2xl border border-slate-200 bg-white p-4 text-left text-slate-950 shadow-sm transition hover:-translate-y-1 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)">
+  return <Elemento type={onClick ? 'button' : undefined} onClick={onClick} data-dashboard-reveal className="dashboard-kpi group flex min-w-0 flex-col justify-center rounded-2xl border border-slate-200 bg-white p-4 text-left text-slate-950 shadow-sm transition hover:-translate-y-1 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)">
     <div className="flex items-start justify-between gap-3"><span className="text-sm font-bold text-slate-600">{label}</span><span className={`rounded-lg p-1.5 ${icone[tone]}`}><Icon className="size-4" /></span></div>
     <strong className={`mt-2 block font-black leading-tight tabular-nums ${typeof value === 'number' || /\d/.test(value) ? 'text-3xl' : 'text-xl'}`}>{value}</strong><span className="mt-1 block text-xs font-semibold text-slate-600">{detail}</span>
-  </button>;
+  </Elemento>;
 }
 
 export default function Dashboard(props: DashboardProps) {
   // Cada abertura começa no retrato operacional do dia atual.
   const [periodo, setPeriodo] = useState<PeriodValue>(() => buildPeriod('hoje'));
-  const [obraId, setObraId] = useState('');
   const dashboardRef = useRef<HTMLElement>(null);
-  const view = useMemo(() => buildDashboardGeneralViewModel({ obraId, from: periodo.from, to: periodo.to }, props),
-    [obraId, periodo.from, periodo.to, props.equipamentos, props.controlesEquipamentos, props.producao, props.abastecimentos, props.presencasLink, props.gruposEquipe, props.funcionarios, props.ordensServico]);
+  const view = useMemo(() => buildDashboardGeneralViewModel({ obraId: '', from: periodo.from, to: periodo.to }, props),
+    [periodo.from, periodo.to, props.equipamentos, props.controlesEquipamentos, props.producao, props.abastecimentos, props.presencasLink, props.gruposEquipe, props.funcionarios, props.ordensServico]);
   const display = (value: number | null, unit = '') => value === null ? 'Sem registro' : `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value)}${unit ? ` ${unit}` : ''}`;
   const getTone = (value: string | number | null, defaultTone: 'green' | 'blue' | 'orange' | 'slate'): 'green' | 'blue' | 'orange' | 'slate' => {
     if (value === 'Sem posição' || value === 'Sem registro') return 'slate';
@@ -58,21 +59,15 @@ export default function Dashboard(props: DashboardProps) {
   useGSAP(() => {
     if (!dashboardRef.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     gsap.fromTo(dashboardRef.current.querySelectorAll('[data-dashboard-reveal]'), { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: .72, stagger: .065, ease: 'power3.out', clearProps: 'transform' });
-  }, { scope: dashboardRef, dependencies: [obraId, periodo.from, periodo.to] });
+  }, { scope: dashboardRef, dependencies: [periodo.from, periodo.to] });
 
   // Molde de página (TelaCheia): o cabeçalho com os filtros fica parado e os
   // cartões rolam por dentro. O conteúdo do Painel segue o mesmo: ele é a
   // referência visual das outras abas.
   return (
     <TelaCheia ref={dashboardRef} id="dashboard-tab" rotulo="Painel de Controle" longa rotuloDados="Indicadores da operação"
-      cabecalho={<PageHeader compact={false} title="Painel de Controle"
+      cabecalho={<PageHeader tituloOculto title="Painel de Controle"
         actions={<div data-testid="period-filter" className="flex flex-wrap items-center gap-3">
-          <label className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600">Obra
-            <select value={obraId} onChange={event => setObraId(event.target.value)} className="max-w-48 bg-transparent py-2 text-sm text-slate-900" aria-label="Filtrar por obra">
-              <option value="">Todas as obras</option>
-              {props.obras.map(obra => <option key={obra.id} value={obra.id}>{obra.nome}</option>)}
-            </select>
-          </label>
           <PeriodFilter value={periodo} onChange={setPeriodo} />
         </div>} />}
     >
@@ -84,7 +79,7 @@ export default function Dashboard(props: DashboardProps) {
       <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5" aria-label="Indicadores principais">
         <ExecutiveCard label="Frota em operação" value={view.fleet.confirmed ? view.fleet.operating : 'Sem posição'} detail={`${view.fleet.confirmed} posições confirmadas`} tone={getTone(view.fleet.confirmed ? view.fleet.operating : 'Sem posição', 'green')} icon={Truck} onClick={() => props.onNavigate('controle-equipamentos')} />
         <ExecutiveCard label="Disponibilidade" value={view.fleet.availability === null ? 'Sem posição' : `${display(view.fleet.availability)}%`} detail="sobre posições confirmadas" tone={getTone(view.fleet.availability === null ? 'Sem posição' : `${display(view.fleet.availability)}%`, 'blue')} icon={Activity} onClick={() => props.onNavigate('controle-equipamentos')} />
-        <ExecutiveCard label="Produção" value={display(view.production.value, view.production.unit)} detail="lançamentos em m³" tone={getTone(display(view.production.value, view.production.unit), 'slate')} icon={Activity} onClick={() => props.onNavigate('producao')} />
+        <ExecutiveCard label="Produção" value={display(view.production.value, view.production.unit)} detail="lançamentos em m³" tone={getTone(display(view.production.value, view.production.unit), 'slate')} icon={Activity} />
         <ExecutiveCard label="Presenças" value={display(view.presence.value)} detail="presenças registradas" tone={getTone(display(view.presence.value), 'slate')} icon={Users} onClick={() => props.onNavigate('presenca')} />
         <ExecutiveCard label="OS abertas" value={display(view.maintenance.value)} detail="pendências da frota" tone={getTone(display(view.maintenance.value), 'orange')} icon={ClipboardList} onClick={() => props.onNavigate('manutencao')} />
       </section>

@@ -26,7 +26,6 @@ const TELAS: Array<[arquivo: string, inicio: string]> = [
   ['ControleEquipamentosDiarioTab.tsx', 'const vistas: ReadonlyArray<ItemDasAbas<FleetView>> = ['],
   ['ManutencaoTab.tsx', 'const subtelas = ['],
   ['ControlePresencaTab.tsx', 'const navItems: ReadonlyArray<ItemDasAbas<View>> = ['],
-  ['MeuDiaTab.tsx', 'const abas: ItemDasAbas<Parte>[] = ['],
   ['CombustivelOperacionalTab.tsx', 'const vistas'],
 ];
 

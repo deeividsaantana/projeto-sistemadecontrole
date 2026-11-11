@@ -356,8 +356,7 @@ export const montarLinhas = (categoria: CadastroCategoriaId, dados: DadosCadastr
     }));
   }
 
-  // Frentes e serviços alimentam o Meu dia: a produção lançada lá escolhe
-  // daqui. Encerrar (Concluída/Concluído ou inativa) tira da operação sem
+  // Frentes e serviços: encerrar (Concluída/Concluído ou inativa) tira da operação sem
   // apagar o histórico.
   if (tabela === 'frentesServico') {
     return dados.frentesServico.map(item => {
