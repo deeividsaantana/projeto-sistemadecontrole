@@ -53,3 +53,17 @@ export function AmbienteCliente({ claro = false, className = '' }: { claro?: boo
     </span>
   );
 }
+
+/**
+ * Cartão do ambiente no menu (barra lateral e gaveta do celular). A obra é
+ * executada pela RENEA, então a logo dela ganha destaque: maior, num cartão
+ * verde-claro, com "Ambiente" em cima (pedido de 11/11/2026).
+ */
+export function CartaoAmbiente({ className = '' }: { className?: string }) {
+  return (
+    <div className={`rounded-xl border border-[#cfe3d8] bg-[#f3f8f5] px-3.5 py-3 ${className}`}>
+      <span className="block text-xs font-semibold text-[#176b4d]">Ambiente</span>
+      <img src={logoClienteEscuro} alt={CLIENTE.nome} className="mt-1.5 h-7 w-auto" />
+    </div>
+  );
+}

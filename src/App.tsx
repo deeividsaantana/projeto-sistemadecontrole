@@ -121,7 +121,7 @@ import { PresencaPublicaLink } from './components/presenca/PresencaPublicaLink';
 import { EscalaSabado } from './components/presenca/EscalaSabado';
 
 // Motion and Logo Import
-import { AmbienteCliente, MarcaProduto } from './shared/ui/MarcaProduto';
+import { CartaoAmbiente, MarcaProduto } from './shared/ui/MarcaProduto';
 import { CLIENTE } from './config/marca';
 
 
@@ -4221,9 +4221,7 @@ export default function App() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-[#f7f8f6] px-3 py-2">
-              <AmbienteCliente />
-            </div>
+            <CartaoAmbiente />
 
             <nav className="flex-1 overflow-y-auto">
               {renderNavigation(true)}

@@ -3,7 +3,7 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 import type { NavigationGroupView } from './NavigationMenu';
-import { AmbienteCliente, MarcaProduto, SimboloProduto } from '../../shared/ui/MarcaProduto';
+import { CartaoAmbiente, MarcaProduto, SimboloProduto } from '../../shared/ui/MarcaProduto';
 import { APP_VERSION_LABEL } from '../version';
 import { FOCO, reduzMovimento } from '../../components/cadastros/estilos';
 
@@ -96,9 +96,7 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
         </button>
       ) : (
         <div className="px-3 pt-3">
-          <div className="rounded-lg border border-slate-200 bg-[#f7f8f6] px-3 py-2">
-            <AmbienteCliente />
-          </div>
+          <CartaoAmbiente />
         </div>
       )}
 
