@@ -6,7 +6,6 @@ const read = (path: string) => readFileSync(path, 'utf8');
 
 const primaryScreens = [
   ['dashboard', 'src/components/Dashboard.tsx'],
-  ['meu-dia', 'src/components/MeuDiaTab.tsx'],
   ['diario-obra', 'src/components/DiarioObraTab.tsx'],
   ['estacas', 'src/components/EstacasTab.tsx'],
   ['controle-equipamentos', 'src/components/ControleEquipamentosDiarioTab.tsx'],

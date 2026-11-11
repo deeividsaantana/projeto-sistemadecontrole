@@ -18,6 +18,8 @@ test('sidebar expõe os 10 módulos primários do ERP', () => {
   // e Jazida saíram em 2026-11-10, com os dados, a pedido do usuário.
   assert.equal(isPrimaryModule('tickets-jazida'), false);
   assert.equal(isPrimaryModule('materiais'), false);
+  // Meu dia saiu em 2026-11-11, a pedido do usuário; os dados ficam guardados.
+  assert.equal(isPrimaryModule('meu-dia'), false);
   assert.equal(isPrimaryModule('estacas'), true);
   assert.equal(isPrimaryModule('frota'), false);
   // Modo Campo saiu em 2026-10-16: repetia o menu e os números do Painel.

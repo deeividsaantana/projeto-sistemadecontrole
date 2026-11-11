@@ -97,7 +97,8 @@ export const isPrimaryModule = (id: string) => SIDEBAR_MODULE_IDS.has(id);
 // por um link guardado. Cada um abre a tela onde aquele dado mora hoje; o que
 // não estiver aqui e não for do menu cai no Painel.
 export const MODULE_REDIRECTS: Readonly<Record<string, string>> = {
-  // Frentes e produção vivem na parte Frentes do Meu dia.
+  // Diário de Obra e Meu dia saíram em 11/11/2026; os endereços antigos (e
+  // frentes e produção, que caíam no Meu dia) abrem o Pluviômetro.
   frentes: 'pluviometro',
   producao: 'pluviometro',
   'meu-dia': 'pluviometro',
