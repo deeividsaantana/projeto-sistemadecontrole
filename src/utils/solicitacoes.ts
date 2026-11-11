@@ -11,13 +11,16 @@
  * - suprimentos: assume, cota, monta o pedido de compra, despacha e é o ÚNICO
  *   que mexe em prazo de entrega (reagendamento com motivo e registro);
  * - aprovador: aprova, aprova com condição ou rejeita o pedido com parecer;
- * - recebedor: confirma a chegada no destino e confere com a nota fiscal.
+ * - recebedor: confirma a chegada no destino e confere com a nota fiscal;
+ * - dev: faz tudo o que os quatro fazem (pedido de 11/11/2026: o login do
+ *   dono do sistema enxerga e opera o módulo inteiro). O administrador do app
+ *   entra como dev quando não está ligado a outra pessoa.
  *
  * Isto é regra de interface, como o resto do app (src/utils/permissoes.ts): o
  * banco ainda não confere o papel de quem grava.
  */
 
-export const PAPEIS_SUPRIMENTOS = ['solicitante', 'suprimentos', 'aprovador', 'recebedor'] as const;
+export const PAPEIS_SUPRIMENTOS = ['solicitante', 'suprimentos', 'aprovador', 'recebedor', 'dev'] as const;
 export type PapelSuprimentos = typeof PAPEIS_SUPRIMENTOS[number];
 
 export const NOME_DO_PAPEL: Record<PapelSuprimentos, string> = {
@@ -25,6 +28,7 @@ export const NOME_DO_PAPEL: Record<PapelSuprimentos, string> = {
   suprimentos: 'Suprimentos',
   aprovador: 'Aprovador (gerência)',
   recebedor: 'Recebimento (almoxarifado)',
+  dev: 'Acesso total (dev)',
 };
 
 export interface PessoaSuprimentos {
@@ -154,6 +158,9 @@ export interface Ator {
   nome: string;
   papel: PapelSuprimentos | null;
 }
+
+/** A pessoa exerce este papel? O dev exerce todos. */
+export const exerce = (ator: Ator, papel: Exclude<PapelSuprimentos, 'dev'>) => ator.papel === papel || ator.papel === 'dev';
 
 export const MENSAGEM_PRAZO_NEGADO = 'Permissão negada. A alteração de prazos logísticos e reagendamento de entregas é de alçada exclusiva dos operadores de Suprimentos (Cássia e Sérgio).';
 
@@ -316,7 +323,7 @@ export const abrirSolicitacao = (
   agora: string,
   id: string,
 ): Resultado => {
-  if (ator.papel !== 'solicitante') return falha('Só quem está cadastrado como solicitante abre requisições.');
+  if (!exerce(ator, 'solicitante')) return falha('Só quem está cadastrado como solicitante abre requisições.');
   if (!dados.frente.trim()) return falha('Informe a frente de trabalho ou o ramo.');
   if (dados.itens.length === 0) return falha('Inclua pelo menos um item.');
   for (const [indice, item] of dados.itens.entries()) {
@@ -360,7 +367,7 @@ export const aplicarAcao = (
   agora: string,
   todas: readonly Solicitacao[] = [],
 ): Resultado => {
-  const suprimentos = ator.papel === 'suprimentos';
+  const suprimentos = exerce(ator, 'suprimentos');
   switch (acao.tipo) {
     case 'assumir': {
       if (!suprimentos) return falha('Só Suprimentos assume uma solicitação.');
@@ -402,7 +409,7 @@ export const aplicarAcao = (
       });
     }
     case 'aprovar': {
-      if (ator.papel !== 'aprovador') return falha('Só o aprovador decide o pedido de compra.');
+      if (!exerce(ator, 'aprovador')) return falha('Só o aprovador decide o pedido de compra.');
       if (sol.etapa !== 'Aguardando Aprovação') return falha('Não há pedido aguardando aprovação.');
       const parecer = acao.parecer?.trim();
       if (acao.condicional && !parecer) return falha('Escreva a condição da aprovação.');
@@ -412,7 +419,7 @@ export const aplicarAcao = (
       });
     }
     case 'rejeitar': {
-      if (ator.papel !== 'aprovador') return falha('Só o aprovador decide o pedido de compra.');
+      if (!exerce(ator, 'aprovador')) return falha('Só o aprovador decide o pedido de compra.');
       if (sol.etapa !== 'Aguardando Aprovação') return falha('Não há pedido aguardando aprovação.');
       if (acao.parecer.trim().length < 5) return falha('Escreva o motivo da rejeição para Suprimentos ajustar.');
       return comEvento(sol, ator, agora, 'Rejeitou o pedido', acao.parecer.trim(), {
@@ -426,7 +433,7 @@ export const aplicarAcao = (
       return comEvento(sol, ator, agora, 'Marcou como em trânsito', undefined, { etapa: 'Em Trânsito', statusLogistico: 'Em Trânsito' });
     }
     case 'receber': {
-      if (ator.papel !== 'recebedor') return falha('Só o recebimento (fiscal ou almoxarife) confirma a chegada.');
+      if (!exerce(ator, 'recebedor')) return falha('Só o recebimento (fiscal ou almoxarife) confirma a chegada.');
       if (sol.etapa !== 'Aprovado' && sol.etapa !== 'Em Trânsito') return falha('Só pedido aprovado ou em trânsito pode ser recebido.');
       const { recebimento } = acao;
       if (!recebimento.local.trim()) return falha('Informe onde o material chegou.');
@@ -470,7 +477,7 @@ export const aplicarAcao = (
       });
     }
     case 'cancelar': {
-      const dono = ator.papel === 'solicitante' && ator.nome === sol.solicitante;
+      const dono = exerce(ator, 'solicitante') && ator.nome === sol.solicitante;
       if (!suprimentos && !dono) return falha('Só quem abriu ou Suprimentos cancela a solicitação.');
       if (sol.etapa !== 'Pendente Suprimentos' && sol.etapa !== 'Em Cotação') return falha('Depois de ir para aprovação a solicitação não é cancelada por aqui.');
       if (acao.motivo.trim().length < 5) return falha('Escreva o motivo do cancelamento.');
@@ -485,16 +492,16 @@ export const aplicarAcao = (
 export const acoesDisponiveis = (sol: Solicitacao, ator: Ator): Acao['tipo'][] => {
   const acoes: Acao['tipo'][] = [];
   const { etapa } = sol;
-  if (ator.papel === 'suprimentos') {
+  if (exerce(ator, 'suprimentos')) {
     if (etapa === 'Pendente Suprimentos') acoes.push('assumir');
     if (etapa === 'Em Cotação') acoes.push('enviarParaAprovacao');
     if (etapa === 'Aprovado') acoes.push('despachar');
     if (etapa === 'Aprovado' || etapa === 'Em Trânsito') acoes.push('reagendar');
   }
-  if (ator.papel === 'aprovador' && etapa === 'Aguardando Aprovação') acoes.push('aprovar', 'rejeitar');
-  if (ator.papel === 'recebedor' && (etapa === 'Aprovado' || etapa === 'Em Trânsito')) acoes.push('receber');
+  if (exerce(ator, 'aprovador') && etapa === 'Aguardando Aprovação') acoes.push('aprovar', 'rejeitar');
+  if (exerce(ator, 'recebedor') && (etapa === 'Aprovado' || etapa === 'Em Trânsito')) acoes.push('receber');
   if ((etapa === 'Pendente Suprimentos' || etapa === 'Em Cotação')
-    && (ator.papel === 'suprimentos' || (ator.papel === 'solicitante' && ator.nome === sol.solicitante))) acoes.push('cancelar');
+    && (exerce(ator, 'suprimentos') || (exerce(ator, 'solicitante') && ator.nome === sol.solicitante))) acoes.push('cancelar');
   return acoes;
 };
 
