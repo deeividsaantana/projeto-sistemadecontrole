@@ -166,6 +166,7 @@ import './linkDeCampoFila.test';
 import './nuvemNaoPerdeNovidade.test';
 import './esperaReenvio.test';
 import './envioSerializado.test';
+import './estadoSalvamento.test';
 import './remocaoMateriaisJazidaBloco.test';
 import './salvamentoLeveSemFila.test';
 import './historicoVersoesNuvem.test';

@@ -152,6 +152,7 @@ import { CHAVES_LOCAIS_REMOVIDAS, apagarDeVez, aplicarExclusoes, criarExclusao, 
 import { protegerContraEncolhimento } from './cloud/protecaoEncolhimento';
 import { MENSAGEM_NUVEM_OCUPADA, esperaDoReenvio } from './cloud/esperaReenvio';
 import { criarEnvioSerializado } from './cloud/envioSerializado';
+import { descreverSalvamento } from './cloud/estadoSalvamento';
 import { comMarcasDaNuvem, comMarcasLocaisDaNuvem, comTabelasDaNuvem, marcasSoDaNuvem, recusadoPorPerfil, tabelasSoDaNuvem } from './cloud/tabelasPorPerfil';
 import { manterNovidadesLocais } from './cloud/novidadesLocais';
 import { manterEdicoesLocais } from './cloud/edicoesLocais';
@@ -528,6 +529,9 @@ export default function App() {
   const pendingRemoteVersionRef = useRef('');
   // O último envio falhou: o pulso de checagem tenta de novo sozinho.
   const uploadPendenteRef = useRef(false);
+  // Espelho do envio para a tela: o ref acima não faz a tela atualizar.
+  const [envioNuvem, setEnvioNuvem] = useState({ enviando: false, pendente: false, falhas: 0 });
+  const [estaOnline, setEstaOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine);
   // Falhas seguidas do envio e quando vale tentar de novo (espera que dobra a cada falha).
   const falhasDeEnvioRef = useRef({ seguidas: 0, tentarDepoisDe: 0 });
   const recuperacaoPorPerfilRef = useRef({ quando: 0, vezes: 0 });
@@ -1075,6 +1079,7 @@ export default function App() {
       return { success: false, message: 'Este navegador ainda está baixando os dados da nuvem; nada foi enviado.' };
     }
     uploadsInFlightRef.current += 1;
+    setEnvioNuvem(atual => ({ ...atual, enviando: true }));
     try {
       const stored = readLocalCloudTables();
       const controleEstacasSalvo = readTable('renea_controle_estacas', controleEstacas);
@@ -1133,6 +1138,7 @@ export default function App() {
       }
       setIsCloudConnected(true);
       uploadPendenteRef.current = false;
+      setEnvioNuvem({ enviando: false, pendente: false, falhas: 0 });
       // Os outros aparelhos baixam na hora, sem esperar a checagem periódica.
       announceCloudVersion(uploadResult.updatedAt);
       if (faltaBaixar) pendingRemoteVersionRef.current = uploadResult.updatedAt;
@@ -1153,6 +1159,7 @@ export default function App() {
       uploadPendenteRef.current = true;
       const seguidas = falhasDeEnvioRef.current.seguidas + 1;
       falhasDeEnvioRef.current = { seguidas, tentarDepoisDe: Date.now() + esperaDoReenvio(seguidas) };
+      setEnvioNuvem({ enviando: false, pendente: true, falhas: seguidas });
       console.error('Falha ao sincronizar o backup na nuvem:', error);
       // Recusa por perfil vem de diferença que o operador não causou (marca ou
       // gestão de outro perfil neste aparelho). O ciclo automático não baixa sem
@@ -1199,11 +1206,19 @@ export default function App() {
   const envioSerializadoRef = useRef<ReturnType<typeof criarEnvioSerializado> | null>(null);
   if (!envioSerializadoRef.current) {
     envioSerializadoRef.current = criarEnvioSerializado(() => handleUploadRef.current(), {
-      segurar: () => { uploadsInFlightRef.current += 1; },
+      segurar: () => {
+        uploadsInFlightRef.current += 1;
+        // Há lançamento esperando o próximo envio: ainda não chegou à nuvem.
+        setEnvioNuvem(atual => ({ ...atual, pendente: true }));
+      },
       soltar: () => { uploadsInFlightRef.current = Math.max(0, uploadsInFlightRef.current - 1); },
     });
   }
-  const pedirEnvioSerializado = () => envioSerializadoRef.current!();
+  const pedirEnvioSerializado = () => {
+    // O lançamento já está salvo aqui; até a nuvem confirmar, ele conta como pendente.
+    setEnvioNuvem(atual => (atual.pendente ? atual : { ...atual, pendente: true }));
+    return envioSerializadoRef.current!();
+  };
 
   // Download da nuvem pelo provedor autoritativo da fase atual.
   const handleDownloadFromSupabase = async (): Promise<{ success: boolean; data?: string; message: string }> => {
@@ -2882,6 +2897,29 @@ export default function App() {
   // A drenagem automatica no 'online' (efeito abaixo) continua existindo;
   // o retry manual reutiliza o mesmo caminho de envio.
   const pendingCount = useOfflineQueueCount();
+  useEffect(() => {
+    const atualizar = () => setEstaOnline(navigator.onLine);
+    window.addEventListener('online', atualizar);
+    window.addEventListener('offline', atualizar);
+    return () => {
+      window.removeEventListener('online', atualizar);
+      window.removeEventListener('offline', atualizar);
+    };
+  }, []);
+  const salvamento = descreverSalvamento({
+    online: estaOnline,
+    conectado: isCloudConnected,
+    enviando: envioNuvem.enviando,
+    pendente: envioNuvem.pendente,
+    falhasSeguidas: envioNuvem.falhas,
+    pendenciasOffline: pendingCount,
+  });
+  // Botão "Tentar novamente": passa por cima da espera crescente do reenvio.
+  const tentarNovamenteEnvio = () => {
+    void uploadLocalSnapshotToSupabase({}, { forcar: true }).then(resultado => {
+      if (!resultado.success) addNotification('Ainda não chegou à nuvem', `O que foi lançado continua salvo neste aparelho. Motivo: ${resultado.message}`, 'warning', 'Sistema Local');
+    });
+  };
   const [isRetryingPending, setIsRetryingPending] = useState(false);
   const handleRetryPending = useCallback(async () => {
     if (typeof navigator !== 'undefined' && !navigator.onLine) return;
@@ -4152,12 +4190,21 @@ export default function App() {
           <MarcaProduto cliente={nomeDaTelaAtual || CLIENTE.nome} />
         </div>
 
-        <div
-          className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-bold ${isCloudConnected ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-300 bg-amber-50 text-amber-700'}`}
-          title={lastCloudSync ? `Última sincronização com a nuvem: ${lastCloudSync}` : 'Ainda sem sincronização com a nuvem nesta sessão'}
-        >
-          <span className={`w-2 h-2 rounded-full shrink-0 ${isCloudConnected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-          <span>{isCloudConnected ? 'Nuvem OK' : 'Sem nuvem'}</span>
+        <div className="flex items-center gap-1.5">
+          <div
+            role="status"
+            aria-live="polite"
+            className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-bold ${salvamento.estado === 'sincronizado' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : salvamento.estado === 'falhou' ? 'border-rose-300 bg-rose-50 text-rose-700' : 'border-amber-300 bg-amber-50 text-amber-700'}`}
+            title={`${salvamento.detalhe} ${lastCloudSync ? `Última sincronização: ${lastCloudSync}` : 'Ainda sem sincronização nesta sessão.'}`}
+          >
+            <span aria-hidden="true" className={`w-2 h-2 rounded-full shrink-0 ${salvamento.estado === 'sincronizado' ? 'bg-emerald-500' : salvamento.estado === 'falhou' ? 'bg-rose-500' : 'bg-amber-500'}`} />
+            <span>{salvamento.curto}</span>
+          </div>
+          {salvamento.tentarNovamente && (
+            <button type="button" onClick={tentarNovamenteEnvio} className="min-h-11 rounded-full border border-slate-300 bg-white px-3 text-xs font-bold text-slate-800">
+              Tentar novamente
+            </button>
+          )}
         </div>
         {pendingCount > 0 && (
           <span
@@ -4273,6 +4320,8 @@ export default function App() {
           unreadCount={unreadCount}
           alertas={alertasDoSino}
           isCloudConnected={isCloudConnected}
+          salvamento={salvamento}
+          onRetryUpload={tentarNovamenteEnvio}
           lastCloudSync={lastCloudSync}
           pendingCount={pendingCount}
           isRetryingPending={isRetryingPending}
