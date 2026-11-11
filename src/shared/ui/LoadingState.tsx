@@ -18,11 +18,11 @@ interface LoadingStateProps {
 }
 
 /** Estado de carregamento de uma seção inteira. */
-export function LoadingState({ message = 'Carregando informações...', compact = false, className }: LoadingStateProps) {
+export function LoadingState({ message = 'Carregando…', compact = false, className }: LoadingStateProps) {
   return (
-    <div className={cn('flex flex-col items-center justify-center gap-2 text-center', compact ? 'py-6' : 'py-10', className)}>
-      <Spinner className="h-5 w-5" />
-      <p className="text-xs font-medium text-slate-500">{message}</p>
+    <div className={cn('flex flex-col items-center justify-center gap-3 px-4 text-center', compact ? 'py-6' : 'py-10', className)}>
+      <Spinner className="size-6 text-[#176b4d]" />
+      <p className="text-sm font-semibold text-slate-600">{message}</p>
     </div>
   );
 }

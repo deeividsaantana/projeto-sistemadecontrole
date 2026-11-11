@@ -50,7 +50,7 @@ export function FilaOficina({ fila, ordensServico, podeEditar, onAvancar, onEdit
                     <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
                       <div className="min-w-0">
                         <strong className="block truncate text-base font-black text-slate-900">{item.prefixo}</strong>
-                        <span className="block line-clamp-2 break-words text-xs font-bold uppercase tracking-wide text-slate-500">{item.equipamentoNome}</span>
+                        <span className="block line-clamp-2 break-words text-xs font-bold text-slate-500">{item.equipamentoNome}</span>
                       </div>
                       <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${statusTone(item.status)}`}>{item.status}</span>
                     </div>

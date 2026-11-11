@@ -23,7 +23,7 @@ import {
   downloadCorporateWorkbook,
   styleCorporateWorksheet,
 } from '../../utils/excelCorporate';
-import GraficoPizza from '../materiais/GraficoPizza';
+import GraficoPizza from './GraficoPizza';
 import GraficoLinhasPresenca from './GraficoLinhasPresenca';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, reduzMovimento } from '../cadastros/estilos';
 
@@ -39,7 +39,7 @@ const numero = (chave: keyof LinhaColaborador & string, titulo: string): ColunaT
 });
 
 const tomDaTaxa = (taxa: number | null) => {
-  if (taxa === null) return 'text-slate-400';
+  if (taxa === null) return 'text-slate-500';
   if (taxa >= 90) return 'text-emerald-700';
   if (taxa >= 75) return 'text-amber-700';
   return 'text-rose-700';
@@ -251,7 +251,7 @@ export default function RelatoriosPresenca({ registros, funcionarios, empresas, 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {cartoes.map(cartao => (
           <article key={cartao.rotulo} data-presenca-reveal className={`${CARTAO} min-w-0 p-4 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_-16px_rgba(16,24,32,0.3)]`}>
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">{cartao.rotulo}</p>
+            <p className="text-xs font-bold text-slate-500">{cartao.rotulo}</p>
             <p className={`mt-2 text-3xl font-black tabular-nums tracking-tight ${cartao.tom}`}>
               {cartao.valor === null ? '—' : <span data-conta={cartao.valor}>{cartao.valor.toLocaleString('pt-BR')}</span>}
               {cartao.valor !== null && cartao.sufixo && <span className="text-base font-bold text-slate-500">{cartao.sufixo}</span>}
@@ -328,6 +328,7 @@ export default function RelatoriosPresenca({ registros, funcionarios, empresas, 
           </label>
         </div>
         <TabelaPadrao
+          exportar={false}
           titulo="Presença por pessoa no período"
           linhas={colaboradoresVisiveis}
           colunas={colunasPessoas}

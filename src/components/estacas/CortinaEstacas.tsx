@@ -224,7 +224,7 @@ export default function CortinaEstacas({ frente, escolhidaId, onEscolher }: Prop
       {emFoco && (
         <div
           role="tooltip"
-          className="pointer-events-none absolute z-10 w-52 -translate-x-1/2 -translate-y-full rounded-xl border border-slate-200 bg-white p-3 text-sm shadow-xl max-sm:hidden"
+          className="pointer-events-none absolute z-10 w-52 -translate-x-1/2 -translate-y-full rounded-2xl border border-slate-200 bg-white p-3 text-sm shadow-xl max-sm:hidden"
           style={{ left: `clamp(6.5rem, ${emFoco.x}px, calc(100% - 6.5rem))`, top: `${emFoco.y + 24}px` }}
         >
           <p className="font-bold text-slate-900">{nomeDaEstaca(emFoco.estaca)}</p>

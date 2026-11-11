@@ -39,9 +39,9 @@ export function CartaoEquipamento({ cartao, onAbrir }: { cartao: CartaoFrota; on
       </span>
       <span className="flex flex-1 flex-col gap-1 px-3 pb-3 pt-2.5">
         <strong className="font-mono text-lg font-extrabold leading-none tracking-tight text-slate-900">{cartao.prefixo}</strong>
-        <span className="line-clamp-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{cartao.modelo}</span>
+        <span className="line-clamp-1 text-xs font-semibold text-slate-500">{cartao.modelo}</span>
         <span className={`mt-1 flex min-w-0 items-center gap-1.5 font-mono ${cartao.horimetro ? 'text-sm font-semibold text-slate-700' : 'text-xs text-slate-500'}`}>
-          <Gauge className="size-4 shrink-0 text-slate-400" aria-hidden="true" />
+          <Gauge className="size-4 shrink-0 text-slate-500" aria-hidden="true" />
           <span className="truncate">{cartao.horimetro ? `${numero(cartao.horimetro)} h` : 'sem horímetro'}</span>
         </span>
         <span className="mt-auto flex min-w-0 items-center gap-2 pt-2">
@@ -58,7 +58,7 @@ export function CartaoEquipamento({ cartao, onAbrir }: { cartao: CartaoFrota; on
           )}
         </span>
       </span>
-      <span className={`flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wide ring-1 ring-inset ${tom.etiqueta}`}>
+      <span className={`flex items-center gap-2 px-3 py-2 text-xs font-bold ring-1 ring-inset ${tom.etiqueta}`}>
         <span className={`size-2 shrink-0 rounded-full ${tom.ponto} ${cartao.grupo === 'operando' ? 'animate-pulse motion-reduce:animate-none' : ''}`} aria-hidden="true" />
         {ROTULO_GRUPO[cartao.grupo]}
       </span>

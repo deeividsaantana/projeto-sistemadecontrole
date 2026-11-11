@@ -62,7 +62,7 @@ function Situacao({ linha, quebra = false }: { linha: ConsumoEquipamento; quebra
 const COLUNAS_CONSUMO: ColunaTabela<ConsumoEquipamento>[] = [
   {
     chave: 'maquina', titulo: 'Máquina', larguraMinima: 90, larguraIdeal: 96,
-    render: linha => <span className="font-mono font-black text-slate-950">{linha.prefixo}</span>,
+    render: linha => <span className="tabular-nums font-black text-slate-950">{linha.prefixo}</span>,
     valorOrdenacao: linha => linha.prefixo,
     dica: linha => `${linha.prefixo} · ${linha.nome}`,
   },
@@ -218,7 +218,7 @@ export default function ConsumoPorMaquina({ abastecimentos, equipamentos, empres
           <label className="min-w-0 flex-1 lg:min-w-[14rem]">
             <span className={`${ROTULO} mb-1 block`}>Buscar máquina</span>
             <span className="relative block">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
               <input value={busca} onChange={event => setBusca(event.target.value)} placeholder="Prefixo, máquina ou empresa" className={`${CAMPO} pl-9`} />
             </span>
           </label>
@@ -245,7 +245,7 @@ export default function ConsumoPorMaquina({ abastecimentos, equipamentos, empres
           const Simbolo = Icone as typeof Gauge;
           return (
             <div key={titulo as string} data-comb-reveal className={`${CARTAO} px-4 py-2`}>
-              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"><Simbolo className="size-3.5" aria-hidden="true" />{titulo as string}</p>
+              <p className="flex items-center gap-1.5 text-xs font-bold text-slate-500"><Simbolo className="size-3.5" aria-hidden="true" />{titulo as string}</p>
               <p className={`text-xl font-black tabular-nums ${cor as string}`}>{valor as string}</p>
             </div>
           );
@@ -260,6 +260,7 @@ export default function ConsumoPorMaquina({ abastecimentos, equipamentos, empres
           </header>
           <div className="flex min-h-[18rem] flex-1 flex-col xl:min-h-0">
             <TabelaPadrao
+              exportar={false}
               titulo="Consumo de diesel por máquina"
               linhas={visiveis}
               colunas={COLUNAS_CONSUMO}
@@ -316,7 +317,7 @@ function FichaMaquina({ maquina, onVoltar }: { maquina: ConsumoEquipamento; onVo
         <button type="button" onClick={onVoltar} className={`${BOTAO_SECUNDARIO} mb-2 min-h-10 px-3 xl:hidden`}><ArrowLeft className="size-4" aria-hidden="true" />Voltar à lista</button>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h2 className="font-mono text-lg font-black text-slate-950">{maquina.prefixo}</h2>
+            <h2 className="tabular-nums text-lg font-black text-slate-950">{maquina.prefixo}</h2>
             <p className="truncate text-sm text-slate-500">{maquina.nome}{maquina.empresa ? ` · ${maquina.empresa}` : ''}</p>
           </div>
           <Situacao linha={maquina} />

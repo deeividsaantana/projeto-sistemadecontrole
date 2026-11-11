@@ -1,6 +1,5 @@
 // src/imports/normalizers.ts
 import { cleanImportValue, parseImportNumber, toImportIsoDate } from '../utils/importHelpers';
-import { normalizePlate, normalizePrefix } from '../utils/canonicalIdentity';
 
 export const normalizeImportDateOrNull = (value: unknown): string | null => {
   const iso = toImportIsoDate(value);
@@ -40,39 +39,6 @@ export const normalizeImportDecimalOrNull = (value: unknown): number | null => {
   // com zero inventado.
   if (!/\d/.test(text)) return null;
   return parseImportNumber(value);
-};
-
-// Tonelada mapeia para 't' minúsculo — não 'TON' — porque é o código que o
-// resto do app usa (UNIDADES em MateriaisTab.tsx, e a comparação de unidade
-// em materialsAnalytics.ts). Um valor diferente aqui zera silenciosamente o
-// resumo de toneladas de qualquer movimento importado.
-const UNIT_ALIASES: Record<string, string> = {
-  un: 'UN', und: 'UN', unid: 'UN', unidade: 'UN',
-  pc: 'PC', pca: 'PC', pcs: 'PC', peca: 'PC',
-  mt: 'MT', m: 'MT', metro: 'MT', metros: 'MT',
-  m3: 'M3', ton: 't', t: 't', tonelada: 't', toneladas: 't',
-};
-
-export const normalizeImportUnitOrNull = (value: unknown): string | null => {
-  const clean = cleanImportValue(value);
-  if (!clean) return null;
-  const key = clean.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').trim();
-  return UNIT_ALIASES[key] || clean.toUpperCase();
-};
-
-export const normalizeImportInvoiceOrNull = (value: unknown): string | null => {
-  const clean = cleanImportValue(value).replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-  return clean || null;
-};
-
-export const normalizeImportPlateOrNull = (value: unknown): string | null => {
-  const plate = normalizePlate(value);
-  return plate || null;
-};
-
-export const normalizeImportPrefixOrNull = (value: unknown): string | null => {
-  const prefix = normalizePrefix(value);
-  return prefix || null;
 };
 
 export const normalizeImportTextOrNull = (value: unknown): string | null => {

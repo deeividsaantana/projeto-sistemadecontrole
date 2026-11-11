@@ -32,10 +32,10 @@ test('botão principal diz o que será criado, nunca "Novo registro"', () => {
   assert.equal(categoriaCadastro('obras').acaoNovo, 'Novo local');
 });
 
-test('os tipos que a aba grava continuam disponíveis, com as subáreas de fornecedor', () => {
+test('os tipos que a aba grava continuam disponíveis, com as subáreas de fornecedor (Materiais saiu em 10/11/2026)', () => {
   assert.deepEqual(
     CADASTRO_CATEGORIAS.map(item => item.id).sort(),
-    ['canteiros', 'comboios', 'combustiveis', 'empresas', 'equipamentos', 'etapas', 'fornecedores', 'fornecedores-locacao', 'fornecedores-materiais', 'frentes', 'funcionarios', 'lubrificantes', 'obras', 'servicos', 'subfornecedores', 'terceiras', 'veiculos'],
+    ['canteiros', 'comboios', 'combustiveis', 'empresas', 'equipamentos', 'etapas', 'fornecedores', 'fornecedores-locacao', 'frentes', 'funcionarios', 'lubrificantes', 'obras', 'servicos', 'subfornecedores', 'terceiras', 'veiculos'],
   );
 });
 
@@ -48,8 +48,8 @@ test('aba Cadastros segue o padrão: cabeçalho, ação principal no topo e GSAP
   assert.match(tabSource, /\[data-cadastros-reveal\]/);
   // Tipos (abas no topo) e filtros vêm antes da lista; a central de planilha mestre saiu da tela
   assert.ok(tabSource.indexOf('label="Filtros de cadastros"') < tabSource.indexOf('<TelaCheia'));
-  assert.ok(tabSource.indexOf('<AbasDaTela id="cadastros"') < tabSource.indexOf('faixa={emLixeira ? cabecalhoDaLixeira : filtrosDaLista}'));
-  assert.ok(tabSource.indexOf('faixa={emLixeira ? cabecalhoDaLixeira : filtrosDaLista}') < tabSource.indexOf('id="database-lists-viewport"'));
+  assert.ok(tabSource.indexOf('<AbasDaTela id="cadastros"') < tabSource.indexOf('faixa={emSistema ? undefined : emLixeira ? cabecalhoDaLixeira : filtrosDaLista}'));
+  assert.ok(tabSource.indexOf('faixa={emSistema ? undefined : emLixeira ? cabecalhoDaLixeira : filtrosDaLista}') < tabSource.indexOf('id="database-lists-viewport"'));
   assert.doesNotMatch(tabSource, /MasterDataReviewCenter|Baixar base completa/);
 });
 
@@ -68,17 +68,17 @@ const empresa = (id: string, tipos?: Empresa['tipos']): Empresa => ({ id, nome: 
 
 test('subárea de fornecedor nasce também como fornecedor', () => {
   assert.deepEqual([...TIPOS_POR_CATEGORIA_EMPRESA['fornecedores-locacao']], ['FORNECEDOR', 'LOCACAO_EQUIPAMENTOS']);
-  assert.deepEqual([...TIPOS_POR_CATEGORIA_EMPRESA['fornecedores-materiais']], ['FORNECEDOR', 'MATERIAIS']);
   assert.deepEqual([...TIPOS_POR_CATEGORIA_EMPRESA.subfornecedores], ['FORNECEDOR', 'SUBFORNECEDOR']);
   assert.deepEqual([...TIPOS_POR_CATEGORIA_EMPRESA.terceiras], ['TERCEIRA']);
   // Registro antigo gravado só com a subárea continua na lista de fornecedores
   assert.equal(isSupplier(empresa('loc', ['LOCACAO_EQUIPAMENTOS'])), true);
   assert.equal(isEquipmentRentalSupplier(empresa('loc', ['FORNECEDOR', 'LOCACAO_EQUIPAMENTOS'])), true);
   assert.equal(isSubSupplier(empresa('sub', ['FORNECEDOR'])), false);
+  assert.equal('fornecedores-materiais' in TIPOS_POR_CATEGORIA_EMPRESA, false);
 });
 
 test('toda aba de empresa importa como empresa, inclusive Terceiras', () => {
-  ['empresas', 'terceiras', 'fornecedores', 'fornecedores-locacao', 'fornecedores-materiais', 'subfornecedores']
+  ['empresas', 'terceiras', 'fornecedores', 'fornecedores-locacao', 'subfornecedores']
     .forEach(id => assert.equal(isCategoriaEmpresa(id as never), true, id));
   ['etapas', 'obras', 'funcionarios'].forEach(id => assert.equal(isCategoriaEmpresa(id as never), false, id));
 });

@@ -10,7 +10,6 @@ import type {
   GrupoEquipe,
   ListaPresenca,
   Lubrificacao,
-  MovimentoMaterial,
   OrdemServico,
   PlanejamentoItem,
   PresencaApontamento,
@@ -76,7 +75,6 @@ export interface CadastroUsage extends RegistryUsage {
   gruposEquipe: readonly Pick<GrupoEquipe, 'funcionarioIds'>[];
   controleEquipamentosDiario: readonly (Pick<ControleEquipamentoDiario, 'equipamentoId' | 'funcionarioId'> & { local?: string })[];
   canteiros: readonly Pick<Canteiro, 'id' | 'nome'>[];
-  materiaisMovimentos: readonly Pick<MovimentoMaterial, 'etapaServicoId'>[];
   frentesServico: readonly Pick<FrenteServico, 'id' | 'nome'>[];
   producao: readonly Pick<RegistroProducao, 'servicoId' | 'frente'>[];
   planejamento: readonly Pick<PlanejamentoItem, 'servicoId' | 'frente'>[];
@@ -128,7 +126,6 @@ export const usosDoCadastro = (tabela: string, id: string, uso: CadastroUsage): 
     usos.push(...registryDependencies('lubrificante', id, uso));
   } else if (tabela === 'etapas') {
     usos.push(...registryDependencies('etapa', id, uso));
-    incluir('Movimentos de material', uso.materiaisMovimentos.filter(item => item.etapaServicoId === id).length);
   } else if (tabela === 'frentesServico') {
     // Produção e planejamento guardam a frente pelo nome, não pelo id.
     const nome = uso.frentesServico.find(item => item.id === id)?.nome;

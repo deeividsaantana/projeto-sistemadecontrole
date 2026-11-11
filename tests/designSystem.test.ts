@@ -16,5 +16,6 @@ assert.match(card, /className=\{cn\('renea-card/);
 assert.match(button, /renea-button/);
 assert.match(pageHeader, /compact\?/);
 assert.match(pageHeader, /renea-page-header--compact/);
-assert.match(launchForm, /renea-launch-layout/);
-assert.match(launchForm, /renea-launch-summary/);
+// Lançar da frota no modelo único de lançamento (etapas e conferência ao lado).
+assert.match(launchForm, /from '\.\.\/\.\.\/shared\/ui\/Lancamento'/);
+assert.match(launchForm, /<Conferencia/);

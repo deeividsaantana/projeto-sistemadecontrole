@@ -55,7 +55,7 @@ export default function OperationalAnalysisPanel({ analysis }: OperationalAnalys
             {(analysis.indicadores || []).map(indicator => (
               <div key={indicator.nome} className="grid gap-1 py-2 sm:grid-cols-[150px_110px_1fr]">
                 <dt className="font-bold text-slate-950">{indicator.nome}</dt>
-                <dd className="font-mono text-cyan-800">{indicator.valor}</dd>
+                <dd className="tabular-nums text-cyan-800">{indicator.valor}</dd>
                 <dd className={APAGADO}>{indicator.interpretacao}</dd>
               </div>
             ))}

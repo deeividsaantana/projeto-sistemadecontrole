@@ -243,22 +243,22 @@ export default function RelatorioDiesel({ abastecimentos, equipamentos, empresas
 
             <section aria-label="Números do período" className="grid grid-cols-2 gap-2 lg:grid-cols-4" data-testid="relatorio-numeros">
               <div data-comb-reveal className={`${CARTAO} px-4 py-3`}>
-                <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"><Fuel className="size-3.5" aria-hidden="true" />Litros</p>
+                <p className="flex items-center gap-1.5 text-xs font-bold text-slate-500"><Fuel className="size-3.5" aria-hidden="true" />Litros</p>
                 <p className="text-2xl font-black tabular-nums text-slate-950"><CountUp value={relatorio.litros} suffix=" L" /></p>
                 <Variacao valor={relatorio.variacao} anterior={relatorio.anterior.litros} />
               </div>
               <div data-comb-reveal className={`${CARTAO} px-4 py-3`}>
-                <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"><BarChart3 className="size-3.5" aria-hidden="true" />Média por dia</p>
+                <p className="flex items-center gap-1.5 text-xs font-bold text-slate-500"><BarChart3 className="size-3.5" aria-hidden="true" />Média por dia</p>
                 <p className="text-2xl font-black tabular-nums text-slate-950"><CountUp value={relatorio.mediaPorDia} suffix=" L" /></p>
                 <p className="text-xs font-semibold text-slate-500">{relatorio.maiorDia ? `Maior: ${dataCurta(relatorio.maiorDia.dia)}, ${litrosTexto(relatorio.maiorDia.litros)}` : 'Nenhum abastecimento'}</p>
               </div>
               <div data-comb-reveal className={`${CARTAO} px-4 py-3`}>
-                <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"><Truck className="size-3.5" aria-hidden="true" />Lançamentos</p>
+                <p className="flex items-center gap-1.5 text-xs font-bold text-slate-500"><Truck className="size-3.5" aria-hidden="true" />Lançamentos</p>
                 <p className="text-2xl font-black tabular-nums text-slate-950"><CountUp value={relatorio.lancamentos} /></p>
                 <p className="text-xs font-semibold text-slate-500">{relatorio.maquinas} máquina(s), {relatorio.diasComAbastecimento} dia(s) com diesel</p>
               </div>
               <div data-comb-reveal className={`${CARTAO} px-3 py-2`}>
-                <p className="flex items-center gap-1.5 px-1 text-xs font-bold uppercase tracking-wide text-slate-500"><AlertTriangle className="size-3.5" aria-hidden="true" />Para conferir</p>
+                <p className="flex items-center gap-1.5 px-1 text-xs font-bold text-slate-500"><AlertTriangle className="size-3.5" aria-hidden="true" />Para conferir</p>
                 <ul className="mt-1 space-y-0.5 text-sm font-semibold">
                   <Alerta icone={CopyX} rotulo="Repetidos" valor={relatorio.repetidos} testid="relatorio-alerta-repetidos" onAbrir={() => onAbrirLista({ ...doPeriodo, soRepetidos: true })} />
                   <Alerta icone={AlertTriangle} rotulo="A conferir" valor={relatorio.aConferir} testid="relatorio-alerta-conferir" onAbrir={() => onAbrirLista({ ...doPeriodo, soConferir: true })} />
@@ -294,9 +294,9 @@ function Variacao({ valor, anterior }: { valor?: number; anterior: number }) {
 
 function Alerta({ icone: Icone, rotulo, valor, testid, onAbrir }: { icone: typeof CopyX; rotulo: string; valor: number; testid: string; onAbrir?: () => void }) {
   const conteudo = <>
-    <Icone className={`size-4 shrink-0 ${valor ? 'text-amber-700' : 'text-slate-400'}`} aria-hidden="true" />
+    <Icone className={`size-4 shrink-0 ${valor ? 'text-amber-700' : 'text-slate-500'}`} aria-hidden="true" />
     <span className="flex-1 text-left">{rotulo}</span>
-    <strong className={`tabular-nums ${valor ? 'text-amber-900' : 'text-slate-400'}`}>{valor}</strong>
+    <strong className={`tabular-nums ${valor ? 'text-amber-900' : 'text-slate-500'}`}>{valor}</strong>
   </>;
   return (
     <li>
@@ -323,7 +323,7 @@ function GraficoPorDia({ relatorio, hoje, onAbrirDia }: { relatorio: ReturnType<
         <p className="text-xs font-semibold text-slate-500">Toque num dia para ver os lançamentos dele</p>
       </header>
       <div className="flex gap-2">
-        <div aria-hidden="true" className="flex h-40 w-10 shrink-0 flex-col justify-between text-right text-xs font-semibold tabular-nums text-slate-400 2xl:h-52">
+        <div aria-hidden="true" className="flex h-40 w-10 shrink-0 flex-col justify-between text-right text-xs font-semibold tabular-nums text-slate-500 2xl:h-52">
           <span>{teto.toLocaleString('pt-BR')}</span><span>{(teto / 2).toLocaleString('pt-BR')}</span><span>0</span>
         </div>
         <div className="relative min-w-0 flex-1">

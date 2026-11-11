@@ -10,7 +10,8 @@ import {
 } from '../../modules/estacas/avancoEstacas';
 import { suggestStakeLot } from '../../utils/stakeOperations';
 import { numero } from '../../utils/formato';
-import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, ROTULO } from '../cadastros/estilos';
+import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO } from '../cadastros/estilos';
+import { Campo, Conferencia, Conferido, Etapa } from '../../shared/ui/Lancamento';
 
 export interface PedidoDeCravacao {
   /** Estaca a cravar (prevista) ou já cravada para corrigir. */
@@ -38,8 +39,9 @@ const lerNumero = (valor: string) => {
 const paraCampo = (valor: number | undefined) => (Number(valor) > 0 ? String(valor).replace('.', ',') : '');
 
 /**
- * Lançar a cravação: escolhe a frente, a estaca que foi cravada (a próxima já
- * vem marcada), digita o comprimento e a profundidade e salva. "Salvar e
+ * Lançar a cravação, no modelo do Combustível (10/11/2026): duas etapas, qual
+ * estaca e quanto cravou, e ao lado a conferência do que vai ser salvo. A
+ * próxima estaca da frente já vem marcada. "Salvar e
  * cravar a próxima" deixa a folha pronta para a estaca seguinte da frente.
  */
 export default function FormCravacao({ hoje, controle, obras, responsavel, pedido, onSalvar, onCancelar }: Props) {
@@ -165,113 +167,113 @@ export default function FormCravacao({ hoje, controle, obras, responsavel, pedid
 
   const lotes = controle.lotes;
 
+  const nomeNaConferencia = editando ? nomeDaEstaca(editando) : estacaId === NOVA ? nome.trim() : nome;
+  const estacaOk = Boolean(frenteEscolhida && nomeNaConferencia);
+  const medidasOk = numeros.comprimento > 0 && numeros.cravado > 0 && numeros.cravado + numeros.perda <= numeros.comprimento + 0.001;
+
   return (
-    <form data-estacas-reveal onSubmit={event => salvar(event, !editando)} className={`${CARTAO} space-y-4 p-4 sm:p-5`} aria-labelledby="estacas-form-titulo" noValidate>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-[#5b6870]">{editando ? 'Corrigir cravação' : 'Lançar cravação'}</p>
-          <h2 id="estacas-form-titulo" className="text-xl font-bold text-slate-900">{editando ? nomeDaEstaca(editando) : 'Qual estaca foi cravada?'}</h2>
-        </div>
-        <button type="button" onClick={onCancelar} className={BOTAO_SECUNDARIO}><X className="size-5" aria-hidden="true" /> Fechar</button>
+    <form data-estacas-reveal onSubmit={event => salvar(event, !editando)} className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_21rem]" aria-label={editando ? 'Corrigir cravação' : 'Lançar cravação'} noValidate>
+      <div className="grid min-w-0 gap-4">
+        <Etapa numero={1} titulo={editando ? `Corrigindo ${nomeDaEstaca(editando)}` : 'Qual estaca foi cravada?'} ajuda="A próxima estaca da frente já vem marcada." feita={estacaOk}>
+          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+            <Campo rotulo="Frente" para="crav-frente">
+              <select id="crav-frente" value={frente} onChange={event => escolherFrente(event.target.value)} className={CAMPO} disabled={Boolean(editando)}>
+                {!frentes.length && <option value="">Escolha</option>}
+                {frentes.map(item => <option key={item} value={item === SEM_FRENTE ? '' : item}>{item}</option>)}
+                <option value={OUTRA_FRENTE}>Outra frente…</option>
+              </select>
+            </Campo>
+            {frente === OUTRA_FRENTE && (
+              <Campo rotulo="Nome da frente" para="crav-frente-nova">
+                <input id="crav-frente-nova" value={frenteNova} onChange={event => setFrenteNova(event.target.value)} placeholder="Ex.: AP 12 ferradura" className={CAMPO} />
+              </Campo>
+            )}
+            {!editando && (
+              <Campo rotulo="Estaca" para="crav-estaca">
+                <select id="crav-estaca" value={estacaId} onChange={event => escolherEstaca(event.target.value)} className={CAMPO}>
+                  {aCravar.map((item, indice) => <option key={item.id} value={item.id}>{nomeDaEstaca(item)}{indice === 0 ? ' (próxima)' : ''}</option>)}
+                  <option value={NOVA}>Estaca nova, fora do previsto</option>
+                </select>
+              </Campo>
+            )}
+            {!editando && estacaId === NOVA && (
+              <Campo rotulo="Nome ou número da estaca" para="crav-nome">
+                <input id="crav-nome" value={nome} onChange={event => setNome(event.target.value)} placeholder="Ex.: Estaca 21" className={CAMPO} />
+              </Campo>
+            )}
+            <Campo rotulo="Dia da cravação" para="crav-dia">
+              <input id="crav-dia" type="date" value={data} onChange={event => setData(event.target.value)} className={CAMPO} />
+            </Campo>
+          </div>
+        </Etapa>
+
+        <Etapa numero={2} titulo="Quanto cravou?" ajuda="Em metros. A sobra é a conta do que ficou acima do chão." feita={medidasOk}>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+            <Campo rotulo="Comprimento" para="crav-comprimento">
+              <input id="crav-comprimento" inputMode="decimal" value={comprimento} onChange={event => setComprimento(event.target.value)} placeholder="Ex.: 12" className={CAMPO} />
+            </Campo>
+            <Campo rotulo="Entrou na terra" para="crav-cravado">
+              <input id="crav-cravado" ref={campoCravado} inputMode="decimal" value={cravado} onChange={event => setCravado(event.target.value)} placeholder="Ex.: 10,5" className={CAMPO} />
+            </Campo>
+            <Campo rotulo="Perda, se houve" para="crav-perda">
+              <input id="crav-perda" inputMode="decimal" value={perda} onChange={event => setPerda(event.target.value)} placeholder="0" className={CAMPO} />
+            </Campo>
+            <Campo rotulo="Sobra">
+              <output className="flex min-h-11 items-center rounded-xl bg-[#f7f8f6] px-3 text-base font-bold tabular-nums text-slate-900 ring-1 ring-inset ring-slate-200" aria-live="polite">{numero(sobra, 2)} m</output>
+            </Campo>
+          </div>
+          <details className="mt-4 rounded-xl border border-slate-200 px-4 py-2">
+            <summary className="min-h-10 cursor-pointer py-2 text-sm font-semibold text-slate-700">Mais detalhes (local, lote da nota, responsável, observação)</summary>
+            <div className="grid gap-4 pb-3 pt-2 sm:grid-cols-2">
+              <Campo rotulo="Obra ou local" para="crav-local">
+                <select id="crav-local" value={obraLocalId} onChange={event => setObraLocalId(event.target.value)} className={CAMPO}>
+                  <option value="">Não informar</option>
+                  {obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                </select>
+              </Campo>
+              <Campo rotulo="Lote da nota fiscal" para="crav-lote">
+                <select id="crav-lote" value={loteId} onChange={event => setLoteId(event.target.value)} className={CAMPO}>
+                  <option value="">O sistema escolhe</option>
+                  {lotes.filter(item => !item.inativoEm).map(item => <option key={item.id} value={item.id}>NF {item.notaFiscal} · {item.perfilModelo || item.descricao}</option>)}
+                </select>
+              </Campo>
+              <Campo rotulo="Responsável" para="crav-quem">
+                <input id="crav-quem" value={quem} onChange={event => setQuem(event.target.value)} className={CAMPO} />
+              </Campo>
+              <Campo rotulo="Observação" para="crav-obs">
+                <input id="crav-obs" value={observacao} onChange={event => setObservacao(event.target.value)} className={CAMPO} />
+              </Campo>
+            </div>
+          </details>
+        </Etapa>
       </div>
 
-      {salvo && (
-        <p role="status" className="flex items-start gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">
-          <CheckCircle2 className="mt-0.5 size-5 shrink-0" aria-hidden="true" /> {salvo}
-        </p>
-      )}
-      {erro && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-800">{erro}</p>}
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <label className="space-y-1.5">
-          <span className={ROTULO}>Frente</span>
-          <select value={frente} onChange={event => escolherFrente(event.target.value)} className={CAMPO} disabled={Boolean(editando)}>
-            {!frentes.length && <option value="">Escolha</option>}
-            {frentes.map(item => <option key={item} value={item === SEM_FRENTE ? '' : item}>{item}</option>)}
-            <option value={OUTRA_FRENTE}>Outra frente…</option>
-          </select>
-        </label>
-        {frente === OUTRA_FRENTE && (
-          <label className="space-y-1.5">
-            <span className={ROTULO}>Nome da frente</span>
-            <input value={frenteNova} onChange={event => setFrenteNova(event.target.value)} placeholder="Ex.: AP 12 ferradura" className={CAMPO} />
-          </label>
+      <Conferencia subtitulo={editando ? 'Correção de uma estaca já cravada.' : 'Confira antes de salvar.'}>
+        <dl className="divide-y divide-slate-100">
+          <Conferido rotulo="Frente" ok={Boolean(frenteEscolhida)} valor={frenteEscolhida || 'falta'} />
+          <Conferido rotulo="Estaca" ok={Boolean(nomeNaConferencia)} valor={nomeNaConferencia || 'falta'} />
+          <Conferido rotulo="Comprimento" ok={numeros.comprimento > 0} valor={numeros.comprimento > 0 ? `${numero(numeros.comprimento, 2)} m` : 'falta'} />
+          <Conferido rotulo="Cravado" ok={numeros.cravado > 0} valor={numeros.cravado > 0 ? `${numero(numeros.cravado, 2)} m` : 'falta'} />
+          <Conferido rotulo="Sobra" ok={medidasOk} valor={`${numero(sobra, 2)} m`} />
+        </dl>
+        {salvo && (
+          <p role="status" className="flex items-start gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-sm font-bold text-[#176b4d]">
+            <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" /> {salvo}
+          </p>
         )}
-        {!editando && (
-          <label className="space-y-1.5">
-            <span className={ROTULO}>Estaca</span>
-            <select value={estacaId} onChange={event => escolherEstaca(event.target.value)} className={CAMPO}>
-              {aCravar.map((item, indice) => <option key={item.id} value={item.id}>{nomeDaEstaca(item)}{indice === 0 ? ' (próxima)' : ''}</option>)}
-              <option value={NOVA}>Estaca nova, fora do previsto</option>
-            </select>
-          </label>
-        )}
-        {!editando && estacaId === NOVA && (
-          <label className="space-y-1.5">
-            <span className={ROTULO}>Nome ou número da estaca</span>
-            <input value={nome} onChange={event => setNome(event.target.value)} placeholder="Ex.: Estaca 21" className={CAMPO} />
-          </label>
-        )}
-        <label className="space-y-1.5">
-          <span className={ROTULO}>Dia da cravação</span>
-          <input type="date" value={data} onChange={event => setData(event.target.value)} className={CAMPO} />
-        </label>
-        <label className="space-y-1.5">
-          <span className={ROTULO}>Comprimento da estaca (m)</span>
-          <input inputMode="decimal" value={comprimento} onChange={event => setComprimento(event.target.value)} placeholder="Ex.: 12" className={CAMPO} />
-        </label>
-        <label className="space-y-1.5">
-          <span className={ROTULO}>Quanto entrou na terra (m)</span>
-          <input ref={campoCravado} inputMode="decimal" value={cravado} onChange={event => setCravado(event.target.value)} placeholder="Ex.: 10,5" className={CAMPO} />
-        </label>
-        <label className="space-y-1.5">
-          <span className={ROTULO}>Perda (m), se houve</span>
-          <input inputMode="decimal" value={perda} onChange={event => setPerda(event.target.value)} placeholder="0" className={CAMPO} />
-        </label>
-        <div className="space-y-1.5">
-          <span className={ROTULO}>Sobra acima do chão</span>
-          <p className="flex min-h-11 items-center rounded-xl bg-[#f7f8f6] px-3 text-base font-bold tabular-nums text-slate-900" aria-live="polite">{numero(sobra, 2)} m</p>
+        {erro && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2.5 text-sm font-bold text-rose-700">{erro}</p>}
+        <div className="grid gap-2">
+          {editando ? (
+            <button type="submit" className={BOTAO_PRIMARIO}><CheckCircle2 className="size-5" aria-hidden="true" /> Salvar correção</button>
+          ) : (
+            <>
+              <button type="submit" className={BOTAO_PRIMARIO} data-testid="estacas-salvar-proxima"><SkipForward className="size-5" aria-hidden="true" /> Salvar e cravar a próxima</button>
+              <button type="button" onClick={event => salvar(event, false)} className={BOTAO_SECUNDARIO}><Hammer className="size-5" aria-hidden="true" /> Salvar e fechar</button>
+            </>
+          )}
+          <button type="button" onClick={onCancelar} className={BOTAO_SECUNDARIO}><X className="size-5" aria-hidden="true" /> Fechar</button>
         </div>
-      </div>
-
-      <details className="rounded-xl border border-slate-200 px-4 py-2">
-        <summary className="min-h-10 cursor-pointer py-2 text-sm font-semibold text-slate-700">Mais detalhes (obra, lote da nota, responsável, observação)</summary>
-        <div className="grid gap-4 pb-3 pt-2 sm:grid-cols-2">
-          <label className="space-y-1.5">
-            <span className={ROTULO}>Obra ou local</span>
-            <select value={obraLocalId} onChange={event => setObraLocalId(event.target.value)} className={CAMPO}>
-              <option value="">Não informar</option>
-              {obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
-            </select>
-          </label>
-          <label className="space-y-1.5">
-            <span className={ROTULO}>Lote da nota fiscal</span>
-            <select value={loteId} onChange={event => setLoteId(event.target.value)} className={CAMPO}>
-              <option value="">O sistema escolhe</option>
-              {lotes.filter(item => !item.inativoEm).map(item => <option key={item.id} value={item.id}>NF {item.notaFiscal} · {item.perfilModelo || item.descricao}</option>)}
-            </select>
-          </label>
-          <label className="space-y-1.5">
-            <span className={ROTULO}>Responsável</span>
-            <input value={quem} onChange={event => setQuem(event.target.value)} className={CAMPO} />
-          </label>
-          <label className="space-y-1.5">
-            <span className={ROTULO}>Observação</span>
-            <input value={observacao} onChange={event => setObservacao(event.target.value)} className={CAMPO} />
-          </label>
-        </div>
-      </details>
-
-      <div className="flex flex-wrap gap-2">
-        {editando ? (
-          <button type="submit" className={BOTAO_PRIMARIO}><CheckCircle2 className="size-5" aria-hidden="true" /> Salvar correção</button>
-        ) : (
-          <>
-            <button type="submit" className={BOTAO_PRIMARIO} data-testid="estacas-salvar-proxima"><SkipForward className="size-5" aria-hidden="true" /> Salvar e cravar a próxima</button>
-            <button type="button" onClick={event => salvar(event, false)} className={BOTAO_SECUNDARIO}><Hammer className="size-5" aria-hidden="true" /> Salvar e fechar</button>
-          </>
-        )}
-      </div>
+      </Conferencia>
     </form>
   );
 }

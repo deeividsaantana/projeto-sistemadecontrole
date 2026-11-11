@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
-  Building2,
   Check,
   CheckCircle2,
   Clock3,
@@ -12,7 +11,6 @@ import {
   UserRound,
   UserPlus,
   Wrench,
-  Zap,
 } from 'lucide-react';
 import type {
   ControleEquipamentoDiario,
@@ -34,6 +32,8 @@ import { getOperationalToday } from '../../fleet/time';
 import { normalizeEmployeeCode, normalizePrefix } from '../../utils/canonicalIdentity';
 import { ConfirmDialog, Modal } from '../../shared/ui';
 import { lancamentoDoDia, operadorEmOutroEquipamento } from '../../fleet/duplicidadeDiaria';
+import { BOTAO_SECUNDARIO, CAMPO } from '../cadastros/estilos';
+import { Campo, Conferencia, Conferido, Etapa } from '../../shared/ui/Lancamento';
 
 interface Props {
   record?: FleetPersistedRecord;
@@ -278,6 +278,7 @@ export default function DailyRecordForm({
   );
   useEffect(() => setConfirmouOperador(false), [form.employeeCode, form.employeeName, form.date]);
   const readyToSave = requiredChecks.every(item => item.ok);
+  const horarioOk = requiredChecks.filter(item => item.label === 'Horário de saída' || item.label === 'Entrada na manutenção').every(item => item.ok);
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm(current => ({ ...current, [key]: value }));
   const applyEmployee = (employeeId: string) => {
@@ -488,97 +489,101 @@ export default function DailyRecordForm({
         telaCheiaPadrao
         initialFocusRef={preset?.codigoFuncionario && !preset.prefixo ? prefixFieldRef : employeeCodeFieldRef}
         title={record ? `Editar lançamento · ${record.prefixo}` : 'Registrar situação da frota'}
-        description={(
-          <>
-            <span className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-emerald-700"><Zap size={12} aria-hidden="true"/>Central de lançamento</span>
-            <span className="hidden sm:inline">Motorista, equipamento e situação em um único fluxo. Os dados vinculados são preenchidos automaticamente.</span>
-          </>
-        )}
+        description="Quem opera, qual equipamento e a situação. O resto vem do cadastro."
         footer={(
           <div className="flex flex-col gap-2 sm:flex-row-reverse sm:items-center">
             <button type="button" disabled={saving} onClick={() => formRef.current?.requestSubmit()} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#176b4d] px-6 text-sm font-bold text-white transition hover:bg-[#125a40] active:scale-[0.99] disabled:cursor-wait disabled:opacity-60 sm:min-h-11 sm:w-auto"><Save size={17}/>{saving ? 'Salvando lançamento...' : record ? 'Salvar alterações' : 'Confirmar lançamento'}</button>
             <button type="button" disabled={saving} onClick={pedirFechar} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50 sm:w-auto">Cancelar</button>
-            <p className="text-center font-mono text-xs text-slate-400 sm:mr-auto sm:text-left">Ctrl + Enter salva · Esc fecha</p>
           </div>
         )}
       >
-        <form ref={formRef} onSubmit={handleSubmit} className="renea-launch-layout lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-4">
-          <div className="renea-launch-main space-y-3">
-            <div className="space-y-3">
-              <section className="renea-launch-step overflow-hidden rounded-xl border border-slate-200 bg-white">
-                <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
-                  <div><span className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700">Etapa 1</span><h3 className="mt-1 text-base font-black text-slate-950">Quem está operando?</h3></div>
-                  <span className="hidden rounded-md bg-slate-100 px-2 py-1 font-mono text-xs font-bold text-slate-500 sm:inline">Alt + M</span>
-                </div>
-                <div className="p-4">
-                <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
-                  <label className="text-xs font-bold text-slate-700">Matrícula / código<div className="relative mt-1"><UserRound className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16}/><input ref={employeeCodeFieldRef} value={form.employeeCode} onChange={event => update('employeeCode', event.target.value)} onBlur={lookupEmployeeCode} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); lookupEmployeeCode(); prefixFieldRef.current?.focus(); } }} placeholder="Ex.: 103206" className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 font-mono text-sm font-bold outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"/></div></label>
-                  <label className="text-xs font-bold text-slate-700">Motorista<select value={form.employeeId} onChange={event => applyEmployee(event.target.value)} className="mt-1 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"><option value="">Selecione ou use a matrícula</option>{[...activeEmployees].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(employee=><option key={employee.id} value={employee.id}>{employee.matricula ? `${employee.matricula} · ` : ''}{employee.nome}</option>)}</select></label>
-                </div>
-                {form.employeeId && <div className="mt-3 grid gap-2 rounded-xl bg-emerald-50/70 p-3 text-xs sm:grid-cols-2"><span className="flex items-center gap-2 font-bold text-emerald-900"><Building2 size={14}/>{form.employeeCompany || 'Empresa não informada'}</span><span className="flex items-center gap-2 font-bold text-emerald-900"><UserRound size={14}/>{form.teamName || 'Equipe não vinculada'}</span></div>}
-                {!form.employeeId && !form.temporaryDriver && <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500"><span>Não encontrou?</span>{onOpenDriverRegistry&&<button type="button" onClick={onOpenDriverRegistry} className="font-black text-emerald-700 hover:underline">Abrir mini lista</button>}<button type="button" onClick={()=>{update('temporaryDriver',true);setEmployeeLookupError('')}} className="inline-flex items-center gap-1 font-black text-emerald-700 hover:underline"><UserPlus size={13}/>Adicionar motorista manual</button></div>}
-                {form.temporaryDriver && <div className="mt-3 grid gap-3 rounded-xl border border-sky-200 bg-sky-50 p-3 sm:grid-cols-2"><label className="text-xs font-bold text-sky-900">Nome do motorista<input value={form.employeeName} onChange={event => update('employeeName', event.target.value.toUpperCase())} placeholder="Nome completo" className="mt-1 h-11 w-full rounded-lg border border-sky-200 bg-white px-3"/></label><p className="self-end text-xs leading-5 text-sky-800">Será marcado para vínculo posterior no cadastro.</p></div>}
-                {employeeLookupError && <div className="mt-3 flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold leading-5 text-amber-900"><AlertCircle size={17} className="mt-0.5 shrink-0"/><span>{employeeLookupError}</span></div>}
-                {operadorOcupado.length > 0 && (
-                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold leading-5 text-amber-900" data-testid="frota-operador-ocupado">
-                    <p className="flex gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0"/><span>{form.employeeName || 'Este operador'} já está lançado nesse dia no {operadorOcupado.map(item => `${item.prefixo}${item.horaSaida ? ` (saída ${item.horaSaida})` : ''}`).join(' e ')}.</span></p>
-                    <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-2 rounded-lg bg-white px-3 font-bold ring-1 ring-inset ring-amber-200"><input type="checkbox" checked={confirmouOperador} onChange={event => setConfirmouOperador(event.target.checked)} className="size-4 accent-[#176b4d]"/>Ele trocou de caminhão, lançar mesmo assim</label>
-                  </div>
-                )}
+        <form ref={formRef} onSubmit={handleSubmit} className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_21rem]">
+          <div className="grid min-w-0 gap-4">
+            <Etapa numero={1} titulo="Quem está operando?" ajuda="Digite a matrícula ou escolha na lista." feita={Boolean(form.employeeId || (form.temporaryDriver && form.employeeName.trim()))}>
+              <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                <Campo rotulo="Matrícula" para="frota-matricula">
+                  <span className="relative block"><UserRound className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} aria-hidden="true"/><input id="frota-matricula" ref={employeeCodeFieldRef} value={form.employeeCode} onChange={event => update('employeeCode', event.target.value)} onBlur={lookupEmployeeCode} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); lookupEmployeeCode(); prefixFieldRef.current?.focus(); } }} placeholder="Ex.: 103206" className={`${CAMPO} pl-10 pr-3 tabular-nums`}/></span>
+                </Campo>
+                <Campo rotulo="Motorista" para="frota-motorista">
+                  <select id="frota-motorista" value={form.employeeId} onChange={event => applyEmployee(event.target.value)} className={CAMPO}><option value="">Escolha ou use a matrícula</option>{[...activeEmployees].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(employee=><option key={employee.id} value={employee.id}>{employee.matricula ? `${employee.matricula} · ` : ''}{employee.nome}</option>)}</select>
+                </Campo>
               </div>
-              </section>
-
-              <section className="renea-launch-step overflow-hidden rounded-xl border border-slate-200 bg-white">
-                <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2.5"><div><span className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700">Etapa 2</span><h3 className="mt-1 text-base font-black text-slate-950">Qual equipamento?</h3></div><span className="hidden rounded-md bg-slate-100 px-2 py-1 font-mono text-xs font-bold text-slate-500 sm:inline">Alt + P</span></div>
-                <div className="p-4">
-                <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
-                  <label className="text-xs font-bold text-slate-700">Prefixo<div className="relative mt-1"><Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16}/><input ref={prefixFieldRef} value={form.prefix} onChange={event => update('prefix', event.target.value.toUpperCase())} onBlur={lookupPrefix} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); lookupPrefix(); } }} placeholder="Ex.: CB929" className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 font-mono text-base font-black uppercase outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"/></div></label>
-                  <label className="text-xs font-bold text-slate-700">Frota / equipamento<select value={form.equipmentId} onChange={event => applyEquipment(event.target.value)} className="mt-1 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"><option value="">Selecione ou use o prefixo</option>{[...operationalFleet].sort((a,b)=>a.prefixo.localeCompare(b.prefixo,'pt-BR',{numeric:true})).map(item=>{const classification=classifyOperationalFleet(item);return <option key={item.id} value={item.id}>{item.prefixo} · {classification.equipmentType}</option>})}</select></label>
+              {form.employeeId && <p className="mt-3 text-sm text-slate-600">{form.employeeCompany || 'Empresa não informada'} · {form.teamName || 'sem equipe'}</p>}
+              {!form.employeeId && !form.temporaryDriver && <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600"><span>Não achou?</span>{onOpenDriverRegistry&&<button type="button" onClick={onOpenDriverRegistry} className="min-h-11 font-bold text-[#176b4d] hover:underline">Ver a lista de motoristas</button>}<button type="button" onClick={()=>{update('temporaryDriver',true);setEmployeeLookupError('')}} className="inline-flex min-h-11 items-center gap-1 font-bold text-[#176b4d] hover:underline"><UserPlus size={15} aria-hidden="true"/>Digitar o nome</button></div>}
+              {form.temporaryDriver && <div className="mt-3"><Campo rotulo="Nome do motorista" para="frota-motorista-nome" dica="Fica marcado para ligar ao cadastro depois."><input id="frota-motorista-nome" value={form.employeeName} onChange={event => update('employeeName', event.target.value.toUpperCase())} placeholder="Nome completo" className={CAMPO}/></Campo></div>}
+              {employeeLookupError && <p className="mt-3 flex gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-sm font-semibold text-amber-900"><AlertCircle size={17} className="mt-0.5 shrink-0" aria-hidden="true"/><span>{employeeLookupError}</span></p>}
+              {operadorOcupado.length > 0 && (
+                <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2.5 text-sm font-semibold text-amber-900 ring-1 ring-inset ring-amber-200" data-testid="frota-operador-ocupado">
+                  <p className="flex gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" aria-hidden="true"/><span>{form.employeeName || 'Este operador'} já está lançado nesse dia no {operadorOcupado.map(item => `${item.prefixo}${item.horaSaida ? ` (saída ${item.horaSaida})` : ''}`).join(' e ')}.</span></p>
+                  <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-2 rounded-lg bg-white px-3 font-bold ring-1 ring-inset ring-amber-200"><input type="checkbox" checked={confirmouOperador} onChange={event => setConfirmouOperador(event.target.checked)} className="size-4 accent-[#176b4d]"/>Ele trocou de caminhão, lançar mesmo assim</label>
                 </div>
-                {selectedEquipment && <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl bg-slate-50 p-3 text-xs"><span className="font-black text-slate-900">{classifyOperationalFleet(selectedEquipment).equipmentType}</span><span className="text-slate-600">{form.equipmentCompany || 'Empresa não informada'}</span>{form.plate && <span className="font-mono text-slate-600">Placa {form.plate}</span>}</div>}
-                {equipmentLookupError && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800"><span>{equipmentLookupError}</span>{onOpenEquipmentRegistry&&<button type="button" onClick={onOpenEquipmentRegistry} className="rounded-lg border border-rose-200 bg-white px-3 py-2">Cadastrar equipamento</button>}</div>}
-                {lancamentoExistente && (
-                  <div className={`mt-3 flex gap-2 rounded-xl border p-3 text-xs font-semibold leading-5 ${record ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-amber-200 bg-amber-50 text-amber-900'}`} data-testid="frota-lancamento-existente">
-                    <AlertCircle size={17} className="mt-0.5 shrink-0"/>
-                    <span>
-                      <strong>{lancamentoExistente.prefixo} já foi lançado em {form.date.split('-').reverse().join('/')}</strong>: {lancamentoExistente.status}{lancamentoExistente.horaSaida ? `, saída ${lancamentoExistente.horaSaida}` : ''}{lancamentoExistente.nomeMotorista ? `, ${lancamentoExistente.nomeMotorista}` : ''}.{' '}
-                      {record ? 'Não dá para ter dois lançamentos do mesmo equipamento no dia: troque o equipamento ou a data.' : 'Salvar atualiza esse lançamento; não entra um segundo.'}
-                    </span>
-                  </div>
-                )}
+              )}
+            </Etapa>
+
+            <Etapa numero={2} titulo="Qual equipamento?" ajuda="Digite o prefixo; o resto vem do cadastro." feita={Boolean(form.equipmentId && form.prefix)}>
+              <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                <Campo rotulo="Prefixo" para="frota-prefixo">
+                  <span className="relative block"><Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} aria-hidden="true"/><input id="frota-prefixo" ref={prefixFieldRef} value={form.prefix} onChange={event => update('prefix', event.target.value.toUpperCase())} onBlur={lookupPrefix} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); lookupPrefix(); } }} placeholder="Ex.: CB929" className={`${CAMPO} pl-10 pr-3 uppercase tabular-nums`}/></span>
+                </Campo>
+                <Campo rotulo="Equipamento" para="frota-equipamento">
+                  <select id="frota-equipamento" value={form.equipmentId} onChange={event => applyEquipment(event.target.value)} className={CAMPO}><option value="">Escolha ou use o prefixo</option>{[...operationalFleet].sort((a,b)=>a.prefixo.localeCompare(b.prefixo,'pt-BR',{numeric:true})).map(item=>{const classification=classifyOperationalFleet(item);return <option key={item.id} value={item.id}>{item.prefixo} · {classification.equipmentType}</option>})}</select>
+                </Campo>
               </div>
-              </section>
+              {selectedEquipment && <p className="mt-3 text-sm text-slate-600">{classifyOperationalFleet(selectedEquipment).equipmentType} · {form.equipmentCompany || 'Empresa não informada'}{form.plate ? ` · placa ${form.plate}` : ''}</p>}
+              {equipmentLookupError && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-sm font-bold text-rose-800"><span>{equipmentLookupError}</span>{onOpenEquipmentRegistry&&<button type="button" onClick={onOpenEquipmentRegistry} className="min-h-11 rounded-lg bg-white px-3 ring-1 ring-inset ring-rose-200">Cadastrar equipamento</button>}</div>}
+              {lancamentoExistente && (
+                <p className={`mt-3 flex gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold ${record ? 'bg-rose-50 text-rose-800' : 'bg-amber-50 text-amber-900'}`} data-testid="frota-lancamento-existente">
+                  <AlertCircle size={17} className="mt-0.5 shrink-0" aria-hidden="true"/>
+                  <span>
+                    <strong>{lancamentoExistente.prefixo} já foi lançado em {form.date.split('-').reverse().join('/')}</strong>: {lancamentoExistente.status}{lancamentoExistente.horaSaida ? `, saída ${lancamentoExistente.horaSaida}` : ''}{lancamentoExistente.nomeMotorista ? `, ${lancamentoExistente.nomeMotorista}` : ''}.{' '}
+                    {record ? 'Não dá para ter dois lançamentos do mesmo equipamento no dia: troque o equipamento ou a data.' : 'Salvar atualiza esse lançamento; não entra um segundo.'}
+                  </span>
+                </p>
+              )}
+            </Etapa>
 
-              <section className="renea-launch-step overflow-hidden rounded-xl border border-slate-200 bg-white">
-                <div className="border-b border-slate-200 bg-slate-50 px-4 py-2.5"><span className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700">Etapa 3</span><h3 className="mt-1 text-base font-black text-slate-950">Qual é a situação agora?</h3><p className="mt-1 text-xs text-slate-500">Use os botões principais ou escolha uma situação adicional.</p></div>
-                <div className="p-4">
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{QUICK_STATUSES.map(({value,label,hint,icon:Icon,active})=><button key={value} type="button" onClick={()=>update('operationalStatus',value)} className={`group flex min-h-[76px] items-start gap-3 rounded-xl border p-3 text-left transition hover:-translate-y-0.5 hover:border-slate-400 active:translate-y-0 ${form.operationalStatus===value?active:'border-slate-200 bg-white text-slate-700'}`}><span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm"><Icon size={17}/></span><span><strong className="block text-sm">{label}</strong><small className="mt-1 block font-mono text-xs opacity-60">{hint}</small></span></button>)}</div>
-                <label className="mt-3 block text-xs font-bold text-slate-700">Outras situações<select value={form.operationalStatus} onChange={event => update('operationalStatus', event.target.value as FleetOperationalStatus)} className="mt-1 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold sm:max-w-sm">{FLEET_STATUS_DEFINITIONS.filter(item=>item.value!==FLEET_OPERATIONAL_STATUS.unclassified).map(item=><option key={item.value}>{item.value}</option>)}</select></label>
-
-                <div className="mt-5 grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2">
-                  {requiresDriver && <label className="text-xs font-bold text-slate-700">Horário de saída<div className="mt-1 flex gap-2"><input type="time" value={form.departureTime} onChange={event => update('departureTime', event.target.value)} className="h-12 min-w-0 flex-1 rounded-xl border border-slate-300 px-3 font-mono text-sm font-bold"/><button type="button" onClick={()=>update('departureTime',nowTime())} className="rounded-xl border border-slate-300 bg-slate-50 px-3 text-xs font-black text-slate-700">Agora</button></div></label>}
-                  {isMaintenanceFlow && <label className="text-xs font-bold text-slate-700">Entrada na manutenção<div className="mt-1 flex gap-2"><input type="time" value={form.maintenanceEntryTime} onChange={event => update('maintenanceEntryTime', event.target.value)} className="h-12 min-w-0 flex-1 rounded-xl border border-slate-300 px-3 font-mono text-sm font-bold"/><button type="button" onClick={()=>update('maintenanceEntryTime',nowTime())} className="rounded-xl border border-slate-300 bg-slate-50 px-3 text-xs font-black text-slate-700">Agora</button></div></label>}
-                  {form.operationalStatus===FLEET_OPERATIONAL_STATUS.available && <label className="text-xs font-bold text-slate-700">À disposição desde<div className="mt-1 flex gap-2"><input type="time" value={form.availableSince} onChange={event => update('availableSince', event.target.value)} className="h-12 min-w-0 flex-1 rounded-xl border border-slate-300 px-3 font-mono text-sm font-bold"/><button type="button" onClick={()=>update('availableSince',nowTime())} className="rounded-xl border border-slate-300 bg-slate-50 px-3 text-xs font-black text-slate-700">Agora</button></div></label>}
-                  <label className="text-xs font-bold text-slate-700">Data operacional<input required type="date" value={form.date} onChange={event => update('date', event.target.value)} className="mt-1 h-12 w-full rounded-xl border border-slate-300 px-3 font-mono text-sm font-bold"/></label>
-                  <label className="text-xs font-bold text-slate-700 sm:col-span-2">Local<div className="relative mt-1"><MapPin className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16}/><input value={form.location} onChange={event => update('location', event.target.value)} placeholder="Pátio Aracaré" className="h-12 w-full rounded-xl border border-slate-300 pl-10 pr-3 text-sm"/></div><span className="mt-2 flex flex-wrap gap-2">{['Pátio Aracaré','Frente de serviço','Manutenção'].map(location=><button key={location} type="button" onClick={()=>update('location',location)} className="min-h-11 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-600 hover:border-emerald-300 hover:text-emerald-800 sm:min-h-9">{location}</button>)}</span></label>
+            <Etapa numero={3} titulo="Qual é a situação agora?" ajuda="Toque numa das quatro; as outras ficam na lista abaixo." feita={readyToSave}>
+              <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">{QUICK_STATUSES.map(({value,label,icon:Icon,active})=><button key={value} type="button" aria-pressed={form.operationalStatus===value} onClick={()=>update('operationalStatus',value)} className={`flex min-h-12 items-center gap-2 rounded-xl border px-3 text-left text-sm font-bold transition ${form.operationalStatus===value?active:'border-slate-200 bg-white text-slate-700 hover:border-slate-400'}`}><Icon size={17} aria-hidden="true"/>{label}</button>)}</div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 sm:gap-4">
+                <Campo rotulo="Outras situações" para="frota-situacao">
+                  <select id="frota-situacao" value={form.operationalStatus} onChange={event => update('operationalStatus', event.target.value as FleetOperationalStatus)} className={CAMPO}>{FLEET_STATUS_DEFINITIONS.filter(item=>item.value!==FLEET_OPERATIONAL_STATUS.unclassified).map(item=><option key={item.value}>{item.value}</option>)}</select>
+                </Campo>
+                <Campo rotulo="Dia" para="frota-dia">
+                  <input id="frota-dia" required type="date" value={form.date} onChange={event => update('date', event.target.value)} className={`${CAMPO} tabular-nums`}/>
+                </Campo>
+                {requiresDriver && <Campo rotulo="Saída" para="frota-saida"><span className="flex gap-2"><input id="frota-saida" type="time" value={form.departureTime} onChange={event => update('departureTime', event.target.value)} className={`${CAMPO} min-w-0 flex-1 tabular-nums`}/><button type="button" onClick={()=>update('departureTime',nowTime())} className={BOTAO_SECUNDARIO}>Agora</button></span></Campo>}
+                {isMaintenanceFlow && <Campo rotulo="Entrada na manutenção" para="frota-entrada"><span className="flex gap-2"><input id="frota-entrada" type="time" value={form.maintenanceEntryTime} onChange={event => update('maintenanceEntryTime', event.target.value)} className={`${CAMPO} min-w-0 flex-1 tabular-nums`}/><button type="button" onClick={()=>update('maintenanceEntryTime',nowTime())} className={BOTAO_SECUNDARIO}>Agora</button></span></Campo>}
+                {form.operationalStatus===FLEET_OPERATIONAL_STATUS.available && <Campo rotulo="À disposição desde" para="frota-disposicao"><span className="flex gap-2"><input id="frota-disposicao" type="time" value={form.availableSince} onChange={event => update('availableSince', event.target.value)} className={`${CAMPO} min-w-0 flex-1 tabular-nums`}/><button type="button" onClick={()=>update('availableSince',nowTime())} className={BOTAO_SECUNDARIO}>Agora</button></span></Campo>}
+              </div>
+              {isMaintenanceFlow && (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 sm:gap-4">
+                  <Campo rotulo="OS vinculada" para="frota-os"><select id="frota-os" value={form.maintenanceOrderId} onChange={event=>update('maintenanceOrderId',event.target.value)} className={CAMPO}><option value="">Sem OS</option>{relevantOrders.map(order=><option key={order.id} value={order.id}>{order.numero} · {order.status}</option>)}</select></Campo>
+                  <Campo rotulo="Motivo" para="frota-motivo" className="sm:col-span-2"><textarea id="frota-motivo" value={form.maintenanceReason} onChange={event => update('maintenanceReason', event.target.value)} rows={2} className={`${CAMPO} p-3`} placeholder="Quebra, preventiva, pneu, elétrica..."/></Campo>
                 </div>
-
-                {isMaintenanceFlow && <div className="mt-4 grid gap-3 rounded-xl border border-rose-100 bg-rose-50/60 p-3 sm:grid-cols-2"><label className="text-xs font-bold text-rose-900">OS vinculada<select value={form.maintenanceOrderId} onChange={event=>update('maintenanceOrderId',event.target.value)} className="mt-1 h-11 w-full rounded-lg border border-rose-200 bg-white px-3"><option value="">Sem OS</option>{relevantOrders.map(order=><option key={order.id} value={order.id}>{order.numero} · {order.status}</option>)}</select></label><label className="text-xs font-bold text-rose-900 sm:col-span-2">Ocorrência / motivo<textarea value={form.maintenanceReason} onChange={event => update('maintenanceReason', event.target.value)} rows={3} className="mt-1 w-full rounded-lg border border-rose-200 bg-white p-3" placeholder="Quebra, preventiva, pneu, elétrica..."/></label>{onOpenMaintenance&&<button type="button" onClick={onOpenMaintenance} className="min-h-11 justify-self-start text-xs font-black text-rose-800 hover:underline sm:min-h-9">Abrir área de manutenção</button>}</div>}
-                <label className="mt-4 block text-xs font-bold text-slate-700">Observação operacional <span className="font-normal text-slate-400">(opcional)</span><textarea value={form.note} onChange={event => update('note', event.target.value)} rows={3} className="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="Registre somente informações importantes para o próximo turno."/></label>
-              </div>
-              </section>
-              {submitError && <p role="alert" className="flex gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800"><AlertCircle size={18} className="shrink-0"/>{submitError}</p>}
-            </div>
+              )}
+              <details className="mt-4 rounded-xl border border-slate-200 px-4 py-2">
+                <summary className="min-h-10 cursor-pointer py-2 text-sm font-semibold text-slate-700">Mais detalhes (local e observação)</summary>
+                <div className="grid gap-4 pb-3 pt-2 sm:grid-cols-2">
+                  <Campo rotulo="Local" para="frota-local"><span className="relative block"><MapPin className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} aria-hidden="true"/><input id="frota-local" value={form.location} onChange={event => update('location', event.target.value)} placeholder="Pátio, frente de serviço..." className={`${CAMPO} pl-10 pr-3`}/></span></Campo>
+                  <Campo rotulo="Observação" para="frota-obs"><input id="frota-obs" value={form.note} onChange={event => update('note', event.target.value)} className={CAMPO} placeholder="Só o que o próximo turno precisa saber"/></Campo>
+                </div>
+              </details>
+              {onOpenMaintenance && isMaintenanceFlow && <button type="button" onClick={onOpenMaintenance} className="mt-3 min-h-11 text-sm font-bold text-[#176b4d] hover:underline">Abrir a Manutenção</button>}
+            </Etapa>
           </div>
 
-          <aside className="renea-launch-summary mt-3 rounded-xl border border-slate-200 bg-white p-4 lg:sticky lg:top-0 lg:mt-0 lg:self-start">
-            <div className="flex items-center justify-between"><p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Conferência antes de salvar</p><span className={`size-2.5 rounded-full ${readyToSave?'bg-emerald-400':'bg-amber-400'}`}/></div>
-            <h3 className="mt-5 font-mono text-4xl font-black tracking-[-0.06em] text-slate-800">{form.prefix || '—'}</h3>
-            <p className="mt-1 text-sm font-semibold text-slate-700">{selectedEquipment ? classifyOperationalFleet(selectedEquipment).equipmentType : 'Equipamento ainda não selecionado'}</p>
-            <div className={`mt-5 inline-flex rounded-lg border px-3 py-2 text-xs font-black ${statusDefinition?.textClass || 'text-slate-800'} ${statusDefinition?.backgroundClass || 'bg-white'} ${statusDefinition?.borderClass || 'border-slate-200'}`}>{form.operationalStatus}</div>
-            <dl className="mt-6 divide-y divide-slate-100 border-y border-slate-100 text-sm"><div className="grid grid-cols-[90px_1fr] gap-3 py-3"><dt className="text-slate-500">Motorista</dt><dd className="text-right font-bold text-slate-700">{form.employeeName || 'Não informado'}</dd></div><div className="grid grid-cols-[90px_1fr] gap-3 py-3"><dt className="text-slate-500">Horário</dt><dd className="text-right font-mono font-bold text-slate-700">{form.departureTime || form.maintenanceEntryTime || form.availableSince || '—'}</dd></div><div className="grid grid-cols-[90px_1fr] gap-3 py-3"><dt className="text-slate-500">Local</dt><dd className="text-right font-bold text-slate-700">{form.location || 'Não informado'}</dd></div><div className="grid grid-cols-[90px_1fr] gap-3 py-3"><dt className="text-slate-500">Data</dt><dd className="text-right font-mono font-bold text-slate-700">{form.date ? new Date(`${form.date}T12:00:00`).toLocaleDateString('pt-BR') : '—'}</dd></div></dl>
-            <div className="mt-6"><p className="text-xs font-black text-slate-800">Itens obrigatórios</p><ul className="mt-3 space-y-2">{requiredChecks.map(item=><li key={item.label} className={`flex items-center gap-2 text-xs font-semibold ${item.ok?'text-emerald-700':'text-slate-400'}`}><span className={`flex size-5 items-center justify-center rounded-full ${item.ok?'bg-emerald-400/15':'bg-slate-100'}`}>{item.ok?<Check size={12}/>:<span className="size-1.5 rounded-full bg-slate-400"/>}</span>{item.label}</li>)}</ul></div>
-          </aside>
+          <Conferencia subtitulo="Ctrl + Enter salva · Esc fecha">
+            <dl className="divide-y divide-slate-100">
+              <Conferido rotulo="Equipamento" ok={Boolean(form.equipmentId && form.prefix)} valor={form.prefix || 'falta'} />
+              <Conferido rotulo="Situação" ok valor={form.operationalStatus} />
+              <Conferido rotulo="Motorista" ok={!requiresDriver || Boolean(form.employeeId || (form.temporaryDriver && form.employeeName.trim()))} valor={form.employeeName || (requiresDriver ? 'falta' : '—')} />
+              <Conferido rotulo="Horário" ok={horarioOk} valor={form.departureTime || form.maintenanceEntryTime || form.availableSince || '—'} />
+              <Conferido rotulo="Dia" ok={Boolean(form.date)} valor={form.date ? new Date(`${form.date}T12:00:00`).toLocaleDateString('pt-BR') : 'falta'} />
+            </dl>
+            {submitError
+              ? <p role="alert" className="flex items-start gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-sm font-bold text-rose-700"><AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true"/>{submitError}</p>
+              : <p role="status" className={`flex items-start gap-2 rounded-xl px-3 py-2.5 text-sm font-bold ${readyToSave ? 'bg-emerald-50 text-[#176b4d]' : 'bg-[#f7f8f6] text-slate-600'}`}>{readyToSave ? <Check size={16} className="mt-0.5 shrink-0" aria-hidden="true"/> : <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true"/>}{readyToSave ? 'Pronto para salvar.' : `Falta: ${requiredChecks.filter(item => !item.ok).map(item => item.label.toLowerCase()).join(', ')}.`}</p>}
+          </Conferencia>
         </form>
       </Modal>
       <ConfirmDialog

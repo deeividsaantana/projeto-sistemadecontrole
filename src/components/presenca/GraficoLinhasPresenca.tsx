@@ -112,7 +112,7 @@ export default function GraficoLinhasPresenca({ pontos }: Props) {
               onClick={() => setOcultas(atual => (ligada
                 ? (atual.length < SERIES.length - 1 ? [...atual, serie.chave] : atual)
                 : atual.filter(item => item !== serie.chave)))}
-              className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold transition duration-200 ${ligada ? 'border-slate-200 bg-white text-slate-800' : 'border-dashed border-slate-200 bg-slate-50 text-slate-400'} ${FOCO}`}
+              className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold transition duration-200 ${ligada ? 'border-slate-200 bg-white text-slate-800' : 'border-dashed border-slate-200 bg-slate-50 text-slate-500'} ${FOCO}`}
             >
               <i className={`h-1 w-4 rounded-full ${ligada ? '' : 'opacity-30'}`} style={{ backgroundColor: serie.cor }} aria-hidden="true" />
               {serie.nome}
@@ -148,9 +148,9 @@ export default function GraficoLinhasPresenca({ pontos }: Props) {
       ) : (
         <div className="mt-3">
           <div className="relative pl-8">
-            <span className="absolute left-0 top-0 text-xs tabular-nums text-slate-400">{br(maior)}</span>
-            <span className="absolute left-0 top-1/2 -translate-y-1/2 text-xs tabular-nums text-slate-400">{br(Math.round(maior / 2))}</span>
-            <span className="absolute bottom-0 left-0 text-xs tabular-nums text-slate-400">0</span>
+            <span className="absolute left-0 top-0 text-xs tabular-nums text-slate-500">{br(maior)}</span>
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 text-xs tabular-nums text-slate-500">{br(Math.round(maior / 2))}</span>
+            <span className="absolute bottom-0 left-0 text-xs tabular-nums text-slate-500">0</span>
             <div
               className="relative h-52 touch-pan-y"
               onPointerMove={escolherPeloPonteiro}

@@ -15,6 +15,7 @@ import {
   type FaixaChuva,
 } from '../utils/mapaChuva';
 import { OBRA } from '../config/obra';
+import { CAMPO } from './cadastros/estilos';
 
 interface MapaChuvaProps {
   diarios: DiarioObra[];
@@ -143,7 +144,7 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
               <select
                 value={selecionado}
                 onChange={event => setSelecionado(event.target.value)}
-                className="min-h-11 rounded-lg border border-[#e2e8e4] bg-white px-3 text-sm font-medium text-[#14231e]"
+                className={`${CAMPO}`}
               >
                 {meses.map(item => (
                   <option key={`${item.ano}-${item.mes}`} value={`${item.ano}-${item.mes}`}>
@@ -172,7 +173,7 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
           { rotulo: 'Dias sem diário', valor: String(dados.diasSemDiario) },
         ].map(item => (
           <div key={item.rotulo} className="min-w-0 rounded-lg border border-[#e2e8e4] p-3">
-            <p className="text-xs font-bold uppercase leading-tight tracking-wide text-slate-500">{item.rotulo}</p>
+            <p className="text-xs font-bold leading-tight text-slate-500">{item.rotulo}</p>
             <strong className="mt-1 block truncate text-xl font-black tabular-nums text-[#101a22]">{item.valor}</strong>
           </div>
         ))}

@@ -2,7 +2,8 @@
  * Tipos de cadastro mestre e o agrupamento que a aba Cadastros mostra.
  *
  * A ordem aqui é a ordem da tela: quem abre a aba procura primeiro gente e
- * máquina, depois obra e insumos. O texto do botão principal mora junto de
+ * empresas, depois máquina e insumos, depois obra. Três grupos só, para a aba
+ * ter poucas opções no topo (10/11/2026). O texto do botão principal mora junto de
  * cada tipo para não virar "Novo registro" genérico, que obriga a pessoa a
  * conferir em qual sub-aba está antes de clicar.
  */
@@ -11,7 +12,6 @@ export type CadastroCategoriaId =
   | 'empresas'
   | 'fornecedores'
   | 'fornecedores-locacao'
-  | 'fornecedores-materiais'
   | 'subfornecedores'
   | 'terceiras'
   | 'equipamentos'
@@ -25,7 +25,7 @@ export type CadastroCategoriaId =
   | 'lubrificantes'
   | 'canteiros';
 
-export type CadastroGrupoId = 'pessoas' | 'fornecedores' | 'frota' | 'obra' | 'insumos';
+export type CadastroGrupoId = 'pessoas' | 'frota' | 'obra';
 
 export interface CadastroCategoria {
   id: CadastroCategoriaId;
@@ -36,20 +36,17 @@ export interface CadastroCategoria {
 
 export const CADASTRO_GRUPOS: readonly { id: CadastroGrupoId; label: string }[] = [
   { id: 'pessoas', label: 'Pessoas e empresas' },
-  { id: 'fornecedores', label: 'Fornecedores' },
-  { id: 'frota', label: 'Frota' },
+  { id: 'frota', label: 'Frota e insumos' },
   { id: 'obra', label: 'Obra' },
-  { id: 'insumos', label: 'Insumos' },
 ];
 
 export const CADASTRO_CATEGORIAS: readonly CadastroCategoria[] = [
   { id: 'funcionarios', grupo: 'pessoas', label: 'Colaboradores', acaoNovo: 'Novo colaborador' },
   { id: 'empresas', grupo: 'pessoas', label: 'Empresas', acaoNovo: 'Nova empresa' },
   { id: 'terceiras', grupo: 'pessoas', label: 'Terceiras', acaoNovo: 'Nova terceira' },
-  { id: 'fornecedores', grupo: 'fornecedores', label: 'Todos os fornecedores', acaoNovo: 'Novo fornecedor' },
-  { id: 'fornecedores-locacao', grupo: 'fornecedores', label: 'Locação de equipamentos', acaoNovo: 'Nova locadora' },
-  { id: 'fornecedores-materiais', grupo: 'fornecedores', label: 'Materiais', acaoNovo: 'Novo fornecedor de materiais' },
-  { id: 'subfornecedores', grupo: 'fornecedores', label: 'Subfornecedores', acaoNovo: 'Novo subfornecedor' },
+  { id: 'fornecedores', grupo: 'pessoas', label: 'Todos os fornecedores', acaoNovo: 'Novo fornecedor' },
+  { id: 'fornecedores-locacao', grupo: 'pessoas', label: 'Locação de equipamentos', acaoNovo: 'Nova locadora' },
+  { id: 'subfornecedores', grupo: 'pessoas', label: 'Subfornecedores', acaoNovo: 'Novo subfornecedor' },
   { id: 'equipamentos', grupo: 'frota', label: 'Equipamentos', acaoNovo: 'Novo equipamento' },
   { id: 'veiculos', grupo: 'frota', label: 'Veículos', acaoNovo: 'Novo veículo' },
   { id: 'comboios', grupo: 'frota', label: 'Comboios', acaoNovo: 'Novo comboio' },
@@ -58,8 +55,8 @@ export const CADASTRO_CATEGORIAS: readonly CadastroCategoria[] = [
   { id: 'etapas', grupo: 'obra', label: 'Ramos e locais', acaoNovo: 'Novo ramo ou local' },
   { id: 'frentes', grupo: 'obra', label: 'Frentes de serviço', acaoNovo: 'Nova frente' },
   { id: 'servicos', grupo: 'obra', label: 'Serviços da obra', acaoNovo: 'Novo serviço' },
-  { id: 'combustiveis', grupo: 'insumos', label: 'Combustíveis', acaoNovo: 'Novo combustível' },
-  { id: 'lubrificantes', grupo: 'insumos', label: 'Lubrificantes', acaoNovo: 'Novo lubrificante' },
+  { id: 'combustiveis', grupo: 'frota', label: 'Combustíveis', acaoNovo: 'Novo combustível' },
+  { id: 'lubrificantes', grupo: 'frota', label: 'Lubrificantes', acaoNovo: 'Novo lubrificante' },
 ];
 
 export const categoriasDoGrupo = (grupo: CadastroGrupoId) =>
@@ -68,8 +65,8 @@ export const categoriasDoGrupo = (grupo: CadastroGrupoId) =>
 export const categoriaCadastro = (id: CadastroCategoriaId): CadastroCategoria =>
   CADASTRO_CATEGORIAS.find(categoria => categoria.id === id) ?? CADASTRO_CATEGORIAS[0];
 
-type EmpresaCategoriaId = Extract<CadastroCategoriaId, 'empresas' | 'terceiras' | 'fornecedores' | 'fornecedores-locacao' | 'fornecedores-materiais' | 'subfornecedores'>;
-type EmpresaTipo = 'EMPRESA' | 'TERCEIRA' | 'FORNECEDOR' | 'LOCACAO_EQUIPAMENTOS' | 'MATERIAIS' | 'SUBFORNECEDOR';
+type EmpresaCategoriaId = Extract<CadastroCategoriaId, 'empresas' | 'terceiras' | 'fornecedores' | 'fornecedores-locacao' | 'subfornecedores'>;
+type EmpresaTipo = 'EMPRESA' | 'TERCEIRA' | 'FORNECEDOR' | 'LOCACAO_EQUIPAMENTOS' | 'SUBFORNECEDOR';
 
 /** Classes com que um cadastro nasce quando é criado ou importado em cada tipo. */
 export const TIPOS_POR_CATEGORIA_EMPRESA: Readonly<Record<EmpresaCategoriaId, readonly EmpresaTipo[]>> = {
@@ -77,7 +74,6 @@ export const TIPOS_POR_CATEGORIA_EMPRESA: Readonly<Record<EmpresaCategoriaId, re
   terceiras: ['TERCEIRA'],
   fornecedores: ['FORNECEDOR'],
   'fornecedores-locacao': ['FORNECEDOR', 'LOCACAO_EQUIPAMENTOS'],
-  'fornecedores-materiais': ['FORNECEDOR', 'MATERIAIS'],
   subfornecedores: ['FORNECEDOR', 'SUBFORNECEDOR'],
 };
 

@@ -207,7 +207,7 @@ export const exportWeeklyFleetPdf = async (
     pdf.setPage(page);
     pdf.setFontSize(7);
     pdf.setTextColor('#687078');
-    pdf.text(`Sistema RENEA · Página ${page} de ${pages}`, 288, 204, { align: 'right' });
+    pdf.text(`Cintravyse · Página ${page} de ${pages}`, 288, 204, { align: 'right' });
   }
   const fileName = `RELATORIO_SEMANAL_FROTAS_${report.startDate}_A_${report.endDate}.pdf`;
   pdf.save(fileName);
@@ -216,7 +216,7 @@ export const exportWeeklyFleetPdf = async (
 
 export const buildWeeklyFleetWorkbook = async (report: WeeklyFleetReport): Promise<ExcelJS.Workbook> => {
   const workbook = await createCorporateWorkbook();
-  workbook.creator = 'Sistema RENEA';
+  workbook.creator = 'Cintravyse';
   workbook.created = new Date();
   const summary = workbook.addWorksheet('RESUMO SEMANAL', { views: [{ showGridLines: false }] });
   summary.mergeCells('A1:G1');

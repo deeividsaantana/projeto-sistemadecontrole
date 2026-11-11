@@ -94,6 +94,7 @@ export function TabNavigation({ items, activeId, onSelect, className = '' }: Tab
     >
       {items.map((item, idx) => (
         <button
+              type="button"
           key={item.id}
           onClick={() => handleButtonClick(idx, item.id)}
           onKeyDown={(e) => {

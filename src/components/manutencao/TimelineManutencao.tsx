@@ -106,7 +106,7 @@ export function TimelineManutencao({ eventos, statusAtual }: Props) {
   return (
     <div
       ref={containerRef}
-      className="relative space-y-0 rounded-xl border border-slate-200 bg-white p-4 overflow-hidden"
+      className="relative space-y-0 rounded-2xl border border-slate-200 bg-white p-4 overflow-hidden"
     >
       {/* Linha conectora vertical */}
       {eventos.length > 1 && (
@@ -145,8 +145,8 @@ export function TimelineManutencao({ eventos, statusAtual }: Props) {
               <div className={`space-y-2 rounded-lg border px-3 py-2 ${corClasse}`}>
                 {/* Hora e status */}
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="font-mono text-sm font-bold">{evento.hora}</span>
-                  <span className="min-w-0 break-words text-xs font-bold uppercase tracking-wide opacity-75">
+                  <span className="tabular-nums text-sm font-bold">{evento.hora}</span>
+                  <span className="min-w-0 break-words text-xs font-bold opacity-75">
                     {evento.descricao}
                   </span>
                 </div>

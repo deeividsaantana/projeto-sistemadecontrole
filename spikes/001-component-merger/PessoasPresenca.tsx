@@ -13,7 +13,6 @@ import type {
   PresencaApontamento,
   HistoricoPresenca,
   ControleEquipamentoDiario,
-  TicketJazida,
   PresencaStatus 
 } from '../../src/types';
 
@@ -26,7 +25,6 @@ interface PessoasPresencaProps {
   presencasLink: PresencaApontamento[];
   historicoPresencas: HistoricoPresenca[];
   controlesEquipamentos: ControleEquipamentoDiario[];
-  ticketsJazida: TicketJazida[];
   
   // Callbacks
   onSaveGrupoEquipe: (grupo: GrupoEquipe, isNew: boolean) => void;
@@ -46,7 +44,6 @@ export default function PessoasPresenca({
   presencasLink,
   historicoPresencas,
   controlesEquipamentos,
-  ticketsJazida,
   onSaveGrupoEquipe,
   onDeleteGrupoEquipe,
   onUpdatePresencaLink,

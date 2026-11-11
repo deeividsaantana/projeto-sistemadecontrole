@@ -3,16 +3,17 @@ import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { reduzMovimento } from '../shared/motion/reduzMovimento';
 import { Eye, EyeOff, LogIn, ShieldCheck } from 'lucide-react';
+import { PRODUTO } from '../config/marca';
+import { AmbienteCliente, MarcaProduto, SimboloProduto } from '../shared/ui/MarcaProduto';
 
-/* Fotos editoriais RENEA — servem como background full-bleed. */
-import bgRodovia1600 from '../assets/renea-editorial/rodovia-duplicada-1600.webp';
-import bgPonte1600 from '../assets/renea-editorial/ponte-construcao-1600.webp';
-import bgSerra1600 from '../assets/renea-editorial/rodovia-serra-1600.webp';
+/* Fotos de obra que servem como fundo da entrada. */
+import bgRodovia1600 from '../assets/obra-fotos/rodovia-duplicada-1600.webp';
+import bgPonte1600 from '../assets/obra-fotos/ponte-construcao-1600.webp';
+import bgSerra1600 from '../assets/obra-fotos/rodovia-serra-1600.webp';
 
 const BG_IMAGES = [bgRodovia1600, bgPonte1600, bgSerra1600];
 
 interface LoginScreenProps {
-  logoSrc: string;
   username: string;
   password: string;
   showPassword: boolean;
@@ -38,7 +39,7 @@ export function AuthLoadingScreen() {
 }
 
 export function LoginScreen({
-  logoSrc, username, password, showPassword, isAuthenticating,
+  username, password, showPassword, isAuthenticating,
   loginError, loginNotice, onUsernameChange, onPasswordChange,
   onTogglePasswordVisibility, onSubmit, onPasswordRecovery,
 }: LoginScreenProps) {
@@ -77,45 +78,39 @@ export function LoginScreen({
       </div>
       <div className="login-grid">
         <div ref={brandRef} className="login-brand">
-          <div data-login-reveal className="flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-white/70">
-            <span className="login-pulse-dot" />
-            Operação conectada
+          <div data-login-reveal>
+            <MarcaProduto claro />
           </div>
           <div data-login-reveal className="max-w-lg">
-            <p className="mb-3 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-white/60">RENEA Infraestrutura</p>
-            <h1 className="max-w-[16ch] text-[clamp(2.5rem,5vw,4rem)] font-black leading-[0.95] tracking-[-0.04em] text-white">
-              Conectando obras ao{' '}
-              <span className="text-emerald-300">futuro da infraestrutura.</span>
+            <h1 className="max-w-[16ch] text-[clamp(2.25rem,4.5vw,3.5rem)] font-black leading-[1] tracking-[-0.04em] text-white">
+              {PRODUTO.descricao}.
             </h1>
-            <p className="mt-4 max-w-md text-sm leading-relaxed text-white/55">
-              Frota, equipes, combustível e produção reunidos em um ambiente operacional seguro.
+            <p className="mt-4 max-w-md text-base leading-relaxed text-white/70">
+              Frota, combustível, equipes e diário de obra num lugar só.
             </p>
-          </div>
-          <div data-login-reveal className="login-brand-stats">
-            <div><div className="text-2xl font-extrabold text-white tracking-tight">142</div><div className="text-[0.6rem] font-semibold uppercase tracking-wider text-white/40 mt-0.5">Equipamentos</div></div>
-            <div><div className="text-2xl font-extrabold text-white tracking-tight">38</div><div className="text-[0.6rem] font-semibold uppercase tracking-wider text-white/40 mt-0.5">Equipes ativas</div></div>
-            <div><div className="text-2xl font-extrabold text-white tracking-tight">99.7%</div><div className="text-[0.6rem] font-semibold uppercase tracking-wider text-white/40 mt-0.5">Uptime</div></div>
           </div>
         </div>
         <div className="login-form-side">
           <div ref={cardRef} className="login-card">
-            <div data-card-reveal className="w-44 mb-6">
-              <img src={logoSrc} alt="RENEA Infraestrutura" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
+            <div data-card-reveal className="mb-6 flex items-center gap-2.5">
+              <SimboloProduto className="size-9" />
+              <span className="text-lg font-black tracking-[-0.02em] text-slate-900">{PRODUTO.nome}</span>
             </div>
             <div data-card-reveal>
-              <p className="text-[0.6rem] font-bold uppercase tracking-[0.16em] text-emerald-700">Sistema integrado</p>
-              <h2 className="mt-1.5 text-[1.625rem] font-extrabold tracking-[-0.03em] text-slate-900 leading-tight">Acesse sua operação</h2>
-              <p className="mt-1.5 text-[0.8rem] leading-relaxed text-slate-500">Entre com as credenciais autorizadas pela administração.</p>
+              <h2 className="text-[1.625rem] font-extrabold tracking-[-0.03em] text-slate-900 leading-tight">Entrar</h2>
+              <p className="mt-2 inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5">
+                <AmbienteCliente />
+              </p>
             </div>
             <form onSubmit={onSubmit} className="mt-6 space-y-4">
               <div data-card-reveal className="space-y-1.5">
-                <label htmlFor="login-email" className="text-[0.7rem] font-bold text-slate-700">E-mail corporativo</label>
-              <input id="login-email" name="email" type="email" autoComplete="email" placeholder="nome@renea.com.br" value={username} onChange={event => onUsernameChange(event.target.value)} className="login-input renea-control" required />
+                <label htmlFor="login-email" className="text-sm font-bold text-slate-700">E-mail</label>
+              <input id="login-email" name="email" type="email" autoComplete="email" placeholder="nome@empresa.com.br" value={username} onChange={event => onUsernameChange(event.target.value)} className="login-input renea-control" required />
               </div>
               <div data-card-reveal className="space-y-1.5">
-                <label htmlFor="login-password" className="text-[0.7rem] font-bold text-slate-700">Senha de acesso</label>
+                <label htmlFor="login-password" className="text-sm font-bold text-slate-700">Senha</label>
                 <div className="relative">
-                  <input id="login-password" name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Senha corporativa" value={password} onChange={event => onPasswordChange(event.target.value)} className="login-input renea-control pr-12" required />
+                  <input id="login-password" name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Sua senha" value={password} onChange={event => onPasswordChange(event.target.value)} className="login-input renea-control pr-12" required />
                   <button type="button" onClick={onTogglePasswordVisibility} title={showPassword ? 'Ocultar senha' : 'Mostrar senha'} aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors duration-200">
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -127,12 +122,12 @@ export function LoginScreen({
                   {loginNotice && (<div role="status" className="text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-3">{loginNotice}</div>)}
                 </div>
               )}
-              <button data-card-reveal type="submit" disabled={isAuthenticating} className="login-submit renea-button-primary"><LogIn className="w-4 h-4" />Entrar no sistema</button>
-              <button data-card-reveal type="button" onClick={onPasswordRecovery} className="w-full rounded-lg py-2 text-center text-xs font-semibold text-emerald-700 hover:bg-emerald-50 hover:text-emerald-900 transition-colors duration-200">Recuperar senha</button>
+              <button data-card-reveal type="submit" disabled={isAuthenticating} className="login-submit renea-button-primary"><LogIn className="w-4 h-4" />Entrar</button>
+              <button data-card-reveal type="button" onClick={onPasswordRecovery} className="w-full rounded-lg py-2 text-center text-sm font-semibold text-emerald-700 hover:bg-emerald-50 hover:text-emerald-900 transition-colors duration-200">Recuperar senha</button>
             </form>
-            <div data-card-reveal className="mt-6 pt-4 border-t border-slate-200/60 text-center text-[0.65rem] font-semibold text-slate-400 flex items-center justify-center gap-1.5">
+            <div data-card-reveal className="mt-6 pt-4 border-t border-slate-200/60 text-center text-xs font-semibold text-slate-500 flex items-center justify-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-              Acesso restrito a contas autorizadas
+              Só entra quem tem acesso liberado
             </div>
           </div>
         </div>

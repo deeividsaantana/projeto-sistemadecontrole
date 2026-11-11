@@ -1,14 +1,12 @@
 import { useMemo, type ReactNode } from 'react';
-import { AlertTriangle, ArrowRight, Boxes, Fuel, Send, Truck, type LucideIcon } from 'lucide-react';
-import type { Abastecimento, ControleEquipamentoDiario, Equipamento, Material, MovimentoMaterial } from '../../types';
-import { resumoDoDia, type LinhaMaterialDia } from '../../modules/rotina/resumoDoDia';
+import { AlertTriangle, ArrowRight, Fuel, Truck, type LucideIcon } from 'lucide-react';
+import type { Abastecimento, ControleEquipamentoDiario, Equipamento } from '../../types';
+import { resumoDoDia } from '../../modules/rotina/resumoDoDia';
 import { numero } from '../../utils/formato';
 import { BOTAO_SECUNDARIO, CARTAO } from '../cadastros/estilos';
 
 interface Props {
   dia: string;
-  materiais: readonly Material[];
-  movimentos: readonly MovimentoMaterial[];
   abastecimentos: readonly Abastecimento[];
   controles: readonly ControleEquipamentoDiario[];
   equipamentos: readonly Equipamento[];
@@ -63,92 +61,16 @@ function Bloco({ titulo, Icone, numeros, alerta, aba, rotuloAba, onIrPara, child
 
 const Vazio = ({ texto }: { texto: string }) => <p className="text-slate-500">{texto}</p>;
 
-function ListaMateriais({ titulo, linhas }: { titulo: string; linhas: LinhaMaterialDia[] }) {
-  if (!linhas.length) return null;
-  return (
-    <div className="space-y-1">
-      <p className="text-xs font-bold uppercase tracking-wide text-[#5b6870]">{titulo}</p>
-      <ul className="space-y-1">
-        {linhas.slice(0, MOSTRAR).map(linha => (
-          <li key={`${linha.material}-${linha.unidade}`} className="flex items-baseline justify-between gap-3">
-            <span className="min-w-0 break-words">{linha.material}</span>
-            <span className="shrink-0 font-bold tabular-nums text-slate-900">{numero(linha.quantidade, 1)} {linha.unidade}</span>
-          </li>
-        ))}
-      </ul>
-      {linhas.length > MOSTRAR && <p className="text-xs text-slate-500">e mais {linhas.length - MOSTRAR}</p>}
-    </div>
-  );
-}
-
-export function ObraNoDia({ dia, materiais, movimentos, abastecimentos, controles, equipamentos, onIrPara }: Props) {
+export function ObraNoDia({ dia, abastecimentos, controles, equipamentos, onIrPara }: Props) {
   const resumo = useMemo(
-    () => resumoDoDia({ dia, materiais, movimentos, abastecimentos, controles, equipamentos }),
-    [dia, materiais, movimentos, abastecimentos, controles, equipamentos],
+    () => resumoDoDia({ dia, abastecimentos, controles, equipamentos }),
+    [dia, abastecimentos, controles, equipamentos],
   );
-  const { materiais: mat, apontadores, equipamentos: eq, diesel } = resumo;
+  const { equipamentos: eq, diesel } = resumo;
   const nomes = (lista: readonly string[]) => (lista.length > 4 ? `${lista.slice(0, 4).join(', ')} e mais ${lista.length - 4}` : lista.join(', '));
 
   return (
     <div className="grid items-stretch gap-3 lg:grid-cols-2">
-      <Bloco
-        titulo="Materiais"
-        Icone={Boxes}
-        numeros={[
-          { rotulo: 'Entradas', valor: String(mat.entradas.reduce((soma, item) => soma + item.movimentos, 0)) },
-          { rotulo: 'Saídas', valor: String(mat.saidas.reduce((soma, item) => soma + item.movimentos, 0)) },
-          { rotulo: 'Avisos', valor: String(mat.avisos.length), tom: mat.avisos.length ? 'alerta' : undefined },
-        ]}
-        aba="materiais"
-        rotuloAba="Abrir Materiais"
-        onIrPara={onIrPara}
-      >
-        <div className="space-y-3">
-          {!mat.entradas.length && !mat.saidas.length && <Vazio texto="Nenhum material lançado neste dia." />}
-          <ListaMateriais titulo="Chegou" linhas={mat.entradas} />
-          <ListaMateriais titulo="Saiu" linhas={mat.saidas} />
-          {mat.avisos.length > 0 && (
-            <div className="space-y-1">
-              <p className="text-xs font-bold uppercase tracking-wide text-[#5b6870]">Estoque</p>
-              <ul className="space-y-1">
-                {mat.avisos.slice(0, 3).map(aviso => (
-                  <li key={aviso.id} className="flex gap-2">
-                    <span className={`mt-1.5 size-2 shrink-0 rounded-full ${aviso.gravidade === 'critico' ? 'bg-rose-500' : 'bg-[#f26a2e]'}`} aria-hidden="true" />
-                    <span className="min-w-0"><strong className="font-bold text-slate-900">{aviso.titulo}</strong> <span className="text-slate-600">{aviso.detalhe}</span></span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      </Bloco>
-
-      <Bloco
-        titulo="Apontadores"
-        Icone={Send}
-        numeros={[
-          { rotulo: 'Envios', valor: String(apontadores.envios.length) },
-          { rotulo: 'Fotos', valor: String(apontadores.envios.reduce((soma, envio) => soma + envio.fotos.length, 0)) },
-          { rotulo: 'Não mandaram', valor: String(apontadores.faltando.length), tom: apontadores.faltando.length ? 'alerta' : undefined },
-        ]}
-        alerta={apontadores.faltando.length ? `Ainda não mandaram: ${nomes(apontadores.faltando)}` : undefined}
-        aba="materiais"
-        rotuloAba="Abrir Materiais"
-        onIrPara={onIrPara}
-      >
-        {apontadores.envios.length ? (
-          <ul className="space-y-1">
-            {apontadores.envios.slice(0, MOSTRAR).map(envio => (
-              <li key={envio.id} className="flex items-baseline justify-between gap-3">
-                <span className="min-w-0 break-words"><strong className="font-bold text-slate-900">{envio.apontador}</strong> · {envio.ramo}</span>
-                <span className="shrink-0 text-slate-500">{envio.itens.length} {envio.itens.length === 1 ? 'item' : 'itens'}</span>
-              </li>
-            ))}
-            {apontadores.envios.length > MOSTRAR && <li className="text-xs text-slate-500">e mais {apontadores.envios.length - MOSTRAR}</li>}
-          </ul>
-        ) : <Vazio texto="Nenhum envio do link neste dia." />}
-      </Bloco>
-
       <Bloco
         titulo="Equipamentos"
         Icone={Truck}

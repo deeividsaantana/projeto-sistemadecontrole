@@ -399,7 +399,7 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-2">
           <label className="relative min-w-0 flex-[1_1_14rem]">
             <span className="sr-only">Buscar prefixo, modelo ou operador</span>
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
             <input ref={buscaRef} value={buscaTexto} onChange={event => setBuscaTexto(event.target.value)} placeholder="Buscar prefixo, modelo ou operador" className={`${CAMPO} pl-9 w-full`} data-testid="quadro-busca" />
           </label>
           <div className="flex gap-2 flex-wrap lg:flex-nowrap">
@@ -457,7 +457,7 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
             </select>
             <label className="relative">
               <span className="sr-only">Ordenar por</span>
-              <ListFilter className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+              <ListFilter className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
               <select value={ordem} onChange={event => setOrdem(event.target.value as Ordem)} className={`${CAMPO} pl-9 text-xs`} data-testid="quadro-ordem">
                 {(Object.keys(ROTULO_ORDEM) as Ordem[]).map(chave => <option key={chave} value={chave}>{ROTULO_ORDEM[chave]}</option>)}
               </select>
@@ -487,7 +487,7 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
 
       {cartoes.length === 0 ? (
         <div data-quadro-reveal className={`${CARTAO} grid place-items-center gap-2 px-6 py-14 text-center`}>
-          <Truck className="size-8 text-slate-300" aria-hidden="true" />
+          <Truck className="size-8 text-slate-500" aria-hidden="true" />
           <p className="text-base font-bold text-slate-800">Nenhuma máquina cadastrada</p>
           {podeAbrir('cadastros') ? (
             <>
@@ -526,7 +526,7 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
             {selecionados.size > 0 && (
               <>
                 <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Mover as selecionadas para o canteiro">
-                  <MapPin className="size-4 text-slate-400" aria-hidden="true" />
+                  <MapPin className="size-4 text-slate-500" aria-hidden="true" />
                   {canteiros.map(canteiro => (
                     <button key={canteiro} type="button" onClick={() => moverSelecionadosPara(canteiro)} className={`min-h-11 rounded-full bg-[#f7f8f6] px-2.5 text-xs lg:min-h-9 font-bold uppercase text-slate-600 ring-1 ring-slate-200 transition hover:bg-emerald-50 hover:text-[#176b4d] hover:ring-emerald-300 active:scale-[0.97] ${FOCO}`} data-testid={`quadro-mover-sel-${canteiro}`}>
                       {canteiro}
@@ -560,7 +560,7 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
                 <section key={grupo.canteiro} data-quadro-reveal aria-label={`Canteiro ${grupo.canteiro}`} data-testid="quadro-coluna" className="overflow-hidden rounded-[1.25rem] bg-[#f7f8f6] p-1.5 ring-1 ring-slate-200">
                   <header className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[0.9rem] bg-white px-4 py-2 shadow-[0_1px_2px_rgba(15,40,31,0.05)]">
                     <span className={`size-2.5 shrink-0 rounded-full ${semCanteiro ? 'bg-slate-300' : 'bg-[#176b4d]'}`} aria-hidden="true" />
-                    <h2 className="min-w-0 truncate text-sm font-bold uppercase tracking-wide text-slate-900">{grupo.canteiro}</h2>
+                    <h2 className="min-w-0 truncate text-sm font-bold text-slate-900">{grupo.canteiro}</h2>
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-700">{grupo.cartoes.length}</span>
                     {grupo.cartoes.length > 0 && (
                       <span className="ml-auto flex items-center gap-3 text-xs font-semibold text-slate-500">

@@ -48,7 +48,7 @@ class ApplicationErrorBoundary extends Component<ApplicationErrorBoundaryProps, 
             <div className="flex items-center gap-3">
               <div className="grid size-10 place-items-center rounded-full bg-emerald-50 text-emerald-700"><ShieldCheck size={20} strokeWidth={2.1} /></div>
               <div>
-                <p className="text-sm font-black tracking-[-0.03em] text-slate-900">RENEA</p>
+                <p className="text-sm font-black tracking-[-0.03em] text-slate-900">Cintravyse</p>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Controle de obra</p>
               </div>
             </div>
@@ -73,7 +73,7 @@ class ApplicationErrorBoundary extends Component<ApplicationErrorBoundaryProps, 
             </div>
           </div>
 
-          <footer className="mt-10 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-400">RENEA ERP · A recuperação não altera lançamentos, cadastros ou históricos.</footer>
+          <footer className="mt-10 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-400">Cintravyse · A recuperação não altera lançamentos, cadastros ou históricos.</footer>
         </section>
       </main>
     );

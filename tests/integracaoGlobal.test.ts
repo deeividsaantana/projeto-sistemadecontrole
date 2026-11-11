@@ -41,12 +41,6 @@ test('integração global: useKeyboardShortcuts funciona em contexto global', ()
   assert.ok(true, 'Atalhos de teclado funcionam globalmente');
 });
 
-test('integração global: RelatoriosTab redesenhado (Task 7) integrado', () => {
-  // RelatoriosTab com novo design deve estar funcional
-  // Aberto via 'relatorios' tab no App.tsx
-  assert.ok(true, 'RelatoriosTab (Task 7) está integrado e funcional');
-});
-
 test('integração global: nenhum teste quebrou com as mudanças', () => {
   // padraoAbas.test.ts, repoHygiene.test.ts, navigationCleanup.test.ts
   // navigation.test.ts devem todos passar

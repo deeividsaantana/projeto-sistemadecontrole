@@ -68,7 +68,7 @@ import FleetReportLayout from './fleet/FleetReportLayout';
 import FleetImportPreviewModal, { type FleetImportPreviewRow } from './fleet/FleetImportPreviewModal';
 import ImportacaoSge from './fleet/ImportacaoSge';
 import { ConfirmDialog, CountUp, Modal, PageHeader } from '../shared/ui';
-import { AbasDaTela, idDaAba, type AbaDaTela } from '../shared/ui/AbasDaTela';
+import { AbasDaTela, idDaAba, type ItemDasAbas } from '../shared/ui/AbasDaTela';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { TabelaPadrao, type ColunaTabela } from '../shared/ui/TabelaPadrao';
 import { useEntradaDeLista } from '../shared/hooks/useEntradaDeLista';
@@ -672,16 +672,26 @@ export default function ControleEquipamentosDiarioTab({
     // versaoRelacao: a relação vem do aparelho e muda sem passar pelos registros.
     [registros, filters.date, versaoRelacao],
   );
-  const vistas: ReadonlyArray<AbaDaTela<FleetView>> = [
+  // No máximo quatro opções no topo: as duas conferências e os dois
+  // registros viram grupos que abrem a segunda linha.
+  const vistas: ReadonlyArray<ItemDasAbas<FleetView>> = [
     { id: 'today', rotulo: 'Dia', curto: 'Dia', icone: CalendarDays },
     ...(quadro ? [{ id: 'quadro' as const, rotulo: 'Quadro', icone: LayoutGrid }] : []),
-    { id: 'equipamentos', rotulo: 'Por equipamento', icone: ClipboardCheck, contador: conferenciaDoDia.equipamentos.missing, contadorRotulo: 'a confirmar' },
-    { id: 'operadores', rotulo: 'Por operador', icone: Users, contador: conferenciaDoDia.operadores.missing, contadorRotulo: 'a confirmar' },
-    { id: 'history', rotulo: 'Histórico de lançamentos', icone: History },
-    { id: 'registry', rotulo: 'Cadastro de motoristas', icone: Database },
+    {
+      grupo: 'conferencia', rotulo: 'Conferência', curto: 'Conferir', icone: ClipboardCheck, abas: [
+        { id: 'equipamentos', rotulo: 'Por equipamento', icone: ClipboardCheck, contador: conferenciaDoDia.equipamentos.missing, contadorRotulo: 'a confirmar' },
+        { id: 'operadores', rotulo: 'Por operador', icone: Users, contador: conferenciaDoDia.operadores.missing, contadorRotulo: 'a confirmar' },
+      ],
+    },
+    {
+      grupo: 'registros', rotulo: 'Histórico e motoristas', curto: 'Histórico', icone: History, abas: [
+        { id: 'history', rotulo: 'Histórico de lançamentos', curto: 'Histórico', icone: History },
+        { id: 'registry', rotulo: 'Cadastro de motoristas', curto: 'Motoristas', icone: Database },
+      ],
+    },
   ];
   const ITEM_MENU = `flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-[#176b4d] disabled:opacity-50 ${FOCO}`;
-  const ROTULO_GRUPO_MENU = 'px-3 pt-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-400';
+  const ROTULO_GRUPO_MENU = 'px-3 pt-2 text-xs font-bold text-slate-500';
   const aviso = message && (
     <p role={messageTone === 'error' ? 'alert' : 'status'} data-testid="frota-aviso" className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold ring-1 ring-inset ${messageTone === 'success' ? 'bg-emerald-50 text-emerald-900 ring-emerald-200' : messageTone === 'error' ? 'bg-rose-50 text-rose-800 ring-rose-200' : 'bg-[#f7f8f6] text-slate-700 ring-slate-200'}`}>
       {messageTone === 'success' ? <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" /> : messageTone === 'error' ? <AlertTriangle className="size-4 shrink-0" aria-hidden="true" /> : <RefreshCw className="size-4 shrink-0" aria-hidden="true" />}
@@ -706,7 +716,7 @@ export default function ControleEquipamentosDiarioTab({
               <button type="button" onClick={() => updateFilter('date', shiftIsoDate(filters.date, -1))} aria-label="Dia anterior" title="Dia anterior" className={`${BOTAO_SECUNDARIO} shrink-0 px-0 min-w-11 lg:min-w-10`} data-testid="frota-dia-anterior"><ChevronLeft className="size-5" aria-hidden="true" /></button>
               <label className="relative flex min-w-0 items-center max-sm:flex-1">
                 <span className="sr-only">Escolher o dia</span>
-                <CalendarDays className="pointer-events-none absolute left-3 size-4 text-slate-400" aria-hidden="true" />
+                <CalendarDays className="pointer-events-none absolute left-3 size-4 text-slate-500" aria-hidden="true" />
                 <input type="date" value={filters.date} onChange={event => event.target.value && updateFilter('date', event.target.value)} className={`${CAMPO} min-w-0 pl-9 font-semibold sm:w-auto`} data-testid="frota-dia" />
               </label>
               <button type="button" onClick={() => updateFilter('date', shiftIsoDate(filters.date, 1))} aria-label="Próximo dia" title="Próximo dia" className={`${BOTAO_SECUNDARIO} shrink-0 px-0 min-w-11 lg:min-w-10`} data-testid="frota-dia-seguinte"><ChevronRight className="size-5" aria-hidden="true" /></button>
@@ -774,7 +784,7 @@ export default function ControleEquipamentosDiarioTab({
           ))}
         </section>
         <nav aria-label="Canteiros do dia" className="flex shrink-0 flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2" data-testid="frota-faixa-canteiros">
-          <span className="px-2 text-xs font-bold uppercase tracking-[0.12em] text-[#5b6870]">Canteiro</span>
+          <span className="px-2 text-xs font-bold text-[#5b6870]">Canteiro</span>
           <button type="button" aria-pressed={!filters.location} onClick={() => updateFilter('location', '')} className={`${BOTAO_SECUNDARIO} min-h-9 px-3 text-sm ${!filters.location ? 'border-[#176b4d] text-[#176b4d]' : ''}`}>Todos</button>
           {canteirosDoDia.map(item => (
             <button key={item.nome} type="button" aria-pressed={filters.location === item.nome} onClick={() => updateFilter('location', filters.location === item.nome ? '' : item.nome)} className={`${BOTAO_SECUNDARIO} min-h-9 px-3 text-sm ${filters.location === item.nome ? 'border-[#176b4d] text-[#176b4d]' : ''}`}>
@@ -824,7 +834,7 @@ export default function ControleEquipamentosDiarioTab({
       )}
       {activeView === 'registry' && <section data-fleet-view className="flex min-h-0 flex-1 flex-col gap-3 xl:grid xl:grid-cols-[minmax(260px,0.6fr)_minmax(0,1.4fr)] xl:grid-rows-[minmax(0,1fr)]">
         <article data-fleet-lift className={`${CARTAO} shrink-0 self-start p-4`}>
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#176b4d]">Frotas cadastradas</p>
+          <p className="text-xs font-bold text-[#176b4d]">Frotas cadastradas</p>
           <CountUp value={equipamentos.length} className="mt-1 block text-3xl font-bold tabular-nums text-slate-950" />
           <p className="mt-1 text-sm text-[#5b6870]">Equipamentos que podem ser escolhidos no lançamento.</p>
           <div className="mt-4 flex flex-wrap gap-1.5">{equipmentTypes.slice(0, 8).map(type => <span key={type} className="rounded-full bg-[#f7f8f6] px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-slate-200">{type}</span>)}</div>
@@ -835,7 +845,7 @@ export default function ControleEquipamentosDiarioTab({
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <label className="relative block min-w-0 sm:flex-1">
                 <span className="sr-only">Buscar motorista</span>
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true"/>
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" aria-hidden="true"/>
                 <input type="search" value={driverSearch} onChange={event => setDriverSearch(event.target.value)} placeholder="Matrícula, nome ou função" className={`${CAMPO} pl-9`} data-testid="frota-motoristas-busca"/>
               </label>
               <button type="button" onClick={() => setDriverEditor({ id: `motorista-operacional-${Date.now()}`, nome: '', matricula: '', cargo: 'OPERADOR DE CAMINHAO BASCULANTE', empresaId: empresas[0]?.id || '', telefone: '', ativo: true, status: 'ATIVO', area: 'FROTAS OPERACIONAIS', divisao: 'OPERAÇÃO' })} className={BOTAO_PRIMARIO}><Plus className="size-4" aria-hidden="true"/>Novo motorista</button>

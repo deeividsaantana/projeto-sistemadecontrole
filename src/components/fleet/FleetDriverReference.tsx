@@ -162,7 +162,7 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
         <section className="flex shrink-0 flex-col gap-2 rounded-2xl border border-emerald-200 bg-emerald-50/40 p-3 [--tabela-altura-max:18rem]" aria-label="Editor da relação de operadores">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-[#176b4d]">Operadores esperados</p>
+              <p className="text-xs font-bold text-[#176b4d]">Operadores esperados</p>
               <p className="text-sm text-emerald-900">Tire quem saiu, inclua quem entrou ou cole a lista inteira do Excel.</p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -172,7 +172,7 @@ export default function FleetDriverReference({ records, date, drivers, onAddDriv
           </div>
 
           {colando && (
-            <div className="rounded-xl border border-emerald-100 bg-white p-3">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3">
               <label className="text-sm font-semibold text-slate-700" htmlFor="frota-operadores-texto">Cole aqui as linhas da planilha (matrícula e nome)</label>
               <textarea id="frota-operadores-texto" value={textoColado} onChange={event => setTextoColado(event.target.value)} rows={6} placeholder={'103177\tADILSON PIRES DA CRUZ\n101671\tANDERSON PEIXOTO DA SILVA'} className={`${CAMPO} mt-1 py-2 font-mono`} />
               {textoColado.trim() && (

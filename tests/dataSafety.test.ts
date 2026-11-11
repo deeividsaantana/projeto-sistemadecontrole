@@ -39,10 +39,10 @@ test('backup rejeita uma tabela conhecida com formato incorreto', () => {
     empresas: [],
     equipamentos: [],
     abastecimentos: [],
-    ticketsJazida: 'não é lista',
+    listasPresenca: 'não é lista',
   });
   assert.equal(validation.valid, false);
-  assert.match(describeInvalidBackup(validation), /ticketsJazida/);
+  assert.match(describeInvalidBackup(validation), /listasPresenca/);
 });
 
 test('backup restaurado preserva linhas operacionais sem descarte', () => {

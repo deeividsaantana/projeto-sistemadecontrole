@@ -7,7 +7,6 @@ const read = (path: string) => readFileSync(path, 'utf8');
 const primaryScreens = [
   ['dashboard', 'src/components/Dashboard.tsx'],
   ['meu-dia', 'src/components/MeuDiaTab.tsx'],
-  ['planejamento', 'src/components/PlanejamentoTab.tsx'],
   ['diario-obra', 'src/components/DiarioObraTab.tsx'],
   ['estacas', 'src/components/EstacasTab.tsx'],
   ['controle-equipamentos', 'src/components/ControleEquipamentosDiarioTab.tsx'],
@@ -15,9 +14,6 @@ const primaryScreens = [
   ['lancamentos', 'src/components/LancamentosTab.tsx'],
   ['colaboradores', 'src/components/ColaboradoresTab.tsx'],
   ['presenca', 'src/components/ControlePresencaTab.tsx'],
-  ['materiais', 'src/components/MateriaisTab.tsx'],
-  ['relatorios', 'src/components/RelatoriosTab.tsx'],
-  ['administracao', 'src/components/AdministracaoTab.tsx'],
 ] as const;
 
 test('as 14 abas primarias usam o mesmo envelope de tamanho', () => {

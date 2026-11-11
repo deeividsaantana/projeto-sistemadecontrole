@@ -819,7 +819,7 @@ export default function LancamentosTab({
     { chave: 'data', titulo: 'Data', render: lub => <><span className="block font-bold text-slate-800">{lub.data.split('-').reverse().join('/')}</span><span className="block text-xs text-[#5b6870]">{lub.hora}</span></>, valorOrdenacao: lub => `${lub.data}${lub.hora}` },
     {
       chave: 'maquina', titulo: 'Máquina', larguraMinima: 160,
-      render: lub => { const eq = equipamentos.find(e => e.id === lub.equipamentoId); return <><span className="block font-mono font-black text-slate-950">{eq?.prefixo || 'Sem cadastro'}</span><span className="block truncate text-xs text-[#5b6870]">{eq?.nome || ''}</span></>; },
+      render: lub => { const eq = equipamentos.find(e => e.id === lub.equipamentoId); return <><span className="block tabular-nums font-black text-slate-950">{eq?.prefixo || 'Sem cadastro'}</span><span className="block truncate text-xs text-[#5b6870]">{eq?.nome || ''}</span></>; },
       valorOrdenacao: lub => equipamentos.find(e => e.id === lub.equipamentoId)?.prefixo,
     },
     { chave: 'produto', titulo: 'Produto', render: lub => lubrificantes.find(p => p.id === lub.produtoLubrificacaoId)?.nome || '—', valorOrdenacao: lub => lubrificantes.find(p => p.id === lub.produtoLubrificacaoId)?.nome },
@@ -907,10 +907,10 @@ export default function LancamentosTab({
           rows={importRows.map(row => ({
             Linha: row.linha,
             Aba: row.aba,
-            Status: row.status === 'valido' ? '✅ Válido'
-              : row.status === 'duplicado' ? '⚠ Duplicado • bloqueado'
-              : row.status === 'ignorado' ? '⚠ Ignorado • bloqueado'
-              : '❌ Erro • bloqueado',
+            Status: row.status === 'valido' ? 'Válido'
+              : row.status === 'duplicado' ? 'Duplicado · bloqueado'
+              : row.status === 'ignorado' ? 'Ignorado · bloqueado'
+              : 'Erro · bloqueado',
             Data: row.preview.Data,
             Hora: row.preview.Hora,
             Frota: row.preview.Frota,
@@ -962,7 +962,7 @@ export default function LancamentosTab({
             </button>
             <button type="button" onClick={handleOpenCreate} className={BOTAO_PRIMARIO} data-testid="lubrificacao-nova">
               <Plus className="size-4" aria-hidden="true" />Nova lubrificação
-              <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>
+              <kbd className="hidden rounded-md bg-white/15 px-1.5 tabular-nums text-xs xl:inline">N</kbd>
             </button>
           </>}
         />

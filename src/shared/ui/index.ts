@@ -18,6 +18,6 @@ export { PageHeader } from './PageHeader';
 export { PularParaConteudo } from './PularParaConteudo';
 export { ModuleShortcutBar, type ModuleShortcut } from './ModuleShortcutBar';
 export { RouteMotion } from './RouteMotion';
-export { StatCard } from './StatCard';
+export { CartaoIndicador, GradeIndicadores, type TomIndicador } from './CartaoIndicador';
 export { TabelaPadrao, type ColunaTabela, type Ordenacao, type SelecaoTabela } from './TabelaPadrao';
 export { cn, statusTone } from './styles';

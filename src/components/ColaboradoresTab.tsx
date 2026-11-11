@@ -1,11 +1,11 @@
 /**
  * Colaboradores: o efetivo e a ficha individual, reunindo o que os módulos já
- * registraram sobre a pessoa — equipe, presença, frota operada e viagens.
+ * registraram sobre a pessoa — equipe, presença, frota operada e checklists.
  */
 import { useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { ArrowLeft, ClipboardCheck, Search, Truck, UserRound, UserCog, Users } from 'lucide-react';
+import { ArrowLeft, ClipboardCheck, Search, Truck, UserPlus, UserRound, UserCog, Users } from 'lucide-react';
 import type {
   ChecklistEquipamento,
   ControleEquipamentoDiario,
@@ -13,7 +13,6 @@ import type {
   Funcionario,
   GrupoEquipe,
   PresencaApontamento,
-  TicketJazida,
 } from '../types';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { displayText } from '../utils/displayText';
@@ -27,6 +26,7 @@ import {
   situacaoAtualDe,
   type SituacaoColaborador,
 } from '../utils/situacaoColaborador';
+import { CAMPO } from './cadastros/estilos';
 
 interface ColaboradoresTabProps {
   funcionarios: Funcionario[];
@@ -34,9 +34,10 @@ interface ColaboradoresTabProps {
   gruposEquipe: GrupoEquipe[];
   presencasLink: PresencaApontamento[];
   controlesEquipamentos: ControleEquipamentoDiario[];
-  ticketsJazida: TicketJazida[];
   checklists?: ChecklistEquipamento[];
   onNavigate: (tab: string) => void;
+  /** Abre Cadastros já no formulário de colaborador novo. */
+  onCadastrar?: () => void;
   /** Quem não abre a aba não vê o botão que leva até ela. */
   podeAbrir?: (tab: string) => boolean;
   /** Ausente quando o perfil não pode mexer no cadastro: a ação nem aparece. */
@@ -57,9 +58,9 @@ export default function ColaboradoresTab({
   gruposEquipe,
   presencasLink,
   controlesEquipamentos,
-  ticketsJazida,
   checklists = [],
   onNavigate,
+  onCadastrar,
   podeAbrir = () => true,
   onAlterarSituacao,
   responsavel = '',
@@ -127,10 +128,6 @@ export default function ColaboradoresTab({
       .filter(item => item.funcionarioId === selecionado.id || normalizeComparable(item.nomeMotorista) === nomeNormalizado)
       .sort((a, b) => b.data.localeCompare(a.data));
 
-    const viagens = ticketsJazida
-      .filter(item => normalizeComparable(item.motoristaNome || '') === nomeNormalizado)
-      .sort((a, b) => b.data.localeCompare(a.data));
-
     const inspecoes = checklists
       .filter(item => normalizeComparable(item.responsavel) === nomeNormalizado)
       .sort((a, b) => `${b.data}${b.hora}`.localeCompare(`${a.data}${a.hora}`));
@@ -139,7 +136,7 @@ export default function ColaboradoresTab({
       { label: 'Situação', valor: situacaoAtual, detalhe: selecionado.situacaoRh || 'sem detalhe do RH' },
       { label: 'Presenças', valor: String(presentes), detalhe: `${presencas.length} apontamento(s)` },
       { label: 'Dias operando', valor: String(operacoes.length), detalhe: operacoes[0] ? `último em ${formatarData(operacoes[0].data)}` : 'sem lançamento' },
-      { label: 'Viagens', valor: String(viagens.length), detalhe: inspecoes.length ? `${inspecoes.length} checklist(s)` : 'sem checklist' },
+      { label: 'Checklists', valor: String(inspecoes.length), detalhe: inspecoes[0] ? `último em ${formatarData(inspecoes[0].data)}` : 'sem checklist' },
     ];
 
     return (
@@ -180,7 +177,7 @@ export default function ColaboradoresTab({
         <section data-colaboradores-reveal aria-label="Resumo do colaborador" className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
           {indicadores.map(item => (
             <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
+              <p className="text-xs font-bold text-slate-500">{item.label}</p>
               <strong className="mt-1.5 block text-lg font-black leading-tight text-slate-900">{item.valor}</strong>
               <span className="text-xs text-[#5b6870]">{item.detalhe}</span>
             </div>
@@ -203,7 +200,7 @@ export default function ColaboradoresTab({
                 ['Desmobilização', formatarData(selecionado.dataDesmobilizacao)],
               ].map(([rotulo, valor]) => (
                 <div key={rotulo} className="min-w-0">
-                  <dt className="text-xs font-bold uppercase tracking-wide text-[#5b6870]">{rotulo}</dt>
+                  <dt className="text-xs font-bold text-[#5b6870]">{rotulo}</dt>
                   <dd className="mt-0.5 break-words font-medium text-slate-800">{valor}</dd>
                 </div>
               ))}
@@ -263,23 +260,14 @@ export default function ColaboradoresTab({
 
           <Card
             className="min-w-0"
-            title="Viagens e inspeções"
-            description={viagens.length || inspecoes.length ? `${viagens.length} viagem(ns) · ${inspecoes.length} checklist(s)` : undefined}
+            title="Checklists"
+            description={inspecoes.length ? `${inspecoes.length} checklist(s)` : undefined}
             flush
           >
-            {viagens.length === 0 && inspecoes.length === 0 ? (
-              <EmptyState icon={ClipboardCheck} title="Sem viagens ou checklists" compact />
+            {inspecoes.length === 0 ? (
+              <EmptyState icon={ClipboardCheck} title="Sem checklists" compact />
             ) : (
               <ul className="divide-y divide-slate-100">
-                {viagens.slice(0, 5).map(item => (
-                  <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3 text-xs">
-                    <span className="min-w-0">
-                      <strong className="block font-mono text-slate-900">Ticket {item.ticketNumero || '—'}</strong>
-                      <span className="block truncate text-xs text-[#5b6870]">{item.prefixo} · {item.tipoMaterial}</span>
-                    </span>
-                    <span className="shrink-0 text-slate-600">{formatarData(item.data)}</span>
-                  </li>
-                ))}
                 {inspecoes.slice(0, 5).map(item => (
                   <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3 text-xs">
                     <span className="min-w-0">
@@ -317,7 +305,7 @@ export default function ColaboradoresTab({
                   onAlterarSituacao(aplicarSituacao(selecionado, entrada), descreverMudanca(selecionado, entrada));
                   setMudanca(null);
                 }}
-                className="min-h-11 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
+                className="min-h-11 rounded-lg bg-[#176b4d] px-4 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50"
               >
                 Salvar situação
               </button>
@@ -326,17 +314,17 @@ export default function ColaboradoresTab({
         >
           <div className="space-y-3">
             <label className="block space-y-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Situação</span>
+              <span className="text-xs font-bold text-slate-500">Situação</span>
               <select
                 value={mudanca?.situacao || 'ATIVO'}
                 onChange={event => setMudanca(atual => atual && { ...atual, situacao: event.target.value as SituacaoColaborador })}
-                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800"
+                className={`${CAMPO}`}
               >
                 {SITUACOES_COLABORADOR.map(item => <option key={item} value={item}>{item}</option>)}
               </select>
             </label>
             <label className="block space-y-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">A partir de</span>
+              <span className="text-xs font-bold text-slate-500">A partir de</span>
               <TextInput
                 type="date"
                 value={mudanca?.data || ''}
@@ -344,7 +332,7 @@ export default function ColaboradoresTab({
               />
             </label>
             <label className="block space-y-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Motivo</span>
+              <span className="text-xs font-bold text-slate-500">Motivo</span>
               <TextInput
                 placeholder="Fim de contrato, férias programadas, atestado…"
                 value={mudanca?.motivo || ''}
@@ -367,7 +355,7 @@ export default function ColaboradoresTab({
         <PageHeader
           eyebrow="Pessoas"
           title="Colaboradores"
-          actions={podeAbrir('cadastros') && <button type="button" onClick={() => onNavigate('cadastros')} className={`inline-flex min-h-11 items-center rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white transition hover:opacity-90 lg:min-h-10 ${FOCO}`}>Cadastrar colaborador</button>}
+          actions={podeAbrir('cadastros') && <button type="button" onClick={onCadastrar ?? (() => onNavigate('cadastros'))} className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#176b4d] px-4 text-sm font-bold text-white transition hover:opacity-90 lg:min-h-10 ${FOCO}`}><UserPlus className="size-5" aria-hidden="true" /> Cadastrar colaborador</button>}
         />
       </div>}
       faixa={<div data-colaboradores-reveal className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-3 sm:flex-row">

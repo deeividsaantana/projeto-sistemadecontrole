@@ -15,7 +15,6 @@ const TAB_LABELS = {
   reports: 'Relatórios Gerais',
   'controle-equipamentos': 'Controle Operacional de Frotas',
   lancamentos: 'Combustível',
-  'tickets-jazida': 'Tickets Jazida',
   estacas: 'Controle de Estacas',
   presenca: 'Presença e Controle',
   cadastros: 'Cadastros Auxiliares',

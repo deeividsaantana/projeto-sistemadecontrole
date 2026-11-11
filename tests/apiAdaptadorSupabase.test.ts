@@ -54,20 +54,20 @@ test('limite de requisições: a função do banco recusa e a API responde 429',
   const cliente = clienteFalso({ registrar_requisicao: () => ({ data: false }) });
   substituirClienteSupabase(cliente);
   t.after(() => substituirClienteSupabase(null));
-  await assert.rejects(enforceRateLimit(null, { headers: { 'x-real-ip': '10.0.0.1' } }, 'public-tickets-POST', 60, 3600, 'equipe-7'), (erro: { statusCode?: number }) => erro.statusCode === 429);
+  await assert.rejects(enforceRateLimit(null, { headers: { 'x-real-ip': '10.0.0.1' } }, 'public-presenca-POST', 60, 3600, 'equipe-7'), (erro: { statusCode?: number }) => erro.statusCode === 429);
   const [nome, args] = cliente.chamadas[0];
   assert.equal(nome, 'registrar_requisicao');
   assert.equal(args.p_limite, 60);
   assert.equal(args.p_janela_segundos, 3600);
-  assert.match(String(args.p_chave), /^public-tickets-POST\|equipe-7$/);
+  assert.match(String(args.p_chave), /^public-presenca-POST\|equipe-7$/);
 });
 
 test('limite de requisições: sem identidade conta por IP; dentro do limite passa', async t => {
   const cliente = clienteFalso({ registrar_requisicao: () => ({ data: true }) });
   substituirClienteSupabase(cliente);
   t.after(() => substituirClienteSupabase(null));
-  await enforceRateLimit(null, { headers: { 'x-real-ip': '10.0.0.1' } }, 'public-materiais-GET', 240, 300);
-  assert.match(String(cliente.chamadas[0][1].p_chave), /^public-materiais-GET\|ip-[0-9a-f]{24}$/);
+  await enforceRateLimit(null, { headers: { 'x-real-ip': '10.0.0.1' } }, 'public-presenca-GET', 240, 300);
+  assert.match(String(cliente.chamadas[0][1].p_chave), /^public-presenca-GET\|ip-[0-9a-f]{24}$/);
 });
 
 test('limite de requisições: banco ainda sem a migration não derruba os links de campo', async t => {

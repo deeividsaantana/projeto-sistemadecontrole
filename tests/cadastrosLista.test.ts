@@ -90,7 +90,7 @@ test('opções do filtro vêm das linhas, com quantidade', () => {
 const usoVazio = (): CadastroUsage => ({
   abastecimentos: [], equipamentos: [], lubrificacoes: [], apontamentos: [],
   empresas: [], funcionarios: [], ordensServico: [], listasPresenca: [], presencasLink: [],
-  gruposEquipe: [], controleEquipamentosDiario: [], materiaisMovimentos: [], colecoesDaObra: {},
+  gruposEquipe: [], controleEquipamentosDiario: [], colecoesDaObra: {},
   frentesServico: [], producao: [], planejamento: [], canteiros: [],
 });
 
@@ -123,12 +123,6 @@ test('equipamento com abastecimento e empresa com colaborador ficam travados', (
     { collection: 'Colaboradores', count: 2 },
     { collection: 'Equipamentos', count: 3 },
   ]);
-});
-
-test('ramo usado em movimento de material fica travado', () => {
-  const uso = usoVazio();
-  uso.materiaisMovimentos = [{ etapaServicoId: 'et-1' }];
-  assert.deepEqual(usosDoCadastro('etapas', 'et-1', uso), [{ collection: 'Movimentos de material', count: 1 }]);
 });
 
 test('formulário vazio avisa o que falta e campo opcional em branco não vira zero', () => {

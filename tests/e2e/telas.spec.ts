@@ -15,24 +15,19 @@ const TELAS: Array<{ screen: string; titulo: string | RegExp }> = [
   { screen: 'equipes', titulo: 'Equipes' },
   { screen: 'apontamentos', titulo: 'Apontamentos' },
   { screen: 'dds-treinamentos', titulo: 'DDS e Treinamentos' },
-  { screen: 'materiais', titulo: 'Materiais' },
   { screen: 'diario-obra', titulo: 'Diário de Obra' },
-  { screen: 'planejamento', titulo: 'Previsto x Executado' },
   { screen: 'cadastros', titulo: /.+/ },
   { screen: 'combustivel', titulo: /.+/ },
   { screen: 'estacas', titulo: /.+/ },
   { screen: 'frotas', titulo: /.+/ },
-  { screen: 'jazida', titulo: /.+/ },
   { screen: 'presenca', titulo: /.+/ },
   { screen: 'pendencias', titulo: 'Pendências' },
   { screen: 'indicadores', titulo: 'Indicadores' },
   { screen: 'custos', titulo: 'Custos' },
   { screen: 'orcamento', titulo: 'Orçado x Realizado' },
-  { screen: 'relatorios', titulo: 'Relatórios' },
   { screen: 'timeline', titulo: 'Timeline' },
   { screen: 'auditoria', titulo: 'Auditoria' },
   { screen: 'permissoes', titulo: 'Permissões' },
-  { screen: 'administracao', titulo: 'Administração' },
   { screen: 'notificacoes', titulo: 'Notificações' },
   { screen: 'assistente', titulo: 'Assistente' },
   { screen: 'consulta', titulo: 'Consulta Geral' },
@@ -99,7 +94,10 @@ test('cadastros exclui de verdade, guarda na Lixeira e deixa desfazer', async ({
   await dialog.getByTestId('cadastro-confirmar').click();
   const aviso = page.getByTestId('cadastro-aviso');
   await expect(aviso).toContainText('excluído');
-  // Os tipos são abas no topo, também no celular; a Lixeira é a última.
+  // Os tipos são abas no topo, também no celular. Para o administrador a
+  // Lixeira mora no grupo "Lixeira e acessos", que abre a segunda linha.
+  const grupoSistema = page.getByTestId('cadastro-aba-grupo-sistema');
+  if (await grupoSistema.isVisible()) await grupoSistema.click();
   await page.getByTestId('cadastro-categoria-lixeira').click();
   await expect(page.getByTestId('cadastro-categoria-lixeira')).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByTestId('cadastro-lixeira')).toContainText('excluído por');

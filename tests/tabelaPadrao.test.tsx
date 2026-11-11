@@ -216,10 +216,7 @@ test('o padrão antigo de tabela não volta: só a TabelaPadrao desenha tabela c
 
 test('telas já migradas usam a TabelaPadrao e não montam <table> à mão', () => {
   const migradas = [
-    'ManutencaoTab.tsx', 'PlanejamentoTab.tsx', 'AdministracaoTab.tsx', 'MateriaisTab.tsx', 'UsuariosTab.tsx',
-    'administracao/HistoricoAcoes.tsx', 'administracao/MatrizPermissoes.tsx',
-    'materiais/MateriaisListas.tsx', 'cadastros/CadastroLista.tsx',
-    'materiais/ApontadoresMateriais.tsx', 'materiais/BotaForaMateriais.tsx', 'materiais/LocaisMateriais.tsx', 'materiais/MateriaisVisaoGeral.tsx',
+    'ManutencaoTab.tsx', 'UsuariosTab.tsx', 'cadastros/CadastroLista.tsx',
   ];
   for (const arquivo of migradas) {
     const fonte = readFileSync(new URL(`../src/components/${arquivo}`, import.meta.url), 'utf8');
@@ -228,21 +225,9 @@ test('telas já migradas usam a TabelaPadrao e não montam <table> à mão', () 
   }
 });
 
-// Materiais › Relatórios: na tela é a TabelaPadrao; a <table> à mão só existe
-// dentro do bloco que aparece no papel (exceção de relatório impresso).
-test('relatórios de materiais usam a TabelaPadrao na tela e a tabela à mão só no papel', () => {
-  const fonte = readFileSync(new URL('../src/components/materiais/RelatoriosMateriais.tsx', import.meta.url), 'utf8');
-  assert.match(fonte, /<TabelaPadrao/);
-  const papel = fonte.indexOf('className="hidden print:block"');
-  assert.ok(papel > 0, 'bloco só de impressão');
-  assert.equal(fonte.slice(0, papel).includes('<table'), false, 'tabela à mão fora do bloco de impressão');
-});
-
-// Tabelas de apoio dos gráficos de Materiais ficam como tabela, mas com título e escopo.
-test('tabelas de apoio dos gráficos de materiais têm caption e th scope', () => {
-  for (const arquivo of ['GraficoPizza.tsx', 'GraficoSaldoMaterial.tsx', 'GraficoSemanas.tsx']) {
-    const fonte = readFileSync(new URL(`../src/components/materiais/${arquivo}`, import.meta.url), 'utf8');
-    assert.match(fonte, /<caption/, arquivo);
-    assert.equal(/<th\b(?![^>]*scope=)/.test(fonte), false, `${arquivo}: todo th precisa de scope`);
-  }
+// Tabela de apoio do gráfico de rosca (relatórios da Presença) tem título e escopo.
+test('tabela de apoio do gráfico de rosca tem caption e th scope', () => {
+  const fonte = readFileSync(new URL('../src/components/presenca/GraficoPizza.tsx', import.meta.url), 'utf8');
+  assert.match(fonte, /<caption/);
+  assert.equal(/<th\b(?![^>]*scope=)/.test(fonte), false, 'todo th precisa de scope');
 });

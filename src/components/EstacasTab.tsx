@@ -136,12 +136,18 @@ export default function EstacasTab({ controle, obras, onChange, responsavel = 'S
             abas={<AbasDaTela id="estacas" rotulo="Subtelas de estacas" abas={abas} ativa={secao} onTrocar={escolherSecao} idPainel="estacas-dados" testId="estacas-secao" />}
             actions={(
               <>
-                <button type="button" onClick={() => setPlanejando({ frente: frenteAtual || undefined })} className={BOTAO_SECUNDARIO}>
-                  <Target className="size-5" aria-hidden="true" /> Total previsto
-                </button>
-                <button type="button" onClick={() => abrirCravacao()} data-testid="estacas-acao-principal" className={`${BOTAO_PRIMARIO} max-sm:order-first px-5`}>
-                  <Hammer className="size-5" aria-hidden="true" /> Lançar cravação
-                </button>
+                {/* Na Visão geral o cartão da frente já traz Total previsto; no
+                    lançamento a folha já está aberta e o topo fica limpo. */}
+                {secao !== 'visao' && secao !== 'cravar' && (
+                  <button type="button" onClick={() => setPlanejando({ frente: frenteAtual || undefined })} className={BOTAO_SECUNDARIO}>
+                    <Target className="size-5" aria-hidden="true" /> Total previsto
+                  </button>
+                )}
+                {secao !== 'cravar' && (
+                  <button type="button" onClick={() => abrirCravacao()} data-testid="estacas-acao-principal" className={`${BOTAO_PRIMARIO} max-sm:order-first px-5`}>
+                    <Hammer className="size-5" aria-hidden="true" /> Lançar cravação
+                  </button>
+                )}
               </>
             )}
           />

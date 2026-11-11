@@ -5,25 +5,18 @@ import type {
   GrupoEquipe,
   Inspecao,
   ListaPresenca,
-  Material,
   Medicao,
-  MovimentoMaterial,
   NaoConformidade,
   ObraLocal,
   Ocorrencia,
   OrdemServico,
-  PlanejamentoItem,
   PresencaApontamento,
   ControleEquipamentoDiario,
-  RegistroProducao,
-  TicketJazida,
   Treinamento,
 } from '../types';
 import { situacaoDocumento } from './documentos';
 import { estaAtrasada as inspecaoAtrasada } from './inspecoes';
 import { estaAtrasada as ncAtrasada } from './naoConformidades';
-import { aderenciaDosPlanos } from './planejamento';
-import { posicaoEstoque } from './estoque';
 import { situacaoTreinamento } from './treinamentos';
 import { origensSemTratativa } from './naoConformidades';
 
@@ -51,17 +44,12 @@ export interface ContextoPendencias {
   listasPresenca?: ListaPresenca[];
   obras?: ObraLocal[];
   ordensServico?: OrdemServico[];
-  ticketsJazida?: TicketJazida[];
   fichasFvs?: FichaVerificacaoServico[];
   inspecoes?: Inspecao[];
   naoConformidades?: NaoConformidade[];
   documentos?: DocumentoArquivo[];
   treinamentos?: Treinamento[];
-  planejamento?: PlanejamentoItem[];
-  producao?: RegistroProducao[];
   medicoes?: Medicao[];
-  materiais?: Material[];
-  movimentosMaterial?: MovimentoMaterial[];
   ocorrencias?: Ocorrencia[];
 }
 
@@ -77,9 +65,9 @@ export const listarPendencias = (contexto: ContextoPendencias): Pendencia[] => {
   const {
     hoje, inicio, fim,
     equipamentos = [], controlesEquipamentos = [], gruposEquipe = [], presencasLink = [],
-    listasPresenca = [], obras = [], ordensServico = [], ticketsJazida = [],
+    listasPresenca = [], obras = [], ordensServico = [],
     fichasFvs = [], inspecoes = [], naoConformidades = [], documentos = [], treinamentos = [],
-    planejamento = [], producao = [], medicoes = [], materiais = [], movimentosMaterial = [],
+    medicoes = [],
     ocorrencias = [],
   } = contexto;
 
@@ -113,14 +101,6 @@ export const listarPendencias = (contexto: ContextoPendencias): Pendencia[] => {
       quantidade: obras.filter(obra => obra.status === 'Ativa'
         && !listasPresenca.some(lista => lista.obraId === obra.id && noPeriodo(lista.data, inicio, fim))).length,
       tab: 'presenca',
-      gravidade: 'baixa',
-    },
-    {
-      id: 'viagens-rascunho',
-      categoria: 'Operação',
-      titulo: 'Viagens ainda em rascunho',
-      quantidade: ticketsJazida.filter(item => item.statusFluxo === 'Rascunho' && noPeriodo(item.data, inicio, fim)).length,
-      tab: 'tickets-jazida',
       gravidade: 'baixa',
     },
     {
@@ -189,29 +169,12 @@ export const listarPendencias = (contexto: ContextoPendencias): Pendencia[] => {
       gravidade: 'alta',
     },
     {
-      id: 'planos-atrasados',
-      categoria: 'Planejamento',
-      titulo: 'Planos com prazo vencido e meta não atingida',
-      quantidade: aderenciaDosPlanos(planejamento, producao, hoje).filter(item => item.atrasado).length,
-      tab: 'planejamento',
-      gravidade: 'media',
-    },
-    {
       id: 'medicoes-em-elaboracao',
       categoria: 'Medições',
       titulo: 'Medições em elaboração',
       quantidade: medicoes.filter(item => item.ativo !== false && item.situacao === 'Em elaboração').length,
       tab: 'medicoes',
       gravidade: 'baixa',
-    },
-    {
-      id: 'estoque-minimo',
-      categoria: 'Materiais',
-      titulo: 'Materiais abaixo do estoque mínimo',
-      quantidade: posicaoEstoque(materiais.filter(item => item.ativo !== false), movimentosMaterial)
-        .filter(item => item.abaixoDoMinimo).length,
-      tab: 'materiais',
-      gravidade: 'media',
     },
     {
       id: 'ocorrencias-sem-tratativa',

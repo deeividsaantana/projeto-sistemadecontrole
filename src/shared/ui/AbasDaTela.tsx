@@ -67,11 +67,6 @@ interface AbasDaTelaProps<T extends string> {
   idPainel?: string;
   className?: string;
   testId?: string;
-  /**
-   * Abaixo de 640 px as abas viram uma grade de 3 colunas em vez de rolar para
-   * o lado: com até 6 subtelas todas ficam à vista (Manutenção tem 5).
-   */
-  gradeNoCelular?: boolean;
 }
 
 /** id do botão de uma aba, para a área de dados apontar com aria-labelledby. */
@@ -96,7 +91,7 @@ interface BotaoDaLinha {
 }
 
 /** Uma linha de abas (role=tablist) com setas, rolagem própria no celular e selo. */
-function LinhaDeAbas({ botoes, rotulo, testId, secundaria = false, grade = false }: { botoes: BotaoDaLinha[]; rotulo: string; testId?: string; secundaria?: boolean; grade?: boolean }) {
+function LinhaDeAbas({ botoes, rotulo, testId, secundaria = false }: { botoes: BotaoDaLinha[]; rotulo: string; testId?: string; secundaria?: boolean }) {
   const listaRef = useRef<HTMLDivElement>(null);
   const ativa = botoes.find(botao => botao.selecionada)?.chave;
 
@@ -136,7 +131,6 @@ function LinhaDeAbas({ botoes, rotulo, testId, secundaria = false, grade = false
       className={cn(
         'renea-abas flex w-full max-w-full min-w-0 items-center gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:thin] md:w-auto lg:flex-wrap lg:overflow-visible',
         secundaria ? 'renea-abas--grupo px-1' : 'rounded-xl bg-white p-1 ring-1 ring-inset ring-slate-200',
-        grade && 'max-sm:grid max-sm:grid-cols-3 max-sm:overflow-visible',
       )}
     >
       {botoes.map(botao => {
@@ -180,7 +174,7 @@ function LinhaDeAbas({ botoes, rotulo, testId, secundaria = false, grade = false
 
 const contadorDe = (valor?: number) => (valor && valor > 0 ? valor : 0);
 
-export function AbasDaTela<T extends string>({ abas, ativa, onTrocar, rotulo, id, idPainel, className, testId, gradeNoCelular = false }: AbasDaTelaProps<T>) {
+export function AbasDaTela<T extends string>({ abas, ativa, onTrocar, rotulo, id, idPainel, className, testId }: AbasDaTelaProps<T>) {
   const automatico = useId();
   const base = id ?? automatico;
   /** Última aba aberta em cada grupo: voltar ao grupo volta para ela. */
@@ -229,7 +223,7 @@ export function AbasDaTela<T extends string>({ abas, ativa, onTrocar, rotulo, id
 
   return (
     <div className={cn('renea-abas-da-tela flex min-w-0 max-w-full flex-col items-start gap-1', className)}>
-      <LinhaDeAbas botoes={primeiraLinha} rotulo={rotulo} testId={testId} grade={gradeNoCelular} />
+      <LinhaDeAbas botoes={primeiraLinha} rotulo={rotulo} testId={testId} />
       {grupoAtivo && grupoAtivo.abas.length > 1 && (
         <LinhaDeAbas secundaria botoes={grupoAtivo.abas.map(botaoDaAba)} rotulo={`${rotulo}: ${grupoAtivo.rotulo}`} testId={testId ? `${testId}-grupo` : undefined} />
       )}

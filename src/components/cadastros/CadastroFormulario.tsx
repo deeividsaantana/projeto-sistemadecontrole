@@ -177,7 +177,7 @@ export default function CadastroFormulario({ categoria, titulo, editandoId, valo
   return (
     <CadastroPainel
       titulo={titulo}
-      topo={<span className="text-xs font-bold uppercase tracking-wide text-[#5b6870]">{editandoId ? 'Editar cadastro' : 'Novo cadastro'}</span>}
+      topo={<span className="text-xs font-bold text-[#5b6870]">{editandoId ? 'Editar cadastro' : 'Novo cadastro'}</span>}
       onFechar={onFechar}
       testId="cadastro-formulario"
       rodape={(

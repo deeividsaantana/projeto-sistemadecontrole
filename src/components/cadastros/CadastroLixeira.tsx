@@ -15,7 +15,6 @@ const NOME_DA_TABELA: Record<string, string> = {
   frentesServico: 'Frente de serviço',
   servicosObra: 'Serviço da obra',
   abastecimentos: 'Abastecimento',
-  ticketsJazida: 'Ticket',
   gruposEquipe: 'Equipe',
   lubrificacoes: 'Lubrificação',
   ordensServico: 'Ordem de serviço',
@@ -43,7 +42,7 @@ export default function CadastroLixeira({ exclusoes, podeRestaurar, restaurandoI
   if (exclusoes.length === 0) {
     return (
       <div className={`${CARTAO} flex flex-col items-center gap-2 px-6 py-12 text-center`} data-testid="cadastro-lixeira">
-        <Trash2 className="size-8 text-slate-300" aria-hidden="true" />
+        <Trash2 className="size-8 text-slate-500" aria-hidden="true" />
         <p className="text-base font-bold text-slate-800">A Lixeira está vazia</p>
         <p className="max-w-sm text-sm text-slate-500">O que for excluído aparece aqui, com quem excluiu e quando.</p>
       </div>

@@ -50,7 +50,7 @@ function Marcar({ rotina, blocos, somente, onMudarRotina }: Pick<Props, 'rotina'
         <section key={momento.id} aria-labelledby={somente ? undefined : `momento-${momento.id}`} className="space-y-2">
           {!somente && (
             <div className="flex items-baseline gap-2 px-1">
-              <h2 id={`momento-${momento.id}`} className="text-sm font-bold uppercase tracking-wide text-[#5b6870]">{momento.nome}</h2>
+              <h2 id={`momento-${momento.id}`} className="text-sm font-bold text-[#5b6870]">{momento.nome}</h2>
               <span className="text-sm text-slate-500">{momento.ajuda}</span>
             </div>
           )}

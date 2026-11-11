@@ -11,7 +11,7 @@ interface PageHeaderProps {
   className?: string;
   /** Contexto do módulo, em caixa alta. Ex.: "Frota", "Suprimentos". */
   eyebrow?: string;
-  /** Remove o título visual quando a navegação já identifica o módulo. */
+  /** Esconde o título visual quando há subtelas (as abas já identificam a tela). */
   compact?: boolean;
 }
 
@@ -24,10 +24,13 @@ interface PageHeaderProps {
  */
 export function PageHeader({ title, description, actions, abas, className, eyebrow, compact = true }: PageHeaderProps) {
   const Titulo = useDentroDaTelaCheia() ? 'h2' : 'h1';
+  // Sem subtelas, o lado esquerdo ficaria vazio: o título aparece, como no
+  // Painel de Controle. Com subtelas, as abas já dizem onde a pessoa está.
+  const escondeTitulo = compact && Boolean(abas);
   return (
-    <header className={cn('renea-page-header', compact ? 'renea-page-header--compact' : undefined, abas ? 'renea-page-header--com-abas' : undefined, className)}>
+    <header className={cn('renea-page-header', escondeTitulo ? 'renea-page-header--compact' : undefined, abas ? 'renea-page-header--com-abas' : undefined, className)}>
       <div className="renea-page-header__copy">
-        <span className={compact ? 'sr-only' : undefined}>
+        <span className={escondeTitulo ? 'sr-only' : undefined}>
           {eyebrow && <span className="renea-page-header__eyebrow">{eyebrow}</span>}
           <Titulo>{title}</Titulo>
           {description && <p>{description}</p>}

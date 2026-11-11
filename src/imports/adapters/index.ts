@@ -1,15 +1,9 @@
 import type { ImportSheetPreview, SpreadsheetImportAdapter } from '../types';
-import { receiptsAdapter } from './receiptsAdapter';
-import { materialsAdapter } from './materialsAdapter';
 import { stakesAdapter } from './stakesAdapter';
-import { travelsAdapter } from './travelsAdapter';
 
 /** Registro heterogêneo dos adaptadores; o pipeline roteia o estado pelo domínio. */
 export const IMPORT_ADAPTERS: readonly SpreadsheetImportAdapter<unknown, unknown>[] = [
-  receiptsAdapter as SpreadsheetImportAdapter<unknown, unknown>,
-  materialsAdapter as SpreadsheetImportAdapter<unknown, unknown>,
   stakesAdapter as SpreadsheetImportAdapter<unknown, unknown>,
-  travelsAdapter as SpreadsheetImportAdapter<unknown, unknown>,
 ];
 
 export const findAdapterForSheet = (sheetName: string) =>

@@ -5,9 +5,9 @@ import { PRIVATE_MODULES, type PrivateModule } from '../routing/privateRoutes';
 import { PularParaConteudo } from '../../shared/ui/PularParaConteudo';
 
 const labels: Record<PrivateModule, string> = {
-  home: 'Início', pending: 'Pendências', registries: 'Cadastros', materials: 'Materiais',
-  inventory: 'Estoque', equipment: 'Equipamentos', fleet: 'Frota', fuel: 'Combustível',
-  travels: 'Viagens', stakes: 'Estacas', field: 'Campo', presence: 'Presença', rdo: 'RDO',
+  home: 'Início', pending: 'Pendências', registries: 'Cadastros',
+  equipment: 'Equipamentos', fleet: 'Frota', fuel: 'Combustível',
+  stakes: 'Estacas', field: 'Campo', presence: 'Presença', rdo: 'RDO',
   maintenance: 'Manutenção', reports: 'Relatórios', management: 'Gestão', admin: 'Administração',
 };
 
@@ -25,7 +25,7 @@ export function SaaSShell({ scope, activeModule, children }: SaaSShellProps) {
         <div className="flex items-center justify-between px-5 py-5 lg:block">
           <div className="flex items-center gap-3">
             <span className="grid size-9 place-items-center bg-emerald-700 text-white"><ShieldCheck size={18} /></span>
-            <span><strong className="block text-sm font-black tracking-tight">RENEA</strong><small className="text-xs font-bold uppercase tracking-[.14em] text-slate-500">SaaS operacional</small></span>
+            <span><strong className="block text-sm font-black tracking-tight">Cintravyse</strong><small className="text-xs font-semibold text-slate-500">ERP de obras</small></span>
           </div>
           <div className="mt-6 hidden border-t border-slate-100 pt-4 lg:block">
             <p className="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Escopo ativo</p>

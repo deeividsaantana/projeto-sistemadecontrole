@@ -50,7 +50,7 @@ export function CartaoArrastavel({ cartao, podeArrastar, onAbrir, modoSelecao, s
           data-testid={`quadro-selecionar-${cartao.prefixo}`}
           className={`absolute right-1 top-1 z-[1] grid size-11 place-items-center rounded-full lg:size-7 ${FOCO}`}
         >
-          <span className={`grid size-6 place-items-center rounded-full ring-2 ring-white transition ${selecionado ? 'bg-[#176b4d] text-white' : 'bg-white/90 text-slate-400'}`}>
+          <span className={`grid size-6 place-items-center rounded-full ring-2 ring-white transition ${selecionado ? 'bg-[#176b4d] text-white' : 'bg-white/90 text-slate-500'}`}>
             {selecionado && <Check className="size-3.5" aria-hidden="true" />}
           </span>
         </button>

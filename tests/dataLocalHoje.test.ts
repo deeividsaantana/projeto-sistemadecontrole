@@ -5,11 +5,6 @@ import test from 'node:test';
 // "Hoje" em UTC vira o dia seguinte depois das 21h em Brasília (A15).
 const ARQUIVOS = [
   'src/App.tsx',
-  'src/components/TicketsJazidaTab.tsx',
-  'src/components/jazida/JanelaTicket.tsx',
-  'src/components/jazida/JanelaSequencia.tsx',
-  'src/components/jazida/filtrosTickets.ts',
-  'src/components/jazida/exportarConferencia.ts',
   'src/components/LancamentosTab.tsx',
   'src/components/ManutencaoTab.tsx',
   'src/components/ColaboradoresTab.tsx',

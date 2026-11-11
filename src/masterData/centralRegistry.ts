@@ -87,7 +87,6 @@ export const isSupplier = (item: Empresa): boolean => (
   item.tipos?.some(tipo => tipo === 'FORNECEDOR' || SUBAREAS_FORNECEDOR.includes(tipo)) === true
 );
 export const isEquipmentRentalSupplier = (item: Empresa): boolean => item.tipos?.includes('LOCACAO_EQUIPAMENTOS') === true;
-export const isMaterialSupplier = (item: Empresa): boolean => item.tipos?.includes('MATERIAIS') === true;
 export const isSubSupplier = (item: Empresa): boolean => item.tipos?.includes('SUBFORNECEDOR') === true;
 // Terceira contratada presta serviço na obra (Tecnogeo, Rivoli) — diferente
 // de fornecedor de material (Pedraforte, Dovalle). Uma empresa pode ser as
@@ -101,7 +100,6 @@ export const EMPRESA_CLASSES: readonly { tipo: EmpresaTipo; label: string }[] = 
   { tipo: 'TERCEIRA', label: 'Terceira (serviço na obra)' },
   { tipo: 'FORNECEDOR', label: 'Fornecedor' },
   { tipo: 'LOCACAO_EQUIPAMENTOS', label: 'Locação de equipamentos' },
-  { tipo: 'MATERIAIS', label: 'Materiais' },
   { tipo: 'SUBFORNECEDOR', label: 'Subfornecedor' },
 ];
 

@@ -29,7 +29,6 @@ export const TABELAS_DE_CADASTRO = [
   'combustiveis',
   'lubrificantes',
   'etapas',
-  'materiaisCadastro',
 ] as const;
 
 const NENHUMA: readonly string[] = [];

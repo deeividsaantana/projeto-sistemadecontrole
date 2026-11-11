@@ -16,7 +16,8 @@
  *   separadas por "·" em vez de uma embaixo da outra;
  * - caixa de marcar na 1ª coluna (`selecao`) e ações na última (`acoes`);
  * - linha clicável (`onAbrirLinha`) também abre com Enter ou Espaço;
- * - rodapé preso com o total, "Mostrar 25/50/100" (padrão 50) e páginas;
+ * - rodapé preso com o total, "Baixar planilha" (CSV do Excel com todas as
+ *   linhas da lista), "Mostrar 25/50/100" (padrão 50) e páginas;
  * - abaixo de 768 px vira cartões, com os mesmos campos na mesma ordem
  *   (a coluna com `noCartao: false` fica fora do cartão);
  * - ocupa a altura do pai (`h-full`) e rola por dentro: dentro do molde de
@@ -63,9 +64,12 @@
  * - escolher colunas é só passar menos colunas: a tela guarda a escolha.
  */
 import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent, type ReactNode, type Ref } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Download, Inbox } from 'lucide-react';
 import { useTelaLarga } from '../hooks/useTelaLarga';
 import { cn } from './styles';
+import { EmptyState } from './EmptyState';
+import { LoadingState } from './LoadingState';
+import { nomeDoArquivo, tabelaParaCsv, type ValorCelula } from '../../utils/exportarTabela';
 
 export type DirecaoOrdenacao = 'asc' | 'desc';
 export interface Ordenacao { chave: string; direcao: DirecaoOrdenacao }
@@ -88,6 +92,8 @@ export interface ColunaTabela<T> {
   valorOrdenacao?: (linha: T) => ValorOrdenacao;
   /** Texto inteiro mostrado ao passar o mouse quando a célula quebra. */
   dica?: (linha: T) => string | undefined;
+  /** Valor da coluna na planilha baixada. Sem ele vale a dica, o valor de ordenação ou o texto da célula. */
+  valorExportacao?: (linha: T) => ValorCelula;
   /** `false` tira a coluna do cartão do celular. Padrão: aparece. */
   noCartao?: boolean;
 }
@@ -148,6 +154,8 @@ export interface TabelaPadraoProps<T> {
   densa?: boolean;
   /** Começo do rodapé (ex.: meses). Com ele o rodapé aparece mesmo sem linhas. */
   rodapeInicio?: ReactNode;
+  /** Botão "Baixar planilha" no rodapé, com todas as linhas da lista (não só a página). Desligue onde a tela já tem a sua exportação. */
+  exportar?: boolean;
   /** Texto depois do total no rodapé (ex.: litros, máquinas, a conferir). */
   resumo?: ReactNode;
   /** A área que rola (tabela ou cartões). */
@@ -293,6 +301,7 @@ export function TabelaPadrao<T>({
   grupos,
   densa = false,
   rodapeInicio,
+  exportar = true,
   resumo,
   refArea,
   testIdLinha,
@@ -329,6 +338,27 @@ export function TabelaPadrao<T>({
     if (ordenacaoControlada) onOrdenar!(chave);
     else setOrdenacaoInterna(atual => proximaOrdenacao(atual, chave));
     if (!(ordenacaoControlada && paginaControlada)) irPara(1);
+  };
+
+  const baixarPlanilha = () => {
+    const colunasDaPlanilha = colunas.map(coluna => ({
+      titulo: coluna.titulo,
+      valor: (linha: T): ValorCelula => {
+        if (coluna.valorExportacao) return coluna.valorExportacao(linha);
+        const dica = coluna.dica?.(linha);
+        if (dica) return dica;
+        const ordem = coluna.valorOrdenacao?.(linha);
+        if (ordem !== undefined && ordem !== null && ordem !== '') return ordem;
+        return textoDe(coluna.render(linha));
+      },
+    }));
+    const csv = tabelaParaCsv(ordenadas, colunasDaPlanilha);
+    const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = nomeDoArquivo(titulo, new Date().toLocaleDateString('sv-SE'));
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const idsVisiveis = visiveis.map(idDaLinha);
@@ -535,10 +565,10 @@ export function TabelaPadrao<T>({
   return (
     <div className={cn('flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white', className)} data-testid={testId}>
       {carregando ? (
-        <p role="status" className="px-4 py-10 text-center text-sm font-semibold text-slate-600">Carregando…</p>
+        <LoadingState message={`Carregando ${titulo.toLocaleLowerCase('pt-BR')}…`} />
       ) : linhas.length === 0 ? (
         typeof vazio === 'string'
-          ? <p className="px-4 py-10 text-center text-sm font-semibold text-slate-600">{vazio}</p>
+          ? <EmptyState icon={Inbox} title={vazio} />
           : vazio
       ) : telaLarga ? (
         <div
@@ -569,6 +599,11 @@ export function TabelaPadrao<T>({
             {resumo}
           </p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {exportar && (
+              <button type="button" onClick={baixarPlanilha} className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-[13px] font-bold text-slate-700 transition-colors hover:border-emerald-500 hover:text-[#176b4d] md:min-h-8 ${FOCO}`}>
+                <Download className="size-4" aria-hidden="true" /> Baixar planilha
+              </button>
+            )}
             {fatia.total > OPCOES_POR_PAGINA[0] && (
               <label className="flex items-center gap-2 font-semibold">
                 Mostrar

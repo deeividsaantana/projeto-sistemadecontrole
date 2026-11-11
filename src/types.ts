@@ -362,89 +362,6 @@ export interface HistoricoPresenca {
   valorNovo: string;
 }
 
-export type TipoMaterialJazida =
-  | 'Solo' | 'Rachão' | 'BGS' | 'Brita' | 'Areia' | 'Argila' | 'Mataco' | 'Solo mole' | 'Outros'
-  | (string & {});
-
-export type DestinoObraJazida =
-  | 'Marginal' | 'Ramo 500' | 'Ramo 600' | 'Ramo 900' | 'Ramo 200' | 'Ramo 300' | 'Ramo 2000'
-  | 'Agulha' | 'Ramo 800' | 'Ramo 200 Alargamento' | 'Ramo 500 Marginal' | 'Ramo 1000'
-  | 'Ramo 600 Ferradura' | 'Rua Padre Eustáquio' | 'Padre Eustáquio' | 'SP066 Ibar'
-  | 'Canteiro da Marginal' | 'Ferradura' | 'Coluna de Brita' | 'Apoio' | 'Jazida' | 'Outros'
-  | (string & {});
-
-export type EmpresaTicketJazida = 'RENEA' | 'Terceiro' | 'Outros';
-export type TipoTicketJazida = 'Liberação' | 'Recebimento';
-export type StatusFluxoTicket = 'Rascunho' | 'Enviado';
-export type UnidadeQuantidadeTicket = 'm³' | 'caçamba';
-export type TipoEventoTicket = 'Liberação' | 'Recebimento' | 'Devolução' | 'Impressão' | 'Cancelamento';
-
-export interface EventoTicket {
-  id: string;
-  tipo: TipoEventoTicket;
-  ocorridoEm: string;
-  responsavel?: string;
-  origem?: 'Link' | 'Admin' | 'Importação' | 'Sistema';
-  observacao?: string;
-}
-
-export interface TicketJazida {
-  id: string;
-  data: string; // YYYY-MM-DD
-  tipoTicket?: TipoTicketJazida;
-  ticketNumero: string;
-  prefixo: string;
-  placa: string;
-  familiaEquipamento?: string;
-  equipamentoNome?: string;
-  horaChegada?: string; // HH:MM
-  horaSaida: string; // HH:MM
-  tipoMaterial: TipoMaterialJazida;
-  quantidadeM3: number;
-  destinoObra: DestinoObraJazida;
-  destinoOutro?: string;
-  estaca?: string;
-  responsavelLiberacao: string;
-  nomeLegivel: string;
-  /** Motorista que fez a viagem; vem do controle diário do prefixo quando existe. */
-  motoristaNome?: string;
-  empresa: EmpresaTicketJazida;
-  observacao: string;
-  status?: StatusRegistroCombustivel;
-  statusFluxo?: StatusFluxoTicket;
-  unidadeQuantidade?: UnidadeQuantidadeTicket;
-  cargaConforme?: boolean;
-  assinaturaDigital?: string;
-  assinaturaResponsavel?: string;
-  materialOutro?: string;
-  origemRegistro?: 'Link' | 'Admin' | 'Importação';
-  dispositivoId?: string;
-  enviadoEm?: string;
-  criadoEm?: string;
-  atualizadoEm?: string;
-  impressaoEmBranco?: boolean;
-  ocultarNumeroImpressao?: boolean;
-  loteImpressaoId?: string;
-  loteImpressaoCriadoEm?: string;
-  devolvidoEm?: string;
-  conferidoPor?: string;
-  notaFiscalNumero?: string;
-  notaFiscalData?: string;
-  notaFiscalObservacao?: string;
-  equipamentoId?: string;
-  materialId?: string;
-  localOrigemId?: string;
-  localDestinoId?: string;
-  ramoId?: string;
-  ticketPareadoId?: string;
-  viagemId?: string;
-  eventos?: EventoTicket[];
-  /** Inativação em vez de exclusão: o registro sai das telas e dos totais,
-   *  mas continua no arquivo e pode voltar. Ausente = ativo. */
-  inativoEm?: string;
-  inativoPor?: string;
-}
-
 export interface OrdemServico {
   id: string;
   numero: string; // ex: OS-0001 (gerado automaticamente)
@@ -573,121 +490,12 @@ export interface Treinamento {
   criadoEm: string;
 }
 
-export interface Material {
-  id: string;
-  codigo: string;
-  descricao: string;
-  categoria: string;
-  unidade: string;
-  fornecedorPadraoId?: string;
-  estoqueMinimo?: number;
-  observacao?: string;
-  /** Tubo de concreto: classe de resistência (PA2, PA3, PA4). */
-  classe?: string;
-  /**
-   * Comprimento de uma peça, em metros, quando o material chega medido em
-   * metro mas é aplicado por peça (tubo de 1,50 m). Sem ele, a quantidade
-   * aparece só na unidade do cadastro.
-   */
-  comprimentoPecaM?: number;
-  ativo: boolean;
-  criadoEm: string;
-  atualizadoEm: string;
-  /** Diâmetro nominal, em mm — usado por materiais tubulares (ex: Ø800). */
-  diametroMm?: number;
-  /** Comprimento da peça, em metros — usado por materiais em barra/tubo. */
-  comprimentoM?: number;
-}
-
-export type TipoMovimentoMaterial = 'Entrada' | 'Saída' | 'Transferência' | 'Ajuste';
-
 /** Posição do GPS do celular, com a precisão em metros e a hora da leitura. */
 export interface LocalGps {
   lat: number;
   lng: number;
   precisaoM: number;
   em: string;
-}
-
-export interface MovimentoMaterial {
-  id: string;
-  data: string; // YYYY-MM-DD
-  tipo: TipoMovimentoMaterial;
-  materialId: string;
-  materialDescricao: string;
-  /** Sempre positiva, menos no ajuste, onde o sinal corrige o saldo. */
-  quantidade: number;
-  unidade: string;
-  /** Vínculo explícito com o ramo/trecho. Texto livre legado não vira vínculo automaticamente. */
-  etapaServicoId?: string;
-  etapaServicoNome?: string;
-  /** Apenas saídas de consumo compõem o indicador de utilização. */
-  finalidade?: 'Consumo';
-  /** Envio público aprovado que originou este movimento, quando aplicável. */
-  origemApontamentoId?: string;
-  /** Fotos do envio do apontador: caminhos no Storage, que só a equipe logada lê. */
-  /** Onde o celular estava ao apontar pelo link (GPS no momento do envio). */
-  localGps?: LocalGps;
-  fotos?: string[];
-  /** Obra operacional informada na origem; migração SaaS exige mapeamento para project_id. */
-  obraId?: string;
-  fornecedorId?: string;
-  fornecedorNome?: string;
-  notaFiscal?: string;
-  /** Placa do veículo que trouxe ou retirou o material. */
-  placa?: string;
-  /** Ticket, vale ou autorização operacional da viagem. */
-  ticket?: string;
-  /** Fator usado para converter a quantidade principal em outra leitura operacional. */
-  fatorConversao?: number;
-  valorUnitario?: number;
-  valorTotal?: number;
-  /** Solicitação de compra que originou a entrega (SC). */
-  solicitacaoCompra?: string;
-  /**
-   * O que a nota diz que veio. `quantidade` continua sendo o que de fato
-   * entrou na obra — é ela que move o estoque. A pendência é a diferença entre
-   * as duas, calculada na hora: um terceiro número gravado seria só mais uma
-   * verdade para divergir.
-   */
-  quantidadeNota?: number;
-  /** Quem apontou o uso em campo (link do apontador ou usuário do ERP). */
-  apontadoPor?: string;
-  /**
-   * Lançamento desfeito. Fica no histórico com quem e quando desfez, mas sai
-   * do saldo e da utilização: apagar sumiria com o registro fornecido.
-   */
-  canceladoEm?: string;
-  canceladoPor?: string;
-  /** Para onde foi: frente, obra ou ponto de apoio. */
-  destino?: string;
-  origem?: string;
-  servico?: string;
-  responsavel: string;
-  observacao?: string;
-  criadoEm: string;
-}
-
-/**
- * Quanto de um material um ramo deve receber num mês ("40 t de rachão no
- * Ramo 900 em setembro"). O realizado nunca é digitado aqui: vem dos
- * movimentos que chegaram a algum local daquele ramo no mesmo mês.
- */
-export interface PrevistoMaterial {
-  id: string;
-  mes: string; // YYYY-MM
-  /** Nome do ramo ("Ramo 900"): soma todas as frentes que pertencem a ele. */
-  ramo: string;
-  materialId: string;
-  materialDescricao: string;
-  unidade: string;
-  quantidade: number;
-  observacao?: string;
-  responsavel: string;
-  /** Previsto tirado continua guardado: o histórico do mês não some. */
-  ativo: boolean;
-  criadoEm: string;
-  atualizadoEm: string;
 }
 
 /** Prioridade da rotina do assistente: 🔴 crítico, 🟠 importante, 🟡 acompanhar, 🟢 rotina. */
@@ -1277,7 +1085,6 @@ export interface PeriodoArquivado {
   dados: {
     abastecimentos: Abastecimento[];
     lubrificacoes: Lubrificacao[];
-    ticketsJazida: TicketJazida[];
     listasPresenca: ListaPresenca[];
     ordensServico: OrdemServico[];
     presencasLink: PresencaApontamento[];

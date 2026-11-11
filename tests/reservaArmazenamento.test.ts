@@ -82,7 +82,7 @@ test('importou, a memória encheu e deu F5: a importação volta, não a cópia 
 test('a reserva só aceita de volta um valor íntegro', () => {
   const reserva = new Map<string, string | null>();
   const devolvidas = devolverParaReserva([
-    { key: 'renea_materiais_movimentos', value: '{quebrado', updatedAt: '', emReserva: true },
+    { key: 'renea_listas_presenca', value: '{quebrado', updatedAt: '', emReserva: true },
     { key: 'renea_abastecimentos', value: '[1]', updatedAt: '' },
   ], reserva);
   assert.deepEqual(devolvidas, []);
