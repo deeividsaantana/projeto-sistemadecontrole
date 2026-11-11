@@ -278,67 +278,71 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
         abas={<AbasDaTela<Subtela> id="solicitacoes" rotulo="Subtelas de solicitações" abas={subtelas} ativa={subtela} onTrocar={setSubtela} idPainel="solicitacoes-dados" testId="solicitacoes-aba" />}
         actions={<>
           <button type="button" onClick={() => void exportar()} disabled={ocupado || solicitacoes.length === 0} className={BOTAO_SECUNDARIO}>
-            <FileSpreadsheet className="size-4" aria-hidden="true" /> Relatórios Excel
+            <FileSpreadsheet className="size-4" aria-hidden="true" /> <span className="sm:hidden">Excel</span><span className="hidden sm:inline">Relatórios Excel</span>
           </button>
           {podeImportar && podeEditar && (
             <button type="button" onClick={() => arquivo.current?.click()} disabled={ocupado} className={BOTAO_SECUNDARIO}>
-              <Upload className="size-4" aria-hidden="true" /> Importar planilha
+              <Upload className="size-4" aria-hidden="true" /> <span className="sm:hidden">Importar</span><span className="hidden sm:inline">Importar planilha</span>
             </button>
           )}
           {exerce(ator, 'solicitante') && subtela !== 'nova' && (
             <button type="button" onClick={() => setSubtela('nova')} className={BOTAO_PRIMARIO}>
-              <PackagePlus className="size-4" aria-hidden="true" /> Nova solicitação
+              <PackagePlus className="size-4" aria-hidden="true" /> <span className="sm:hidden">Nova</span><span className="hidden sm:inline">Nova solicitação</span>
             </button>
           )}
         </>}
       />}
       faixa={<div data-sol-reveal className="grid gap-2">
-        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
-          <ClipboardCheck className="size-4 text-[#176b4d]" aria-hidden="true" />
-          {ator.papel
-            ? <>Você entra como <strong className="text-slate-900">{ator.nome}</strong> · {NOME_DO_PAPEL[ator.papel]}</>
-            : <>Seu login só consulta este módulo.{ehAdmin && ' Ligue o login a uma pessoa em "Pessoas e papéis".'}</>}
-        </p>
-        {exerce(ator, 'aprovador') && aguardandoAprovacao.length > 0 && !(subtela === 'pedidos' && filtro === 'aprovacao') && (
-          <button type="button" onClick={() => irPara('aprovacao')} className="flex min-h-11 items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 text-left text-sm font-bold text-amber-900">
-            <ShieldCheck className="size-4 shrink-0" aria-hidden="true" /> {aguardandoAprovacao.length} pedido(s) de compra esperando a sua aprovação. Toque para ver.
-          </button>
-        )}
-        {emAtraso.length > 0 && !(subtela === 'pedidos' && filtro === 'atraso') && (
-          <button type="button" onClick={() => irPara('atraso')} className="flex min-h-11 items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 text-left text-sm font-bold text-rose-800">
-            <AlertTriangle className="size-4 shrink-0" aria-hidden="true" /> {emAtraso.length} entrega(s) em atraso: passou o fim da janela sem confirmação de chegada.
-          </button>
-        )}
+        {/* Uma linha só: quem é você, avisos, busca e o jeito de mostrar. */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-slate-600">
+          <span className={`min-w-0 items-center gap-1.5 ${ator.papel ? 'hidden sm:flex' : 'flex'}`}>
+            <ClipboardCheck className="size-4 shrink-0 text-[#176b4d]" aria-hidden="true" />
+            {ator.papel
+              ? <span className="truncate"><strong className="text-slate-900">{ator.nome}</strong> · {NOME_DO_PAPEL[ator.papel]}</span>
+              : <span>Seu login só consulta este módulo.{ehAdmin && ' Ligue o login a uma pessoa em "Pessoas e papéis".'}</span>}
+          </span>
+          {exerce(ator, 'aprovador') && aguardandoAprovacao.length > 0 && !(subtela === 'pedidos' && filtro === 'aprovacao') && (
+            <button type="button" onClick={() => irPara('aprovacao')} className="flex min-h-9 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 text-sm font-bold text-amber-900">
+              <ShieldCheck className="size-4 shrink-0" aria-hidden="true" /> {aguardandoAprovacao.length} para você aprovar
+            </button>
+          )}
+          {emAtraso.length > 0 && !(subtela === 'pedidos' && filtro === 'atraso') && (
+            <button type="button" onClick={() => irPara('atraso')} title="Passou o fim da janela sem confirmação de chegada"
+              className={`min-h-9 items-center ${subtela === 'pedidos' ? 'hidden sm:flex' : 'flex'} gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 text-sm font-bold text-rose-800`}>
+              <AlertTriangle className="size-4 shrink-0" aria-hidden="true" /> {emAtraso.length} em atraso
+            </button>
+          )}
+          {comBusca && (
+            <div className="flex min-w-0 flex-[1_1_20rem] items-center gap-2">
+              <label className="relative min-w-0 flex-1 basis-48">
+                <span className="sr-only">Buscar</span>
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+                <input type="search" value={busca} onChange={event => { setBusca(event.target.value); setMostrar(POR_VEZ); }}
+                  placeholder={subtela === 'historico' ? 'Pedido, SC, pessoa, o que aconteceu...' : 'Pedido, SC, item, solicitante...'} className={`${CAMPO} pl-9`} />
+              </label>
+              {subtela === 'conferencia' && (
+                <select value={filtroConferencia} onChange={event => setFiltroConferencia(event.target.value as FiltroConferencia)} aria-label="Mostrar itens" className={`${CAMPO} w-auto sm:w-48`}>
+                  {FILTROS_CONFERENCIA.map(item => <option key={item}>{item}</option>)}
+                </select>
+              )}
+              {subtela === 'pedidos' && (
+                <div className="flex shrink-0 gap-1 rounded-full border border-slate-200 bg-white p-1" role="group" aria-label="Jeito de mostrar">
+                  {([['cards', 'Cards', LayoutGrid], ['lista', 'Lista', List]] as const).map(([id, rotulo, Icone]) => (
+                    <button key={id} type="button" aria-pressed={modo === id} onClick={() => setModo(id)} title={rotulo}
+                      className={`flex min-h-9 min-w-9 items-center justify-center gap-1.5 rounded-full px-2.5 text-sm font-bold ${modo === id ? 'bg-[#176b4d] text-white' : 'text-slate-700 hover:bg-[#f7f8f6]'}`}>
+                      <Icone className="size-4" aria-hidden="true" /> <span className="sr-only xl:not-sr-only">{rotulo}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         {aviso && (
-          <p role={aviso.tom === 'erro' ? 'alert' : 'status'} className={`rounded-xl border px-4 py-2.5 text-sm font-bold ${aviso.tom === 'erro' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>{aviso.texto}</p>
-        )}
-        {comBusca && (
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <label className="relative min-w-0 flex-1">
-              <span className="sr-only">Buscar</span>
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
-              <input type="search" value={busca} onChange={event => { setBusca(event.target.value); setMostrar(POR_VEZ); }}
-                placeholder={subtela === 'historico' ? 'Pedido, SC, pessoa, o que aconteceu...' : 'Pedido, SC, item, solicitante...'} className={`${CAMPO} pl-9`} />
-            </label>
-            {subtela === 'conferencia' && (
-              <select value={filtroConferencia} onChange={event => setFiltroConferencia(event.target.value as FiltroConferencia)} aria-label="Mostrar itens" className={`${CAMPO} sm:w-48`}>
-                {FILTROS_CONFERENCIA.map(item => <option key={item}>{item}</option>)}
-              </select>
-            )}
-            {subtela === 'pedidos' && (
-              <div className="flex shrink-0 gap-1 self-start rounded-full border border-slate-200 bg-white p-1" role="group" aria-label="Jeito de mostrar">
-                {([['cards', 'Cards', LayoutGrid], ['lista', 'Lista', List]] as const).map(([id, rotulo, Icone]) => (
-                  <button key={id} type="button" aria-pressed={modo === id} onClick={() => setModo(id)}
-                    className={`flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-bold ${modo === id ? 'bg-[#176b4d] text-white' : 'text-slate-700 hover:bg-[#f7f8f6]'}`}>
-                    <Icone className="size-4" aria-hidden="true" /> {rotulo}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <p role={aviso.tom === 'erro' ? 'alert' : 'status'} className={`rounded-xl border px-3 py-2 text-sm font-bold ${aviso.tom === 'erro' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>{aviso.texto}</p>
         )}
         {subtela === 'pedidos' && (
-          <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 sm:flex-wrap" role="group" aria-label="Filtrar pedidos">
+          <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 xl:flex-wrap" role="group" aria-label="Filtrar pedidos">
             {FILTROS.map(item => (
               <button key={item.id} type="button" aria-pressed={filtro === item.id} onClick={() => { setFiltro(item.id); setMostrar(POR_VEZ); }}
                 data-testid={`filtro-${item.id}`}
@@ -361,7 +365,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
           </p>
         ) : (
           <div className="grid gap-3">
-            <ul data-sol-reveal className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <ul data-sol-reveal className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {pedidos.slice(0, mostrar).map(({ sol }) => (
                 <CartaoRastreio key={sol.id} sol={sol} hoje={hoje} ativo={sol.id === abertaId} onAbrir={() => setAbertaId(sol.id)} />
               ))}

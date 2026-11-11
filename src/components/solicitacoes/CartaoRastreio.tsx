@@ -31,7 +31,7 @@ export function CartaoRastreio({ sol, hoje, ativo, onAbrir }: CartaoRastreioProp
   return (
     <li data-testid="pedido-card">
       <button type="button" onClick={onAbrir} aria-current={ativo || undefined}
-        className={`${CARTAO} grid h-full w-full gap-3 p-4 text-left transition-colors hover:border-[#176b4d] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus) ${ativo ? 'border-[#176b4d]' : ''} ${rastreio.tom === 'atraso' ? 'border-rose-300' : ''}`}>
+        className={`${CARTAO} grid h-full w-full gap-2 p-3 text-left transition-colors hover:border-[#176b4d] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus) ${ativo ? 'border-[#176b4d]' : ''} ${rastreio.tom === 'atraso' ? 'border-rose-300' : ''}`}>
         <span className="flex items-start justify-between gap-2">
           <span className="min-w-0">
             <strong className="block text-base font-black text-slate-900">{sol.numero}</strong>
@@ -70,7 +70,7 @@ export function CartaoRastreio({ sol, hoje, ativo, onAbrir }: CartaoRastreioProp
                   <span aria-hidden="true" className={`relative z-10 grid size-6 place-items-center rounded-full text-xs font-black ${corBolinha}`}>
                     {feito ? <Check className="size-3.5" /> : indice + 1}
                   </span>
-                  <span className={`break-words px-0.5 text-center text-xs leading-tight ${agora ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{passo}</span>
+                  <span className={`break-words px-0.5 text-center text-xs sm:whitespace-nowrap leading-tight ${agora ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{passo}</span>
                 </li>
               );
             })}
