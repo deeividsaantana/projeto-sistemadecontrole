@@ -108,8 +108,8 @@ export const MODULE_REDIRECTS: Readonly<Record<string, string>> = {
   auditoria: 'cadastros',
   permissoes: 'cadastros',
   // Previsto x Executado saiu do menu em 10/11/2026, a pedido do usuário. Os
-  // planos salvos continuam guardados; o endereço antigo cai no Meu dia.
-  planejamento: 'meu-dia',
+  // planos salvos continuam guardados; o endereço antigo cai no Pluviômetro.
+  planejamento: 'pluviometro',
   // Relatórios saiu do menu em 10/11/2026, a pedido do usuário: cada aba já
   // tem a sua parte de relatórios. O endereço antigo cai no Painel.
   relatorios: 'dashboard',

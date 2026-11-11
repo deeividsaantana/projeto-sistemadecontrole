@@ -109,7 +109,6 @@ const ControleEquipamentosDiarioTab = lazy(() => import('./components/ControleEq
 const QuadroFrota = lazy(() => import('./components/quadroFrota/QuadroFrota'));
 const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
-const MeuDiaTab = lazy(() => import('./components/MeuDiaTab'));
 const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
 const SolicitacoesTab = lazy(() => import('./components/SolicitacoesTab'));
 const PluviometroTab = lazy(() => import('./components/PluviometroTab'));
@@ -4449,22 +4448,6 @@ export default function App() {
                 responsavel={activeUserName}
                 podeEditar={pode(currentUserRole, 'diario-obra', 'editar') || pode(currentUserRole, 'pluviometro', 'editar')}
                 onSave={handleSaveDiarioObra}
-              />
-            )}
-
-            {activeTab === 'meu-dia' && (
-              <MeuDiaTab
-                responsavel={activeUserName}
-                rotinas={rotinasDiarias}
-                pendencias={pendenciasRotina}
-                modelos={modelosRotina}
-                onSaveRotina={handleSaveRotinaDiaria}
-                onSavePendencia={handleSavePendenciaRotina}
-                onSaveModelo={handleSaveModeloRotina}
-                abastecimentos={abastecimentosAtivos}
-                controlesFrota={controleEquipamentosDiario}
-                equipamentos={equipamentos}
-                onIrPara={aba => { if (allowedTabs.includes(aba)) navigateTo(aba); }}
               />
             )}
 
