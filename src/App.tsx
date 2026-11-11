@@ -505,6 +505,9 @@ export default function App() {
   // salvar algo) leria a nuvem antes do envio terminar de publicá-la, e
   // sobrescreveria o lançamento que acabou de ser feito com a versão antiga.
   const uploadsInFlightRef = useRef(0);
+  // Lançamentos rápidos chegam juntos. Um único publicador por vez evita
+  // que vários snapshots leiam a mesma versão e disputem a função do banco.
+  const uploadQueueRef = useRef<Promise<{ success: boolean; message: string }> | null>(null);
   const isCheckingSyncRef = useRef(false);
   const lastSyncCheckAtRef = useRef(0);
   const automaticDownloadInFlightRef = useRef(false);
@@ -1042,7 +1045,7 @@ export default function App() {
   });
 
   // Envio para a nuvem pelo gateway de migração.
-  const handleUploadToSupabase = async (
+  const performUploadToSupabase = async (
     overrides: Partial<CloudData> = {},
     { forcar = false }: { forcar?: boolean } = {},
   ): Promise<{ success: boolean; message: string }> => {
@@ -1125,6 +1128,7 @@ export default function App() {
           success: true,
           message: `${uploadResult.totalRecords.toLocaleString('pt-BR')} registros atualizados. ${devolvidos.toLocaleString('pt-BR')} registros que faltavam neste aparelho foram mantidos na nuvem e voltam para cá.`,
         };
+
       }
       return {
         success: true,
@@ -1156,6 +1160,22 @@ export default function App() {
         queueMicrotask(() => requestAutomaticRemoteSyncRef.current(pendingRemoteVersionRef.current));
       }
     }
+  };
+
+  const handleUploadToSupabase = (
+    overrides: Partial<CloudData> = {},
+    opcoes: { forcar?: boolean } = {},
+  ): Promise<{ success: boolean; message: string }> => {
+    const anterior = uploadQueueRef.current ?? Promise.resolve();
+    const proximo = anterior
+      .catch(() => undefined)
+      .then(() => performUploadToSupabase(overrides, opcoes));
+    uploadQueueRef.current = proximo;
+    void proximo.then(
+      () => { if (uploadQueueRef.current === proximo) uploadQueueRef.current = null; },
+      () => { if (uploadQueueRef.current === proximo) uploadQueueRef.current = null; },
+    );
+    return proximo;
   };
 
   // Download da nuvem pelo provedor autoritativo da fase atual.
