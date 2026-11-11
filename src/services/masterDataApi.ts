@@ -47,6 +47,15 @@ export interface PersistedAuditLog {
 }
 
 export type ManagedUserRole = 'admin' | 'gestor' | 'operador' | 'leitura';
+export type ManagedUserPermission =
+  | 'dashboard'
+  | 'lancamentos'
+  | 'compras'
+  | 'cadastros'
+  | 'frota'
+  | 'presenca'
+  | 'diario'
+  | 'usuarios';
 
 export interface ManagedUser {
   id: string;
@@ -55,6 +64,13 @@ export interface ManagedUser {
   fullName: string;
   role: ManagedUserRole;
   active: boolean;
+  profileName?: string | null;
+  avatarColor?: string | null;
+  jobTitle?: string | null;
+  phone?: string | null;
+  area?: string | null;
+  registration?: string | null;
+  permissions?: ManagedUserPermission[];
   lastSeenAt?: unknown;
 }
 
@@ -125,8 +141,15 @@ export const createManagedUser = async (input: {
   email: string;
   password: string;
   role: ManagedUserRole;
+  profileName?: string;
+  avatarColor?: string;
+  jobTitle?: string;
+  phone?: string;
+  area?: string;
+  registration?: string;
+  permissions?: ManagedUserPermission[];
 }) => {
-  const response = await request<{ uid: string; email: string; fullName: string; role: ManagedUserRole }>(endpoint, {
+  const response = await request<ManagedUser>(endpoint, {
     method: 'POST',
     body: JSON.stringify({ action: 'create-user', ...input }),
   });
@@ -137,8 +160,16 @@ export const updateManagedUser = async (input: {
   uid: string;
   role: ManagedUserRole;
   active: boolean;
+  fullName?: string;
+  profileName?: string;
+  avatarColor?: string;
+  jobTitle?: string;
+  phone?: string;
+  area?: string;
+  registration?: string;
+  permissions?: ManagedUserPermission[];
 }) => {
-  const response = await request<{ uid: string; role: ManagedUserRole; active: boolean }>(endpoint, {
+  const response = await request<ManagedUser>(endpoint, {
     method: 'PATCH',
     body: JSON.stringify({ action: 'update-user', ...input }),
   });
