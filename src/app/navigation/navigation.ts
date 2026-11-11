@@ -10,7 +10,6 @@ import {
   Wrench,
   Activity,
   Users,
-  NotebookPen,
   ShoppingCart,
   type LucideIcon,
 } from 'lucide-react';
@@ -34,7 +33,6 @@ export const NAVIGATION_GROUPS = [
   {
     label: 'Operação',
     items: [
-      { id: 'diario-obra', label: 'Diário de Obra', icon: NotebookPen },
       { id: 'pluviometro', label: 'Pluviômetro', icon: CloudRain },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
     ],
@@ -77,7 +75,6 @@ export const PRIMARY_MODULE_IDS = [
   // Rotina do assistente de engenharia, pedida em 2026-09-27: checklist do
   // dia, pendências com prioridade e fechamento do dia.
   'meu-dia',
-  'diario-obra',
   'pluviometro',
   // Controle de Estacas é aba própria: a importação com prévia/lote/lineage
   // vive dentro dela (decisão confirmada com o usuário em 2026-09-22).
@@ -108,6 +105,7 @@ export const MODULE_REDIRECTS: Readonly<Record<string, string>> = {
   // Frentes e produção vivem na parte Frentes do Meu dia.
   frentes: 'meu-dia',
   producao: 'meu-dia',
+  'diario-obra': 'pluviometro',
   // Telas antigas cortadas em 16/10/2026 (auditoria das abas, G6/G7).
   frota: 'controle-equipamentos',
   equipes: 'presenca',
