@@ -194,6 +194,23 @@ const sanitizeUserRole = value => {
   return rawRole;
 };
 
+const USER_PERMISSIONS = new Set([
+  'dashboard', 'lancamentos', 'compras', 'cadastros',
+  'frota', 'presenca', 'diario', 'usuarios',
+]);
+
+const sanitizeUserProfile = body => ({
+  profileName: cleanString(body.profileName, 120) || null,
+  avatarColor: /^#[0-9a-f]{6}$/i.test(String(body.avatarColor || '')) ? String(body.avatarColor).toLowerCase() : '#15803d',
+  jobTitle: cleanString(body.jobTitle, 160) || null,
+  phone: cleanString(body.phone, 40) || null,
+  area: cleanString(body.area, 120) || null,
+  registration: cleanString(body.registration, 80) || null,
+  permissions: Array.isArray(body.permissions)
+    ? [...new Set(body.permissions.map(item => cleanString(item, 40)).filter(item => USER_PERMISSIONS.has(item)))]
+    : [],
+});
+
 const listUsers = async (event, context) => {
   assertAdministrator(context);
   const limit = sanitizeListLimit(event.queryStringParameters?.limit);
@@ -213,6 +230,7 @@ const createUser = async (body, context) => {
   const fullName = cleanString(body.fullName, 240);
   const password = String(body.password || '');
   const role = sanitizeUserRole(body.role);
+  const profile = sanitizeUserProfile(body);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     const error = new Error('E-mail inválido.');
     error.statusCode = 400;
@@ -248,13 +266,14 @@ const createUser = async (body, context) => {
     email,
     fullName,
     role,
+    ...profile,
     active: true,
     createdBy: context.userId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }, { merge: true });
-  await writeAudit(context, 'USER_CREATE', 'users', user.uid, null, { email, fullName, role });
-  return jsonResponse(201, { success: true, data: { uid: user.uid, email, fullName, role } });
+  await writeAudit(context, 'USER_CREATE', 'users', user.uid, null, { email, fullName, role, ...profile });
+  return jsonResponse(201, { success: true, data: { uid: user.uid, email, fullName, role, ...profile } });
 };
 
 const updateUser = async (body, context) => {
@@ -268,32 +287,70 @@ const updateUser = async (body, context) => {
     await assertKeepsActiveAdmin({ uid, role, active, adminIds, getUser: id => adminAuth.getUser(id) });
   }
   const user = await adminAuth.getUser(uid);
+  const userRecord = await context.database.collection(USERS_COLLECTION)
+    .doc(context.organizationId + '_' + uid)
+    .get();
+  const profile = sanitizeUserProfile({
+    ...(userRecord.exists ? userRecord.data() : {}),
+    ...body,
+  });
   const before = {
     email: user.email || null,
     displayName: user.displayName || null,
     role: user.customClaims?.role || 'leitura',
     active: !user.disabled,
   };
-  await adminAuth.updateUser(uid, { disabled: !active });
+  const fullName = cleanString(body.fullName, 240) || user.displayName || user.email || 'Usuário';
+  await adminAuth.updateUser(uid, {
+    disabled: !active,
+    ...(body.fullName !== undefined ? { displayName: fullName } : {}),
+  });
   await adminAuth.setCustomUserClaims(uid, {
     ...(user.customClaims || {}),
     staff: true,
     role,
     organization_id: context.organizationId,
   });
-  const after = { email: user.email || null, displayName: user.displayName || null, role, active };
+  const after = { email: user.email || null, displayName: fullName, role, active, ...profile };
   await context.database.collection(USERS_COLLECTION).doc(context.organizationId + '_' + uid).set({
     organizationId: context.organizationId,
     userId: uid,
     email: user.email || null,
-    fullName: user.displayName || user.email || 'Usuário',
+    fullName,
     role,
     active,
+    ...profile,
     updatedBy: context.userId,
     updatedAt: serverTimestamp(),
   }, { merge: true });
   await writeAudit(context, 'USER_UPDATE', 'users', uid, before, after);
-  return jsonResponse(200, { success: true, data: { uid, role, active } });
+  return jsonResponse(200, { success: true, data: { uid, fullName, role, active, ...profile } });
+};
+
+const deleteUser = async (body, context) => {
+  assertAdministrator(context);
+  const uid = safeId(body.uid, 'Usuário');
+  const adminAuth = getAdminAuth();
+  const adminIds = await listOrganizationAdminIds(context.organizationId);
+  if (adminIds.includes(uid)) {
+    const user = await adminAuth.getUser(uid);
+    if (user.customClaims?.role === 'admin') {
+      const error = new Error('Não é possível excluir um administrador enquanto ele mantém este perfil.');
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+  const user = await adminAuth.getUser(uid);
+  await adminAuth.deleteUser(uid);
+  await context.database.collection(USERS_COLLECTION)
+    .doc(context.organizationId + '_' + uid)
+    .delete();
+  await writeAudit(context, 'USER_DELETE', 'users', uid, {
+    email: user.email || null,
+    displayName: user.displayName || null,
+    role: user.customClaims?.role || 'leitura',
+  }, null);
+  return jsonResponse(200, { success: true, data: { uid } });
 };
 
 const listRecords = async (event, context) => {
@@ -498,6 +555,7 @@ export const handler = async event => withApiTelemetry(event, 'master-data', asy
     return await withIdempotency(event, context, idempotencyKey, async () => {
     if (method === 'POST' && body.action === 'create-user') return await createUser(body, context);
     if (method === 'PATCH' && body.action === 'update-user') return await updateUser(body, context);
+    if (method === 'DELETE' && body.action === 'delete-user') return await deleteUser(body, context);
     if (method === 'POST' && body.action === 'stage-master-import') return await stageMasterImport(body, context);
     if (method === 'POST' && body.action === 'stage-fuel-import') return await stageOperationalImport(body, context, 'fuel');
     if (method === 'POST' && body.action === 'stage-travel-import') return await stageOperationalImport(body, context, 'travel');

@@ -14,7 +14,9 @@ export const BOTAO_PERIGO_LEVE = `${BOTAO} border border-rose-200 bg-white text-
 
 export const CARTAO = 'rounded-2xl border border-slate-200 bg-white';
 
-export const CAMPO = `min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-base text-slate-900 placeholder:text-slate-500 transition duration-200 focus:border-emerald-500 sm:text-sm ${FOCO}`;
+export const CAMPO = `min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-base text-slate-900 placeholder:text-slate-500 transition duration-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-600/10 aria-[invalid=true]:border-rose-600 aria-[invalid=true]:focus:border-rose-600 aria-[invalid=true]:focus:ring-rose-600/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 sm:text-sm ${FOCO}`;
+
+export const CAMPO_SELECT = `${CAMPO} cursor-pointer`;
 
 export const ROTULO = 'text-sm font-semibold text-slate-700';
 

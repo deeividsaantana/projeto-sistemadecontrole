@@ -9,7 +9,7 @@ interface PageHeaderProps {
   /** Subtelas (AbasDaTela), logo depois do título e antes das ações. */
   abas?: ReactNode;
   className?: string;
-  /** Contexto do módulo, em caixa alta. Ex.: "Frota", "Suprimentos". */
+  /** Mantido por compatibilidade com telas antigas; não é exibido no cabeçalho. */
   eyebrow?: string;
   /** Esconde o título visual quando há subtelas (as abas já identificam a tela). */
   compact?: boolean;
@@ -22,7 +22,7 @@ interface PageHeaderProps {
  * principal à direita, numa linha só quando couber. Dentro da área de dados
  * de outra TelaCheia (subtela que é uma tela inteira) o título vira h2.
  */
-export function PageHeader({ title, description, actions, abas, className, eyebrow, compact = true }: PageHeaderProps) {
+export function PageHeader({ title, description, actions, abas, className, compact = true }: PageHeaderProps) {
   const Titulo = useDentroDaTelaCheia() ? 'h2' : 'h1';
   // Sem subtelas, o lado esquerdo ficaria vazio: o título aparece, como no
   // Painel de Controle. Com subtelas, as abas já dizem onde a pessoa está.
@@ -31,7 +31,6 @@ export function PageHeader({ title, description, actions, abas, className, eyebr
     <header className={cn('renea-page-header', escondeTitulo ? 'renea-page-header--compact' : undefined, abas ? 'renea-page-header--com-abas' : undefined, className)}>
       <div className="renea-page-header__copy">
         <span className={escondeTitulo ? 'sr-only' : undefined}>
-          {eyebrow && <span className="renea-page-header__eyebrow">{eyebrow}</span>}
           <Titulo>{title}</Titulo>
           {description && <p>{description}</p>}
         </span>

@@ -683,21 +683,21 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; text-wrap: bal
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--renea-space-2);
+  gap: .625rem;
 }
 .renea-filter-bar__fields {
   display: flex;
   flex: 1 1 12rem;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--renea-space-2);
+  gap: .625rem;
   min-width: 0;
 }
 .renea-filter-bar__actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--renea-space-2);
+  gap: .625rem;
 }
 
 /* Cabeçalho de módulo: faixa densa, sem foto e sem capa editorial. */
@@ -720,16 +720,6 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; text-wrap: bal
   overflow: visible;
 }
 .renea-page-header__copy { min-width: 0; flex: 1 1 22rem; }
-.renea-page-header__eyebrow {
-  display: block;
-  margin-bottom: .15rem;
-  color: #4d6a5d;
-  /* 0.68rem dava 10,88px e ficava abaixo do piso de legibilidade da obra. */
-  font-size: .75rem;
-  font-weight: 700;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-}
 .renea-page-header__copy :is(h1, h2) {
   color: #0d1a15;
   font-size: clamp(1.2rem, 1.05rem + .5vw, 1.6rem);
@@ -1166,11 +1156,6 @@ body,
    monitor grande. Fica por último para vencer as camadas antigas.
    ========================================================================== */
 .renea-page-header { gap: .5rem 1rem; }
-.renea-page-header__eyebrow {
-  margin-bottom: .1rem;
-  font-size: .75rem;
-  letter-spacing: .1em;
-}
 .renea-page-header__copy :is(h1, h2) {
   font-size: clamp(1.2rem, 1.05rem + .35vw, 1.45rem);
   font-weight: 750;
@@ -1187,6 +1172,37 @@ body,
 @media (min-width: 1024px) {
   #main-tab-viewport :is(input, select):not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
     min-height: 2.5rem;
+  }
+
+  @media (max-width: 639px) {
+    .renea-filter-bar {
+      align-items: stretch;
+    }
+    .renea-filter-bar__fields,
+    .renea-filter-bar__actions {
+      width: 100%;
+    }
+    .renea-filter-bar__fields > *,
+    .renea-filter-bar__actions > * {
+      min-width: 0;
+      width: 100%;
+      flex: 1 1 12rem;
+    }
+    .renea-filter-bar__actions > button,
+    .renea-filter-bar__actions > a {
+      flex: 0 1 auto;
+    }
+
+    #main-tab-viewport [data-tabela-rodape] {
+      align-items: stretch;
+      flex-direction: column;
+    }
+    #main-tab-viewport [data-tabela-rodape] > :is(p, div) {
+      width: 100%;
+    }
+    #main-tab-viewport [data-tabela-rodape] > div {
+      justify-content: space-between;
+    }
   }
   #main-tab-viewport .renea-page-actions button,
   #main-tab-viewport .renea-filter-bar button,

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, LogOut } from 'lucide-react';
 import type { NavigationGroupView } from './NavigationMenu';
 import { AmbienteCliente, MarcaProduto, SimboloProduto } from '../../shared/ui/MarcaProduto';
 import { APP_VERSION_LABEL } from '../version';
@@ -11,6 +11,8 @@ interface DesktopSidebarProps {
   activeTab: string;
   groups: NavigationGroupView[];
   onNavigate: (tab: string) => void;
+  userName?: string;
+  onLogout?: () => void;
 }
 
 const COLLAPSE_KEY = 'renea_sidebar_recolhido';
@@ -34,9 +36,10 @@ const readCollapsed = () => {
  * "deixar profissional"). Fundo branco como o resto do sistema, grupos
  * sempre abertos com o nome discreto (sem setas para abrir e fechar), item
  * aberto em verde-claro com a barrinha verde à esquerda, e o ambiente do
- * cliente num cartão logo abaixo da marca.
+ * cliente num cartão logo abaixo da marca. No rodapé fica quem está logado,
+ * com o botão de sair.
  */
-export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebarProps) {
+export function DesktopSidebar({ activeTab, groups, onNavigate, userName = 'Usuário', onLogout }: DesktopSidebarProps) {
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const navRef = useRef<HTMLElement>(null);
 
@@ -139,8 +142,23 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
         )}
       </nav>
 
-      <div className={`border-t border-slate-200 py-2.5 text-xs text-slate-500 ${collapsed ? 'text-center' : 'px-5'}`} title={APP_VERSION_LABEL}>
-        {collapsed ? versao.replace(/^ERP\s*/, '') : `Cintravyse ${versao.replace(/^ERP\s*/, '')}`}
+      <div className="border-t border-slate-200 p-2">
+        <div className={`flex items-center gap-2 rounded-lg ${collapsed ? 'justify-center p-1.5' : 'px-2 py-1.5'}`} title={userName}>
+          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#eef6f1] text-xs font-bold text-[#176b4d]" aria-hidden="true">
+            {userName.trim().slice(0, 1).toUpperCase()}
+          </span>
+          {!collapsed && (
+            <span className="min-w-0 flex-1">
+              <strong className="block truncate text-sm font-semibold text-slate-900">{userName}</strong>
+              <span className="block truncate text-xs text-slate-500">Cintravyse {versao.replace(/^ERP\s*/, '')}</span>
+            </span>
+          )}
+          {!collapsed && onLogout && (
+            <button type="button" onClick={onLogout} aria-label="Sair da conta" title="Sair da conta" className={`grid size-8 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 ${FOCO}`}>
+              <LogOut className="size-4" strokeWidth={ICON_STROKE} />
+            </button>
+          )}
+        </div>
       </div>
     </aside>
   );

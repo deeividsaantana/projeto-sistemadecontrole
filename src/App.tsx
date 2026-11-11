@@ -486,6 +486,19 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [menuSearch, setMenuSearch] = useState<string>('');
   const [pesquisaAberta, setPesquisaAberta] = useState(false);
+  useEffect(() => {
+    if (!isMobileMenuOpen) return undefined;
+    const fecharComEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsMobileMenuOpen(false);
+    };
+    document.addEventListener('keydown', fecharComEsc);
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', fecharComEsc);
+      document.body.style.overflow = overflowAnterior;
+    };
+  }, [isMobileMenuOpen]);
   // Preferência de notificação é do dispositivo: fica no navegador e não sobe
   // para a nuvem, senão silenciar no celular apagaria o alerta do gestor.
   const [preferenciasNotificacao] = useState<PreferenciasNotificacao>(
@@ -505,6 +518,9 @@ export default function App() {
   // salvar algo) leria a nuvem antes do envio terminar de publicá-la, e
   // sobrescreveria o lançamento que acabou de ser feito com a versão antiga.
   const uploadsInFlightRef = useRef(0);
+  // Lançamentos rápidos chegam juntos. Um único publicador por vez evita
+  // que vários snapshots leiam a mesma versão e disputem a função do banco.
+  const uploadQueueRef = useRef<Promise<{ success: boolean; message: string }> | null>(null);
   const isCheckingSyncRef = useRef(false);
   const lastSyncCheckAtRef = useRef(0);
   const automaticDownloadInFlightRef = useRef(false);
@@ -1042,7 +1058,7 @@ export default function App() {
   });
 
   // Envio para a nuvem pelo gateway de migração.
-  const handleUploadToSupabase = async (
+  const performUploadToSupabase = async (
     overrides: Partial<CloudData> = {},
     { forcar = false }: { forcar?: boolean } = {},
   ): Promise<{ success: boolean; message: string }> => {
@@ -1125,6 +1141,7 @@ export default function App() {
           success: true,
           message: `${uploadResult.totalRecords.toLocaleString('pt-BR')} registros atualizados. ${devolvidos.toLocaleString('pt-BR')} registros que faltavam neste aparelho foram mantidos na nuvem e voltam para cá.`,
         };
+
       }
       return {
         success: true,
@@ -1156,6 +1173,22 @@ export default function App() {
         queueMicrotask(() => requestAutomaticRemoteSyncRef.current(pendingRemoteVersionRef.current));
       }
     }
+  };
+
+  const handleUploadToSupabase = (
+    overrides: Partial<CloudData> = {},
+    opcoes: { forcar?: boolean } = {},
+  ): Promise<{ success: boolean; message: string }> => {
+    const anterior = uploadQueueRef.current ?? Promise.resolve();
+    const proximo = anterior
+      .catch(() => undefined)
+      .then(() => performUploadToSupabase(overrides, opcoes));
+    uploadQueueRef.current = proximo;
+    void proximo.then(
+      () => { if (uploadQueueRef.current === proximo) uploadQueueRef.current = null; },
+      () => { if (uploadQueueRef.current === proximo) uploadQueueRef.current = null; },
+    );
+    return proximo;
   };
 
   // Download da nuvem pelo provedor autoritativo da fase atual.
@@ -4175,7 +4208,12 @@ export default function App() {
 
       {/* Mobile Drawer Menu overlay */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-slate-950/85 flex justify-end print:hidden" id="mobile-drawer">
+        <div
+          className="lg:hidden fixed inset-0 z-50 bg-slate-950/85 flex justify-end print:hidden"
+          id="mobile-drawer"
+          role="presentation"
+          onMouseDown={event => { if (event.target === event.currentTarget) setIsMobileMenuOpen(false); }}
+        >
           <div className="mobile-sidebar-panel w-[18.5rem] max-w-[82vw] border-l border-slate-200 bg-white p-4 flex flex-col space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <MarcaProduto />
@@ -4206,6 +4244,8 @@ export default function App() {
           activeTab={activeTab}
           groups={filteredNavigationGroups}
           onNavigate={tab => navigateTo(tab)}
+          userName={currentUser?.displayName || currentUser?.email || 'Usuário'}
+          onLogout={() => { void handleLogout(); }}
         />}
         <main className="erp-workspace" id="main-workspace">
         {!combustivelListaSomente && <DesktopTopBar
