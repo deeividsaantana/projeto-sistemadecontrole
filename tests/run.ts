@@ -212,6 +212,7 @@ import './linkDeCampoFila.test';
 import './nuvemNaoPerdeNovidade.test';
 import './ticketsUmaTabela.test';
 import './remocaoMateriaisJazidaBloco.test';
+import './salvamentoLeveSemFila.test';
 import './historicoVersoesNuvem.test';
 import './frotaDataPlanilha.test';
 import './dataLocalHoje.test';
