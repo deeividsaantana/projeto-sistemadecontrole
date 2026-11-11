@@ -148,6 +148,7 @@ import { juntarPresencaBaixada, presenceBusinessKey, presencasFaltantes, resumoR
 import { captureCloudBaseline, mergeCloudTable, normalizeCloudBaseline, type CloudBaseline } from './cloudMerge';
 import { CHAVES_LOCAIS_REMOVIDAS, apagarDeVez, aplicarExclusoes, criarExclusao, marcaRestaurada, restaurarExclusao, semTabelasRemovidas, type ExclusaoRegistro } from './cloud/exclusoes';
 import { protegerContraEncolhimento } from './cloud/protecaoEncolhimento';
+import { MENSAGEM_NUVEM_OCUPADA, esperaDoReenvio } from './cloud/esperaReenvio';
 import { comMarcasDaNuvem, comMarcasLocaisDaNuvem, comTabelasDaNuvem, marcasSoDaNuvem, recusadoPorPerfil, tabelasSoDaNuvem } from './cloud/tabelasPorPerfil';
 import { manterNovidadesLocais } from './cloud/novidadesLocais';
 import { manterEdicoesLocais } from './cloud/edicoesLocais';
@@ -506,6 +507,8 @@ export default function App() {
   const pendingRemoteVersionRef = useRef('');
   // O último envio falhou: o pulso de checagem tenta de novo sozinho.
   const uploadPendenteRef = useRef(false);
+  // Falhas seguidas do envio e quando vale tentar de novo (espera que dobra a cada falha).
+  const falhasDeEnvioRef = useRef({ seguidas: 0, tentarDepoisDe: 0 });
   const recuperacaoPorPerfilRef = useRef({ quando: 0, vezes: 0 });
   const requestAutomaticRemoteSyncRef = useRef<(updatedAt: string) => void>(() => undefined);
   const currentUserRoleRef = useRef<UserRole>('leitura');
@@ -1031,7 +1034,14 @@ export default function App() {
   // Envio para a nuvem pelo gateway de migração.
   const handleUploadToSupabase = async (
     overrides: Partial<CloudData> = {},
+    { forcar = false }: { forcar?: boolean } = {},
   ): Promise<{ success: boolean; message: string }> => {
+    // Envio que já falhou espera antes de insistir: tentar a cada edição e a
+    // cada pulso mantinha o banco lento. O que não subiu fica neste aparelho
+    // e sobe na próxima tentativa. Quem pede na hora (botão) passa por cima.
+    if (!forcar && uploadPendenteRef.current && Date.now() < falhasDeEnvioRef.current.tentarDepoisDe) {
+      return { success: false, message: MENSAGEM_NUVEM_OCUPADA };
+    }
     // Enviar a semente de um navegador novo por cima da nuvem trocava os
     // links das equipes e zerava a presença de todo mundo.
     if (localStorage.getItem(AGUARDANDO_PRIMEIRO_DOWNLOAD)) {
@@ -1072,6 +1082,7 @@ export default function App() {
       // a base válida daqui para frente é o que foi realmente publicado.
       cloudBaselineRef.current = uploadResult.publishedBaseline;
       recuperacaoPorPerfilRef.current.vezes = 0;
+      falhasDeEnvioRef.current = { seguidas: 0, tentarDepoisDe: 0 };
       
       const nowStr = new Date(uploadResult.updatedAt).toLocaleString('pt-BR');
       setLastCloudSync(nowStr);
@@ -1112,6 +1123,8 @@ export default function App() {
     } catch (error: unknown) {
       setIsCloudConnected(false);
       uploadPendenteRef.current = true;
+      const seguidas = falhasDeEnvioRef.current.seguidas + 1;
+      falhasDeEnvioRef.current = { seguidas, tentarDepoisDe: Date.now() + esperaDoReenvio(seguidas) };
       console.error('Falha ao sincronizar o backup na nuvem:', error);
       // Recusa por perfil vem de diferença que o operador não causou (marca ou
       // gestão de outro perfil neste aparelho). O ciclo automático não baixa sem
@@ -2798,9 +2811,9 @@ export default function App() {
   const uploadLocalSnapshotToSupabase = (overrides: {
     funcionarios?: Funcionario[];
     gruposEquipe?: GrupoEquipe[];
-  } = {}) => handleUploadToSupabase({
+  } = {}, opcoes: { forcar?: boolean } = {}) => handleUploadToSupabase({
     ...overrides,
-  });
+  }, opcoes);
 
   // P0-06: contagem reativa da fila offline + retry manual pelo topbar.
   // A drenagem automatica no 'online' (efeito abaixo) continua existindo;
@@ -2814,7 +2827,7 @@ export default function App() {
     try {
       const result = await flushOfflineCommands({
         'supabase-backup': async () => {
-          const uploadResult = await uploadLocalSnapshotToSupabase();
+          const uploadResult = await uploadLocalSnapshotToSupabase({}, { forcar: true });
           if (!uploadResult.success) throw new Error(uploadResult.message);
         },
       });
