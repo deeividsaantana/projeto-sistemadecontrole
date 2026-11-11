@@ -109,7 +109,7 @@ export const faixaDaChuva = (milimetros: number | null): FaixaChuva => {
 };
 
 export const ROTULO_FAIXA: Record<FaixaChuva, string> = {
-  'sem-diario': 'Sem leitura',
+  'sem-diario': 'Sem diário',
   seco: 'Sem chuva',
   fraca: 'Fraca (até 5 mm)',
   moderada: 'Moderada (5 a 25 mm)',

@@ -20,7 +20,7 @@ const TELAS_AUDITADAS = [
   'custos',
   'indicadores',
   'pendencias',
-  'pluviometro',
+  'diario-obra',
   'materiais',
   'dds-treinamentos',
   'apontamentos',

@@ -15,7 +15,7 @@ const TELAS: Array<{ screen: string; titulo: string | RegExp }> = [
   { screen: 'equipes', titulo: 'Equipes' },
   { screen: 'apontamentos', titulo: 'Apontamentos' },
   { screen: 'dds-treinamentos', titulo: 'DDS e Treinamentos' },
-  { screen: 'pluviometro', titulo: 'Pluviômetro' },
+  { screen: 'diario-obra', titulo: 'Diário de Obra' },
   { screen: 'cadastros', titulo: /.+/ },
   { screen: 'combustivel', titulo: /.+/ },
   { screen: 'estacas', titulo: /.+/ },
@@ -477,9 +477,9 @@ test('presença: a equipe que não enviou pode ser lançada pelo painel', async 
 });
 
 // O mapa de chuvas é o quadro que justifica prazo em contrato. Ele lê o
-// pluviômetro lançado e precisa distinguir "não choveu" de "ninguém lançou".
-test('mapa de chuvas soma o pluviômetro e marca o dia sem lançamento', async ({ page }) => {
-  await page.goto('/?screen=pluviometro');
+// pluviômetro do diário e precisa distinguir "não choveu" de "ninguém lançou".
+test('mapa de chuvas soma o pluviômetro do diário e marca o dia sem lançamento', async ({ page }) => {
+  await page.goto('/?screen=diario-obra');
 
   const mapa = page.locator('#mapa-de-chuvas');
   await expect(mapa).toBeVisible();
@@ -491,7 +491,7 @@ test('mapa de chuvas soma o pluviômetro e marca o dia sem lançamento', async (
   await expect(dia4).toHaveAttribute('aria-label', /12 mm/);
 
   const dia6 = mapa.getByRole('gridcell', { name: /Dia 6:/ });
-  await expect(dia6).toHaveAttribute('aria-label', /sem leitura lançada/);
+  await expect(dia6).toHaveAttribute('aria-label', /sem diário lançado/);
 
   await expect(mapa.getByRole('button', { name: 'PDF' })).toBeVisible();
 });
