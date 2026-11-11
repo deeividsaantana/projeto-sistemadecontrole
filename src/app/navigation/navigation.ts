@@ -70,6 +70,7 @@ export const NAVIGATION_GROUPS = [
  */
 export const PRIMARY_MODULE_IDS = [
   'dashboard',
+  'meu-dia',
   'pluviometro',
   // Controle de Estacas é aba própria: a importação com prévia/lote/lineage
   // vive dentro dela (decisão confirmada com o usuário em 2026-09-22).
@@ -108,8 +109,8 @@ export const MODULE_REDIRECTS: Readonly<Record<string, string>> = {
   auditoria: 'cadastros',
   permissoes: 'cadastros',
   // Previsto x Executado saiu do menu em 10/11/2026, a pedido do usuário. Os
-  // planos salvos continuam guardados; o endereço antigo cai no Pluviômetro.
-  planejamento: 'pluviometro',
+  // planos salvos continuam guardados; o endereço antigo cai no Meu dia.
+  planejamento: 'meu-dia',
   // Relatórios saiu do menu em 10/11/2026, a pedido do usuário: cada aba já
   // tem a sua parte de relatórios. O endereço antigo cai no Painel.
   relatorios: 'dashboard',
