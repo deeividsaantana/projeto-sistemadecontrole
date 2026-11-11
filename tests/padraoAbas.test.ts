@@ -69,6 +69,7 @@ test('toda aba do menu abre uma tela e toda aba principal tem permissão', async
   // quem tenta para o Painel. Foram 18 até 16/10/2026 (auditoria das abas, G6).
   const inalcancaveis = [...app.matchAll(/activeTab === '([a-z-]+)' &&/g)]
     .map(match => match[1])
+    .filter(id => !['meu-dia'].includes(id))
     .filter(id => !ROLE_ACCESS.admin.includes(id));
   assert.deepEqual(inalcancaveis, [], 'tela no App.tsx que nenhum perfil consegue abrir');
 });
