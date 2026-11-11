@@ -49,8 +49,9 @@ test('ROLE_ACCESS cleanup', async (suite) => {
 });
 
 test('ALL_NAVIGATION_ITEMS cleanup', async (suite) => {
-  await suite.test('should contain exactly 10 items from PRIMARY_MODULE_IDS', () => {
-    assert.strictEqual(ALL_NAVIGATION_ITEMS.length, 10, `Expected 10 items, got ${ALL_NAVIGATION_ITEMS.length}`);
+  // 11 desde 11/11/2026: entrou Solicitações e Compras (pedido do usuário).
+  await suite.test('should contain exactly 11 items from PRIMARY_MODULE_IDS', () => {
+    assert.strictEqual(ALL_NAVIGATION_ITEMS.length, 11, `Expected 11 items, got ${ALL_NAVIGATION_ITEMS.length}`);
   });
 
   await suite.test('should contain only primary module IDs', () => {

@@ -200,3 +200,4 @@ import './navigationSyncPolicy.test';
 import './lazyLoading.test';
 import './exportarTabela.test';
 import './padraoErp.test';
+import './solicitacoes.test';
