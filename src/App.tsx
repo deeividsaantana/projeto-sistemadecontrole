@@ -121,7 +121,7 @@ import { PresencaPublicaLink } from './components/presenca/PresencaPublicaLink';
 import { EscalaSabado } from './components/presenca/EscalaSabado';
 
 // Motion and Logo Import
-import { MarcaProduto } from './shared/ui/MarcaProduto';
+import { AmbienteCliente, MarcaProduto } from './shared/ui/MarcaProduto';
 import { CLIENTE } from './config/marca';
 
 
@@ -4165,11 +4165,12 @@ export default function App() {
         <div className="lg:hidden fixed inset-0 z-50 bg-slate-950/85 flex justify-end print:hidden" id="mobile-drawer">
           <div className="mobile-sidebar-panel w-[18.5rem] max-w-[82vw] border-l border-slate-800 p-4 flex flex-col space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <MarcaProduto claro cliente={CLIENTE.nome} />
+              <MarcaProduto claro />
               <button onClick={() => setIsMobileMenuOpen(false)} className="cursor-pointer rounded-lg p-2 text-emerald-100 hover:bg-white/10 hover:text-white" aria-label="Fechar navegação">
                 <X className="w-5 h-5" />
               </button>
             </div>
+            <AmbienteCliente claro />
 
             <nav className="flex-1 overflow-y-auto">
               {renderNavigation(true)}

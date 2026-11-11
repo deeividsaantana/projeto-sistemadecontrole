@@ -1,4 +1,6 @@
-import { PRODUTO } from '../../config/marca';
+import { CLIENTE, PRODUTO } from '../../config/marca';
+import logoClienteEscuro from '../../assets/images/logo-renea-dark.svg';
+import logoClienteClaro from '../../assets/images/logo-renea-branco.png';
 
 /**
  * Símbolo do produto: um quadrado verde com um C aberto e uma estaca. Fica
@@ -31,6 +33,20 @@ export function MarcaProduto({ claro = false, cliente, className = '' }: MarcaPr
         <span className={`block text-[0.95rem] font-black tracking-[-0.02em] ${claro ? 'text-white' : 'text-slate-900'}`}>{PRODUTO.nome}</span>
         {cliente && <span className={`block truncate text-xs font-semibold ${claro ? 'text-[#8dc4ad]' : 'text-slate-500'}`}>{cliente}</span>}
       </span>
+    </span>
+  );
+}
+
+/**
+ * Ambiente da empresa cliente: a palavra "Ambiente" e a logo da RENEA. Mostra
+ * para quem entra de qual empresa é o espaço que está usando (pedido de
+ * 11/11/2026). `claro` usa a logo branca, para o menu verde-escuro.
+ */
+export function AmbienteCliente({ claro = false, className = '' }: { claro?: boolean; className?: string }) {
+  return (
+    <span className={`inline-flex min-w-0 items-center gap-2 ${className}`}>
+      <span className={`text-xs font-semibold ${claro ? 'text-[#8dc4ad]' : 'text-slate-600'}`}>Ambiente</span>
+      <img src={claro ? logoClienteClaro : logoClienteEscuro} alt={CLIENTE.nome} className="h-5 w-auto" />
     </span>
   );
 }

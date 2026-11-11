@@ -2,9 +2,9 @@ import { useRef, useState, type FormEvent } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { reduzMovimento } from '../shared/motion/reduzMovimento';
-import { Building2, Eye, EyeOff, LogIn, ShieldCheck } from 'lucide-react';
-import { CLIENTE, PRODUTO } from '../config/marca';
-import { MarcaProduto, SimboloProduto } from '../shared/ui/MarcaProduto';
+import { Eye, EyeOff, LogIn, ShieldCheck } from 'lucide-react';
+import { PRODUTO } from '../config/marca';
+import { AmbienteCliente, MarcaProduto, SimboloProduto } from '../shared/ui/MarcaProduto';
 
 /* Fotos de obra que servem como fundo da entrada. */
 import bgRodovia1600 from '../assets/obra-fotos/rodovia-duplicada-1600.webp';
@@ -98,8 +98,8 @@ export function LoginScreen({
             </div>
             <div data-card-reveal>
               <h2 className="text-[1.625rem] font-extrabold tracking-[-0.03em] text-slate-900 leading-tight">Entrar</h2>
-              <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm font-semibold text-slate-700">
-                <Building2 className="size-4 text-[#176b4d]" aria-hidden="true" />Ambiente {CLIENTE.nome}
+              <p className="mt-2 inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5">
+                <AmbienteCliente />
               </p>
             </div>
             <form onSubmit={onSubmit} className="mt-6 space-y-4">
