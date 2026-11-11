@@ -5,7 +5,6 @@ import {
   FolderPlus,
   Hammer,
   LayoutDashboard,
-  SunMedium,
   UserRound,
   Wrench,
   Activity,
@@ -27,7 +26,6 @@ export const NAVIGATION_GROUPS = [
     label: 'Visão geral',
     items: [
       { id: 'dashboard', label: 'Painel de Controle', icon: LayoutDashboard },
-      { id: 'meu-dia', label: 'Meu dia', icon: SunMedium },
     ],
   },
   {
@@ -72,9 +70,6 @@ export const NAVIGATION_GROUPS = [
  */
 export const PRIMARY_MODULE_IDS = [
   'dashboard',
-  // Rotina do assistente de engenharia, pedida em 2026-09-27: checklist do
-  // dia, pendências com prioridade e fechamento do dia.
-  'meu-dia',
   'pluviometro',
   // Controle de Estacas é aba própria: a importação com prévia/lote/lineage
   // vive dentro dela (decisão confirmada com o usuário em 2026-09-22).
@@ -103,8 +98,9 @@ export const isPrimaryModule = (id: string) => SIDEBAR_MODULE_IDS.has(id);
 // não estiver aqui e não for do menu cai no Painel.
 export const MODULE_REDIRECTS: Readonly<Record<string, string>> = {
   // Frentes e produção vivem na parte Frentes do Meu dia.
-  frentes: 'meu-dia',
-  producao: 'meu-dia',
+  frentes: 'pluviometro',
+  producao: 'pluviometro',
+  'meu-dia': 'pluviometro',
   'diario-obra': 'pluviometro',
   // Telas antigas cortadas em 16/10/2026 (auditoria das abas, G6/G7).
   frota: 'controle-equipamentos',
