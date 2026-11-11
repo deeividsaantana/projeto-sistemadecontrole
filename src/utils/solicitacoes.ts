@@ -216,22 +216,32 @@ export interface ItemDigitado {
   permiteParcial?: boolean | null;
 }
 
-/** Problemas de um item, na ordem em que aparecem no formulário. */
-export const problemasDoItem = (item: ItemDigitado): string[] => {
-  const problemas: string[] = [];
-  if (item.tipo !== 'Material' && item.tipo !== 'Serviço') problemas.push('Escolha se é material ou serviço.');
+export type CampoDoItem = 'tipo' | 'descricao' | 'quantidade' | 'unidade' | 'prazoDesejado' | 'permiteParcial' | 'especificacao';
+
+const ORDEM_DOS_CAMPOS: readonly CampoDoItem[] = ['tipo', 'descricao', 'quantidade', 'unidade', 'prazoDesejado', 'permiteParcial', 'especificacao'];
+
+/** Problema de cada campo do item (só os campos com problema), para o aviso ficar junto do campo. */
+export const problemasPorCampo = (item: ItemDigitado): Partial<Record<CampoDoItem, string>> => {
+  const problemas: Partial<Record<CampoDoItem, string>> = {};
+  if (item.tipo !== 'Material' && item.tipo !== 'Serviço') problemas.tipo = 'Escolha se é material ou serviço.';
   const descricao = (item.descricao || '').trim();
-  if (descricao.length < 3) problemas.push('Descreva o item.');
+  if (descricao.length < 3) problemas.descricao = 'Descreva o item.';
   const quantidade = Number(String(item.quantidade ?? '').replace(',', '.'));
-  if (!(quantidade > 0)) problemas.push('Informe a quantidade (maior que zero).');
-  if (!UNIDADES.includes(item.unidade as Unidade)) problemas.push(`Unidade fora do padrão (${UNIDADES.join(', ')}).`);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(item.prazoDesejado || '')) problemas.push('Informe o prazo desejado.');
-  if (typeof item.permiteParcial !== 'boolean') problemas.push('Diga se aceita entrega parcial.');
+  if (!(quantidade > 0)) problemas.quantidade = 'Informe a quantidade (maior que zero).';
+  if (!UNIDADES.includes(item.unidade as Unidade)) problemas.unidade = `Unidade fora do padrão (${UNIDADES.join(', ')}).`;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(item.prazoDesejado || '')) problemas.prazoDesejado = 'Informe o prazo desejado.';
+  if (typeof item.permiteParcial !== 'boolean') problemas.permiteParcial = 'Diga se aceita entrega parcial.';
   if (descricao.length >= 3) {
     const falta = faltaEspecificacao(descricao);
-    if (falta) problemas.push(falta);
+    if (falta) problemas.especificacao = falta;
   }
   return problemas;
+};
+
+/** Problemas de um item, na ordem em que aparecem no formulário. */
+export const problemasDoItem = (item: ItemDigitado): string[] => {
+  const porCampo = problemasPorCampo(item);
+  return ORDEM_DOS_CAMPOS.flatMap(campo => porCampo[campo] ?? []);
 };
 
 const dia = (iso: string) => iso.slice(0, 10);

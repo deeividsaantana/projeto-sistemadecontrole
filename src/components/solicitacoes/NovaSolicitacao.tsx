@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { Plus, Send, Trash2 } from 'lucide-react';
 import { Campo, Conferencia, Conferido, Etapa } from '../../shared/ui/Lancamento';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO } from '../cadastros/estilos';
-import { UNIDADES, problemasDoItem, type DadosAbertura, type ItemDigitado } from '../../utils/solicitacoes';
+import { UNIDADES, problemasDoItem, problemasPorCampo, type CampoDoItem, type DadosAbertura, type ItemDigitado } from '../../utils/solicitacoes';
 
 const itemVazio = (): ItemDigitado => ({ tipo: 'Material', descricao: '', quantidade: '', unidade: 'un', prazoDesejado: '', permiteParcial: null });
 
@@ -28,6 +28,7 @@ export function NovaSolicitacao({ solicitante, onEnviar }: NovaSolicitacaoProps)
     setItens(atual => atual.map((item, i) => (i === indice ? { ...item, ...mudanca } : item)));
 
   const problemas = itens.map(problemasDoItem);
+  const porCampo = itens.map(problemasPorCampo);
   const itensProntos = problemas.filter(lista => lista.length === 0).length;
   const pronto = frente.trim().length > 0 && itensProntos === itens.length;
 
@@ -42,7 +43,7 @@ export function NovaSolicitacao({ solicitante, onEnviar }: NovaSolicitacaoProps)
       <div className="grid min-w-0 gap-4">
         <Etapa numero={1} titulo="Onde vai ser usado" feita={frente.trim().length > 0}>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Campo rotulo="Frente de trabalho ou ramo" para="sol-frente">
+            <Campo rotulo="Frente de trabalho ou ramo" para="sol-frente" obrigatorio erro={tentou && frente.trim().length === 0 ? 'Informe a frente de trabalho ou o ramo.' : null}>
               <input id="sol-frente" value={frente} onChange={event => setFrente(event.target.value)} placeholder="Ramo 1400, OAE Marginal..." className={CAMPO} />
             </Campo>
             <Campo rotulo="Estaca ou aplicação (opcional)" para="sol-estaca">
@@ -54,8 +55,8 @@ export function NovaSolicitacao({ solicitante, onEnviar }: NovaSolicitacaoProps)
         <Etapa numero={2} titulo="O que precisa" ajuda="Aço, drenagem e pavimentação pedem a medida técnica na descrição (bitola, DN, faixa)." feita={itensProntos === itens.length}>
           <ol className="grid gap-3">
             {itens.map((item, indice) => {
-              const avisos = problemas[indice];
               const mostrar = tentou || Boolean(item.descricao);
+              const erroDe = (campo: CampoDoItem) => (mostrar ? porCampo[indice][campo] ?? null : null);
               return (
                 <li key={indice} className={`${CARTAO} grid gap-3 p-3 sm:grid-cols-6`}>
                   <div className="flex items-center justify-between sm:col-span-6">
@@ -72,10 +73,10 @@ export function NovaSolicitacao({ solicitante, onEnviar }: NovaSolicitacaoProps)
                       <option>Serviço</option>
                     </select>
                   </Campo>
-                  <Campo rotulo="Descrição com especificação" para={`sol-desc-${indice}`} className="sm:col-span-4">
+                  <Campo rotulo="Descrição com especificação" para={`sol-desc-${indice}`} obrigatorio erro={erroDe('descricao') ?? erroDe('especificacao')} className="sm:col-span-4">
                     <input id={`sol-desc-${indice}`} value={item.descricao} onChange={event => mudar(indice, { descricao: event.target.value })} placeholder="Ex.: Vergalhão CA-50 ø 12,5 mm" className={CAMPO} />
                   </Campo>
-                  <Campo rotulo="Quantidade" para={`sol-qtd-${indice}`} className="sm:col-span-2">
+                  <Campo rotulo="Quantidade" para={`sol-qtd-${indice}`} obrigatorio erro={erroDe('quantidade')} className="sm:col-span-2">
                     <input id={`sol-qtd-${indice}`} inputMode="decimal" value={item.quantidade} onChange={event => mudar(indice, { quantidade: event.target.value })} placeholder="0" className={CAMPO} />
                   </Campo>
                   <Campo rotulo="Unidade" para={`sol-un-${indice}`} className="sm:col-span-1">
@@ -83,7 +84,7 @@ export function NovaSolicitacao({ solicitante, onEnviar }: NovaSolicitacaoProps)
                       {UNIDADES.map(unidade => <option key={unidade}>{unidade}</option>)}
                     </select>
                   </Campo>
-                  <Campo rotulo="Prazo desejado" para={`sol-prazo-${indice}`} className="sm:col-span-3">
+                  <Campo rotulo="Prazo desejado" para={`sol-prazo-${indice}`} obrigatorio erro={erroDe('prazoDesejado')} className="sm:col-span-3">
                     <input id={`sol-prazo-${indice}`} type="date" value={item.prazoDesejado} onChange={event => mudar(indice, { prazoDesejado: event.target.value })} className={CAMPO} />
                   </Campo>
                   <fieldset className="sm:col-span-6">
@@ -97,8 +98,8 @@ export function NovaSolicitacao({ solicitante, onEnviar }: NovaSolicitacaoProps)
                       ))}
                     </div>
                   </fieldset>
-                  {mostrar && avisos.length > 0 && (
-                    <p className="text-sm font-semibold text-[#c2410c] sm:col-span-6">{avisos[0]}</p>
+                  {erroDe('permiteParcial') && (
+                    <p className="text-sm font-semibold text-[#c2410c] sm:col-span-6">{erroDe('permiteParcial')}</p>
                   )}
                 </li>
               );

@@ -203,3 +203,4 @@ import './lazyLoading.test';
 import './exportarTabela.test';
 import './padraoErp.test';
 import './solicitacoes.test';
+import './campoComErro.test';
