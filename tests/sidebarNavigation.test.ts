@@ -26,7 +26,7 @@ test('sidebar expõe os 10 módulos primários do ERP', () => {
   assert.equal(isPrimaryModule('modo-campo'), false);
   // Previsto x Executado saiu do menu em 2026-11-10, a pedido do usuário.
   assert.equal(isPrimaryModule('planejamento'), false);
-  assert.equal(isPrimaryModule('diario-obra'), true);
+  assert.equal(isPrimaryModule('diario-obra'), false);
   assert.equal(isPrimaryModule('lancamentos'), true);
   // Cadastros voltou ao menu em 2026-09-24: o atalho em Administração
   // levava a uma aba sem permissão em nenhum perfil.

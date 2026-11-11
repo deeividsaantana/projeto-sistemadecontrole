@@ -163,6 +163,7 @@ import './exclusaoEquipe.test';
 import './linkDeCampoFila.test';
 import './nuvemNaoPerdeNovidade.test';
 import './esperaReenvio.test';
+import './envioSerializado.test';
 import './remocaoMateriaisJazidaBloco.test';
 import './salvamentoLeveSemFila.test';
 import './historicoVersoesNuvem.test';
