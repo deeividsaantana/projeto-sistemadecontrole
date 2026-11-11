@@ -13,7 +13,9 @@ const destinosLiterais = (codigo: string) => [
 
 test('destinoDaAba: aba do perfil, endereço antigo ou nada', () => {
   assert.equal(destinoDaAba('presenca', ROLE_ACCESS.admin), 'presenca');
-  assert.equal(destinoDaAba('producao', ROLE_ACCESS.admin), 'meu-dia');
+  assert.equal(destinoDaAba('producao', ROLE_ACCESS.admin), 'planejamento');
+  assert.equal(destinoDaAba('diario-obra', ROLE_ACCESS.admin), 'pluviometro');
+  assert.equal(destinoDaAba('meu-dia', ROLE_ACCESS.admin), 'pluviometro');
   assert.equal(destinoDaAba('tickets-jazida', ROLE_ACCESS.operador), 'materiais');
   assert.equal(destinoDaAba('fvs', ROLE_ACCESS.admin), null);
   assert.equal(destinoDaAba('cadastros', ROLE_ACCESS.operador), null);

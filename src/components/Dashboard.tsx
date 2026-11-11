@@ -47,10 +47,9 @@ function ExecutiveCard({ label, value, detail, tone, icon: Icon, onClick }: { la
 export default function Dashboard(props: DashboardProps) {
   // Cada abertura começa no retrato operacional do dia atual.
   const [periodo, setPeriodo] = useState<PeriodValue>(() => buildPeriod('hoje'));
-  const [obraId, setObraId] = useState('');
   const dashboardRef = useRef<HTMLElement>(null);
-  const view = useMemo(() => buildDashboardGeneralViewModel({ obraId, from: periodo.from, to: periodo.to }, props),
-    [obraId, periodo.from, periodo.to, props.equipamentos, props.controlesEquipamentos, props.producao, props.abastecimentos, props.presencasLink, props.gruposEquipe, props.funcionarios, props.ordensServico]);
+  const view = useMemo(() => buildDashboardGeneralViewModel({ obraId: '', from: periodo.from, to: periodo.to }, props),
+    [periodo.from, periodo.to, props.equipamentos, props.controlesEquipamentos, props.producao, props.abastecimentos, props.presencasLink, props.gruposEquipe, props.funcionarios, props.ordensServico]);
   const fieldReports = useMemo(() => fieldReportsFromMovements(props.movimentosMaterial || [], { from: periodo.from, to: periodo.to }), [props.movimentosMaterial, periodo.from, periodo.to]);
   const display = (value: number | null, unit = '') => value === null ? 'Sem registro' : `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value)}${unit ? ` ${unit}` : ''}`;
   const getTone = (value: string | number | null, defaultTone: 'green' | 'blue' | 'orange' | 'slate'): 'green' | 'blue' | 'orange' | 'slate' => {
@@ -61,7 +60,7 @@ export default function Dashboard(props: DashboardProps) {
   useGSAP(() => {
     if (!dashboardRef.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     gsap.fromTo(dashboardRef.current.querySelectorAll('[data-dashboard-reveal]'), { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: .72, stagger: .065, ease: 'power3.out', clearProps: 'transform' });
-  }, { scope: dashboardRef, dependencies: [obraId, periodo.from, periodo.to] });
+  }, { scope: dashboardRef, dependencies: [periodo.from, periodo.to] });
 
   // Molde de página (TelaCheia): o cabeçalho com os filtros fica parado e os
   // cartões rolam por dentro. O conteúdo do Painel segue o mesmo: ele é a
@@ -70,12 +69,6 @@ export default function Dashboard(props: DashboardProps) {
     <TelaCheia ref={dashboardRef} id="dashboard-tab" rotulo="Painel de Controle" longa rotuloDados="Indicadores da operação"
       cabecalho={<PageHeader eyebrow="Visão geral" title="Painel de Controle"
         actions={<div data-testid="period-filter" className="flex flex-wrap items-center gap-3">
-          <label className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600">Obra
-            <select value={obraId} onChange={event => setObraId(event.target.value)} className="max-w-48 bg-transparent py-2 text-sm text-slate-900" aria-label="Filtrar por obra">
-              <option value="">Todas as obras</option>
-              {props.obras.map(obra => <option key={obra.id} value={obra.id}>{obra.nome}</option>)}
-            </select>
-          </label>
           <PeriodFilter value={periodo} onChange={setPeriodo} />
         </div>} />}
     >

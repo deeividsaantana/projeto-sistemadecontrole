@@ -5,13 +5,12 @@ import {
   FolderPlus,
   Hammer,
   LayoutDashboard,
-  SunMedium,
+  CloudRain,
   Package,
   UserRound,
   Wrench,
   Activity,
   Users,
-  NotebookPen,
   FileBarChart,
   Database,
   type LucideIcon,
@@ -30,14 +29,13 @@ export const NAVIGATION_GROUPS = [
     label: 'Visão geral',
     items: [
       { id: 'dashboard', label: 'Painel de Controle', icon: LayoutDashboard },
-      { id: 'meu-dia', label: 'Meu dia', icon: SunMedium },
     ],
   },
   {
     label: 'Operação',
     items: [
       { id: 'planejamento', label: 'Previsto x Executado', icon: Target },
-      { id: 'diario-obra', label: 'Diário de Obra', icon: NotebookPen },
+      { id: 'pluviometro', label: 'Pluviômetro', icon: CloudRain },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
     ],
   },
@@ -83,11 +81,10 @@ export const NAVIGATION_GROUPS = [
  */
 export const PRIMARY_MODULE_IDS = [
   'dashboard',
-  // Rotina do assistente de engenharia, pedida em 2026-09-27: checklist do
-  // dia, pendências com prioridade e fechamento do dia.
-  'meu-dia',
   'planejamento',
-  'diario-obra',
+  // O Pluviômetro é a superfície principal dos lançamentos climáticos; os
+  // registros continuam armazenados no mesmo diário operacional.
+  'pluviometro',
   // Controle de Estacas é aba própria: a importação com prévia/lote/lineage
   // vive dentro dela (decisão confirmada com o usuário em 2026-09-22). Os
   // tickets da jazida viraram a parte Viagens da jazida de Materiais em
@@ -116,9 +113,13 @@ export const isPrimaryModule = (id: string) => SIDEBAR_MODULE_IDS.has(id);
 // por um link guardado. Cada um abre a tela onde aquele dado mora hoje; o que
 // não estiver aqui e não for do menu cai no Painel.
 export const MODULE_REDIRECTS: Readonly<Record<string, string>> = {
-  // Frentes e produção vivem na parte Frentes do Meu dia.
-  frentes: 'meu-dia',
-  producao: 'meu-dia',
+  // Links antigos de frentes e produção continuam com destino seguro.
+  frentes: 'planejamento',
+  producao: 'planejamento',
+  // Favoritos antigos continuam abrindo o módulo que consulta os registros
+  // climáticos salvos no Diário de Obra.
+  'diario-obra': 'pluviometro',
+  'meu-dia': 'pluviometro',
   // Os tickets da jazida moraram numa aba própria até 28/09/2026; agora são
   // a parte Viagens da jazida dentro de Materiais.
   'tickets-jazida': 'materiais',

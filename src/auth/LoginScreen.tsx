@@ -2,7 +2,7 @@ import { useRef, useState, type FormEvent } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { reduzMovimento } from '../shared/motion/reduzMovimento';
-import { Eye, EyeOff, LogIn, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, LogIn } from 'lucide-react';
 
 /* Fotos editoriais RENEA — servem como background full-bleed. */
 import bgRodovia1600 from '../assets/renea-editorial/rodovia-duplicada-1600.webp';
@@ -130,10 +130,6 @@ export function LoginScreen({
               <button data-card-reveal type="submit" disabled={isAuthenticating} className="login-submit"><LogIn className="w-4 h-4" />Entrar no sistema</button>
               <button data-card-reveal type="button" onClick={onPasswordRecovery} className="w-full rounded-lg py-2 text-center text-xs font-semibold text-emerald-700 hover:bg-emerald-50 hover:text-emerald-900 transition-colors duration-200">Recuperar senha</button>
             </form>
-            <div data-card-reveal className="mt-6 pt-4 border-t border-slate-200/60 text-center text-[0.65rem] font-semibold text-slate-400 flex items-center justify-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-              Acesso restrito a contas autorizadas
-            </div>
           </div>
         </div>
       </div>

@@ -64,7 +64,12 @@ export function DesktopTopBar({
   const headerRef = useRef<HTMLElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const logoutBtnRef = useRef<HTMLButtonElement>(null);
-  const userName = currentUser?.displayName || currentUser?.email || 'Usuário RENEA';
+  const metadataName = currentUser?.user_metadata
+    ? ['nomeCompleto', 'full_name', 'fullName', 'name', 'nome']
+      .map(key => currentUser.user_metadata[key])
+      .find((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    : undefined;
+  const userName = metadataName?.trim() || currentUser?.displayName || currentUser?.email || 'Usuário RENEA';
   const userInitials = userName.trim().slice(0, 2).toUpperCase();
 
   const visibleItems = useMemo(() => groups.flatMap(group => group.items), [groups]);
@@ -177,10 +182,10 @@ export function DesktopTopBar({
         <div
           className="erp-topbar__status"
           data-offline={!isCloudConnected || undefined}
+          aria-label={isCloudConnected ? 'Sincronizado com a nuvem' : 'Sem conexão com a nuvem'}
           title={`${isCloudConnected ? 'Sincronizado com a nuvem' : 'Sem conexão com a nuvem'}. ${lastCloudSync ? `Última sincronização: ${lastCloudSync}` : 'Ainda sem sincronização nesta sessão'}`}
         >
           <span aria-hidden="true" />
-          <em className="erp-topbar__status-texto not-italic">{isCloudConnected ? 'Sincronizado' : 'Sem conexão com a nuvem'}</em>
         </div>
         {typeof pendingCount === 'number' && pendingCount > 0 && (
           <div

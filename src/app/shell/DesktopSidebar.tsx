@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { ChevronDown, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 import type { NavigationGroupView } from './NavigationMenu';
-import reneaLogo from '../../assets/images/logo-renea-branco.png';
-import { APP_VERSION_LABEL } from '../version';
+import reneaLogo from '../../assets/images/logo-renea-transparent.png';
 import { reduzMovimento } from '../../components/cadastros/estilos';
 
 interface DesktopSidebarProps {
@@ -14,11 +13,8 @@ interface DesktopSidebarProps {
 }
 
 const COLLAPSE_KEY = 'renea_sidebar_recolhido';
-const CLOSED_GROUPS_KEY = 'renea_sidebar_grupos_fechados';
 const ICON_STROKE = 1.75;
-// Mesma borda de foco sólida do resto do sistema (FOCO em estilos.ts), mas
-// branca, porque o menu é a única superfície escura.
-const FOCO_CLARO = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
+const FOCO_SIDEBAR = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)';
 
 const readCollapsed = () => {
   try {
@@ -33,18 +29,8 @@ const readCollapsed = () => {
   return typeof window !== 'undefined' && window.innerWidth < 1280;
 };
 
-const readClosedGroups = (): string[] => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(CLOSED_GROUPS_KEY) || '[]');
-    return Array.isArray(stored) ? stored.filter((item): item is string => typeof item === 'string') : [];
-  } catch {
-    return [];
-  }
-};
-
 export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebarProps) {
   const [collapsed, setCollapsed] = useState(readCollapsed);
-  const [closedGroups, setClosedGroups] = useState<string[]>(readClosedGroups);
   const navRef = useRef<HTMLElement>(null);
 
   // Só grava quando a pessoa aperta o botão: o padrão pela largura da tela
@@ -59,14 +45,6 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
     }
   };
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(CLOSED_GROUPS_KEY, JSON.stringify(closedGroups));
-    } catch {
-      // Preferência de layout não vale interromper a navegação.
-    }
-  }, [closedGroups]);
-
   // Só na primeira carga: um leve degradê de entrada nos itens, uma vez só.
   // O menu em si não anima continuamente (área sempre visível, ver index.css).
   useGSAP(() => {
@@ -78,28 +56,22 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
     );
   }, { scope: navRef, dependencies: [] });
 
-  const toggleGroup = (label: string) => {
-    setClosedGroups(current => (current.includes(label)
-      ? current.filter(item => item !== label)
-      : [...current, label]));
-  };
-
   return (
     <aside
-      className={`erp-sidebar hidden shrink-0 flex-col text-[#dbeee4] lg:flex ${collapsed ? 'erp-sidebar--recolhido' : ''}`}
+      className={`erp-sidebar hidden shrink-0 flex-col text-slate-700 lg:flex ${collapsed ? 'erp-sidebar--recolhido' : ''}`}
       aria-label="Navegação principal"
     >
-      <div className={`flex min-h-[3.25rem] items-center border-b border-white/[0.06] ${collapsed ? 'justify-center px-2' : 'justify-between px-3.5'}`} title={APP_VERSION_LABEL}>
+      <div className={`flex min-h-[3.25rem] items-center border-b border-slate-200 ${collapsed ? 'justify-center px-2' : 'justify-between px-3.5'}`} title="Ambiente RENEA">
         {collapsed
-          ? <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/10 text-sm font-black text-white">R</span>
-          : <img src={reneaLogo} alt="RENEA Infraestrutura" className="h-6 w-auto object-contain" />}
+          ? <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 text-sm font-black text-emerald-800">R</span>
+          : <div className="flex items-center gap-2"><img src={reneaLogo} alt="RENEA Infraestrutura" className="h-6 w-auto object-contain" /><span className="text-xs font-bold text-emerald-800">Ambiente RENEA</span></div>}
         {!collapsed && (
           <button
             type="button"
             onClick={() => mudarRecolhido(true)}
             title="Recolher menu"
             aria-label="Recolher menu"
-            className={`rounded-lg p-1.5 text-[#8dc4ad] transition-colors duration-200 hover:bg-white/10 hover:text-white ${FOCO_CLARO}`}
+            className={`rounded-lg p-1.5 text-emerald-700 transition-colors duration-200 hover:bg-emerald-50 hover:text-emerald-900 ${FOCO_SIDEBAR}`}
           >
             <ChevronsLeft className="h-4 w-4" strokeWidth={ICON_STROKE} />
           </button>
@@ -112,7 +84,7 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
           onClick={() => mudarRecolhido(false)}
           title="Expandir menu"
           aria-label="Expandir menu"
-          className={`mx-auto mt-1.5 rounded-lg p-1.5 text-[#8dc4ad] transition-colors duration-200 hover:bg-white/10 hover:text-white ${FOCO_CLARO}`}
+          className={`mx-auto mt-1.5 rounded-lg p-1.5 text-emerald-700 transition-colors duration-200 hover:bg-emerald-50 hover:text-emerald-900 ${FOCO_SIDEBAR}`}
         >
           <ChevronsRight className="h-4 w-4" strokeWidth={ICON_STROKE} />
         </button>
@@ -120,32 +92,15 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
 
       <nav ref={navRef} className="flex-1 overflow-y-auto px-2 py-1.5">
         {groups.map((group, index) => {
-          const hasActive = group.items.some(item => item.id === activeTab);
-          // O grupo do módulo aberto nunca fica escondido: o usuário precisa ver onde está.
-          const open = collapsed || hasActive || !closedGroups.includes(group.label);
           return (
             <section
               key={group.label}
-              className={`mb-0.5 last:mb-0 ${index > 0 ? 'border-t border-white/[0.05] pt-1' : ''}`}
+              className={`mb-1 last:mb-0 ${index > 0 ? 'border-t border-slate-100 pt-2' : ''}`}
             >
               {!collapsed && (
-                <button
-                  type="button"
-                  data-sidebar-grupo
-                  onClick={() => toggleGroup(group.label)}
-                  aria-expanded={open}
-                  className={`flex w-full items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-bold uppercase tracking-[0.1em] text-[#89b7a4] transition-colors duration-200 hover:text-white ${FOCO_CLARO}`}
-                >
-                  <ChevronDown
-                    className={`h-3 w-3 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${open ? '' : '-rotate-90'}`}
-                    strokeWidth={2.5}
-                    aria-hidden="true"
-                  />
-                  <span className="truncate">{group.label}</span>
-                </button>
+                <p data-sidebar-grupo className="px-2 py-0.5 text-xs font-bold uppercase tracking-[0.1em] text-slate-500">{group.label}</p>
               )}
-              {open && (
-                <div className="space-y-px pb-1">
+              <div className="space-y-px pb-1">
                   {group.items.map(item => {
                     const Icon = item.icon;
                     const active = activeTab === item.id;
@@ -157,25 +112,25 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
                         onClick={() => onNavigate(item.id)}
                         aria-current={active ? 'page' : undefined}
                         title={item.label}
-                        className={`group relative flex min-h-8 w-full items-center gap-2 rounded-md px-2 text-left text-[12.5px] transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${FOCO_CLARO} ${
+                        className={`group relative flex min-h-8 w-full items-center gap-2 rounded-md px-2 text-left text-[12.5px] transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${FOCO_SIDEBAR} ${
                           active
-                            ? 'bg-white/[0.08] font-semibold text-white'
-                            : 'text-[#bcded0] hover:translate-x-[3px] hover:bg-white/[0.06] hover:text-white'
+                            ? 'bg-emerald-50 font-semibold text-emerald-900'
+                            : 'text-slate-600 hover:translate-x-[3px] hover:bg-emerald-50 hover:text-emerald-900'
                         } ${collapsed ? 'justify-center px-0 hover:translate-x-0' : ''}`}
                       >
                         {!collapsed && (
                           <span
                             aria-hidden="true"
-                            className={`absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-[#7ee0b6] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${active ? 'scale-y-100' : 'scale-y-0'}`}
+                            className={`absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-emerald-700 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${active ? 'scale-y-100' : 'scale-y-0'}`}
                           />
                         )}
                         <span
                           className={`grid shrink-0 place-items-center rounded-[7px] transition-colors duration-200 ${
                             collapsed ? 'h-8 w-8' : 'h-6 w-6'
-                          } ${active ? 'bg-white/10' : 'bg-transparent'}`}
+                          } ${active ? 'bg-emerald-100' : 'bg-transparent'}`}
                         >
                           <Icon
-                            className={`h-4 w-4 shrink-0 ${active ? 'text-[#7ee0b6]' : 'text-[#93bba9] group-hover:text-white'}`}
+                            className={`h-4 w-4 shrink-0 ${active ? 'text-emerald-700' : 'text-slate-500 group-hover:text-emerald-700'}`}
                             strokeWidth={ICON_STROKE}
                             aria-hidden="true"
                           />
@@ -184,8 +139,7 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
                       </button>
                     );
                   })}
-                </div>
-              )}
+              </div>
             </section>
           );
         })}
@@ -195,11 +149,11 @@ export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebar
       </nav>
 
       <div
-        className={`flex items-center border-t border-white/[0.06] py-2 text-xs font-semibold text-[#8fbfa9] ${collapsed ? 'justify-center' : 'justify-center gap-1.5'}`}
-        title={APP_VERSION_LABEL}
+        className={`flex items-center border-t border-slate-200 py-2 text-xs font-semibold text-slate-500 ${collapsed ? 'justify-center' : 'justify-center gap-1.5'}`}
+        title="Cintravyse v3.5.1"
       >
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#3ecb8f]" aria-hidden="true" />
-        {!collapsed && <span className="truncate">{APP_VERSION_LABEL.split(' — ')[0]}</span>}
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" aria-hidden="true" />
+        {!collapsed && <span className="truncate">Cintravyse v3.5.1</span>}
       </div>
     </aside>
   );

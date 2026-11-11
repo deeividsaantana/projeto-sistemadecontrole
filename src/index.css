@@ -121,8 +121,8 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
 #app-root :is(button, a, input, select, textarea) { transition-duration: 240ms; transition-timing-function: cubic-bezier(.32,.72,0,1); }
 #app-root :is(button, [role="button"]):not(:disabled):active { transform: scale(.985); }
 #app-root :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--renea-focus); outline-offset: 2px; }
-/* O menu lateral é a única superfície escura: lá o foco é branco. */
-#app-root .erp-sidebar :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline-color: #fff; }
+/* A navegação usa o mesmo foco verde do restante da aplicação. */
+#app-root .erp-sidebar :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline-color: var(--renea-focus); }
 /* "Pular para o conteúdo": primeiro item do Tab, fora da tela até receber o
    foco. A área da aba recebe o foco sem contorno, que seria a tela toda. */
 .pular-para-conteudo {
@@ -393,14 +393,14 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   min-width: 14rem;
   height: 100dvh;
   flex-direction: column;
-  border-right: 1px solid #23614e;
-  background: #0b4938;
+  border-right: 1px solid #dce4df;
+  background: #fff;
   color: #e0f0e8;
   /* A navegação fica estática: animação contínua não ajuda a operação e
      desperdiça GPU em uma área sempre visível. */
   animation: none;
 }
-/* Linhas de 32 px: os 14 módulos e os 7 grupos cabem inteiros num notebook
+/* Linhas de 32 px: os módulos e os grupos cabem inteiros num notebook
    de 768 px de altura, sem rolar o menu. O piso de 40 px dos botões no
    desktop (mais abaixo) vale para a área de trabalho, não para o menu. */
 .erp-sidebar [data-sidebar-item] { min-height: 2rem; }
@@ -453,16 +453,15 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   align-items: center;
   gap: .4rem;
   padding: .25rem .6rem;
-  border: 1px solid #cfe6db;
+  width: 1.25rem;
+  height: 1.25rem;
+  justify-content: center;
+  padding: .25rem;
   border-radius: 999px;
-  background: #f1f9f5;
+  background: transparent;
   color: #0b5c43;
-  font-size: .75rem;
-  font-weight: 650;
-  white-space: nowrap;
 }
-.erp-topbar__status span { width: .45rem; height: .45rem; border-radius: 50%; background: #0a9867; }
-.erp-topbar__status[data-offline] { border-color: #f3d3a8; background: #fff8ee; color: #9a3412; }
+.erp-topbar__status span { width: .65rem; height: .65rem; border-radius: 50%; background: #0a9867; }
 .erp-topbar__status[data-offline] span { background: #d97706; }
 .erp-topbar__pending { display: flex; align-items: center; gap: .45rem; padding: .25rem .4rem .25rem .6rem; border: 1px solid #f3c96b; border-radius: 999px; background: #fffbeb; color: #92400e; font-size: .75rem; font-weight: 700; white-space: nowrap; }
 .erp-topbar__pending button { min-height: 0; border: 0; border-radius: 999px; background: #f59e0b; color: #fff; font: inherit; font-weight: 750; padding: .2rem .5rem; cursor: pointer; }
@@ -610,12 +609,8 @@ h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0;
   .erp-dashboard { background: #fff; }
 }
 
-/* O menu lateral é a única superfície escura do sistema. A camada de
-   compatibilidade acima clareia utilitários históricos (.text-white), e sem
-   esta regra de mesma especificidade o nome do usuário ficava ilegível
-   dentro do verde. O item ativo tem fundo branco com texto verde-escuro
-   (ver DesktopSidebar.tsx), então [aria-current="page"] não força mais cor. */
-#app-root .erp-sidebar .text-white { color: #ffffff; }
+/* O menu lateral usa superfície clara e o estado ativo tem contraste próprio. */
+#app-root .erp-sidebar .text-white { color: #10211c; }
 
 /* Largura do menu recolhido precisa morar aqui: a regra base .erp-sidebar
    fixa width/min-width e venceria a classe utilitaria por ordem no arquivo. */

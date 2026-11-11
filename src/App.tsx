@@ -117,8 +117,7 @@ const QuadroFrota = lazy(() => import('./components/quadroFrota/QuadroFrota'));
 const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
 const MateriaisTab = lazy(() => import('./components/MateriaisTab'));
-const MeuDiaTab = lazy(() => import('./components/MeuDiaTab'));
-const DiarioObraTab = lazy(() => import('./components/DiarioObraTab'));
+const PluviometroTab = lazy(() => import('./components/PluviometroTab'));
 const PlanejamentoTab = lazy(() => import('./components/PlanejamentoTab'));
 const RelatoriosTab = lazy(() => import('./components/RelatoriosTab'));
 const AdministracaoTab = lazy(() => import('./components/AdministracaoTab'));
@@ -134,7 +133,6 @@ import { EscalaSabado } from './components/presenca/EscalaSabado';
 // login e nas demais telas. Ela é carregada antes da hidratação dos dados.
 // Motion and Logo Import
 import reneaLogo from './assets/images/logo-renea-transparent.png';
-import reneaLogoWhite from './assets/images/logo-renea-branco.png';
 
 
 
@@ -4512,10 +4510,10 @@ export default function App() {
 
         <div
           className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-bold ${isCloudConnected ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-300 bg-amber-50 text-amber-700'}`}
+          aria-label={isCloudConnected ? 'Sincronizado com a nuvem' : 'Sem conexão com a nuvem'}
           title={lastCloudSync ? `Última sincronização com a nuvem: ${lastCloudSync}` : 'Ainda sem sincronização com a nuvem nesta sessão'}
         >
           <span className={`w-2 h-2 rounded-full shrink-0 ${isCloudConnected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-          <span>{isCloudConnected ? 'Nuvem OK' : 'Sem nuvem'}</span>
         </div>
         {pendingCount > 0 && (
           <span
@@ -4581,21 +4579,21 @@ export default function App() {
       {/* Mobile Drawer Menu overlay */}
       {isMobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-50 bg-slate-950/85 flex justify-end print:hidden" id="mobile-drawer">
-          <div className="mobile-sidebar-panel w-[18.5rem] max-w-[82vw] border-l border-slate-800 p-4 flex flex-col space-y-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <img src={reneaLogoWhite} alt="RENEA Infraestrutura" className="h-7 w-auto object-contain" />
-              <button onClick={() => setIsMobileMenuOpen(false)} className="cursor-pointer rounded-lg p-2 text-emerald-100 hover:bg-white/10 hover:text-white" aria-label="Fechar navegação">
+          <div className="mobile-sidebar-panel w-[18.5rem] max-w-[82vw] border-l border-slate-200 bg-white p-4 flex flex-col space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2"><img src={reneaLogo} alt="RENEA Infraestrutura" className="h-7 w-auto object-contain" /><span className="text-xs font-bold text-emerald-800">Ambiente RENEA</span></div>
+              <button onClick={() => setIsMobileMenuOpen(false)} className="cursor-pointer rounded-lg p-2 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800" aria-label="Fechar navegação">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <nav className="flex-1 overflow-y-auto">
               {renderNavigation(true)}
-              <div className="pt-5 mt-5 border-t border-slate-800">
+              <div className="pt-5 mt-5 border-t border-slate-200">
                 <button type="button" onClick={() => { void handleLogout(); setIsMobileMenuOpen(false); }} className="w-full py-3 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-xl font-semibold text-xs flex items-center justify-center gap-2">
                   <LogOut className="w-4 h-4" /> Sair da conta
                 </button>
-                <p className="mt-3 text-center text-xs text-slate-500">{APP_VERSION_LABEL}</p>
+                <p className="mt-3 text-center text-xs text-slate-500">Cintravyse v3.5.1</p>
               </div>
             </nav>
           </div>
@@ -4802,37 +4800,13 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'diario-obra' && (
-              <DiarioObraTab
+            {activeTab === 'pluviometro' && (
+              <PluviometroTab
                 diarios={diariosObra}
                 obras={obras}
-                gruposEquipe={gruposEquipe}
-                presencasLink={presencasLinkAtivas}
-                controlesEquipamentos={controleEquipamentosDiario}
-                apontamentos={apontamentosOperacionais}
-                movimentosMaterial={materiaisMovimentosVigentes}
-                ticketsJazida={ticketsJazidaAtivos}
                 responsavel={activeUserName}
-                podeEditar={pode(currentUserRole, 'diario-obra', 'editar')}
+                podeEditar={pode(currentUserRole, 'diario-obra', 'editar') || pode(currentUserRole, 'pluviometro', 'editar')}
                 onSave={handleSaveDiarioObra}
-              />
-            )}
-
-            {activeTab === 'meu-dia' && (
-              <MeuDiaTab
-                responsavel={activeUserName}
-                rotinas={rotinasDiarias}
-                pendencias={pendenciasRotina}
-                modelos={modelosRotina}
-                onSaveRotina={handleSaveRotinaDiaria}
-                onSavePendencia={handleSavePendenciaRotina}
-                onSaveModelo={handleSaveModeloRotina}
-                materiais={materiaisCadastro}
-                movimentosMaterial={materiaisMovimentos}
-                abastecimentos={abastecimentosAtivos}
-                controlesFrota={controleEquipamentosDiario}
-                equipamentos={equipamentos}
-                onIrPara={aba => { if (allowedTabs.includes(aba)) navigateTo(aba); }}
               />
             )}
 

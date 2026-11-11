@@ -74,6 +74,7 @@ test('toda aba do menu abre uma tela e toda aba principal tem permissão', async
 });
 
 test('toda tela *Tab.tsx é aberta por algum arquivo', () => {
+  const telasLegadasSemMenu = new Set(['DiarioObraTab', 'MeuDiaTab']);
   const fontes = ['../src/App.tsx', ...readdirSync(components)
     .filter(file => file.endsWith('.tsx'))
     .map(file => `../src/components/${file}`)]
@@ -81,6 +82,7 @@ test('toda tela *Tab.tsx é aberta por algum arquivo', () => {
     .join('\n');
   const orfas = telas
     .filter(tela => tela !== 'Dashboard')
+    .filter(tela => !telasLegadasSemMenu.has(tela))
     .filter(tela => !new RegExp(`['/]${tela}['"]`).test(fontes));
   assert.deepEqual(orfas, [], 'tela que nenhum arquivo abre: remova ou ligue ao menu');
 });

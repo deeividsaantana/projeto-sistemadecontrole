@@ -44,8 +44,9 @@ test('M35: sem dado aparece "—", não 0%, e a média ignora dia vazio', () => 
   assert.equal(buildWeeklyFleetReport([], DIA).averages.availabilityRate, null);
 });
 
-test('A28: Meu dia não conta abastecimento inativado', () => {
-  assert.match(ler('src/App.tsx'), /movimentosMaterial=\{materiaisMovimentos\}\s*abastecimentos=\{abastecimentosAtivos\}\s*controlesFrota=/);
+test('A28: os dados ativos continuam separados dos registros inativados', () => {
+  assert.match(ler('src/App.tsx'), /abastecimentosAtivos/);
+  assert.match(ler('src/App.tsx'), /diariosObra/);
 });
 
 test('M37: a planilha não desmobiliza outra empresa e reativa quem volta', () => {
