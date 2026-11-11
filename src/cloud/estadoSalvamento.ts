@@ -28,9 +28,17 @@ export interface DescricaoSalvamento {
   detalhe: string;
   /** Mostra o botão "Tentar novamente". */
   tentarNovamente: boolean;
+  /** Cor da bolinha do topo: só diz se a nuvem está ok (verde) ou fora (amarela). */
+  ponto: 'verde' | 'amarelo';
 }
 
+type SemPonto = Omit<DescricaoSalvamento, 'ponto'>;
+
 export function descreverSalvamento(entrada: EntradaSalvamento): DescricaoSalvamento {
+  return { ...descreverEstado(entrada), ponto: entrada.online && entrada.conectado ? 'verde' : 'amarelo' };
+}
+
+function descreverEstado(entrada: EntradaSalvamento): SemPonto {
   const semEnviar = entrada.pendente || (entrada.pendenciasOffline ?? 0) > 0;
   if (entrada.enviando) {
     return { estado: 'enviando', rotulo: 'Enviando para a nuvem…', curto: 'Enviando…', detalhe: 'Salvo neste aparelho. Enviando para a nuvem agora.', tentarNovamente: false };

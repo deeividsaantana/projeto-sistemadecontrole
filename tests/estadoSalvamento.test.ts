@@ -43,3 +43,11 @@ test('fila offline conta como pendente mesmo sem envio em andamento', () => {
 test('nuvem fora do ar sem nada pendente é só aviso de conexão', () => {
   assert.equal(descreverSalvamento({ ...base, conectado: false }).estado, 'sem-conexao');
 });
+
+test('a bolinha só diz se a nuvem está ok (verde) ou fora (amarela)', () => {
+  assert.equal(descreverSalvamento(base).ponto, 'verde');
+  assert.equal(descreverSalvamento({ ...base, pendente: true }).ponto, 'verde');
+  assert.equal(descreverSalvamento({ ...base, conectado: false }).ponto, 'amarelo');
+  assert.equal(descreverSalvamento({ ...base, online: false }).ponto, 'amarelo');
+  assert.equal(descreverSalvamento({ ...base, conectado: false, pendente: true, falhasSeguidas: 2 }).ponto, 'amarelo');
+});

@@ -185,8 +185,7 @@ export function DesktopTopBar({
           className="erp-topbar__status"
           role="status"
           aria-live="polite"
-          data-offline={salvamento.estado !== 'sincronizado' || undefined}
-          data-estado={salvamento.estado}
+          data-offline={salvamento.ponto === 'amarelo' || undefined}
           title={`${salvamento.detalhe} ${lastCloudSync ? `Última sincronização: ${lastCloudSync}` : 'Ainda sem sincronização nesta sessão.'}`}
         >
           <span aria-hidden="true" />

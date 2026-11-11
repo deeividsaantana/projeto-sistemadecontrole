@@ -425,8 +425,6 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; text-wrap: bal
 .erp-topbar__status-texto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .erp-topbar__status[data-offline] { border-color: #f3d3a8; background: #fff8ee; color: #9a3412; }
 .erp-topbar__status[data-offline] span { background: #d97706; }
-.erp-topbar__status[data-estado='falhou'] { border-color: #fecdd3; background: #fff1f2; color: #be123c; }
-.erp-topbar__status[data-estado='falhou'] span { background: #e11d48; }
 .erp-topbar__retry { min-height: 2.75rem; border: 1px solid #cbd5e1; border-radius: 999px; background: #fff; color: #1e293b; font: inherit; font-size: .75rem; font-weight: 750; padding: 0 .85rem; cursor: pointer; white-space: nowrap; }
 .erp-topbar__retry:hover { border-color: #176b4d; color: #176b4d; }
 .erp-topbar__pending { display: flex; align-items: center; gap: .45rem; padding: .25rem .4rem .25rem .6rem; border: 1px solid #f3c96b; border-radius: 999px; background: #fffbeb; color: #92400e; font-size: .75rem; font-weight: 700; white-space: nowrap; }

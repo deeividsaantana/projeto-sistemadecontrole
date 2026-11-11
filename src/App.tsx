@@ -4197,7 +4197,7 @@ export default function App() {
             className="flex size-8 items-center justify-center rounded-full border border-slate-200 bg-white"
             title={`${salvamento.detalhe} ${lastCloudSync ? `Última sincronização: ${lastCloudSync}` : 'Ainda sem sincronização nesta sessão.'}`}
           >
-            <span aria-hidden="true" className={`size-3 rounded-full shrink-0 ${salvamento.estado === 'sincronizado' ? 'bg-emerald-500' : salvamento.estado === 'falhou' ? 'bg-rose-500' : 'bg-amber-500'}`} />
+            <span aria-hidden="true" className={`size-3 rounded-full shrink-0 ${salvamento.ponto === 'verde' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
             <span className="sr-only">{salvamento.rotulo}</span>
           </div>
           {salvamento.tentarNovamente && (
