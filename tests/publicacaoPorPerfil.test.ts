@@ -65,13 +65,15 @@ test('marca ativa: a mais recente do registro, restaurada só com data; ela isen
   assert.match(corpo, /and not \(depois < antes and v_ativas \? /, 'a marca isenta só a saída do registro');
 });
 
-test('o lock_timeout de 25 s das duas funções sobrevive à redefinição', () => {
+// Era 25 s (202610280001). Em 11/11/2026 a espera longa segurava as poucas conexões da API e
+// derrubava login e leitura; a 202611110001 baixou para 5 s e o app tenta de novo sozinho.
+test('o lock_timeout de 5 s das duas funções sobrevive à redefinição', () => {
   const ultimo = (funcao: string) => migrations.map(({ nome, sql }, indice) => ({ nome, indice, sql }))
     .filter(({ sql }) => new RegExp(`(create\\s+or\\s+replace\\s+function|alter\\s+function)\\s+public\\.${funcao}\\b`, 'i').test(sql)).at(-1);
   for (const funcao of ['publish_erp_snapshot', 'apply_erp_snapshot_changes']) {
     const migration = ultimo(funcao);
     assert.ok(migration);
-    assert.match(migration.sql, new RegExp(`alter\\s+function\\s+public\\.${funcao}\\([^)]*\\)\\s+set\\s+lock_timeout\\s*=\\s*'25s'`, 'i'), `${funcao} em ${migration.nome}`);
+    assert.match(migration.sql, new RegExp(`alter\\s+function\\s+public\\.${funcao}\\([^)]*\\)\\s+set\\s+lock_timeout\\s*=\\s*'5s'`, 'i'), `${funcao} em ${migration.nome}`);
   }
 });
 
