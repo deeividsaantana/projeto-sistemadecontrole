@@ -17,6 +17,7 @@ import {
   ETAPAS,
   NOME_DO_PAPEL,
   abrirSolicitacao,
+  exerce,
   formatarDia,
   pessoaDoUsuario,
   situacaoDe,
@@ -65,7 +66,9 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
   const [ocupado, setOcupado] = useState(false);
 
   const pessoa = pessoaDoUsuario(pessoas, { nome: usuario.nome, email: usuario.email });
-  const ator: Ator = { nome: pessoa?.nome ?? usuario.nome, papel: podeEditar ? pessoa?.papel ?? null : null };
+  // Administrador sem pessoa ligada entra como dev: faz tudo no módulo.
+  const papel = pessoa?.papel ?? (ehAdmin ? 'dev' : null);
+  const ator: Ator = { nome: pessoa?.nome ?? usuario.nome, papel: podeEditar ? papel : null };
 
   useGSAP(() => {
     const raiz = escopo.current;
@@ -143,11 +146,11 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
     await baixarModeloDeImportacao();
   };
 
-  const podeImportar = ehAdmin || ator.papel === 'solicitante' || ator.papel === 'suprimentos';
+  const podeImportar = ehAdmin || exerce(ator, 'solicitante') || exerce(ator, 'suprimentos');
 
   const subtelas = [
     { id: 'fila' as const, rotulo: 'Solicitações', icone: Inbox, contador: naFilaDeSuprimentos, contadorRotulo: 'esperando Suprimentos' },
-    ...(ator.papel === 'solicitante' ? [{ id: 'nova' as const, rotulo: 'Nova solicitação', curto: 'Nova', icone: PackagePlus }] : []),
+    ...(exerce(ator, 'solicitante') ? [{ id: 'nova' as const, rotulo: 'Nova solicitação', curto: 'Nova', icone: PackagePlus }] : []),
     { id: 'aprovacao' as const, rotulo: 'Aprovação', icone: ShieldCheck, contador: aguardandoAprovacao.length, contadorRotulo: 'aguardando aprovação' },
     { id: 'atrasos' as const, rotulo: 'Em atraso', curto: 'Atraso', icone: AlertTriangle, contador: emAtraso.length, contadorRotulo: 'em atraso' },
     ...(ehAdmin ? [{ id: 'pessoas' as const, rotulo: 'Pessoas e papéis', curto: 'Pessoas', icone: Users }] : []),
@@ -182,7 +185,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
               <Upload className="size-4" aria-hidden="true" /> Importar planilha
             </button>
           )}
-          {ator.papel === 'solicitante' && subtela !== 'nova' && (
+          {exerce(ator, 'solicitante') && subtela !== 'nova' && (
             <button type="button" onClick={() => setSubtela('nova')} className={BOTAO_PRIMARIO}>
               <PackagePlus className="size-4" aria-hidden="true" /> Nova solicitação
             </button>
@@ -192,11 +195,11 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
       faixa={<div data-sol-reveal className="grid gap-2">
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
           <ClipboardCheck className="size-4 text-[#176b4d]" aria-hidden="true" />
-          {pessoa && podeEditar
-            ? <>Você entra como <strong className="text-slate-900">{pessoa.nome}</strong> · {NOME_DO_PAPEL[pessoa.papel]}</>
+          {ator.papel
+            ? <>Você entra como <strong className="text-slate-900">{ator.nome}</strong> · {NOME_DO_PAPEL[ator.papel]}</>
             : <>Seu login só consulta este módulo.{ehAdmin && ' Ligue o login a uma pessoa em "Pessoas e papéis".'}</>}
         </p>
-        {ator.papel === 'aprovador' && aguardandoAprovacao.length > 0 && subtela !== 'aprovacao' && (
+        {exerce(ator, 'aprovador') && aguardandoAprovacao.length > 0 && subtela !== 'aprovacao' && (
           <button type="button" onClick={() => setSubtela('aprovacao')} className="flex min-h-11 items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 text-left text-sm font-bold text-amber-900">
             <ShieldCheck className="size-4 shrink-0" aria-hidden="true" /> {aguardandoAprovacao.length} pedido(s) de compra esperando a sua aprovação. Toque para ver.
           </button>
@@ -246,7 +249,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
         </div>
       )}
 
-      {subtela === 'nova' && ator.papel === 'solicitante' && (
+      {subtela === 'nova' && exerce(ator, 'solicitante') && (
         <NovaSolicitacao
           solicitante={ator.nome}
           onEnviar={dados => {

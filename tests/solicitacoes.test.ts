@@ -205,3 +205,15 @@ test('relatórios: solicitante, suprimentos, aprovador e logística', () => {
   assert.deepEqual(logistica.diario, [{ periodo: '2026-11-17', noLocal: 0, descarte: 1 }]);
   assert.equal(logistica.emAberto[0].atraso, true);
 });
+
+test('dev faz tudo: abre, cota, aprova, recebe e reagenda', () => {
+  const dev: Ator = { nome: 'Deivid', papel: 'dev' };
+  let sol = ok(abrirSolicitacao({ solicitante: 'Deivid', frente: 'Ramo 200', itens: [{ tipo: 'Serviço', descricao: 'Locação de rolo compactador', quantidade: '20', unidade: 'h', prazoDesejado: '2026-11-20', permiteParcial: false }] }, dev, [], T0, 'dev-1'));
+  sol = ok(aplicarAcao(sol, { tipo: 'assumir' }, dev, T0));
+  sol = ok(aplicarAcao(sol, { tipo: 'enviarParaAprovacao', pedido }, dev, T0));
+  assert.deepEqual(acoesDisponiveis(sol, dev), ['aprovar', 'rejeitar']);
+  sol = ok(aplicarAcao(sol, { tipo: 'aprovar' }, dev, T0));
+  sol = ok(aplicarAcao(sol, { tipo: 'reagendar', novaData: '2026-11-22', motivo: 'Ajuste de agenda' }, dev, T0));
+  sol = ok(aplicarAcao(sol, { tipo: 'receber', recebimento: { tipo: 'Chegou ao Local', local: 'Canteiro Padre Eustáquio', notaFiscal: '7', quantidades: { 1: 20 } } }, dev, T0));
+  assert.equal(sol.etapa, 'Entregue');
+});
