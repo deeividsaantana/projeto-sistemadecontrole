@@ -4,7 +4,7 @@
  * pessoa logada pode fazer nesta etapa (acoesDisponiveis).
  */
 import { useState, type ReactNode } from 'react';
-import { CalendarClock, CheckCircle2, PackageCheck, Send, ShieldCheck, ShieldX, Truck, XCircle } from 'lucide-react';
+import { CalendarClock, CheckCircle2, PackageCheck, PackageX, Send, ShieldCheck, ShieldX, Truck, XCircle } from 'lucide-react';
 import { BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO } from '../cadastros/estilos';
 import { Campo } from '../../shared/ui/Lancamento';
 import {
@@ -17,6 +17,7 @@ import {
   numeroBr,
   saldoDoItem,
   situacaoDe,
+  situacaoDoItem,
   type Acao,
   type Ator,
   type CotacaoFornecedor,
@@ -24,6 +25,8 @@ import {
   type TipoChegada,
 } from '../../utils/solicitacoes';
 import { SeloSituacao } from './SeloSituacao';
+import { SeloItem } from './SeloItem';
+import { CartaoRastreio } from './CartaoRastreio';
 
 interface DetalheProps {
   solicitacao: Solicitacao;
@@ -84,6 +87,9 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
   const [novaData, setNovaData] = useState('');
   const [motivo, setMotivo] = useState('');
   const [cancelar, setCancelar] = useState(false);
+  // Apontar falta (conferência por item)
+  const [faltaDe, setFaltaDe] = useState<number | null>(null);
+  const [faltaObs, setFaltaObs] = useState('');
 
   const executar = (acao: Acao, descricao: (s: Solicitacao) => string) => {
     const resultado = aplicarAcao(sol, acao, ator, new Date().toISOString(), todas);
@@ -97,6 +103,8 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
     setNovaData('');
     setNf('');
     setCancelar(false);
+    setFaltaDe(null);
+    setFaltaObs('');
     onSalvar(resultado.solicitacao, descricao(resultado.solicitacao));
   };
 
@@ -117,24 +125,61 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
 
   return (
     <div className="grid gap-5">
-      <div className="flex flex-wrap items-center gap-2">
+      <ul className="grid" aria-label="Onde o pedido está">
+        <CartaoRastreio sol={sol} hoje={hoje} ativo={false} onAbrir={() => document.getElementById('linha-do-tempo')?.scrollIntoView({ behavior: 'smooth' })} />
+      </ul>
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600">
         <SeloSituacao situacao={situacao} />
-        {sol.comprador && <span className="text-sm text-slate-600">Comprador: <strong className="text-slate-900">{sol.comprador}</strong></span>}
+        {sol.numeroSc && <span>SC <strong className="text-slate-900">{sol.numeroSc}</strong></span>}
+        {sol.prioridade !== undefined && <span>Prioridade <strong className="text-[#c2410c]">{sol.prioridade}º</strong></span>}
+        {sol.comprador && <span>Comprador: <strong className="text-slate-900">{sol.comprador}</strong></span>}
+        {sol.origem === 'planilha-controle' && <span>Veio da planilha de controle</span>}
       </div>
 
-      <Bloco titulo="Itens">
+      <Bloco titulo="Itens e conferência">
         <ul className="grid gap-2">
           {sol.itens.map(item => (
-            <li key={item.itemId} className={`${CARTAO} p-3 text-sm`}>
-              <strong className="block text-slate-900">{item.itemId}. {item.descricao}</strong>
+            <li key={item.itemId} className={`${CARTAO} grid gap-1 p-3 text-sm`}>
+              <span className="flex items-start justify-between gap-2">
+                <strong className="text-slate-900">{item.itemId}. {item.descricao}</strong>
+                <SeloItem situacao={situacaoDoItem(item)} />
+              </span>
               <span className="block text-slate-600">
-                {item.tipo} · {numeroBr(item.quantidade)} {item.unidade} · até {formatarDia(item.prazoDesejado)} · parcial: {item.permiteParcial ? 'sim' : 'não'}
+                {item.tipo} · {numeroBr(item.quantidade)} {item.unidade}{item.prazoDesejado ? ` · até ${formatarDia(item.prazoDesejado)}` : ''} · parcial: {item.permiteParcial ? 'sim' : 'não'}
               </span>
               {(item.quantidadePedido !== undefined && item.quantidadePedido !== item.quantidade) && (
                 <span className="block text-slate-600">No pedido: {numeroBr(item.quantidadePedido)} {item.unidade}</span>
               )}
               {(item.quantidadeRecebida ?? 0) > 0 && (
-                <span className="block font-semibold text-[#176b4d]">Recebido: {numeroBr(item.quantidadeRecebida ?? 0)} {item.unidade} · saldo {numeroBr(saldoDoItem(item))}</span>
+                <span className="block font-semibold text-[#176b4d]">Chegou: {numeroBr(item.quantidadeRecebida ?? 0)} {item.unidade} · falta {numeroBr(saldoDoItem(item))}</span>
+              )}
+              {(item.conferencias?.length ?? 0) > 0 && (
+                <ol className="mt-1 grid gap-0.5 border-l-2 border-slate-200 pl-2 text-xs text-slate-600">
+                  {item.conferencias?.map((conf, indice) => (
+                    <li key={`${conf.data}-${indice}`}>
+                      <strong className={conf.situacao === 'Falta' ? 'text-rose-700' : 'text-slate-800'}>{conf.situacao === 'Falta' ? 'Faltou' : `Chegou ${numeroBr(conf.quantidade)} ${item.unidade}`}</strong>
+                      {' '}· {conf.usuario} · {formatarDia(conf.data)}{conf.notaFiscal ? ` · NF ${conf.notaFiscal}` : ''}{conf.observacao ? ` · ${conf.observacao}` : ''}
+                    </li>
+                  ))}
+                </ol>
+              )}
+              {acoes.includes('apontarFalta') && situacaoDoItem(item) !== 'Chegou' && (
+                faltaDe === item.itemId ? (
+                  <div className="mt-1 grid gap-2">
+                    <Campo rotulo="O que faltou?" para={`falta-${item.itemId}`}>
+                      <input id={`falta-${item.itemId}`} value={faltaObs} onChange={event => setFaltaObs(event.target.value)} placeholder="Ex.: não veio na carga de hoje" className={CAMPO} />
+                    </Campo>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => executar({ tipo: 'apontarFalta', itemId: item.itemId, observacao: faltaObs }, s => `${s.numero}: falta registrada no item ${item.itemId}.`)} className={BOTAO_PERIGO_LEVE}>Gravar falta</button>
+                      <button type="button" onClick={() => setFaltaDe(null)} className={BOTAO_SECUNDARIO}>Voltar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => { setFaltaDe(item.itemId); setFaltaObs(''); }} className={`${BOTAO_SECUNDARIO} mt-1 justify-self-start`}>
+                    <PackageX className="size-4" aria-hidden="true" /> Apontar falta
+                  </button>
+                )
               )}
             </li>
           ))}
@@ -269,7 +314,7 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
       )}
 
       {acoes.includes('receber') && (
-        <Bloco titulo="Confirmar chegada">
+        <Bloco titulo="Conferir o que chegou">
           <div className="grid grid-cols-2 gap-2" role="group" aria-label="Onde chegou">
             {(['Chegou ao Local', 'Chegou ao Local de Descarte'] as const).map(opcao => (
               <button key={opcao} type="button" aria-pressed={tipoChegada === opcao} onClick={() => setTipoChegada(opcao)}
@@ -343,8 +388,8 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
 
       {erro && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700">{erro}</p>}
 
-      <Bloco titulo="Histórico">
-        <ol className="grid gap-2 border-l-2 border-slate-200 pl-3 text-sm">
+      <Bloco titulo="Linha do tempo do pedido (histórico oficial)">
+        <ol id="linha-do-tempo" className="grid gap-2 border-l-2 border-slate-200 pl-3 text-sm">
           {[...sol.eventos].reverse().map((evento, indice) => (
             <li key={`${evento.data}-${indice}`}>
               <strong className="text-slate-900">{evento.acao}</strong>

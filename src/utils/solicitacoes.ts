@@ -27,7 +27,7 @@ export const NOME_DO_PAPEL: Record<PapelSuprimentos, string> = {
   solicitante: 'Solicitante (campo)',
   suprimentos: 'Suprimentos',
   aprovador: 'Aprovador (gerência)',
-  recebedor: 'Recebimento (almoxarifado)',
+  recebedor: 'Recebimento e conferência (auxiliar, almoxarife)',
   dev: 'Acesso total (dev)',
 };
 
@@ -78,18 +78,33 @@ export const DESTINOS_SUGERIDOS = [
   'Bota-Fora Itaquareia',
 ] as const;
 
+/** Uma conferência do item feita pelo recebimento (auxiliar ou almoxarife). */
+export interface ConferenciaItem {
+  data: string;
+  usuario: string;
+  situacao: 'Chegou' | 'Falta';
+  quantidade: number;
+  notaFiscal?: string;
+  observacao?: string;
+}
+
+export type SituacaoItem = 'Aguardando' | 'Parcial' | 'Falta' | 'Chegou';
+
 export interface ItemSolicitado {
   itemId: number;
   tipo: TipoItem;
   descricao: string;
   quantidade: number;
-  unidade: Unidade;
+  /** Unidade do padrão técnico nas solicitações novas; o histórico importado guarda a da planilha. */
+  unidade: string;
   prazoDesejado: string;
   permiteParcial: boolean;
   /** Quanto entra neste pedido de compra (Suprimentos fraciona se parcial = sim). */
   quantidadePedido?: number;
   /** Soma do que já chegou ao destino. */
   quantidadeRecebida?: number;
+  /** Registro de cada conferência: só cresce. */
+  conferencias?: ConferenciaItem[];
 }
 
 export interface CotacaoFornecedor {
@@ -151,6 +166,12 @@ export interface Solicitacao {
   reagendamentos: Reagendamento[];
   eventos: EventoSolicitacao[];
   canceladaMotivo?: string;
+  /** Número da SC no sistema de compras da empresa. */
+  numeroSc?: string;
+  /** 1 = mais urgente (aba Prioridade da planilha de controle). */
+  prioridade?: number;
+  /** De onde veio: aberta no sistema ou trazida da planilha de controle. */
+  origem?: 'sistema' | 'planilha-controle';
   atualizadoEm: string;
 }
 
@@ -258,6 +279,59 @@ export const situacaoDe = (sol: Solicitacao, hoje: string): SituacaoSolicitacao 
 export const saldoDoItem = (item: ItemSolicitado) =>
   Math.max(0, (item.quantidadePedido ?? item.quantidade) - (item.quantidadeRecebida ?? 0));
 
+/** Situação do item para a conferência: chegou tudo, parte, faltou ou ainda aguarda. */
+export const situacaoDoItem = (item: ItemSolicitado): SituacaoItem => {
+  const recebida = item.quantidadeRecebida ?? 0;
+  if (recebida > 0 && saldoDoItem(item) === 0) return 'Chegou';
+  const ultima = item.conferencias?.[item.conferencias.length - 1];
+  if (ultima?.situacao === 'Falta') return 'Falta';
+  return recebida > 0 ? 'Parcial' : 'Aguardando';
+};
+
+/** Passos do rastreio, como acompanhamento de entrega: um card por pedido. */
+export const PASSOS_RASTREIO = ['Pedido', 'Compras', 'Aprovação', 'A caminho', 'Entregue'] as const;
+
+const PASSO_DA_ETAPA: Record<Etapa, number> = {
+  'Pendente Suprimentos': 1,
+  'Em Cotação': 1,
+  'Aguardando Aprovação': 2,
+  Aprovado: 3,
+  'Em Trânsito': 3,
+  Entregue: 4,
+  Cancelado: 0,
+};
+
+export interface Rastreio {
+  /** Índice em PASSOS_RASTREIO do passo em andamento (4 = entregue). */
+  passo: number;
+  frase: string;
+  tom: 'normal' | 'atraso' | 'falta' | 'fechado' | 'cancelado';
+  itensChegaram: number;
+  itensTotal: number;
+}
+
+/** Onde o pedido está agora, numa frase que qualquer um entende. */
+export const rastreioDe = (sol: Solicitacao, hoje: string): Rastreio => {
+  const itensTotal = sol.itens.length;
+  const itensChegaram = sol.itens.filter(item => situacaoDoItem(item) === 'Chegou').length;
+  const base = { passo: PASSO_DA_ETAPA[sol.etapa], itensChegaram, itensTotal };
+  const comFalta = sol.itens.some(item => situacaoDoItem(item) === 'Falta');
+  if (sol.etapa === 'Cancelado') return { ...base, tom: 'cancelado', frase: `Cancelado${sol.canceladaMotivo ? `: ${sol.canceladaMotivo}` : ''}` };
+  if (sol.etapa === 'Entregue') return { ...base, tom: 'fechado', frase: `Entregue${sol.chegadaEm ? ` em ${formatarDia(sol.chegadaEm)}` : ''}${sol.localDestino ? ` · ${sol.localDestino}` : ''}` };
+  if (estaEmAtraso(sol, hoje)) return { ...base, tom: 'atraso', frase: `Atrasado: devia chegar até ${formatarDia(sol.janelaFim)}` };
+  if (comFalta) return { ...base, tom: 'falta', frase: `Falta item na conferência (${itensChegaram} de ${itensTotal} chegaram)` };
+  const frase = {
+    'Pendente Suprimentos': 'Na fila de Suprimentos',
+    'Em Cotação': `Em cotação${sol.comprador ? ` com ${sol.comprador}` : ''}`,
+    'Aguardando Aprovação': `Pedido ${sol.numeroPedido ?? ''} esperando aprovação`.replace('  ', ' '),
+    Aprovado: `Aprovado · entrega até ${formatarDia(sol.janelaFim)}`,
+    'Em Trânsito': itensChegaram > 0 || sol.itens.some(item => (item.quantidadeRecebida ?? 0) > 0)
+      ? `Chegou em parte · ${itensChegaram} de ${itensTotal} itens completos`
+      : `A caminho · chega até ${formatarDia(sol.janelaFim)}`,
+  }[sol.etapa];
+  return { ...base, tom: 'normal', frase };
+};
+
 export const saldoTotal = (sol: Solicitacao) => sol.itens.reduce((soma, item) => soma + saldoDoItem(item), 0);
 
 // ---------------------------------------------------------------------------
@@ -296,6 +370,7 @@ export type Acao =
   | { tipo: 'rejeitar'; parecer: string }
   | { tipo: 'despachar' }
   | { tipo: 'receber'; recebimento: DadosRecebimento }
+  | { tipo: 'apontarFalta'; itemId: number; observacao: string }
   | { tipo: 'reagendar'; novaData: string; motivo: string }
   | { tipo: 'cancelar'; motivo: string };
 
@@ -434,20 +509,26 @@ export const aplicarAcao = (
     }
     case 'receber': {
       if (!exerce(ator, 'recebedor')) return falha('Só o recebimento (fiscal ou almoxarife) confirma a chegada.');
-      if (sol.etapa !== 'Aprovado' && sol.etapa !== 'Em Trânsito') return falha('Só pedido aprovado ou em trânsito pode ser recebido.');
+      if (sol.etapa === 'Cancelado' || sol.etapa === 'Entregue') return falha('Esta solicitação já está fechada.');
       const { recebimento } = acao;
       if (!recebimento.local.trim()) return falha('Informe onde o material chegou.');
       if (!recebimento.notaFiscal.trim()) return falha('Informe o número da nota fiscal.');
-      const itens = sol.itens.map(item => ({
-        ...item,
-        quantidadeRecebida: (item.quantidadeRecebida ?? 0) + Math.max(0, Number(recebimento.quantidades[item.itemId]) || 0),
-      }));
-      if (itens.every((item, indice) => item.quantidadeRecebida === (sol.itens[indice].quantidadeRecebida ?? 0))) {
+      const nfDigitada = recebimento.notaFiscal.trim();
+      const itens = sol.itens.map(item => {
+        const chegou = Math.max(0, Number(recebimento.quantidades[item.itemId]) || 0);
+        if (!chegou) return item;
+        return {
+          ...item,
+          quantidadeRecebida: (item.quantidadeRecebida ?? 0) + chegou,
+          conferencias: [...(item.conferencias ?? []), { data: agora, usuario: ator.nome, situacao: 'Chegou' as const, quantidade: chegou, notaFiscal: nfDigitada }],
+        };
+      });
+      if (itens.every((item, indice) => item === sol.itens[indice])) {
         return falha('Informe a quantidade que chegou.');
       }
       const divergencias = itens
-        .filter(item => item.quantidadeRecebida !== (item.quantidadePedido ?? item.quantidade))
-        .map(item => `Item ${item.itemId}: recebido ${numeroBr(item.quantidadeRecebida)} de ${numeroBr(item.quantidadePedido ?? item.quantidade)} ${item.unidade}`);
+        .filter(item => (item.quantidadeRecebida ?? 0) !== (item.quantidadePedido ?? item.quantidade))
+        .map(item => `Item ${item.itemId}: recebido ${numeroBr(item.quantidadeRecebida ?? 0)} de ${numeroBr(item.quantidadePedido ?? item.quantidade)} ${item.unidade}`);
       // Fica aberto só quando falta e o item aceita parcial; senão o
       // recebimento fecha e a diferença fica registrada como divergência.
       const aguardaSaldo = itens.some(item => item.permiteParcial && saldoDoItem(item) > 0);
@@ -458,8 +539,22 @@ export const aplicarAcao = (
         notaFiscal: sol.notaFiscal && sol.notaFiscal !== nf ? `${sol.notaFiscal}, ${nf}` : nf,
         chegadaEm: agora,
         statusLogistico: aguardaSaldo ? 'Em Trânsito' : recebimento.tipo,
-        etapa: aguardaSaldo ? 'Em Trânsito' : 'Entregue',
+        // Parcial não pula etapa: pedido ainda em Suprimentos ou aprovação segue onde está.
+        etapa: aguardaSaldo ? (sol.etapa === 'Aprovado' ? 'Em Trânsito' : sol.etapa) : 'Entregue',
         ...(divergencias.length ? { divergencia: divergencias.join('; ') } : { divergencia: undefined }),
+      });
+    }
+    case 'apontarFalta': {
+      if (!exerce(ator, 'recebedor')) return falha('Só o recebimento (fiscal ou almoxarife) confere os itens.');
+      if (sol.etapa === 'Cancelado' || sol.etapa === 'Entregue') return falha('Esta solicitação já está fechada.');
+      const alvo = sol.itens.find(item => item.itemId === acao.itemId);
+      if (!alvo) return falha('Item não encontrado.');
+      if (acao.observacao.trim().length < 3) return falha('Diga o que faltou (ex.: "não veio na carga de hoje").');
+      return comEvento(sol, ator, agora, 'Apontou falta', `Item ${alvo.itemId} (${alvo.descricao}): ${acao.observacao.trim()}`, {
+        itens: sol.itens.map(item => (item === alvo ? {
+          ...item,
+          conferencias: [...(item.conferencias ?? []), { data: agora, usuario: ator.nome, situacao: 'Falta' as const, quantidade: 0, observacao: acao.observacao.trim() }],
+        } : item)),
       });
     }
     case 'reagendar': {
@@ -499,7 +594,7 @@ export const acoesDisponiveis = (sol: Solicitacao, ator: Ator): Acao['tipo'][] =
     if (etapa === 'Aprovado' || etapa === 'Em Trânsito') acoes.push('reagendar');
   }
   if (exerce(ator, 'aprovador') && etapa === 'Aguardando Aprovação') acoes.push('aprovar', 'rejeitar');
-  if (exerce(ator, 'recebedor') && (etapa === 'Aprovado' || etapa === 'Em Trânsito')) acoes.push('receber');
+  if (exerce(ator, 'recebedor') && etapa !== 'Cancelado' && etapa !== 'Entregue') acoes.push('receber', 'apontarFalta');
   if ((etapa === 'Pendente Suprimentos' || etapa === 'Em Cotação')
     && (exerce(ator, 'suprimentos') || (exerce(ator, 'solicitante') && ator.nome === sol.solicitante))) acoes.push('cancelar');
   return acoes;
