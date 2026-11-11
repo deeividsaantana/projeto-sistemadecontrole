@@ -7,6 +7,7 @@ import { AbasDaTela } from '../shared/ui/AbasDaTela';
 import { PageHeader } from '../shared/ui/PageHeader';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import MapaChuva from './MapaChuva';
+import { CAMPO } from './cadastros/estilos';
 import { mesesComDiario, montarMesDeChuva } from '../utils/mapaChuva';
 
 interface PluviometroTabProps {
@@ -136,28 +137,28 @@ export default function PluviometroTab({ diarios, obras, responsavel, podeEditar
               <div className="rounded-xl border border-slate-200 p-4">
                 <h2 className="text-base font-bold text-slate-900">{diario ? 'Editar lançamento' : 'Novo lançamento'}</h2>
                 <label className="mt-3 block text-xs font-bold text-slate-600">Dia
-                  <input type="date" value={diaSelecionado} onChange={event => { setDiaSelecionado(event.target.value); setRascunho({}); }} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm" />
+                  <input type="date" value={diaSelecionado} onChange={event => { setDiaSelecionado(event.target.value); setRascunho({}); }} className={`${CAMPO} mt-1`} />
                 </label>
                 <label className="mt-3 block text-xs font-bold text-slate-600">Obra
-                  <select value={obraId} onChange={event => { setObraId(event.target.value); setRascunho({}); }} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm">
+                  <select value={obraId} onChange={event => { setObraId(event.target.value); setRascunho({}); }} className={`${CAMPO} mt-1`}>
                     <option value="">Obra geral</option>
                     {obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
                   </select>
                 </label>
                 {(['climaManha', 'climaTarde'] as const).map(campo => (
                   <label key={campo} className="mt-3 block text-xs font-bold text-slate-600">{campo === 'climaManha' ? 'Clima manhã' : 'Clima tarde'}
-                    <select disabled={!podeEditar} value={(valor[campo] as string) || 'Bom'} onChange={event => setRascunho({ ...rascunho, [campo]: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm disabled:bg-slate-50">
+                    <select disabled={!podeEditar} value={(valor[campo] as string) || 'Bom'} onChange={event => setRascunho({ ...rascunho, [campo]: event.target.value })} className={`${CAMPO} mt-1 disabled:bg-slate-50`}>
                       {CLIMAS.map(item => <option key={item}>{item}</option>)}
                     </select>
                   </label>
                 ))}
                 <label className="mt-3 block text-xs font-bold text-slate-600">Pluviômetro (mm)
-                  <input disabled={!podeEditar} type="number" min="0" step="0.5" value={valor.precipitacaoMm ?? ''} onChange={event => setRascunho({ ...rascunho, precipitacaoMm: Number(event.target.value) })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm disabled:bg-slate-50" />
+                  <input disabled={!podeEditar} type="number" min="0" step="0.5" value={valor.precipitacaoMm ?? ''} onChange={event => setRascunho({ ...rascunho, precipitacaoMm: Number(event.target.value) })} className={`${CAMPO} mt-1 disabled:bg-slate-50`} />
                 </label>
                 <label className="mt-3 block text-xs font-bold text-slate-600">Horas paradas por chuva
-                  <input disabled={!podeEditar} type="number" min="0" step="0.5" value={valor.horasParadasClima ?? ''} onChange={event => setRascunho({ ...rascunho, horasParadasClima: Number(event.target.value) })} className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 px-3 text-sm disabled:bg-slate-50" />
+                  <input disabled={!podeEditar} type="number" min="0" step="0.5" value={valor.horasParadasClima ?? ''} onChange={event => setRascunho({ ...rascunho, horasParadasClima: Number(event.target.value) })} className={`${CAMPO} mt-1 disabled:bg-slate-50`} />
                 </label>
-                {podeEditar && <button type="button" onClick={salvar} className="mt-4 min-h-11 w-full rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800">{diario ? 'Atualizar lançamento' : 'Registrar lançamento'}</button>}
+                {podeEditar && <button type="button" onClick={salvar} className="mt-4 min-h-11 w-full rounded-lg bg-[#176b4d] px-4 text-sm font-bold text-white hover:opacity-90">{diario ? 'Atualizar lançamento' : 'Registrar lançamento'}</button>}
               </div>
             </div>
           </section>
