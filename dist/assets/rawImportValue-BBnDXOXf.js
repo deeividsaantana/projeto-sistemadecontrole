@@ -1,0 +1,1 @@
+import{c as l,n as e}from"./importHelpers-DcF4jD0e.js";const m=(c,i)=>{const s=Object.entries(c).filter(([,t])=>l(t)!=="");for(const t of i){const o=e(t),n=s.find(([r])=>e(r)===o);if(n)return n[1]}for(const t of i){const o=e(t),n=s.find(([r])=>{const a=e(r);return a.includes(o)||o.includes(a)});if(n)return n[1]}};export{m as g};
