@@ -812,7 +812,6 @@ export default function SolicitacoesTab({
       rotulo: "Em aberto",
       valor: contagem.abertos,
       detalhe: "pedidos no fluxo",
-      acao: () => irPara("abertos"),
       tom: "text-[#176b4d]",
     },
     {
@@ -822,7 +821,6 @@ export default function SolicitacoesTab({
       detalhe: exerce(ator, "aprovador")
         ? "aguardando sua decisão"
         : "aguardando gerência",
-      acao: irParaAprovacao,
       tom: "text-[#c2410c]",
     },
     {
@@ -830,7 +828,6 @@ export default function SolicitacoesTab({
       rotulo: "Em atraso",
       valor: emAtraso.length,
       detalhe: "pedidos para cobrar",
-      acao: () => irPara("atraso"),
       tom: "text-rose-700",
     },
     {
@@ -838,7 +835,6 @@ export default function SolicitacoesTab({
       rotulo: "A conferir",
       valor: itensComFalta,
       detalhe: "itens aguardando chegada",
-      acao: irParaConferencia,
       tom: "text-slate-900",
     },
     {
@@ -846,7 +842,6 @@ export default function SolicitacoesTab({
       rotulo: "Entregues",
       valor: contagem.entregues,
       detalhe: "pedidos concluídos",
-      acao: () => irPara("entregues"),
       tom: "text-[#176b4d]",
     },
   ] as const;
@@ -966,34 +961,31 @@ export default function SolicitacoesTab({
           data-sol-reveal
           className="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]"
         >
-          <section
-            aria-label="Resumo operacional de solicitações"
-            className="contents"
-          >
-            {resumo.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={item.acao}
-                data-testid={`resumo-solicitacoes-${item.id}`}
-                className="group min-h-10 min-w-[8.5rem] flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-left transition hover:border-[#176b4d] hover:bg-[#f7f8f6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)"
-              >
-                <span className="flex items-center justify-between gap-2">
+          {subtela === "pedidos" && (
+            <section
+              aria-label="Resumo operacional de solicitações"
+              className="flex min-w-0 flex-1 items-center gap-1.5"
+            >
+              <span className="sr-only">Resumo operacional</span>
+              {resumo.map((item) => (
+                <div
+                  key={item.id}
+                  data-testid={`resumo-solicitacoes-${item.id}`}
+                  className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
+                  title={`${item.rotulo}: ${item.valor} ${item.detalhe}`}
+                >
                   <span className="truncate text-xs font-bold text-slate-600">
                     {item.rotulo}
                   </span>
                   <strong
-                    className={`text-lg font-black tabular-nums ${item.tom}`}
+                    className={`text-base font-black tabular-nums ${item.tom}`}
                   >
                     {item.valor}
                   </strong>
-                </span>
-                <span className="block truncate text-xs text-slate-500">
-                  {item.detalhe}
-                </span>
-              </button>
-            ))}
-          </section>
+                </div>
+              ))}
+            </section>
+          )}
           {/* Uma linha só: quem é você, avisos, busca e o jeito de mostrar. */}
           <div className="contents text-sm text-slate-600">
             <span
