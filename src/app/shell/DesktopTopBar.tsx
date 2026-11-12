@@ -9,6 +9,7 @@ import type { AppNotification } from '../../types';
 import { NotificationCenter } from './NotificationCenter';
 import type { Alerta } from '../../utils/alertas';
 import { OBRA } from '../../config/obra';
+import { descreverSalvamento, type DescricaoSalvamento } from '../../cloud/estadoSalvamento';
 
 const ICON_STROKE = 1.75;
 const COR_AVATAR_KEY = 'cintravyse_cor_avatar';
@@ -20,6 +21,9 @@ interface DesktopTopBarProps {
   unreadCount: number;
   alertas?: Alerta[];
   isCloudConnected: boolean;
+  /** Estado do salvamento (aparelho e nuvem). Sem ele, usa só isCloudConnected. */
+  salvamento?: DescricaoSalvamento;
+  onRetryUpload?: () => void;
   lastCloudSync: string;
   pendingCount?: number;
   isRetryingPending?: boolean;
@@ -40,6 +44,8 @@ export function DesktopTopBar({
   unreadCount,
   alertas,
   isCloudConnected,
+  salvamento: salvamentoRecebido,
+  onRetryUpload,
   lastCloudSync,
   pendingCount,
   isRetryingPending,
@@ -52,6 +58,7 @@ export function DesktopTopBar({
   onMarkNotificationAsRead,
   onLogout,
 }: DesktopTopBarProps) {
+  const salvamento = salvamentoRecebido ?? descreverSalvamento({ online: true, conectado: isCloudConnected, enviando: false, pendente: false, falhasSeguidas: 0 });
   const headerRef = useRef<HTMLElement>(null);
   const logoutBtnRef = useRef<HTMLButtonElement>(null);
   const userName = nomeDaPessoa(currentUser);
@@ -111,12 +118,17 @@ export function DesktopTopBar({
       <div className="erp-topbar__actions">
         <div
           className="erp-topbar__status"
-          data-offline={!isCloudConnected || undefined}
-          title={`${isCloudConnected ? 'Sincronizado com a nuvem' : 'Sem conexão com a nuvem'}. ${lastCloudSync ? `Última sincronização: ${lastCloudSync}` : 'Ainda sem sincronização nesta sessão'}`}
+          role="status"
+          aria-live="polite"
+          data-offline={salvamento.ponto === 'amarelo' || undefined}
+          title={`${salvamento.detalhe} ${lastCloudSync ? `Última sincronização: ${lastCloudSync}` : 'Ainda sem sincronização nesta sessão.'}`}
         >
           <span aria-hidden="true" />
-          <em className="erp-topbar__status-texto not-italic">{isCloudConnected ? 'Sincronizado' : 'Sem conexão com a nuvem'}</em>
+          <em className="erp-topbar__status-texto not-italic">{salvamento.rotulo}</em>
         </div>
+        {salvamento.tentarNovamente && onRetryUpload && (
+          <button type="button" className="erp-topbar__retry" onClick={onRetryUpload}>Tentar novamente</button>
+        )}
         {typeof pendingCount === 'number' && pendingCount > 0 && (
           <div
             className="erp-topbar__pending"

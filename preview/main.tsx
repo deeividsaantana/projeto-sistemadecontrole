@@ -29,6 +29,7 @@ import { PageHeader } from '../src/shared/ui/PageHeader';
 import { PularParaConteudo } from '../src/shared/ui/PularParaConteudo';
 import { instalarGuardaDeMovimento } from '../src/shared/motion/guardaDeMovimento';
 import { LoginScreen } from '../src/auth/LoginScreen';
+import { descreverSalvamento } from '../src/cloud/estadoSalvamento';
 import { apagarDeVez, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from '../src/cloud/exclusoes';
 
 const noop = () => {};
@@ -628,6 +629,7 @@ instalarGuardaDeMovimento();
 const key = new URLSearchParams(location.search).get('screen') || 'usuarios';
 // Com ?shell=1 a tela abre dentro do menu lateral e da barra do topo, com as
 // mesmas medidas do App.tsx, para conferir a página inteira em cada largura.
+const estadoSalvamentoPreview = new URLSearchParams(location.search).get('salvamento') || '';
 const comShell = new URLSearchParams(location.search).get('shell') === '1';
 const ABA_DO_PREVIEW: Record<string, string> = {
   painel: 'dashboard', combustivel: 'lancamentos', 'combustivel-operador': 'lancamentos', 'combustivel-consumo': 'lancamentos',
@@ -656,6 +658,15 @@ createRoot(document.getElementById('app-root')!).render(
             notifications={previewNotifications}
             unreadCount={1}
             isCloudConnected
+            // ?salvamento=falhou|aguardando|enviando|offline mostra cada estado do topo.
+            salvamento={descreverSalvamento({
+              online: estadoSalvamentoPreview !== 'offline',
+              conectado: estadoSalvamentoPreview !== 'falhou',
+              enviando: estadoSalvamentoPreview === 'enviando',
+              pendente: ['falhou', 'aguardando', 'offline'].includes(estadoSalvamentoPreview),
+              falhasSeguidas: estadoSalvamentoPreview === 'falhou' ? 2 : 0,
+            })}
+            onRetryUpload={noop}
             lastCloudSync="04/09/2026 21:40"
             onNavigate={noop}
             onToggleNotifications={noop}
