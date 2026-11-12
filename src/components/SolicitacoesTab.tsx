@@ -319,12 +319,14 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
         title="Solicitações e compras"
         abas={<AbasDaTela<Subtela> id="solicitacoes" rotulo="Subtelas de solicitações" abas={subtelas} ativa={subtela} onTrocar={proxima => { setAbertaId(null); setSubtela(proxima); }} idPainel="solicitacoes-dados" testId="solicitacoes-aba" />}
         actions={<>
+          {!aberta && <>
           <button type="button" onClick={() => void exportar()} disabled={ocupado || solicitacoes.length === 0} className={BOTAO_SECUNDARIO}>
             <FileSpreadsheet className="size-4" aria-hidden="true" /> <span className="sm:hidden">Excel</span><span className="hidden sm:inline">Relatórios Excel</span>
           </button>
           <button type="button" onClick={() => void (async () => { setOcupado(true); try { const { gerarRelatorioSolicitacoesPdf } = await import('./solicitacoes/pdfReportSolicitacoes'); await gerarRelatorioSolicitacoesPdf(solicitacoes, hoje); setAviso({ tom: 'ok', texto: 'Relatório PDF gerado com os pedidos, itens, prazos e conferência.' }); } catch (error) { setAviso({ tom: 'erro', texto: error instanceof Error ? error.message : 'Não foi possível gerar o relatório PDF.' }); } finally { setOcupado(false); } })()} disabled={ocupado || solicitacoes.length === 0} className={BOTAO_SECUNDARIO} data-testid="solicitacoes-relatorio-pdf">
             <ClipboardList className="size-4" aria-hidden="true" /> <span className="sm:hidden">PDF</span><span className="hidden sm:inline">Relatório PDF</span>
           </button>
+          </>}
           {podeImportar && podeEditar && (
             <button type="button" onClick={() => arquivo.current?.click()} disabled={ocupado} className={BOTAO_SECUNDARIO}>
               <Upload className="size-4" aria-hidden="true" /> <span className="sm:hidden">Importar</span><span className="hidden sm:inline">Importar planilha</span>
