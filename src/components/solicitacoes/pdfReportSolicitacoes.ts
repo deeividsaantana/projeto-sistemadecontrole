@@ -111,7 +111,6 @@ export const gerarRelatorioSolicitacoesPdf = async (solicitacoes: readonly Solic
   doc.save(fileName);
   return { fileName, pages: doc.getNumberOfPages(), rows: itens };
 };
-
 /** Ficha individual: mesma ordem operacional da tela, pronta para assinatura. */
 export const gerarFichaSolicitacaoPdf = async (sol: Solicitacao, hoje: string) => {
   const [JsPdf, autoTableModule, logos] = await Promise.all([
