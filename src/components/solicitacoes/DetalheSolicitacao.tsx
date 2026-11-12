@@ -4,7 +4,7 @@
  * pessoa logada pode fazer nesta etapa (acoesDisponiveis).
  */
 import { useState, type ReactNode } from 'react';
-import { CalendarClock, CheckCircle2, PackageCheck, PackageX, Send, ShieldCheck, ShieldX, Truck, XCircle } from 'lucide-react';
+import { CalendarClock, CheckCircle2, LoaderCircle, PackageCheck, PackageX, Send, ShieldCheck, ShieldX, Truck, XCircle } from 'lucide-react';
 import { BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO } from '../cadastros/estilos';
 import { Campo } from '../../shared/ui/Lancamento';
 import {
@@ -61,6 +61,8 @@ function Linha({ rotulo, valor }: { rotulo: string; valor: ReactNode }) {
 
 export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalvar }: DetalheProps) {
   const [erro, setErro] = useState('');
+  const [acaoEmAndamento, setAcaoEmAndamento] = useState<Acao['tipo'] | null>(null);
+  const [confirmacao, setConfirmacao] = useState('');
   const acoes = acoesDisponiveis(sol, ator);
   const situacao = situacaoDe(sol, hoje);
   const rastreio = rastreioDe(sol, hoje);
@@ -94,10 +96,14 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
   const [faltaDe, setFaltaDe] = useState<number | null>(null);
   const [faltaObs, setFaltaObs] = useState('');
 
-  const executar = (acao: Acao, descricao: (s: Solicitacao) => string) => {
+  const executar = async (acao: Acao, descricao: (s: Solicitacao) => string) => {
+    setAcaoEmAndamento(acao.tipo);
+    setConfirmacao('');
+    if (acao.tipo === 'aprovar') await new Promise(resolve => window.setTimeout(resolve, 650));
     const resultado = aplicarAcao(sol, acao, ator, new Date().toISOString(), todas);
     if ('erro' in resultado) {
       setErro(resultado.erro);
+      setAcaoEmAndamento(null);
       return;
     }
     setErro('');
@@ -108,6 +114,8 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
     setCancelar(false);
     setFaltaDe(null);
     setFaltaObs('');
+    setAcaoEmAndamento(null);
+    setConfirmacao(acao.tipo === 'aprovar' ? 'Solicitação de compra aprovada.' : 'Alteração salva com segurança.');
     onSalvar(resultado.solicitacao, descricao(resultado.solicitacao));
   };
 
@@ -343,8 +351,9 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
             <textarea id="ap-parecer" rows={3} value={parecer} onChange={event => setParecer(event.target.value)} className={`${CAMPO} py-2`} />
           </Campo>
           <div className="grid gap-2 sm:grid-cols-3">
-            <button type="button" onClick={() => executar({ tipo: 'aprovar', parecer }, s => `Pedido ${s.numeroPedido} aprovado.`)} className={BOTAO_PRIMARIO}>
-              <ShieldCheck className="size-4" aria-hidden="true" /> Aprovar
+            <button type="button" disabled={acaoEmAndamento !== null} onClick={() => void executar({ tipo: 'aprovar', parecer }, s => `Pedido ${s.numeroPedido} aprovado.`)} className={BOTAO_PRIMARIO}>
+              {acaoEmAndamento === 'aprovar' ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : confirmacao ? <CheckCircle2 className="size-4" aria-hidden="true" /> : <ShieldCheck className="size-4" aria-hidden="true" />}
+              {acaoEmAndamento === 'aprovar' ? 'Validando aprovação…' : confirmacao || 'Aprovar'}
             </button>
             <button type="button" onClick={() => executar({ tipo: 'aprovar', parecer, condicional: true }, s => `Pedido ${s.numeroPedido} aprovado com condição.`)} className={BOTAO_SECUNDARIO}>
               Aprovar com condição

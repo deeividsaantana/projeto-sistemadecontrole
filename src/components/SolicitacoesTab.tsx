@@ -46,7 +46,7 @@ import { SeloItem } from './solicitacoes/SeloItem';
 import { CartaoRastreio } from './solicitacoes/CartaoRastreio';
 import { AvatarPessoa, dataHora } from './solicitacoes/AvatarPessoa';
 
-type Subtela = 'pedidos' | 'nova' | 'conferencia' | 'historico';
+type Subtela = 'pedidos' | 'nova' | 'aprovacao' | 'conferencia' | 'historico';
 
 interface SolicitacoesTabProps {
   solicitacoes: Solicitacao[];
@@ -167,7 +167,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
       .sort((a, b) => Number(b.situacao === 'Em Atraso') - Number(a.situacao === 'Em Atraso')
         || (a.sol.prioridade ?? 999) - (b.sol.prioridade ?? 999)
         || b.sol.abertaEm.localeCompare(a.sol.abertaEm));
-  }, [comSituacao, filtro, termo]);
+  }, [comSituacao, filtro, termo, filtroSolicitante, filtroDataInicio, filtroDataFim]);
 
   const conferencia = useMemo(() => linhasDeConferencia(solicitacoes), [solicitacoes]);
   const itensComFalta = conferencia.filter(linha => linha.situacao === 'Falta').length;
@@ -182,6 +182,10 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
   const linhasHistorico = useMemo(
     () => historico.filter(evento => contem(termo, [evento.sol.numero, evento.sol.numeroSc, evento.usuario, evento.acao, evento.detalhe])),
     [historico, termo],
+  );
+  const linhasAprovacao = useMemo(
+    () => aguardandoAprovacao.filter(({ sol }) => contem(termo, [sol.numero, sol.numeroSc, sol.solicitante, sol.frente, sol.numeroPedido, sol.fornecedor, ...sol.itens.map(item => item.descricao)])),
+    [aguardandoAprovacao, termo],
   );
 
   const aberta = solicitacoes.find(sol => sol.id === abertaId) ?? null;
@@ -258,6 +262,9 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
     ...(exerce(ator, 'solicitante')
       ? [{ grupo: 'pedidos', rotulo: 'Pedidos', icone: PackageSearch, abas: [acompanhar, { id: 'nova' as const, rotulo: 'Nova solicitação', curto: 'Nova', icone: PackagePlus }] }]
       : [acompanhar]),
+    ...(exerce(ator, 'aprovador')
+      ? [{ id: 'aprovacao' as const, rotulo: 'Aprovações', icone: ShieldCheck, contador: aguardandoAprovacao.length, contadorRotulo: 'aguardando decisão' }]
+      : []),
     { id: 'conferencia', rotulo: 'Conferência', icone: ClipboardList, contador: itensComFalta, contadorRotulo: 'itens com falta' },
     { id: 'historico', rotulo: 'Histórico', icone: History },
   ];
@@ -291,13 +298,14 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
     { chave: 'detalhe', titulo: 'Detalhe', larguraIdeal: 260, render: evento => evento.detalhe ?? '', dica: evento => evento.detalhe },
   ];
 
-  const comTabela = (subtela === 'pedidos' && modo === 'lista') || subtela === 'conferencia' || subtela === 'historico';
-  const comBusca = subtela === 'pedidos' || subtela === 'conferencia' || subtela === 'historico';
+  const comTabela = (subtela === 'pedidos' && modo === 'lista') || subtela === 'aprovacao' || subtela === 'conferencia' || subtela === 'historico';
+  const comBusca = subtela === 'pedidos' || subtela === 'aprovacao' || subtela === 'conferencia' || subtela === 'historico';
   const irPara = (proximo: Filtro) => { setAbertaId(null); setSubtela('pedidos'); setFiltro(proximo); setMostrar(POR_VEZ); };
+  const irParaAprovacao = () => { setAbertaId(null); setSubtela('aprovacao'); setBusca(''); };
   const irParaConferencia = () => { setAbertaId(null); setSubtela('conferencia'); setFiltroConferencia('A conferir'); };
   const resumo = [
     { id: 'abertos', rotulo: 'Em aberto', valor: contagem.abertos, detalhe: 'pedidos no fluxo', acao: () => irPara('abertos'), tom: 'text-[#176b4d]' },
-    { id: 'aprovacao', rotulo: 'Aprovações', valor: aguardandoAprovacao.length, detalhe: exerce(ator, 'aprovador') ? 'aguardando sua decisão' : 'aguardando gerência', acao: () => irPara('aprovacao'), tom: 'text-[#c2410c]' },
+    { id: 'aprovacao', rotulo: 'Aprovações', valor: aguardandoAprovacao.length, detalhe: exerce(ator, 'aprovador') ? 'aguardando sua decisão' : 'aguardando gerência', acao: irParaAprovacao, tom: 'text-[#c2410c]' },
     { id: 'atraso', rotulo: 'Em atraso', valor: emAtraso.length, detalhe: 'pedidos para cobrar', acao: () => irPara('atraso'), tom: 'text-rose-700' },
     { id: 'conferencia', rotulo: 'A conferir', valor: itensComFalta, detalhe: 'itens aguardando chegada', acao: irParaConferencia, tom: 'text-slate-900' },
     { id: 'entregues', rotulo: 'Entregues', valor: contagem.entregues, detalhe: 'pedidos concluídos', acao: () => irPara('entregues'), tom: 'text-[#176b4d]' },
@@ -349,8 +357,8 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
               ? <span className="truncate"><strong className="text-slate-900">{ator.nome}</strong> · {NOME_DO_PAPEL[ator.papel]}</span>
               : <span>Seu login só consulta este módulo.{ehAdmin && ' Vincule o login a uma pessoa em Cadastros > Acessos.'}</span>}
           </span>
-          {exerce(ator, 'aprovador') && aguardandoAprovacao.length > 0 && !(subtela === 'pedidos' && filtro === 'aprovacao') && (
-            <button type="button" onClick={() => irPara('aprovacao')} className="flex min-h-9 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 text-sm font-bold text-amber-900">
+          {exerce(ator, 'aprovador') && aguardandoAprovacao.length > 0 && subtela !== 'aprovacao' && (
+            <button type="button" onClick={irParaAprovacao} className="flex min-h-9 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 text-sm font-bold text-amber-900">
               <ShieldCheck className="size-4 shrink-0" aria-hidden="true" /> {aguardandoAprovacao.length} para você aprovar
             </button>
           )}
@@ -361,12 +369,12 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
             </button>
           )}
           {comBusca && !aberta && (
-            <div className="flex min-w-0 flex-[1_1_20rem] items-center gap-2">
+            <div className="flex min-w-0 flex-[1_1_28rem] flex-wrap items-center gap-2">
               <label className="relative min-w-0 flex-1 basis-48">
                 <span className="sr-only">Buscar</span>
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                 <input type="search" value={busca} onChange={event => { setBusca(event.target.value); setMostrar(POR_VEZ); }}
-                  placeholder={subtela === 'historico' ? 'Pedido, SC, pessoa, o que aconteceu...' : 'Pedido, SC, item, solicitante...'} className={`${CAMPO} pl-9`} />
+                  placeholder={subtela === 'historico' ? 'Pedido, SC, pessoa, o que aconteceu...' : subtela === 'aprovacao' ? 'Pedido, SC, solicitante, item...' : 'Pedido, SC, item, solicitante...'} className={`${CAMPO} pl-9`} />
               </label>
               {subtela === 'conferencia' && (
                 <select value={filtroConferencia} onChange={event => setFiltroConferencia(event.target.value as FiltroConferencia)} aria-label="Mostrar itens" className={`${CAMPO} w-auto sm:w-48`}>
@@ -383,30 +391,31 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
                   ))}
                 </div>
               )}
+              {subtela === 'pedidos' && (
+                <>
+                  <label className="sr-only" htmlFor="filtro-solicitante">Solicitante</label>
+                  <select id="filtro-solicitante" aria-label="Filtrar por solicitante" value={filtroSolicitante} onChange={event => setFiltroSolicitante(event.target.value)} className={`${CAMPO} min-w-40 flex-1 sm:flex-none`}>
+                    <option value="">Todos os solicitantes</option>
+                    {solicitantes.map(nome => <option key={nome}>{nome}</option>)}
+                  </select>
+                  <label className="sr-only" htmlFor="filtro-data-inicio">Data inicial</label>
+                  <input id="filtro-data-inicio" aria-label="Data inicial" type="date" value={filtroDataInicio} onChange={event => setFiltroDataInicio(event.target.value)} className={`${CAMPO} w-36`} />
+                  <label className="sr-only" htmlFor="filtro-data-fim">Data final</label>
+                  <input id="filtro-data-fim" aria-label="Data final" type="date" value={filtroDataFim} onChange={event => setFiltroDataFim(event.target.value)} className={`${CAMPO} w-36`} />
+                  {(filtroSolicitante || filtroDataInicio || filtroDataFim) && <button type="button" onClick={() => { setFiltroSolicitante(''); setFiltroDataInicio(''); setFiltroDataFim(''); }} className={`${BOTAO_SECUNDARIO} min-h-9 px-3`}>Limpar</button>}
+                </>
+              )}
             </div>
           )}
         </div>
-        {subtela === 'pedidos' && !aberta && (
-          <div className="grid gap-2 rounded-xl border border-slate-200 bg-[#f7f8f6] p-2 sm:grid-cols-2 lg:grid-cols-4" aria-label="Filtros detalhados de pedidos">
-            <label className="grid gap-1 text-xs font-bold text-slate-600">Solicitante
-              <select value={filtroSolicitante} onChange={event => setFiltroSolicitante(event.target.value)} className={CAMPO}>
-                <option value="">Todos os solicitantes</option>
-                {solicitantes.map(nome => <option key={nome}>{nome}</option>)}
-              </select>
-            </label>
-            <label className="grid gap-1 text-xs font-bold text-slate-600">Data inicial
-              <input type="date" value={filtroDataInicio} onChange={event => setFiltroDataInicio(event.target.value)} className={CAMPO} />
-            </label>
-            <label className="grid gap-1 text-xs font-bold text-slate-600">Data final
-              <input type="date" value={filtroDataFim} onChange={event => setFiltroDataFim(event.target.value)} className={CAMPO} />
-            </label>
-            <button type="button" onClick={() => { setFiltroSolicitante(''); setFiltroDataInicio(''); setFiltroDataFim(''); setFiltro('abertos'); }} className={`${BOTAO_SECUNDARIO} self-end`}>
-              Limpar filtros
-            </button>
-          </div>
-        )}
         {aviso && (
           <p role={aviso.tom === 'erro' ? 'alert' : 'status'} className={`rounded-xl border px-3 py-2 text-sm font-bold ${aviso.tom === 'erro' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>{aviso.texto}</p>
+        )}
+        {subtela === 'aprovacao' && !aberta && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+            <span><strong>Fila do gerente:</strong> confira o pedido, o fornecedor, o valor e o prazo antes de decidir.</span>
+            <span className="font-black tabular-nums">{linhasAprovacao.length} aguardando</span>
+          </div>
         )}
         {subtela === 'pedidos' && !aberta && (
           <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 xl:flex-wrap" role="group" aria-label="Filtrar pedidos">
@@ -487,6 +496,23 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
           </div>
         )}
 
+        {subtela === 'aprovacao' && (
+          <div data-sol-reveal className="min-h-0 flex-1">
+            <TabelaPadrao
+              titulo="Pedidos aguardando aprovação"
+              linhas={linhasAprovacao}
+              colunas={colunas}
+              idDaLinha={({ sol }) => sol.id}
+              nomeDoItem={{ um: 'pedido', varios: 'pedidos' }}
+              onAbrirLinha={({ sol }) => abrirPedido(sol.id)}
+              linhaAtivaId={abertaId}
+              vazio="Nenhum pedido aguardando aprovação."
+              testIdLinha="aprovacao-linha"
+              densa
+            />
+          </div>
+        )}
+
         {subtela === 'conferencia' && (
           <div data-sol-reveal className="min-h-0 flex-1">
             <TabelaPadrao
@@ -525,6 +551,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
           <NovaSolicitacao
             formRef={novaFormRef}
             solicitante={ator.nome}
+            solicitantesPermitidos={pessoas.filter(pessoa => pessoa.ativo && pessoa.papel === 'solicitante').map(pessoa => pessoa.nome)}
             onEnviar={dados => {
               const resultado = abrirSolicitacao(dados, ator, solicitacoes, new Date().toISOString(), novoId());
               if ('erro' in resultado) return resultado.erro;
