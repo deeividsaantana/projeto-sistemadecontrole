@@ -400,7 +400,20 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; text-wrap: bal
   color: #10211c;
 }
 .erp-topbar__project:hover { border-color: #dce4df; background: #f7faf8; }
-.erp-topbar__project > svg:first-child { width: 1rem; height: 1rem; flex: 0 0 auto; color: #087653; }
+.erp-topbar__project > svg:first-child { width: 1.35rem; height: 1.35rem; flex: 0 0 auto; color: #087653; }
+.rodoanel-project-icon { overflow: visible; }
+.rodoanel-project-icon path, .rodoanel-project-icon circle { vector-effect: non-scaling-stroke; }
+.rodoanel-arc { fill: none; stroke-linecap: round; stroke-width: 1.5; }
+.rodoanel-arc--green { stroke: #087653; }
+.rodoanel-arc--orange { stroke: #f26a2e; stroke-width: 1.1; }
+.rodoanel-road { fill: none; stroke: #10223a; stroke-dasharray: 2 2; stroke-linecap: round; stroke-width: 2.6; }
+.rodoanel-ramp { fill: none; stroke: #087653; stroke-linecap: round; stroke-width: 1.5; }
+.rodoanel-car { fill: #f26a2e; stroke: #fff; stroke-width: .5; }
+.rodoanel-car--one { animation: rodoanel-car-one 3.2s linear infinite; }
+.rodoanel-car--two { fill: #087653; animation: rodoanel-car-two 3.2s linear infinite; }
+@keyframes rodoanel-car-one { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(12px, -9px); } }
+@keyframes rodoanel-car-two { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-8px, 8px); } }
+@media (prefers-reduced-motion: reduce) { .rodoanel-car--one, .rodoanel-car--two { animation: none; } }
 .erp-topbar__project > span { display: grid; min-width: 0; gap: 0; line-height: 1.2; }
 .erp-topbar__project small { color: var(--renea-texto-cinza); font-size: .75rem; font-weight: 600; }
 .erp-topbar__project strong { overflow: hidden; font-size: .75rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }

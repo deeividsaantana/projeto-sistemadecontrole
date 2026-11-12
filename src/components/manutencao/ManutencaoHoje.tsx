@@ -5,7 +5,7 @@
  * eventos do dia saírem iguais venha de onde vier o lançamento.
  */
 import { useMemo } from 'react';
-import { AlertTriangle, CheckCircle2, Timer, Wrench, type LucideIcon } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Timer, Truck, Wrench, type LucideIcon } from 'lucide-react';
 import type { ControleEquipamentoDiario, Equipamento, Funcionario, StatusControleEquipamentoDiario } from '../../types';
 import type { FleetPersistedRecord } from '../../fleet/domain';
 import { registroDaEdicao } from '../../modules/frota/quadroFrota';
@@ -45,7 +45,7 @@ export function ManutencaoHoje({ relatorio, registros, equipamentos, motoristas,
   const paradosAgora = relatorio.linhas.filter(linha => linha.parada.periodos.some(periodo => periodo.fim === null)).length;
   const liberados = relatorio.linhas.filter(linha => linha.parada.situacao === 'LIBERADO').length;
   const contadores: Contador[] = [
-    { id: 'parados', rotulo: 'Parados agora', valor: String(paradosAgora), detalhe: paradosAgora === 1 ? 'equipamento na oficina' : 'equipamentos na oficina', Icone: Wrench, destaque: paradosAgora > 0 ? 'rose' : undefined },
+    { id: 'parados', rotulo: 'Parados agora', valor: String(paradosAgora), detalhe: paradosAgora === 1 ? 'equipamento na oficina' : 'equipamentos na oficina', Icone: Truck, destaque: paradosAgora > 0 ? 'rose' : undefined },
     { id: 'horas', rotulo: 'Horas paradas hoje', valor: formatarMinutos(relatorio.totalMin), detalhe: 'já sem DDS e almoço', Icone: Timer },
     { id: 'conferir', rotulo: 'Para conferir', valor: String(paraConferir), detalhe: paraConferir > 0 ? 'toque para conferir' : 'nada pendente', Icone: AlertTriangle, destaque: paraConferir > 0 ? 'amber' : undefined, aoClicar: onAbrirConferencia },
     { id: 'liberados', rotulo: 'Liberados hoje', valor: String(liberados), detalhe: liberados === 1 ? 'voltou a trabalhar' : 'voltaram a trabalhar', Icone: CheckCircle2 },
