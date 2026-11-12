@@ -388,14 +388,13 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
             </button>
           )}
         </div>
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-2">
-          <label className="relative min-w-0 flex-[1_1_14rem]">
+        <div className="-mx-1 flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Filtros do quadro">
+          <label className="relative min-w-[18rem] flex-[1_1_24rem]">
             <span className="sr-only">Buscar prefixo, modelo ou operador</span>
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
             <input ref={buscaRef} value={buscaTexto} onChange={event => setBuscaTexto(event.target.value)} placeholder="Buscar prefixo, modelo ou operador" className={`${CAMPO} pl-9 w-full`} data-testid="quadro-busca" />
           </label>
-          <div className="flex gap-2 flex-wrap lg:flex-nowrap">
-            <select value={filtros.tipo} onChange={event => mudar({ tipo: event.target.value })} aria-label="Tipo" className={`${CAMPO} min-w-0 flex-[1_1_9rem] sm:flex-auto`}>
+            <select value={filtros.tipo} onChange={event => mudar({ tipo: event.target.value })} aria-label="Tipo" className={`${CAMPO} w-44 shrink-0`}>
               <option value="">Todos os tipos</option>
               {opcoesTipo.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
             </select>
@@ -403,10 +402,7 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
               <SlidersHorizontal className="size-4" aria-hidden="true" />
               <span className="hidden sm:inline">Mais</span>
             </button>
-          </div>
-        </div>
-        <div className="-mx-1 flex flex-nowrap gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Filtros rápidos do quadro">
-        <div className="flex shrink-0 gap-2" role="group" aria-label="Situação" data-testid="quadro-situacoes">
+          <div className="flex shrink-0 gap-2" role="group" aria-label="Situação" data-testid="quadro-situacoes">
           {([['', 'Todas', indicadores.total, 'bg-slate-400'], ['operando', ROTULO_GRUPO.operando, indicadores.operando, TOM.operando.ponto], ['manutencao', ROTULO_GRUPO.manutencao, indicadores.manutencao, TOM.manutencao.ponto], ['parado', ROTULO_GRUPO.parado, indicadores.parado, TOM.parado.ponto], ['sem-lancamento', ROTULO_GRUPO['sem-lancamento'], indicadores.semLancamento, TOM['sem-lancamento'].ponto]] as const).map(([grupo, rotulo, total, ponto]) => {
             const ligado = filtros.grupo === grupo;
             return (
@@ -417,7 +413,7 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
               </button>
             );
           })}
-        </div>
+          </div>
         </div>
         {maisFiltros && (
           <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" data-testid="quadro-painel-filtros">

@@ -561,7 +561,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
     <div data-cadastros-reveal className="space-y-2">
       <FilterBar label="Filtros de cadastros" className="rounded-2xl border border-slate-200 bg-white p-3">
         <div className="w-full space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
             <div className="relative min-w-0 basis-full sm:min-w-56 sm:flex-1 sm:basis-auto">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
               <input
@@ -607,7 +607,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
               </button>
             )}
             {filtrosDoTipo.length > 0 && (
-              <div className={`${filtrosAbertos ? 'grid' : 'hidden'} gap-2 max-sm:order-last max-sm:basis-full sm:contents`}>
+              <div className={`${filtrosAbertos ? 'flex' : 'hidden'} shrink-0 items-center gap-2 sm:contents`}>
                 {filtrosDoTipo.map(filtro => (
                   <label key={filtro.id} className="min-w-0 sm:w-44">
                     <span className="sr-only">{filtro.label}</span>

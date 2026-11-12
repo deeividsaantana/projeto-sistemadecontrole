@@ -15,19 +15,6 @@ import { descreverSalvamento, type DescricaoSalvamento } from '../../cloud/estad
 
 const ICON_STROKE = 1.75;
 
-function RodoanelIcon() {
-  return (
-    <svg className="rodoanel-project-icon" viewBox="0 0 32 24" aria-hidden="true" focusable="false">
-      <path className="rodoanel-arc rodoanel-arc--green" d="M4 19C5 8 11 3 17 3c6 0 10 5 11 11" />
-      <path className="rodoanel-arc rodoanel-arc--orange" d="M7 19C8 10 12 6 17 6c4 0 7 3 8 8" />
-      <path className="rodoanel-road" d="M4 19C5 8 11 3 17 3c6 0 10 5 11 11" />
-      <path className="rodoanel-ramp" d="M4 19h10c5 0 8-2 10-6" />
-      <circle className="rodoanel-car rodoanel-car--one" cx="8" cy="17" r="1.5" />
-      <circle className="rodoanel-car rodoanel-car--two" cx="18" cy="8" r="1.5" />
-    </svg>
-  );
-}
-
 interface DesktopTopBarProps {
   currentUser: User | null;
   meuAvatar: MeuAvatar | null;
@@ -115,7 +102,6 @@ export function DesktopTopBar({
         title="Obra ativa"
         aria-label={`Obra ativa: ${OBRA.nome}`}
       >
-        <RodoanelIcon />
         <span>
           <small>Projeto atual</small>
           <strong>{OBRA.nome}</strong>

@@ -339,10 +339,10 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
           )}
         </>}
       />}
-      faixa={<div data-sol-reveal className="grid gap-2">
-        <section aria-label="Resumo operacional de solicitações" className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+      faixa={<div data-sol-reveal className="grid gap-1.5">
+        <section aria-label="Resumo operacional de solicitações" className="-mx-1 flex flex-nowrap gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:thin]">
           {resumo.map(item => (
-            <button key={item.id} type="button" onClick={item.acao} data-testid={`resumo-solicitacoes-${item.id}`} className="group min-h-16 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition hover:border-[#176b4d] hover:bg-[#f7f8f6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)">
+            <button key={item.id} type="button" onClick={item.acao} data-testid={`resumo-solicitacoes-${item.id}`} className="group min-h-14 min-w-[10.5rem] flex-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-left transition hover:border-[#176b4d] hover:bg-[#f7f8f6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)">
               <span className="flex items-center justify-between gap-2">
                 <span className="truncate text-xs font-bold text-slate-600">{item.rotulo}</span>
                 <strong className={`text-xl font-black tabular-nums ${item.tom}`}>{item.valor}</strong>
@@ -352,7 +352,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
           ))}
         </section>
         {/* Uma linha só: quem é você, avisos, busca e o jeito de mostrar. */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-slate-600">
+        <div className="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto text-sm text-slate-600 [scrollbar-width:thin]">
           <span className={`min-w-0 items-center gap-1.5 ${ator.papel ? 'hidden sm:flex' : 'flex'}`}>
             <ClipboardCheck className="size-4 shrink-0 text-[#176b4d]" aria-hidden="true" />
             {ator.papel
@@ -371,8 +371,8 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
             </button>
           )}
           {comBusca && !aberta && (
-            <div className="flex min-w-0 flex-[1_1_28rem] flex-wrap items-center gap-2 xl:flex-nowrap xl:overflow-x-auto xl:pb-1">
-              <label className="relative min-w-0 flex-[1_1_20rem] basis-48 xl:min-w-[18rem]">
+            <div className="flex min-w-[42rem] flex-1 flex-nowrap items-center gap-1.5">
+              <label className="relative min-w-[16rem] flex-1">
                 <span className="sr-only">Buscar</span>
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                 <input type="search" value={busca} onChange={event => { setBusca(event.target.value); setMostrar(POR_VEZ); }}
@@ -387,7 +387,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
                 <div className="flex shrink-0 gap-1 rounded-full border border-slate-200 bg-white p-1" role="group" aria-label="Jeito de mostrar">
                   {([['cards', 'Cards', LayoutGrid], ['lista', 'Lista', List]] as const).map(([id, rotulo, Icone]) => (
                     <button key={id} type="button" aria-pressed={modo === id} onClick={() => setModo(id)} title={rotulo}
-                      className={`flex min-h-9 min-w-9 items-center justify-center gap-1.5 rounded-full px-2.5 text-sm font-bold ${modo === id ? 'bg-[#176b4d] text-white' : 'text-slate-700 hover:bg-[#f7f8f6]'}`}>
+                      className={`flex min-h-8 min-w-8 items-center justify-center gap-1 rounded-full px-2 text-sm font-bold ${modo === id ? 'bg-[#176b4d] text-white' : 'text-slate-700 hover:bg-[#f7f8f6]'}`}>
                       <Icone className="size-4" aria-hidden="true" /> <span className="sr-only xl:not-sr-only">{rotulo}</span>
                     </button>
                   ))}
@@ -401,9 +401,9 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
                     {solicitantes.map(nome => <option key={nome}>{nome}</option>)}
                   </select>
                   <label className="sr-only" htmlFor="filtro-data-inicio">Data inicial</label>
-                  <input id="filtro-data-inicio" aria-label="Data inicial" type="date" value={filtroDataInicio} onChange={event => setFiltroDataInicio(event.target.value)} className={`${CAMPO} w-36`} />
+                  <input id="filtro-data-inicio" aria-label="Data inicial" type="date" value={filtroDataInicio} onChange={event => setFiltroDataInicio(event.target.value)} className={`${CAMPO} w-32`} />
                   <label className="sr-only" htmlFor="filtro-data-fim">Data final</label>
-                  <input id="filtro-data-fim" aria-label="Data final" type="date" value={filtroDataFim} onChange={event => setFiltroDataFim(event.target.value)} className={`${CAMPO} w-36`} />
+                  <input id="filtro-data-fim" aria-label="Data final" type="date" value={filtroDataFim} onChange={event => setFiltroDataFim(event.target.value)} className={`${CAMPO} w-32`} />
                   {(filtroSolicitante || filtroDataInicio || filtroDataFim) && <button type="button" onClick={() => { setFiltroSolicitante(''); setFiltroDataInicio(''); setFiltroDataFim(''); }} className={`${BOTAO_SECUNDARIO} min-h-9 px-3`}>Limpar</button>}
                 </>
               )}
@@ -420,7 +420,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
           </div>
         )}
         {subtela === 'pedidos' && !aberta && (
-          <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 xl:flex-wrap" role="group" aria-label="Filtrar pedidos">
+          <div className="-mx-1 flex flex-nowrap gap-1 overflow-x-auto px-1 pb-0.5" role="group" aria-label="Filtrar pedidos">
             {FILTROS.map(item => (
               <button key={item.id} type="button" aria-pressed={filtro === item.id} onClick={() => { setFiltro(item.id); setMostrar(POR_VEZ); }}
                 data-testid={`filtro-${item.id}`}

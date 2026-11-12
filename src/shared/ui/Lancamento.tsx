@@ -11,14 +11,14 @@ import { CARTAO } from '../../components/cadastros/estilos';
 /** Uma etapa do lançamento: número, pergunta e os campos dela. */
 export function Etapa({ numero, titulo, ajuda, feita, children }: { numero: number; titulo: string; ajuda?: string; feita?: boolean; children: ReactNode }) {
   return (
-    <section data-lanc-reveal aria-labelledby={`lanc-etapa-${numero}`} className={`${CARTAO} p-4 sm:p-5`}>
-      <header className="mb-4 flex items-start gap-3">
+    <section data-lanc-reveal aria-labelledby={`lanc-etapa-${numero}`} className={`${CARTAO} p-3 sm:p-4`}>
+      <header className="mb-3 flex min-w-0 items-center gap-2">
         <span className={`grid size-8 shrink-0 place-items-center rounded-full text-sm font-black ${feita ? 'bg-[#176b4d] text-white' : 'bg-[#f7f8f6] text-slate-700 ring-1 ring-inset ring-slate-200'}`} aria-hidden="true">
           {feita ? <CheckCircle2 className="size-4" /> : numero}
         </span>
         <div className="min-w-0">
-          <h2 id={`lanc-etapa-${numero}`} className="text-base font-black text-slate-900">{titulo}</h2>
-          {ajuda && <p className="text-sm text-slate-600">{ajuda}</p>}
+          <h2 id={`lanc-etapa-${numero}`} className="truncate text-base font-black text-slate-900">{titulo}</h2>
+          {ajuda && <p className="truncate text-xs text-slate-600">{ajuda}</p>}
         </div>
       </header>
       {children}
