@@ -43,7 +43,7 @@ import { NovaSolicitacao } from './solicitacoes/NovaSolicitacao';
 import { DetalheSolicitacao } from './solicitacoes/DetalheSolicitacao';
 import { SeloSituacao } from './solicitacoes/SeloSituacao';
 import { SeloItem } from './solicitacoes/SeloItem';
-import { CartaoRastreio } from './solicitacoes/CartaoRastreio';
+import { CartaoCompraCompacto } from './solicitacoes/CartaoCompraCompacto';
 import { AvatarPessoa, dataHora } from './solicitacoes/AvatarPessoa';
 
 type Subtela = 'pedidos' | 'nova' | 'aprovacao' | 'conferencia' | 'historico';
@@ -473,7 +473,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
             <div className="flex min-h-0 flex-1 flex-col gap-3">
               <ul data-sol-reveal className="grid min-h-0 flex-1 content-start grid-cols-1 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {pedidos.slice(0, mostrar).map(({ sol }) => (
-                  <CartaoRastreio key={sol.id} sol={sol} hoje={hoje} ativo={sol.id === abertaId} onAbrir={() => abrirPedido(sol.id)} />
+                  <CartaoCompraCompacto key={sol.id} sol={sol} hoje={hoje} ativo={sol.id === abertaId} onAbrir={() => abrirPedido(sol.id)} />
                 ))}
               </ul>
               {pedidos.length > mostrar && (
