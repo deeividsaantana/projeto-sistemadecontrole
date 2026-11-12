@@ -6,7 +6,7 @@ const serviceWorkerUrl = new URL('../public/service-worker.js', import.meta.url)
 const serviceWorker = readFileSync(serviceWorkerUrl, 'utf8');
 
 test('service worker nao cacheia HTML ou dados operacionais como shell estatico', () => {
-  assert.match(serviceWorker, /const SHELL = \['\/manifest\.webmanifest', '\/favicon\.png'\]/);
+  assert.match(serviceWorker, /const SHELL = \['\/manifest\.webmanifest', '\/favicon\.png\?v=20261111'\]/);
   assert.doesNotMatch(serviceWorker, /const SHELL = \[[^\]]*'\/index\.html'/);
   assert.doesNotMatch(serviceWorker, /const SHELL = \[[^\]]*'\/'/);
   assert.match(serviceWorker, /if \(!isStaticRequest\(request\)\) return/);

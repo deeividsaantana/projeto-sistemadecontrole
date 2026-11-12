@@ -127,7 +127,6 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; text-wrap: bal
 #app-root :is(button, [role="button"]):not(:disabled):active { transform: scale(.985); }
 #app-root :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--renea-focus); outline-offset: 2px; }
 /* O menu lateral é a única superfície escura: lá o foco é branco. */
-#app-root .erp-sidebar :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline-color: #fff; }
 /* "Pular para o conteúdo": primeiro item do Tab, fora da tela até receber o
    foco. A área da aba recebe o foco sem contorno, que seria a tela toda. */
 .pular-para-conteudo {
@@ -167,21 +166,7 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; text-wrap: bal
 #app-root tbody tr:hover { background-color: #edf2ed; }
 
 #mobile-header { background: #fff; border-bottom: 1px solid var(--renea-line); box-shadow: none; }
-#mobile-drawer { background: rgb(2 43 36 / .46) !important; }
-#mobile-drawer > .mobile-sidebar-panel {
-  border-color: #185443;
-  background: #0a4636 !important;
-  color: #eafff6;
-  box-shadow: -18px 0 44px rgb(2 43 36 / .2);
-}
-#mobile-drawer .border-slate-800 { border-color: #185443; }
-#mobile-drawer input { border-color: #2a725e !important; background: #0a3b2e !important; color: #fff !important; }
-#mobile-drawer input::placeholder { color: #a5c8ba !important; }
-#mobile-drawer section > p { color: #8cc7b2 !important; }
-#mobile-drawer nav button:not([class*="bg-rose"]):not([aria-current="page"]) { color: #c6e3d8 !important; }
-#mobile-drawer nav button:not([class*="bg-rose"]):not([aria-current="page"]):hover { background: #0d4c3a !important; color: #fff !important; }
-#mobile-drawer nav button[aria-current="page"] { background: #0d8a65 !important; color: #fff !important; box-shadow: none; }
-#mobile-drawer nav button svg { color: currentColor !important; }
+#mobile-drawer { background: rgb(15 23 42 / .4) !important; }
 
 /* ═══ LOGIN REDESIGN — full-bleed photo background ═══ */
 .login-redesign { position: relative; min-height: 100dvh; overflow: hidden; }
@@ -364,22 +349,21 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; text-wrap: bal
   position: sticky;
   top: 0;
   z-index: 30;
-  width: 14rem;
-  min-width: 14rem;
+  width: 15rem;
+  min-width: 15rem;
   height: 100dvh;
   flex-direction: column;
-  border-right: 1px solid #23614e;
-  background: #0b4938;
-  color: #e0f0e8;
+  border-right: 1px solid #e2e8f0;
+  background: #fff;
+  color: #334155;
   /* A navegação fica estática: animação contínua não ajuda a operação e
      desperdiça GPU em uma área sempre visível. */
   animation: none;
 }
-/* Linhas de 32 px: os 14 módulos e os 7 grupos cabem inteiros num notebook
-   de 768 px de altura, sem rolar o menu. O piso de 40 px dos botões no
-   desktop (mais abaixo) vale para a área de trabalho, não para o menu. */
-.erp-sidebar [data-sidebar-item] { min-height: 2rem; }
-.erp-sidebar [data-sidebar-grupo] { min-height: 1.5rem; }
+/* Linhas de 36 px: os 11 módulos e os grupos cabem num notebook de 768 px
+   de altura. O piso de 40 px dos botões no desktop (mais abaixo) vale para a
+   área de trabalho, não para o menu. */
+.erp-sidebar [data-sidebar-item] { min-height: 2.25rem; }
 .erp-workspace { display: flex; min-width: 0; min-height: 100dvh; flex: 1; flex-direction: column; background: #fff; }
 
 /* Barra do topo: uma faixa de 52 px, branca, alinhada com o cabeçalho do
@@ -444,18 +428,17 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; text-wrap: bal
 .erp-topbar__pending button:hover:not(:disabled) { background: #d97706; }
 .erp-topbar__pending button:disabled { cursor: wait; opacity: .65; }
 .erp-topbar__user { display: flex; min-width: 0; align-items: center; gap: .5rem; padding-left: .75rem; border-left: 1px solid #dce4df; }
-.erp-topbar__avatar { display: grid; width: 2rem; height: 2rem; flex: 0 0 auto; place-items: center; border: 1px solid #b8d9c8; border-radius: 8px; background: #eff8f2; color: #087345; font-size: .75rem; font-weight: 800; }
-.erp-topbar__user > span:last-child { display: grid; min-width: 0; gap: 0; line-height: 1.25; }
-.erp-topbar__user strong { max-width: 11rem; overflow: hidden; color: #10211c; font-size: .75rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.erp-topbar__user small { color: #60716a; font-size: .75rem; }
+.erp-topbar__avatar { display: grid; width: 2rem; height: 2rem; flex: 0 0 auto; place-items: center; border-radius: 999px; color: #fff; font-size: .75rem; font-weight: 800; cursor: pointer; }
+.erp-topbar__avatar--verde { background: #176b4d; }
+.erp-topbar__avatar--azul { background: #1d4ed8; }
+.erp-topbar__avatar:focus-visible { outline: 2px solid var(--renea-focus); outline-offset: 2px; }
+.erp-topbar__user strong { max-width: 11rem; overflow: hidden; color: #10211c; font-size: .875rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .erp-topbar button { min-height: 2.25rem; }
 
-/* Notebook de 1366 px: o nome do usuário cede lugar à obra (fica no title
-   do avatar). Abaixo de 1280 px o status vira só o ponto (o texto continua no
-   title e para leitor de tela) e a trilha sai, porque o título da tela e o
-   item aceso no menu já dizem onde a pessoa está. */
+/* O nome de quem entrou fica sempre à vista (pedido de 11/11/2026); em telas
+   menores ele só encurta com reticências. */
 @media (max-width: 1439px) {
-  .erp-topbar__user > span:last-child { display: none; }
+  .erp-topbar__user strong { max-width: 8rem; }
   .erp-topbar__user { padding-left: .5rem; }
 }
 @media (max-width: 1279px) {
@@ -567,12 +550,6 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; text-wrap: bal
 #main-tab-viewport [class~="bg-[#14231e]"] { background-color: #087653 !important; color: #fff !important; }
 #main-tab-viewport [class~="bg-[#14231e]"] [class~="text-white"] { color: #fff !important; }
 
-/* O menu lateral é a única superfície escura do sistema. A camada de
-   compatibilidade acima clareia utilitários históricos (.text-white), e sem
-   esta regra de mesma especificidade o nome do usuário ficava ilegível
-   dentro do verde. O item ativo tem fundo branco com texto verde-escuro
-   (ver DesktopSidebar.tsx), então [aria-current="page"] não força mais cor. */
-#app-root .erp-sidebar .text-white { color: #ffffff; }
 
 /* Largura do menu recolhido precisa morar aqui: a regra base .erp-sidebar
    fixa width/min-width e venceria a classe utilitaria por ordem no arquivo. */

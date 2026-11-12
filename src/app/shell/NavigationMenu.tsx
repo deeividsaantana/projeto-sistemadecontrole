@@ -1,4 +1,4 @@
-import { ChevronRight, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import type { NavigationItem } from '../navigation/navigation';
 import { TextInput, cn } from '../../shared/ui';
 
@@ -31,15 +31,15 @@ export function NavigationMenu({
         icon={Search}
         value={menuSearch}
         onChange={event => onMenuSearchChange(event.target.value)}
-        placeholder="Buscar modulo"
-        aria-label="Buscar modulo no menu"
+        placeholder="Buscar módulo"
+        aria-label="Buscar módulo no menu"
         className="mb-4"
       />
-      <div className="space-y-6">
+      <div className="space-y-4">
         {groups.map(group => (
           <section key={group.label} aria-label={group.label}>
-            <p className="px-3 mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{group.label}</p>
-            <div className="space-y-1.5">
+            <p className="px-3 mb-1 text-xs font-semibold text-slate-500">{group.label}</p>
+            <div className="space-y-0.5">
               {group.items.map(item => {
                 const Icon = item.icon;
                 const active = activeTab === item.id;
@@ -51,13 +51,13 @@ export function NavigationMenu({
                     aria-current={active ? 'page' : undefined}
                     title={item.label}
                     className={cn(
-                      'group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
-                      active ? 'bg-emerald-700 text-white shadow-sm' : 'text-slate-600 hover:translate-x-0.5 hover:bg-emerald-50 hover:text-emerald-800',
+                      'relative flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                      active ? 'bg-[#eef6f1] font-semibold text-[#176b4d]' : 'font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-950',
                     )}
                   >
-                    <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-white' : 'text-slate-500 group-hover:text-emerald-600')} />
+                    {active && <span aria-hidden="true" className="absolute inset-y-2.5 left-0 w-[3px] rounded-full bg-[#176b4d]" />}
+                    <Icon className={cn('size-[18px] shrink-0', active ? 'text-[#176b4d]' : 'text-slate-500')} strokeWidth={1.75} aria-hidden="true" />
                     <span className="flex-1 text-left leading-tight">{item.label}</span>
-                    <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${active ? 'opacity-100' : 'opacity-0 group-hover:opacity-70'}`} />
                   </button>
                 );
               })}
@@ -65,7 +65,7 @@ export function NavigationMenu({
           </section>
         ))}
         {groups.length === 0 && (
-          <p className="px-3 py-6 text-center text-xs text-slate-500">Nenhum modulo encontrado.</p>
+          <p className="px-3 py-6 text-center text-xs text-slate-500">Nenhum módulo encontrado.</p>
         )}
       </div>
     </>

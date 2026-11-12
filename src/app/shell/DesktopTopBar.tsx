@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { iniciaisDoNome, nomeDaPessoa } from '../../auth/nomeDaPessoa';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { reduzMovimento } from '../../shared/motion/reduzMovimento';
@@ -8,14 +9,12 @@ import type { AppNotification } from '../../types';
 import { NotificationCenter } from './NotificationCenter';
 import type { Alerta } from '../../utils/alertas';
 import type { NavigationGroupView } from './NavigationMenu';
-import { SIDEBAR_NAVIGATION_GROUPS } from '../navigation/navigation';
-import { Breadcrumb } from '../../shared/ui';
 import { OBRA } from '../../config/obra';
 
 const ICON_STROKE = 1.75;
+const COR_AVATAR_KEY = 'cintravyse_cor_avatar';
 
 interface DesktopTopBarProps {
-  activeTab: string;
   groups: NavigationGroupView[];
   menuSearch: string;
   currentUser: User | null;
@@ -39,7 +38,6 @@ interface DesktopTopBarProps {
 }
 
 export function DesktopTopBar({
-  activeTab,
   groups,
   menuSearch,
   currentUser,
@@ -64,21 +62,20 @@ export function DesktopTopBar({
   const headerRef = useRef<HTMLElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const logoutBtnRef = useRef<HTMLButtonElement>(null);
-  const userName = currentUser?.displayName || currentUser?.email || 'Usuário';
-  const userInitials = userName.trim().slice(0, 2).toUpperCase();
+  const userName = nomeDaPessoa(currentUser);
+  const userInitials = iniciaisDoNome(userName);
+  // Cor do ícone da pessoa: verde ou azul, escolhida clicando no ícone e
+  // guardada neste navegador (pedido de 11/11/2026).
+  const [corAvatar, setCorAvatar] = useState<'verde' | 'azul'>(() => {
+    try { return localStorage.getItem(COR_AVATAR_KEY) === 'azul' ? 'azul' : 'verde'; } catch { return 'verde'; }
+  });
+  const trocarCorAvatar = () => {
+    const proxima = corAvatar === 'verde' ? 'azul' : 'verde';
+    setCorAvatar(proxima);
+    try { localStorage.setItem(COR_AVATAR_KEY, proxima); } catch { /* sem armazenamento: vale só nesta sessão */ }
+  };
 
   const visibleItems = useMemo(() => groups.flatMap(group => group.items), [groups]);
-
-  // A trilha vem do mapa completo do menu, e não dos grupos já filtrados pela
-  // busca, para o usuário não perder a referência enquanto pesquisa. Usa os
-  // mesmos nomes do menu lateral ("Frota", não "Equipamentos").
-  const breadcrumbItems = useMemo(() => {
-    for (const group of SIDEBAR_NAVIGATION_GROUPS) {
-      const item = group.items.find(entry => entry.id === activeTab);
-      if (item) return [{ label: group.label }, { label: item.label }];
-    }
-    return [];
-  }, [activeTab]);
 
   useGSAP(() => {
     if (!logoutBtnRef.current || reduzMovimento()) return;
@@ -131,10 +128,6 @@ export function DesktopTopBar({
       className="erp-topbar hidden lg:flex"
       aria-label="Barra de contexto do sistema"
     >
-      {/* A trilha é o único jeito de saber "onde estou" nesse cabeçalho — não
-          pode sumir antes do resto da barra (o cabeçalho inteiro já se
-          esconde abaixo de lg, ver .erp-topbar em index.css). */}
-      <Breadcrumb items={breadcrumbItems} className="hidden shrink-0 lg:flex" />
       <label className="erp-topbar__searchbox relative block w-full max-w-sm">
         <span className="sr-only">Buscar no sistema</span>
         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" strokeWidth={ICON_STROKE} />
@@ -212,15 +205,17 @@ export function DesktopTopBar({
           alertas={alertas}
           onAlertaClick={onNavigate}
         />
-        <div className="erp-topbar__user" title={userName}>
-          <span className="erp-topbar__avatar">{userInitials}</span>
-          <span>
-            <strong>{userName}</strong>
-            <small className="flex items-center gap-1 text-emerald-600">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Online
-            </small>
-          </span>
+        <div className="erp-topbar__user">
+          <button
+            type="button"
+            onClick={trocarCorAvatar}
+            className={`erp-topbar__avatar erp-topbar__avatar--${corAvatar}`}
+            title={`Trocar a cor do ícone para ${corAvatar === 'verde' ? 'azul' : 'verde'}`}
+            aria-label={`Trocar a cor do ícone para ${corAvatar === 'verde' ? 'azul' : 'verde'}`}
+          >
+            {userInitials}
+          </button>
+          <strong title={userName}>{userName}</strong>
         </div>
         <button
           ref={logoutBtnRef}
