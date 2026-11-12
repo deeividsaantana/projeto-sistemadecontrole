@@ -172,9 +172,9 @@ export default function CortinaEstacas({ frente, escolhidaId, onEscolher }: Prop
                     onBlur={() => setEmFoco(null)}
                   >
                     <rect
-                      x={x - 34}
+                      x={x - 80}
                       y={FAIXA_PLANTA}
-                      width="68"
+                      width="160"
                       height={Math.max(altura - FAIXA_PLANTA, 44)}
                       fill="transparent"
                       role="button"
