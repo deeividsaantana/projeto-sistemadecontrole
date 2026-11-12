@@ -2,13 +2,12 @@
  * Fila de oficina: as OS em curso, ordenadas pelo tempo parado do
  * equipamento. Fica dentro de "Hoje", logo abaixo dos cartões do dia.
  */
-import { Wrench } from 'lucide-react';
 import type { OrdemServico } from '../../types';
 import type { MaintenanceQueueItem } from '../../utils/maintenanceQueue';
 import { EQUIPMENT_FAMILY_LABELS, equipmentFamilyIcon } from '../../utils/equipmentPresentation';
 import { proximoStatusManutencao } from '../../utils/manutencao';
 import { formatarMinutos } from '../../utils/horasParadasDoDia';
-import { EmptyState, statusTone } from '../../shared/ui';
+import { statusTone } from '../../shared/ui';
 import { CARTAO, FOCO } from '../cadastros/estilos';
 
 const formatarData = (valor?: string) => (valor ? valor.slice(5, 10).split('-').reverse().join('/') : '—');
@@ -25,18 +24,9 @@ interface Props {
 
 export function FilaOficina({ fila, ordensServico, podeEditar, onAvancar, onEditar, onVerNoQuadro }: Props) {
   return (
-    <section aria-labelledby="manutencao-fila-titulo" data-manutencao-reveal>
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h2 id="manutencao-fila-titulo" className="text-base font-black text-slate-900">Fila de oficina</h2>
-          <p className="text-sm text-slate-600">OS em curso, da aberta há mais tempo para a mais nova.</p>
-        </div>
-        <span className="shrink-0 text-sm font-bold tabular-nums text-slate-600">{fila.length} em curso</span>
-      </div>
-      {fila.length === 0
-        ? <EmptyState compact icon={Wrench} title="Nenhuma OS em curso" description="Nenhum equipamento está esperando a oficina." />
-        : (
-          <div className="mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+    <section aria-label="Ordens de serviço em curso" data-manutencao-reveal>
+      {fila.length > 0 && (
+          <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
             {fila.slice(0, 12).map(item => {
               const Icon = equipmentFamilyIcon(item.familia);
               const ordem = ordensServico.find(candidata => candidata.id === item.ordemId);
