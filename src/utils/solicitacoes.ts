@@ -262,7 +262,9 @@ export const problemasPorCampo = (item: ItemDigitado): Partial<Record<CampoDoIte
   if (!UNIDADES.includes(item.unidade as Unidade)) problemas.unidade = `Unidade fora do padrão (${UNIDADES.join(', ')}).`;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(item.prazoDesejado || '')) problemas.prazoDesejado = 'Informe o prazo desejado.';
   if (typeof item.permiteParcial !== 'boolean') problemas.permiteParcial = 'Diga se aceita entrega parcial.';
-  if (item.permiteParcial === true) {
+  // Registros legados/importados podem não ter o novo campo; o formulário
+  // novo cria a chave vazia e, nesse caso, exige o preenchimento.
+  if (item.permiteParcial === true && item.quantidadePrimeiraEntrega !== undefined) {
     const primeira = Number(String(item.quantidadePrimeiraEntrega ?? '').replace(',', '.'));
     if (!(primeira > 0)) problemas.quantidadePrimeiraEntrega = 'Informe a quantidade da 1ª entrega.';
     else if (quantidade > 0 && primeira > quantidade) problemas.quantidadePrimeiraEntrega = 'A 1ª entrega não pode ser maior que a quantidade total.';

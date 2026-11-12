@@ -103,6 +103,9 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
   const [subtela, setSubtela] = useState<Subtela>('pedidos');
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<Filtro>('abertos');
+  const [filtroSolicitante, setFiltroSolicitante] = useState('');
+  const [filtroDataInicio, setFiltroDataInicio] = useState('');
+  const [filtroDataFim, setFiltroDataFim] = useState('');
   const [modo, setModo] = useState<'cards' | 'lista'>('cards');
   const [mostrar, setMostrar] = useState(POR_VEZ);
   const [filtroConferencia, setFiltroConferencia] = useState<FiltroConferencia>('A conferir');
@@ -145,6 +148,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
   const aguardandoAprovacao = comSituacao.filter(item => item.situacao === 'Aguardando Aprovação');
   const emAtraso = comSituacao.filter(item => item.situacao === 'Em Atraso');
   const termo = busca.trim().toLowerCase();
+  const solicitantes = useMemo(() => [...new Set(solicitacoes.map(sol => sol.solicitante).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [solicitacoes]);
 
   const contagem = useMemo(
     () => Object.fromEntries(FILTROS.map(item => [item.id, comSituacao.filter(({ situacao }) => item.passa(situacao)).length])) as Record<Filtro, number>,
@@ -156,6 +160,9 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
     const regra = FILTROS.find(item => item.id === filtro) ?? FILTROS[0];
     return comSituacao
       .filter(({ situacao }) => regra.passa(situacao))
+      .filter(({ sol }) => !filtroSolicitante || sol.solicitante === filtroSolicitante)
+      .filter(({ sol }) => !filtroDataInicio || sol.abertaEm.slice(0, 10) >= filtroDataInicio)
+      .filter(({ sol }) => !filtroDataFim || sol.abertaEm.slice(0, 10) <= filtroDataFim)
       .filter(({ sol }) => contem(termo, [sol.numero, sol.numeroSc, sol.numeroPedido, sol.solicitante, sol.frente, sol.estacamento, sol.fornecedor, ...sol.itens.map(item => item.descricao)]))
       .sort((a, b) => Number(b.situacao === 'Em Atraso') - Number(a.situacao === 'Em Atraso')
         || (a.sol.prioridade ?? 999) - (b.sol.prioridade ?? 999)
@@ -379,6 +386,25 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
             </div>
           )}
         </div>
+        {subtela === 'pedidos' && !aberta && (
+          <div className="grid gap-2 rounded-xl border border-slate-200 bg-[#f7f8f6] p-2 sm:grid-cols-2 lg:grid-cols-4" aria-label="Filtros detalhados de pedidos">
+            <label className="grid gap-1 text-xs font-bold text-slate-600">Solicitante
+              <select value={filtroSolicitante} onChange={event => setFiltroSolicitante(event.target.value)} className={CAMPO}>
+                <option value="">Todos os solicitantes</option>
+                {solicitantes.map(nome => <option key={nome}>{nome}</option>)}
+              </select>
+            </label>
+            <label className="grid gap-1 text-xs font-bold text-slate-600">Data inicial
+              <input type="date" value={filtroDataInicio} onChange={event => setFiltroDataInicio(event.target.value)} className={CAMPO} />
+            </label>
+            <label className="grid gap-1 text-xs font-bold text-slate-600">Data final
+              <input type="date" value={filtroDataFim} onChange={event => setFiltroDataFim(event.target.value)} className={CAMPO} />
+            </label>
+            <button type="button" onClick={() => { setFiltroSolicitante(''); setFiltroDataInicio(''); setFiltroDataFim(''); setFiltro('abertos'); }} className={`${BOTAO_SECUNDARIO} self-end`}>
+              Limpar filtros
+            </button>
+          </div>
+        )}
         {aviso && (
           <p role={aviso.tom === 'erro' ? 'alert' : 'status'} className={`rounded-xl border px-3 py-2 text-sm font-bold ${aviso.tom === 'erro' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>{aviso.texto}</p>
         )}
