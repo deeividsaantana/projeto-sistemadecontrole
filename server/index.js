@@ -73,7 +73,7 @@ app.use(express.static(distDir, {
   setHeaders: (res, filePath) => {
     // O browser consulta o service worker para saber se existe uma versão nova.
     // Cache de um ano aqui fazia um deploy continuar servindo o shell antigo.
-    if (filePath.endsWith('service-worker.js') || filePath.endsWith('manifest.webmanifest')) {
+    if (filePath.endsWith('service-worker.js') || filePath.endsWith('manifest.webmanifest') || filePath.endsWith('favicon.png')) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');

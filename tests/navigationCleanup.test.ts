@@ -49,9 +49,9 @@ test('ROLE_ACCESS cleanup', async (suite) => {
 });
 
 test('ALL_NAVIGATION_ITEMS cleanup', async (suite) => {
-  // 11 desde 11/11/2026: entrou Solicitações e Compras (pedido do usuário).
-  await suite.test('should contain exactly 11 items from PRIMARY_MODULE_IDS', () => {
-    assert.strictEqual(ALL_NAVIGATION_ITEMS.length, 11, `Expected 11 items, got ${ALL_NAVIGATION_ITEMS.length}`);
+  // 10 desde 11/11/2026: o Pluviômetro substituiu os atalhos legados.
+  await suite.test('should contain exactly 10 items from PRIMARY_MODULE_IDS', () => {
+    assert.strictEqual(ALL_NAVIGATION_ITEMS.length, 10, `Expected 10 items, got ${ALL_NAVIGATION_ITEMS.length}`);
   });
 
   await suite.test('should contain only primary module IDs', () => {
@@ -90,7 +90,7 @@ test('endereços antigos abrem a tela onde o dado mora hoje', async (suite) => {
     // Abas tiradas em 2026-11-10 a pedido do usuário.
     assert.strictEqual(MODULE_REDIRECTS.administracao, 'cadastros');
     assert.strictEqual(MODULE_REDIRECTS.relatorios, 'dashboard');
-    assert.strictEqual(MODULE_REDIRECTS.planejamento, 'meu-dia');
+    assert.strictEqual(MODULE_REDIRECTS.planejamento, 'pluviometro');
     // Materiais e Jazida saíram com os dados em 2026-11-10: não há para onde levar.
     assert.strictEqual(MODULE_REDIRECTS.materiais, undefined);
     assert.strictEqual(MODULE_REDIRECTS['tickets-jazida'], undefined);

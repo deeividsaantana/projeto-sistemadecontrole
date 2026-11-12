@@ -4,7 +4,7 @@
  * lançado no diário — não guarda número próprio, para não existirem duas
  * verdades sobre o mesmo dia.
  */
-import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { CloudRain, Download, Umbrella } from 'lucide-react';
 import type { DiarioObra } from '../types';
 import {
@@ -20,6 +20,8 @@ import { CAMPO } from './cadastros/estilos';
 interface MapaChuvaProps {
   diarios: DiarioObra[];
   responsavel?: string;
+  mesSelecionado?: { ano: number; mes: number };
+  ocultarFiltro?: boolean;
 }
 
 /** Grandeza se lê do claro ao escuro, num tom só. Nunca arco-íris. */
@@ -37,7 +39,7 @@ const DIAS_SEMANA = [
 ] as const;
 const hoje = new Date();
 
-export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps) {
+export default function MapaChuva({ diarios, responsavel = '', mesSelecionado, ocultarFiltro = false }: MapaChuvaProps) {
   const meses = useMemo(() => {
     const encontrados = mesesComDiario(diarios);
     return encontrados.length > 0
@@ -45,7 +47,10 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
       : [{ ano: hoje.getFullYear(), mes: hoje.getMonth() + 1 }];
   }, [diarios]);
 
-  const [selecionado, setSelecionado] = useState(`${meses[0].ano}-${meses[0].mes}`);
+  const [selecionado, setSelecionado] = useState(mesSelecionado ? `${mesSelecionado.ano}-${String(mesSelecionado.mes).padStart(2, '0')}` : `${meses[0].ano}-${String(meses[0].mes).padStart(2, '0')}`);
+  useEffect(() => {
+    if (mesSelecionado) setSelecionado(`${mesSelecionado.ano}-${String(mesSelecionado.mes).padStart(2, '0')}`);
+  }, [mesSelecionado]);
   const [ano, mes] = selecionado.split('-').map(Number);
   const dados = useMemo(() => montarMesDeChuva(diarios, ano, mes), [diarios, ano, mes]);
 
@@ -139,7 +144,7 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <label>
+            {!ocultarFiltro && <label>
               <span className="sr-only">Mês do mapa</span>
               <select
                 value={selecionado}
@@ -152,7 +157,7 @@ export default function MapaChuva({ diarios, responsavel = '' }: MapaChuvaProps)
                   </option>
                 ))}
               </select>
-            </label>
+            </label>}
             <button
               type="button"
               onClick={() => void exportarPdf()}
