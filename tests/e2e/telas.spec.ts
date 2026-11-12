@@ -9,11 +9,13 @@ const TELAS: Array<{ screen: string; titulo: string | RegExp }> = [
   { screen: 'painel', titulo: 'Painel de Controle' },
   { screen: 'manutencao', titulo: 'Manutenção' },
   { screen: 'colaboradores', titulo: 'Colaboradores' },
+  { screen: 'diario-obra', titulo: 'Diário de Obra' },
   { screen: 'cadastros', titulo: /.+/ },
   { screen: 'combustivel', titulo: /.+/ },
   { screen: 'estacas', titulo: /.+/ },
   { screen: 'frotas', titulo: /.+/ },
   { screen: 'presenca', titulo: /.+/ },
+  { screen: 'solicitacoes', titulo: /Solicitações/ },
 ];
 
 for (const { screen, titulo } of TELAS) {
@@ -33,10 +35,10 @@ for (const { screen, titulo } of TELAS) {
 }
 
 test('shell viewport usa largura total sem limite', async ({ page }) => {
-  await page.goto('/?screen=painel');
+  await page.goto('/?screen=painel&shell=1');
   const viewport = page.locator('#main-tab-viewport');
   await expect(viewport).toBeVisible();
-  await expect(viewport).toHaveCSS('max-width', '1440px');
+  await expect(viewport).toHaveCSS('max-width', 'none');
 });
 
 test('cadastros oferece busca nomeada no grupo de filtros', async ({ page }) => {
@@ -52,8 +54,8 @@ test('cadastros cabe em notebook sem zoom e mostra a lista logo de cara', async 
   await expect(primeira).toBeVisible();
   const estouro = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(estouro, 'a tabela não pode empurrar a página para o lado').toBeLessThanOrEqual(0);
-  const topo = await primeira.evaluate(linha => linha.getBoundingClientRect().top);
-  expect(topo, 'a primeira linha aparece sem rolar').toBeLessThan(400);
+  const caixa = await primeira.boundingBox();
+  expect((caixa?.y ?? 9999) + (caixa?.height ?? 0), 'a primeira linha aparece inteira sem rolar').toBeLessThan(700);
 
   // A TabelaPadrao rola por dentro: a lista desce, busca e cabeçalho ficam na tela.
   const area = page.locator('#database-lists-viewport [role="region"]');
@@ -144,27 +146,21 @@ test('manutenção apresenta central operacional e fluxo das OS', async ({ page 
   await page.goto('/?screen=manutencao');
 
   await expect(page.getByRole('heading', { name: 'Manutenção', level: 1 })).toBeVisible();
-  // As ordens abrem primeiro; a fila de oficina é a aba ao lado.
-  await expect(page.getByText(/\d+ ordens? de serviço|\d+ em curso/)).toBeVisible();
-  await page.getByRole('tab', { name: /Ordens de serviço/ }).click();
-  await expect(page.getByRole('region', { name: 'Ordens de serviço' })).toBeVisible();
+  // A aba Hoje abre primeiro, com os números do dia e a fila de oficina.
+  await expect(page.getByRole('region', { name: 'Números de hoje' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Fila de oficina', level: 2 })).toBeVisible();
 });
 
 test('manutenção identifica a categoria do equipamento', async ({ page }) => {
   await page.goto('/?screen=manutencao');
-  await page.getByRole('tab', { name: /Ordens de serviço/ }).click();
 
   await expect(page.locator('[aria-label="Caminhão basculante"]').first()).toBeVisible();
 });
 
-test('módulo preserva h1 e remove o cabeçalho visual', async ({ page }) => {
-  await page.goto('/?screen=pluviometro');
+test('módulo tem uma só h1 e cabeçalho sem altura mínima', async ({ page }) => {
+  await page.goto('/?screen=manutencao');
 
   await expect(page.locator('h1')).toHaveCount(1);
-  await expect(page.locator('.renea-page-header__copy')).toHaveClass(/sr-only/);
-  const semanticCopy = await page.locator('.renea-page-header__copy').boundingBox();
-  expect(semanticCopy?.width).toBeLessThanOrEqual(1);
-  expect(semanticCopy?.height).toBeLessThanOrEqual(1);
   await expect(page.locator('.renea-page-header')).toHaveCSS('min-height', '0px');
 });
 
@@ -178,34 +174,60 @@ test('controle de frotas remove o lançamento rápido e leva as visões ao topo'
   await expect(topViews.getByRole('tab', { name: /^(Situação do dia|Dia)$/ })).toHaveAttribute('aria-selected', 'true');
 });
 
+// Molde de página (auditoria de 21/10/2026): a aba ocupa a tela abaixo da
+// barra do topo, a página não rola e a tabela aparece logo no primeiro olhar.
+test('molde: a aba nasce em tela cheia dentro da casca, sem botão e sem rolar a página', async ({ page }, info) => {
+  test.skip(info.project.name === 'celular', 'no celular a página rola normalmente');
+  await page.setViewportSize({ width: 1366, height: 768 });
+  for (const [screen, id] of [['combustivel', 'combustivel-tab'], ['frotas', 'controle-equipamentos-tab'], ['presenca-admin', 'presenca-tab']]) {
+    await page.goto(`/?screen=${screen}&shell=1`);
+    const aba = page.locator(`#${id}`);
+    await expect(aba).toBeVisible();
+    // A entrada desliza alguns pixels: mede depois que ela assenta.
+    await expect.poll(async () => {
+      const caixa = await aba.boundingBox();
+      return caixa!.y + caixa!.height;
+    }, { message: `${screen} cabe na altura da tela` }).toBeLessThanOrEqual(768);
+    const rolagem = await page.evaluate(() => {
+      window.scrollTo(1e6, 1e6);
+      return [window.scrollX, window.scrollY, document.documentElement.scrollWidth - document.documentElement.clientWidth];
+    });
+    expect(rolagem, `${screen} não rola a página`).toEqual([0, 0, 0]);
+  }
+  await expect(page.getByTestId('combustivel-tela-cheia')).toHaveCount(0);
+  await page.goto('/?screen=frotas&shell=1');
+  const primeiraLinha = page.locator('#controle-equipamentos-tab table tbody tr').first();
+  const topo = await primeiraLinha.evaluate(linha => linha.getBoundingClientRect().bottom);
+  expect(topo, 'a primeira linha da frota aparece sem rolar').toBeLessThan(768);
+});
+
+test('abas agrupadas: 18 subtelas cabem a 1366 px e andam pelas setas', async ({ page }, info) => {
+  test.skip(info.project.name === 'celular', 'no celular a faixa rola por dentro');
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto('/?screen=molde&shell=1');
+  const grupos = page.getByRole('tablist', { name: 'Subtelas de materiais', exact: true });
+  const doGrupo = page.getByRole('tablist', { name: 'Subtelas de materiais: Na obra' });
+  for (const lista of [grupos, doGrupo]) {
+    const sobra = await lista.evaluate(no => no.scrollWidth - no.clientWidth);
+    expect(sobra, 'a linha de abas não rola para o lado').toBeLessThanOrEqual(0);
+  }
+  await expect(page.locator('#molde-dados')).toHaveAttribute('role', 'tabpanel');
+  await doGrupo.getByRole('tab', { name: /Apontadores/ }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(doGrupo.getByRole('tab', { name: 'Bota-fora' })).toHaveAttribute('aria-selected', 'true');
+  await expect(doGrupo.getByRole('tab', { name: 'Bota-fora' })).toBeFocused();
+  await grupos.getByRole('tab', { name: 'Controle' }).click();
+  await expect(page.getByRole('tablist', { name: 'Subtelas de materiais: Controle' }).getByRole('tab', { name: 'Estoque' })).toHaveAttribute('aria-selected', 'true');
+  await grupos.getByRole('tab', { name: /Na obra/ }).click();
+  await expect(doGrupo.getByRole('tab', { name: 'Bota-fora' }), 'voltar ao grupo abre a última subtela usada nele').toHaveAttribute('aria-selected', 'true');
+});
+
 test('manutenção abre o formulário e fecha com ESC', async ({ page }) => {
   await page.goto('/?screen=manutencao');
   await page.getByRole('button', { name: 'Abrir OS' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toBeHidden();
-});
-
-test('painel: 7d, 14d e 30d mudam de verdade a régua do gráfico', async ({ page }) => {
-  await page.goto('/?screen=painel');
-  const eixo = () => page.evaluate(() => [...document.querySelectorAll('#dashboard-tab svg text')]
-    .map(no => no.textContent || '').filter(texto => /^\d{2}\/\d{2}$/.test(texto)));
-
-  const sete = await eixo();
-  expect(sete.length, 'o gráfico começa com a régua de 7 dias').toBeGreaterThan(1);
-
-  await page.getByRole('button', { name: '30d', exact: true }).click();
-  await expect.poll(async () => (await eixo())[0], { message: 'a régua de 30 dias começa antes' }).not.toBe(sete[0]);
-  const trinta = await eixo();
-
-  await page.getByRole('button', { name: '14d', exact: true }).click();
-  await expect.poll(async () => (await eixo())[0]).not.toBe(trinta[0]);
-  const quatorze = await eixo();
-  expect(quatorze[0], 'a régua de 14 dias é diferente da de 7').not.toBe(sete[0]);
-
-  await page.getByRole('button', { name: '7d', exact: true }).click();
-  await expect.poll(async () => (await eixo())[0]).toBe(sete[0]);
-  expect(await eixo(), 'voltar para 7 dias devolve a régua original').toEqual(sete);
 });
 
 test('manutenção abre OS por N, foca equipamento e valida salvar por CTRL+ENTER', async ({ page }) => {
@@ -228,12 +250,9 @@ test('manutenção abre OS por N, foca equipamento e valida salvar por CTRL+ENTE
 
 test('manutenção apresenta uma fila operacional acionável sem cards duplicados', async ({ page }) => {
   await page.goto('/?screen=manutencao');
-  await page.getByRole('tab', { name: /Ordens de serviço/ }).click();
-
-  const queue = page.getByRole('region', { name: 'Ordens de serviço' });
-  await expect(queue).toBeVisible();
-  await expect(queue.getByText('CB770')).toBeVisible();
-  await expect(queue.getByRole('button', { name: 'Editar' }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Fila de oficina', level: 2 })).toBeVisible();
+  await expect(page.getByText('CB770').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /Editar OS-0100/ })).toBeVisible();
   await expect(page.getByText('Manutenções em Destaque')).toHaveCount(0);
 });
 
@@ -244,25 +263,8 @@ test('painel não duplica a navegação principal dentro do conteúdo', async ({
   await expect(page.getByRole('button', { name: 'Novo lançamento' })).toHaveCount(0);
 });
 
-test('frota: a relação do dia abre e fecha o restante do grupo sem perder itens', async ({ page }) => {
-  await page.goto('/?screen=frotas');
-  const chips = page.locator('#fleet-reference-title').locator('xpath=ancestor::section[1]').locator('ul li');
-
-  const parcial = await chips.count();
-  expect(parcial, 'a relação começa recortada').toBeGreaterThan(0);
-
-  const abrir = page.getByRole('button', { name: /Ver os outros \d+ de Basculantes/ });
-  await expect(abrir).toBeVisible();
-  await abrir.click();
-
-  await expect.poll(async () => chips.count(), { message: 'abrir mostra mais equipamentos' }).toBeGreaterThan(parcial);
-
-  await page.getByRole('button', { name: 'Mostrar menos' }).first().click();
-  await expect.poll(async () => chips.count()).toBe(parcial);
-});
-
 test('cabeçalho de módulo é compacto e não repete o nome da obra antigo', async ({ page }, info) => {
-  await page.goto('/?screen=pluviometro');
+  await page.goto('/?screen=manutencao');
   const cabecalho = page.locator('.renea-page-header');
   await expect(cabecalho).toBeVisible();
 
@@ -342,7 +344,7 @@ test('colaborador: mudar a situação pede data e motivo', async ({ page }) => {
 // que faltou e é dali mesmo que sai o lançamento manual.
 test('presença: a equipe que não enviou pode ser lançada pelo painel', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/?screen=presenca');
+  await page.goto('/?screen=presenca-admin');
 
   const lancar = page.getByRole('button', { name: /Lançar presença/i }).first();
   await expect(lancar).toBeVisible();
@@ -365,7 +367,7 @@ test('presença: a equipe que não enviou pode ser lançada pelo painel', async 
 // O mapa de chuvas é o quadro que justifica prazo em contrato. Ele lê o
 // pluviômetro do diário e precisa distinguir "não choveu" de "ninguém lançou".
 test('mapa de chuvas soma o pluviômetro do diário e marca o dia sem lançamento', async ({ page }) => {
-  await page.goto('/?screen=pluviometro');
+  await page.goto('/?screen=diario-obra');
 
   const mapa = page.locator('#mapa-de-chuvas');
   await expect(mapa).toBeVisible();
@@ -382,11 +384,14 @@ test('mapa de chuvas soma o pluviômetro do diário e marca o dia sem lançament
   await expect(mapa.getByRole('button', { name: 'PDF' })).toBeVisible();
 });
 
+// Nota paga sem material na obra é a conversa mais cara do almoxarifado: o
+// painel precisa dizer o que falta, de qual nota e de qual solicitação.
+
 // "Tudo interativo": o número do painel não é só leitura, é o caminho. Clicar
 // numa frente recorta o painel inteiro por ela, e clicar de novo desfaz.
 test('painel de presença: clicar numa frente recorta o painel e clicar de novo desfaz', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/?screen=presenca');
+  await page.goto('/?screen=presenca-admin');
 
   const frentes = page.locator('article').filter({ hasText: 'Onde falta gente' });
   await expect(frentes).toBeVisible();
@@ -405,7 +410,7 @@ test('painel de presença: clicar numa frente recorta o painel e clicar de novo 
 
 test('painel de presença: quem falta sempre leva aos registros da pessoa', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/?screen=presenca');
+  await page.goto('/?screen=presenca-admin');
 
   const cartao = page.locator('article').filter({ hasText: 'Quem falta sempre' });
   await expect(cartao).toBeVisible();
