@@ -345,10 +345,10 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
       faixa={<div data-sol-reveal className="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
         <section aria-label="Resumo operacional de solicitações" className="contents">
           {resumo.map(item => (
-            <button key={item.id} type="button" onClick={item.acao} data-testid={`resumo-solicitacoes-${item.id}`} className="group min-h-14 min-w-[10.5rem] flex-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-left transition hover:border-[#176b4d] hover:bg-[#f7f8f6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)">
+            <button key={item.id} type="button" onClick={item.acao} data-testid={`resumo-solicitacoes-${item.id}`} className="group min-h-10 min-w-[8.5rem] flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-left transition hover:border-[#176b4d] hover:bg-[#f7f8f6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)">
               <span className="flex items-center justify-between gap-2">
                 <span className="truncate text-xs font-bold text-slate-600">{item.rotulo}</span>
-                <strong className={`text-xl font-black tabular-nums ${item.tom}`}>{item.valor}</strong>
+                <strong className={`text-lg font-black tabular-nums ${item.tom}`}>{item.valor}</strong>
               </span>
               <span className="block truncate text-xs text-slate-500">{item.detalhe}</span>
             </button>
@@ -470,8 +470,8 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
               Nenhum pedido neste filtro.{solicitacoes.length === 0 && ' Abra uma solicitação ou traga a planilha de controle em "Importar planilha".'}
             </p>
           ) : (
-            <div className="grid gap-3">
-              <ul data-sol-reveal className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="flex min-h-0 flex-1 flex-col gap-3">
+              <ul data-sol-reveal className="grid min-h-0 flex-1 content-start grid-cols-1 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {pedidos.slice(0, mostrar).map(({ sol }) => (
                   <CartaoRastreio key={sol.id} sol={sol} hoje={hoje} ativo={sol.id === abertaId} onAbrir={() => abrirPedido(sol.id)} />
                 ))}
