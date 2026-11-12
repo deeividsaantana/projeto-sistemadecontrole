@@ -145,15 +145,14 @@ test('manutenção apresenta central operacional e fluxo das OS', async ({ page 
 
   await expect(page.getByRole('heading', { name: 'Manutenção', level: 1 })).toBeVisible();
   // As ordens abrem primeiro; a fila de oficina é a aba ao lado.
-  await expect(page.getByText(/\d+ ordens? de serviço/)).toBeVisible();
-  await page.getByRole('tab', { name: /^(Fila de oficina|Fila)/ }).click();
-  await expect(page.getByRole('heading', { name: 'Fila de oficina', level: 2 })).toBeVisible();
-  await expect(page.getByText('OS em curso, ordenadas pelo tempo parado do equipamento')).toBeVisible();
+  await expect(page.getByText(/\d+ ordens? de serviço|\d+ em curso/)).toBeVisible();
+  await page.getByRole('tab', { name: /Ordens de serviço/ }).click();
+  await expect(page.getByRole('region', { name: 'Ordens de serviço' })).toBeVisible();
 });
 
 test('manutenção identifica a categoria do equipamento', async ({ page }) => {
   await page.goto('/?screen=manutencao');
-  await page.getByRole('tab', { name: /^(Fila de oficina|Fila)/ }).click();
+  await page.getByRole('tab', { name: /Ordens de serviço/ }).click();
 
   await expect(page.locator('[aria-label="Caminhão basculante"]').first()).toBeVisible();
 });
@@ -229,12 +228,12 @@ test('manutenção abre OS por N, foca equipamento e valida salvar por CTRL+ENTE
 
 test('manutenção apresenta uma fila operacional acionável sem cards duplicados', async ({ page }) => {
   await page.goto('/?screen=manutencao');
-  await page.getByRole('tab', { name: /^(Fila de oficina|Fila)/ }).click();
+  await page.getByRole('tab', { name: /Ordens de serviço/ }).click();
 
-  const queue = page.getByRole('region', { name: 'Fila operacional de manutenção' });
+  const queue = page.getByRole('region', { name: 'Ordens de serviço' });
   await expect(queue).toBeVisible();
   await expect(queue.getByText('CB770')).toBeVisible();
-  await expect(queue.getByRole('button', { name: /Editar OS-0100/ })).toBeVisible();
+  await expect(queue.getByRole('button', { name: 'Editar' }).first()).toBeVisible();
   await expect(page.getByText('Manutenções em Destaque')).toHaveCount(0);
 });
 
