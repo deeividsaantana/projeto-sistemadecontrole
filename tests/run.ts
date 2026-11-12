@@ -203,3 +203,4 @@ import './exportarTabela.test';
 import './padraoErp.test';
 import './solicitacoes.test';
 import './nomeDaPessoa.test';
+import './perfilAvatar.test';

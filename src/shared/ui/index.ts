@@ -20,3 +20,4 @@ export { RouteMotion } from './RouteMotion';
 export { CartaoIndicador, GradeIndicadores, type TomIndicador } from './CartaoIndicador';
 export { TabelaPadrao, type ColunaTabela, type Ordenacao, type SelecaoTabela } from './TabelaPadrao';
 export { cn, statusTone } from './styles';
+export { Avatar } from './Avatar';

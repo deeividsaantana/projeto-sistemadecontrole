@@ -199,9 +199,25 @@ const USER_PERMISSIONS = new Set([
   'frota', 'presenca', 'diario', 'usuarios',
 ]);
 
-const sanitizeUserProfile = body => ({
+// Foto de perfil: o navegador já corta e reduz para um quadrado pequeno
+// (src/utils/imagem.ts, fotoDePerfil). Aqui só entra imagem e só até ~60 kB,
+// para a lista de pessoas continuar leve. Vazio ('') apaga a foto.
+export const LIMITE_FOTO_PERFIL = 80_000;
+export const sanitizeAvatarPhoto = value => {
+  const foto = String(value || '');
+  if (!foto) return null;
+  if (!/^data:image\/(jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(foto) || foto.length > LIMITE_FOTO_PERFIL) {
+    const error = new Error('A foto precisa ser uma imagem pequena (JPG, PNG ou WebP).');
+    error.statusCode = 400;
+    throw error;
+  }
+  return foto;
+};
+
+export const sanitizeUserProfile = body => ({
   profileName: cleanString(body.profileName, 120) || null,
-  avatarColor: /^#[0-9a-f]{6}$/i.test(String(body.avatarColor || '')) ? String(body.avatarColor).toLowerCase() : '#15803d',
+  avatarColor: /^#[0-9a-f]{6}$/i.test(String(body.avatarColor || '')) ? String(body.avatarColor).toLowerCase() : '#176b4d',
+  avatarPhoto: sanitizeAvatarPhoto(body.avatarPhoto),
   jobTitle: cleanString(body.jobTitle, 160) || null,
   phone: cleanString(body.phone, 40) || null,
   area: cleanString(body.area, 120) || null,
@@ -351,6 +367,79 @@ const deleteUser = async (body, context) => {
     role: user.customClaims?.role || 'leitura',
   }, null);
   return jsonResponse(200, { success: true, data: { uid } });
+};
+
+/** Cartão de uma pessoa para mostrar o avatar em qualquer tela. */
+export const cartaoDaPessoa = record => ({
+  userId: record.userId,
+  nome: record.fullName || record.profileName || record.email || 'Usuário',
+  cor: record.avatarColor || '#176b4d',
+  foto: record.avatarPhoto || null,
+});
+
+/** O próprio perfil: qualquer pessoa da equipe lê o seu. */
+const getMyProfile = async context => {
+  const record = await context.database.collection(USERS_COLLECTION)
+    .doc(context.organizationId + '_' + context.userId)
+    .get();
+  const data = record.exists ? record.data() : {};
+  return jsonResponse(200, { success: true, data: {
+    userId: context.userId,
+    email: data.email || context.staff?.email || null,
+    fullName: data.fullName || context.staff?.name || '',
+    role: context.role,
+    avatarColor: data.avatarColor || '#176b4d',
+    avatarPhoto: data.avatarPhoto || null,
+    jobTitle: data.jobTitle || null,
+  } });
+};
+
+/**
+ * A própria pessoa troca nome, cor e foto. Perfil de acesso, módulos e
+ * situação continuam só com o administrador (update-user).
+ */
+const updateMyProfile = async (body, context) => {
+  const fullName = cleanString(body.fullName, 240);
+  if (!fullName) {
+    const error = new Error('Escreva o seu nome.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const ref = context.database.collection(USERS_COLLECTION).doc(context.organizationId + '_' + context.userId);
+  const atual = await ref.get();
+  const before = atual.exists ? atual.data() : {};
+  const avatarColor = /^#[0-9a-f]{6}$/i.test(String(body.avatarColor || '')) ? String(body.avatarColor).toLowerCase() : (before.avatarColor || '#176b4d');
+  const avatarPhoto = body.avatarPhoto === undefined ? (before.avatarPhoto || null) : sanitizeAvatarPhoto(body.avatarPhoto);
+  await getAdminAuth().updateUser(context.userId, { displayName: fullName });
+  const after = { fullName, profileName: null, avatarColor, avatarPhoto };
+  await ref.set({
+    organizationId: context.organizationId,
+    userId: context.userId,
+    email: before.email || context.staff?.email || null,
+    role: before.role || context.role,
+    active: before.active !== false,
+    ...after,
+    updatedBy: context.userId,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+  await writeAudit(context, 'PROFILE_UPDATE', 'users', context.userId,
+    { fullName: before.fullName || null, avatarColor: before.avatarColor || null, temFoto: Boolean(before.avatarPhoto) },
+    { fullName, avatarColor, temFoto: Boolean(avatarPhoto) });
+  return jsonResponse(200, { success: true, data: { userId: context.userId, ...after } });
+};
+
+/** Nome, cor e foto de quem está ativo, para os avatares de todo o sistema. */
+const listPeople = async context => {
+  const snapshot = await context.database.collection(USERS_COLLECTION)
+    .where('organizationId', '==', context.organizationId)
+    .limit(500)
+    .get();
+  const pessoas = snapshot.docs
+    .map(item => item.data())
+    .filter(item => item.active !== false && item.userId)
+    .map(cartaoDaPessoa)
+    .sort((left, right) => left.nome.localeCompare(right.nome, 'pt-BR'));
+  return jsonResponse(200, { success: true, data: { pessoas } });
 };
 
 const listRecords = async (event, context) => {
@@ -548,6 +637,8 @@ export const handler = async event => withApiTelemetry(event, 'master-data', asy
     if (method === 'GET') {
       if (event.queryStringParameters?.action === 'audit') return await listAudits(event, context);
       if (event.queryStringParameters?.action === 'users') return await listUsers(event, context);
+      if (event.queryStringParameters?.action === 'me') return await getMyProfile(context);
+      if (event.queryStringParameters?.action === 'people') return await listPeople(context);
       return event.queryStringParameters?.entity ? await listRecords(event, context) : await gatewayStatus(context);
     }
     const idempotencyKey = assertIdempotencyKey(event);
@@ -555,6 +646,7 @@ export const handler = async event => withApiTelemetry(event, 'master-data', asy
     return await withIdempotency(event, context, idempotencyKey, async () => {
     if (method === 'POST' && body.action === 'create-user') return await createUser(body, context);
     if (method === 'PATCH' && body.action === 'update-user') return await updateUser(body, context);
+    if (method === 'PATCH' && body.action === 'update-me') return await updateMyProfile(body, context);
     if (method === 'DELETE' && body.action === 'delete-user') return await deleteUser(body, context);
     if (method === 'POST' && body.action === 'stage-master-import') return await stageMasterImport(body, context);
     if (method === 'POST' && body.action === 'stage-fuel-import') return await stageOperationalImport(body, context, 'fuel');

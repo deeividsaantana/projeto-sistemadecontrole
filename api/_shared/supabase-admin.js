@@ -287,8 +287,17 @@ export const getAdminAuth = () => {
       if (error) throw error;
       return adaptAuthUser(data.user);
     },
-    async updateUser(id, { disabled }) {
-      const { data, error } = await client.auth.admin.updateUserById(id, { ban_duration: disabled ? '876000h' : 'none' });
+    // Só mexe no que veio: trocar o nome não pode desbloquear quem está
+    // inativo, e o nome novo vai para user_metadata, que é o que o topo lê.
+    async updateUser(id, { disabled, displayName } = {}) {
+      const changes = {};
+      if (disabled !== undefined) changes.ban_duration = disabled ? '876000h' : 'none';
+      if (displayName !== undefined) {
+        const { data: atual, error: erroAtual } = await client.auth.admin.getUserById(id);
+        if (erroAtual) throw erroAtual;
+        changes.user_metadata = { ...(atual.user?.user_metadata || {}), full_name: displayName };
+      }
+      const { data, error } = await client.auth.admin.updateUserById(id, changes);
       if (error) throw error;
       return adaptAuthUser(data.user);
     },

@@ -199,6 +199,11 @@ import {
 import { navigationSyncTrigger } from './app/navigation/navigationSyncPolicy';
 import { NavigationMenu } from './app/shell/NavigationMenu';
 import { DesktopTopBar } from './app/shell/DesktopTopBar';
+import { usePerfis } from './app/perfil/usePerfis';
+import { PessoasProvider } from './app/perfil/PessoasContext';
+import { MeuPerfilModal } from './components/perfil/MeuPerfilModal';
+import { Avatar } from './shared/ui/Avatar';
+import { nomeDaPessoa } from './auth/nomeDaPessoa';
 import { NotificationCenter } from './app/shell/NotificationCenter';
 import { PesquisaGlobal } from './app/shell/PesquisaGlobal';
 import { alertasDoSistema } from './utils/alertas';
@@ -433,6 +438,9 @@ export default function App() {
   const [loginError, setLoginError] = useState<string>('');
   const [loginNotice, setLoginNotice] = useState<string>('');
   const activeUserName = currentUser?.displayName || currentUser?.email || 'Usuário';
+  const { meuAvatar, pessoas, salvarMeuPerfil } = usePerfis(isLoggedIn ? currentUser?.uid ?? null : null);
+  const [perfilAberto, setPerfilAberto] = useState(false);
+  const meuNome = meuAvatar?.nome || nomeDaPessoa(currentUser);
 
   // Notification and Toast States
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -4093,6 +4101,7 @@ export default function App() {
   );
   // Logged-in Core App Layout (Responsive Green Theme)
   return (
+    <PessoasProvider pessoas={pessoas}>
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased font-sans" id="app-root">
       <PularParaConteudo />
 
@@ -4188,6 +4197,17 @@ export default function App() {
               </button>
             </div>
             <CartaoAmbiente />
+            <button
+              type="button"
+              onClick={() => { setIsMobileMenuOpen(false); setPerfilAberto(true); }}
+              className="flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-3 py-2 text-left hover:border-emerald-200 hover:bg-emerald-50"
+            >
+              <Avatar nome={meuNome} foto={meuAvatar?.foto} cor={meuAvatar?.cor} tamanho="lg" />
+              <span className="min-w-0">
+                <strong className="block truncate text-sm text-slate-900">{meuNome}</strong>
+                <span className="block text-xs font-semibold text-emerald-800">Meu perfil: nome e foto</span>
+              </span>
+            </button>
 
             <nav className="flex-1 overflow-y-auto">
               {renderNavigation(true)}
@@ -4215,6 +4235,8 @@ export default function App() {
           menuSearch={menuSearch}
           onMenuSearchChange={setMenuSearch}
           currentUser={currentUser}
+          meuAvatar={meuAvatar}
+          onAbrirPerfil={() => setPerfilAberto(true)}
           isNotificationOpen={isNotifDropdownOpen}
           notifications={notifications}
           unreadCount={unreadCount}
@@ -4551,6 +4573,13 @@ export default function App() {
       />
       <ToastViewport toasts={activeToasts} />
 
+      <MeuPerfilModal
+        open={perfilAberto}
+        perfil={{ nome: meuNome, email: currentUser?.email ?? null, papel: currentUserRole, cor: meuAvatar?.cor ?? null, foto: meuAvatar?.foto ?? null }}
+        onClose={() => setPerfilAberto(false)}
+        onSalvar={salvarMeuPerfil}
+      />
     </div>
+    </PessoasProvider>
   );
 }

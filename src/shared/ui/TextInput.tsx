@@ -1,9 +1,10 @@
-import type { InputHTMLAttributes } from 'react';
+import type { InputHTMLAttributes, Ref } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from './styles';
 
 interface TextInputProps extends InputHTMLAttributes<HTMLInputElement> {
   icon?: LucideIcon;
+  ref?: Ref<HTMLInputElement>;
 }
 
 export function TextInput({

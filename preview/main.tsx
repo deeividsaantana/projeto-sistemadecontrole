@@ -19,6 +19,8 @@ import DiarioObraTab from '../src/components/DiarioObraTab';
 import { SolicitacoesPreview } from './solicitacoesPreview';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
+import { MeuPerfilModal } from '../src/components/perfil/MeuPerfilModal';
+import type { MeuAvatar } from '../src/app/perfil/usePerfis';
 import { PRIMARY_MODULE_IDS, ROLE_ACCESS, SIDEBAR_NAVIGATION_GROUPS, destinoDaAba } from '../src/app/navigation/navigation';
 import { PesquisaGlobal } from '../src/app/shell/PesquisaGlobal';
 import * as fx from './fixtures';
@@ -405,6 +407,26 @@ function CombustivelVivo() {
   );
 }
 
+/**
+ * Topo do preview com "Meu perfil" de verdade: tocar no nome abre o diálogo e
+ * salvar troca a bolinha na hora (sem nuvem). ?perfil=1 abre já aberto.
+ */
+function TopoPreview(props: Omit<React.ComponentProps<typeof DesktopTopBar>, 'meuAvatar' | 'onAbrirPerfil'>) {
+  const [aberto, setAberto] = React.useState(new URLSearchParams(location.search).get('perfil') === '1');
+  const [avatar, setAvatar] = React.useState<MeuAvatar>({ nome: 'Deivid Santana', cor: '#176b4d', foto: null });
+  return (
+    <>
+      <DesktopTopBar {...props} meuAvatar={avatar} onAbrirPerfil={() => setAberto(true)} />
+      <MeuPerfilModal
+        open={aberto}
+        perfil={{ nome: avatar.nome, email: 'deivid@renea.com.br', papel: 'gestor', cor: avatar.cor, foto: avatar.foto }}
+        onClose={() => setAberto(false)}
+        onSalvar={async ({ nome, cor, foto }) => { setAvatar({ nome, cor, foto }); }}
+      />
+    </>
+  );
+}
+
 const screens: Record<string, React.ReactNode> = {
   molde: <MoldePreview />,
   sidebar: (
@@ -421,7 +443,7 @@ const screens: Record<string, React.ReactNode> = {
     <div className="erp-shell" style={{ height: '100dvh' }}>
       <DesktopSidebar activeTab="dashboard" groups={previewGroups} onNavigate={noop} />
       <main className="erp-workspace">
-        <DesktopTopBar
+        <TopoPreview
           groups={previewGroups}
           menuSearch=""
           currentUser={{ displayName: 'Deivid Santana', email: 'deivid@renea.com.br' } as never}
@@ -653,11 +675,11 @@ createRoot(document.getElementById('app-root')!).render(
         <PularParaConteudo />
         <DesktopSidebar activeTab={abaAtiva} groups={previewGroups} onNavigate={noop} />
         <main className="erp-workspace" id="main-workspace">
-          <DesktopTopBar
+          <TopoPreview
             groups={previewGroups}
             menuSearch=""
             currentUser={{ displayName: 'Deivid Santana', email: 'deivid@renea.com.br' } as never}
-            isNotificationOpen={false}
+              isNotificationOpen={false}
             notifications={previewNotifications}
             unreadCount={1}
             isCloudConnected

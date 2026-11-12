@@ -14,13 +14,12 @@ import {
 } from '../services/masterDataApi';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { CAMPO, CAMPO_SELECT } from './cadastros/estilos';
+import { Avatar } from '../shared/ui/Avatar';
+import { COR_AVATAR_PADRAO, corPeloNome } from '../utils/avatar';
+import { EscolherAvatar } from './perfil/EscolherAvatar';
+import { PERFIS_DE_ACESSO } from './perfil/perfisDeAcesso';
 
-const roles: Array<{ value: ManagedUserRole; label: string; faz: string }> = [
-  { value: 'admin', label: 'Administrador', faz: 'Pode tudo, inclusive excluir e cuidar dos usuários.' },
-  { value: 'gestor', label: 'Gestor', faz: 'Lança, aprova e zera o dia de presença, mas não exclui.' },
-  { value: 'operador', label: 'Operador', faz: 'Lança em campo, mas não aprova nem exclui.' },
-  { value: 'leitura', label: 'Visualização', faz: 'Só consulta, não lança nada.' },
-];
+const roles = PERFIS_DE_ACESSO;
 
 type Mudanca = { user: ManagedUser; changes: Partial<Pick<ManagedUser, 'role' | 'active'>> };
 type UserForm = {
@@ -28,8 +27,8 @@ type UserForm = {
   email: string;
   password: string;
   role: ManagedUserRole;
-  profileName: string;
   avatarColor: string;
+  avatarPhoto: string | null;
   jobTitle: string;
   phone: string;
   area: string;
@@ -49,8 +48,8 @@ const permissionOptions: Array<{ value: ManagedUserPermission; label: string }> 
 ];
 
 const vazioFormulario: UserForm = {
-  fullName: '', email: '', password: '', role: 'operador', profileName: '',
-  avatarColor: '#176b4d', jobTitle: '', phone: '', area: '', registration: '',
+  fullName: '', email: '', password: '', role: 'operador',
+  avatarColor: COR_AVATAR_PADRAO, avatarPhoto: null, jobTitle: '', phone: '', area: '', registration: '',
   permissions: ['dashboard', 'lancamentos'],
 };
 
@@ -59,8 +58,8 @@ const formularioDoUsuario = (user: ManagedUser): UserForm => ({
   fullName: user.fullName,
   email: user.email || '',
   role: user.role,
-  profileName: user.profileName || '',
-  avatarColor: user.avatarColor || '#176b4d',
+  avatarColor: user.avatarColor || corPeloNome(user.fullName),
+  avatarPhoto: user.avatarPhoto || null,
   jobTitle: user.jobTitle || '',
   phone: user.phone || '',
   area: user.area || '',
@@ -139,7 +138,7 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
     }
   };
 
-  const updateUser = async (user: ManagedUser, changes: Partial<Pick<ManagedUser, 'role' | 'active'>> & Partial<Omit<UserForm, 'email' | 'password'>>) => {
+  const updateUser = async (user: ManagedUser, changes: Partial<Pick<ManagedUser, 'role' | 'active'>> & Partial<Omit<UserForm, 'email' | 'password' | 'avatarPhoto'>> & { avatarPhoto?: string }) => {
     setSaving(true);
     setErroLista('');
     try {
@@ -148,8 +147,10 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
         role: changes.role || user.role,
         active: changes.active ?? user.active,
         fullName: changes.fullName,
-        profileName: changes.profileName,
+        // Um nome só para a pessoa: o "nome de perfil" antigo sai ao salvar.
+        profileName: changes.fullName !== undefined ? '' : undefined,
         avatarColor: changes.avatarColor,
+        avatarPhoto: changes.avatarPhoto,
         jobTitle: changes.jobTitle,
         phone: changes.phone,
         area: changes.area,
@@ -169,8 +170,8 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
     await updateUser(editingUser, {
       role: form.role,
       fullName: form.fullName,
-      profileName: form.profileName,
       avatarColor: form.avatarColor,
+      avatarPhoto: form.avatarPhoto ?? '',
       jobTitle: form.jobTitle,
       phone: form.phone,
       area: form.area,
@@ -209,10 +210,8 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
       render: user => (
         <span className="block min-w-0">
           <span className="flex items-center gap-2">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-black text-white" style={{ backgroundColor: user.avatarColor || '#176b4d' }}>
-              {(user.profileName || user.fullName).slice(0, 1).toUpperCase()}
-            </span>
-            <strong className="block text-slate-900">{user.profileName || user.fullName}</strong>
+            <Avatar nome={user.fullName} foto={user.avatarPhoto} cor={user.avatarColor} />
+            <strong className="block text-slate-900">{user.fullName}</strong>
           </span>
           <span className="block text-xs text-slate-600 break-words">{user.email}</span>
           {user.jobTitle || user.area ? <span className="block text-xs text-slate-500">{[user.jobTitle, user.area].filter(Boolean).join(' · ')}</span> : null}
@@ -345,7 +344,7 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
       <Modal
         open={Boolean(editingUser)}
         title={editingUser ? `Editar ${editingUser.fullName}` : 'Editar usuário'}
-        description="Atualize o perfil, os dados de equipe e os módulos liberados."
+        description="Foto, nome, dados de equipe e o que a pessoa pode acessar."
         size="lg"
         busy={saving}
         onClose={() => setEditingUser(null)}
@@ -353,9 +352,8 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
         footer={<div className="flex justify-end gap-2"><Button variant="subtle" onClick={() => setEditingUser(null)} disabled={saving}>Cancelar</Button><Button variant="primary" onClick={() => void saveProfile()} disabled={saving}>{saving ? 'Salvando...' : 'Salvar alterações'}</Button></div>}
       >
         <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2"><EscolherAvatar nome={form.fullName || editingUser?.fullName || ''} foto={form.avatarPhoto} cor={form.avatarColor} disabled={saving} onFoto={avatarPhoto => setForm({ ...form, avatarPhoto })} onCor={avatarColor => setForm({ ...form, avatarColor })} /></div>
           <label className="space-y-1.5 sm:col-span-2"><span className={labelClass}>Nome completo</span><TextInput value={form.fullName} onChange={event => setForm({ ...form, fullName: event.target.value })} /></label>
-          <label className="space-y-1.5"><span className={labelClass}>Nome de perfil</span><TextInput value={form.profileName} onChange={event => setForm({ ...form, profileName: event.target.value })} placeholder="Como aparece no sistema" /></label>
-          <label className="space-y-1.5"><span className={labelClass}>Cor do avatar</span><div className="flex items-center gap-2"><input type="color" value={form.avatarColor} onChange={event => setForm({ ...form, avatarColor: event.target.value })} className="h-11 w-full rounded-xl border border-slate-300 bg-white p-1 accent-[#176b4d]" /><Button type="button" size="sm" variant="subtle" onClick={() => setForm({ ...form, avatarColor: '#176b4d' })} disabled={saving}>Restaurar</Button></div></label>
           <label className="space-y-1.5"><span className={labelClass}>Cargo</span><TextInput value={form.jobTitle} onChange={event => setForm({ ...form, jobTitle: event.target.value })} /></label>
           <label className="space-y-1.5"><span className={labelClass}>Área</span><TextInput value={form.area} onChange={event => setForm({ ...form, area: event.target.value })} /></label>
           <label className="space-y-1.5"><span className={labelClass}>Matrícula</span><TextInput value={form.registration} onChange={event => setForm({ ...form, registration: event.target.value })} /></label>

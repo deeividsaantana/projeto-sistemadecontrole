@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import { NomeComAvatar } from './perfil/NomeComAvatar';
 import {
   AlertTriangle,
   Archive,
@@ -1076,7 +1077,7 @@ export default function ControlePresencaTab({
       ),
     },
     { chave: 'motivo', titulo: 'Motivo', larguraMinima: 180, render: item => item.motivo || '—', dica: item => item.motivo || undefined },
-    { chave: 'editadoPor', titulo: 'Quem alterou', larguraMinima: 140, valorOrdenacao: item => item.editadoPor, render: item => item.editadoPor || '—' },
+    { chave: 'editadoPor', titulo: 'Quem alterou', larguraMinima: 140, valorOrdenacao: item => item.editadoPor, render: item => <NomeComAvatar nome={item.editadoPor} /> },
     { chave: 'editadoEm', titulo: 'Quando', larguraMinima: 140, valorOrdenacao: item => item.editadoEm, render: item => <span className="tabular-nums">{quandoBr(item.editadoEm)}</span> },
   ];
 
