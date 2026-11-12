@@ -4,7 +4,7 @@
  * pessoa logada pode fazer nesta etapa (acoesDisponiveis).
  */
 import { useState, type ReactNode } from 'react';
-import { CalendarClock, CheckCircle2, LoaderCircle, PackageCheck, PackageX, Send, ShieldCheck, ShieldX, Truck, XCircle } from 'lucide-react';
+import { CalendarClock, CheckCircle2, FileDown, LoaderCircle, PackageCheck, PackageX, Send, ShieldCheck, ShieldX, Truck, XCircle } from 'lucide-react';
 import { BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO } from '../cadastros/estilos';
 import { Campo } from '../../shared/ui/Lancamento';
 import {
@@ -63,6 +63,7 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
   const [erro, setErro] = useState('');
   const [acaoEmAndamento, setAcaoEmAndamento] = useState<Acao['tipo'] | null>(null);
   const [confirmacao, setConfirmacao] = useState('');
+  const [imprimindo, setImprimindo] = useState(false);
   const acoes = acoesDisponiveis(sol, ator);
   const situacao = situacaoDe(sol, hoje);
   const rastreio = rastreioDe(sol, hoje);
@@ -133,6 +134,11 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
   }, s => `Pedido ${s.numeroPedido} da ${s.numero} enviado para aprovação.`);
 
   const prazoPodeMudar = sol.etapa === 'Aprovado' || sol.etapa === 'Em Trânsito';
+  const imprimirFicha = async () => {
+    setImprimindo(true);
+    try { const { gerarFichaSolicitacaoPdf } = await import('./pdfReportSolicitacoes'); await gerarFichaSolicitacaoPdf(sol, hoje); }
+    finally { setImprimindo(false); }
+  };
 
   return (
     // Na aba inteira: o pedido (itens, compra, entrega e ações) à esquerda e a
@@ -141,7 +147,7 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
     <section className={`${CARTAO} grid min-w-0 gap-4 p-4 lg:col-span-2 lg:p-5`} aria-label="Onde o pedido está">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className={`text-base font-black ${rastreio.tom === 'atraso' ? 'text-rose-700' : rastreio.tom === 'falta' ? 'text-[#c2410c]' : 'text-slate-900'}`}>{rastreio.frase}</p>
-        <SeloSituacao situacao={situacao} />
+        <div className="flex flex-wrap items-center gap-2"><SeloSituacao situacao={situacao} /><button type="button" onClick={() => void imprimirFicha()} disabled={imprimindo} className={BOTAO_SECUNDARIO} data-testid="pedido-imprimir-pdf"><FileDown className="size-4" aria-hidden="true" /> {imprimindo ? 'Gerando PDF…' : 'Imprimir ficha PDF'}</button></div>
       </div>
       {rastreio.tom !== 'cancelado' && (
         <ol className="grid grid-cols-5" aria-label={`Etapa: ${PASSOS_RASTREIO[rastreio.passo]}`}>
