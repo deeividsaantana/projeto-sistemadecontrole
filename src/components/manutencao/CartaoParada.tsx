@@ -194,7 +194,7 @@ export function CartaoParada({ registro, parada, ordemNumero, tipo, podeEditar, 
       )}
 
       {podeEditar && aberto && (
-        <form className="mt-auto space-y-3 rounded-xl bg-gradient-to-b from-emerald-50/60 to-emerald-50/30 border border-emerald-100 p-4" onSubmit={event => { event.preventDefault(); confirmar(); }}>
+        <form className="mt-auto space-y-3 rounded-xl border border-emerald-100 bg-emerald-50/60 p-4" onSubmit={event => { event.preventDefault(); confirmar(); }}>
           <fieldset className="space-y-3 border-0 p-0">
             <legend className="sr-only">Lançar {emManutencao ? 'liberação' : 'entrada em manutenção'}</legend>
             <label className={`${ROTULO} block`}>

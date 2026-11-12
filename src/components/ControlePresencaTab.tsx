@@ -12,14 +12,12 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ClipboardCopy,
   Download,
   Edit3,
   FileSpreadsheet,
   FileText,
   Filter,
   History,
-  MessageCircle,
   Plus,
   Radio,
   RotateCcw,
@@ -43,7 +41,6 @@ import { generateSecurePublicToken } from '../utils/publicLinkSecurity';
 import { CartaoIndicador, ConfirmDialog, Modal, PageHeader } from '../shared/ui';
 import { AbasDaTela, idDaAba, type ItemDasAbas } from '../shared/ui/AbasDaTela';
 import { TelaCheia } from '../shared/ui/TelaCheia';
-import { BuscaColaborador } from './shared/BuscaColaborador';
 import { TabelaPadrao, type ColunaTabela } from '../shared/ui/TabelaPadrao';
 import { normalizeComparable } from '../utils/canonicalIdentity';
 import { readableTeamText, recoverTeamGroups, teamRecordMatches } from '../utils/teamIdentity';
@@ -738,21 +735,6 @@ export default function ControlePresencaTab({
     setFeedback('Equipe salva e disponível no controle ao vivo.');
   };
 
-  const copyLink = async (token: string, label = 'Link') => {
-    const url = presenceLink(token);
-    try {
-      await navigator.clipboard.writeText(url);
-      setFeedback(`${label} copiado.`);
-    } catch {
-      setFeedback(url);
-    }
-  };
-
-  const shareOnWhatsApp = (group: GrupoEquipe) => {
-    const message = `Olá ${group.responsavel}, registre a presença da equipe ${group.nome}: ${presenceLink(group.token)}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
-  };
-
   const exportCsv = () => {
     const csv = toCsv([
       ['Data', 'Equipe', 'Responsável', 'Frente', 'Colaborador', 'Função', 'Status', 'Observação', 'Horário'],
@@ -1259,13 +1241,6 @@ export default function ControlePresencaTab({
       faixa={aviso || faixaDaVista ? <>{aviso}{faixaDaVista && <div className={aviso ? 'mt-2' : undefined}>{faixaDaVista}</div>}</> : undefined}
     >
 
-      <BuscaColaborador
-        funcionarios={safeFuncionarios}
-        onSelecionado={() => {
-          // A seleção de um colaborador pode ser usada para pré-preencher filtros ou ações futuras
-        }}
-      />
-
       {view === 'ao-vivo' && pendingPublicSubmissionsCount > 0 && (
         <div role="status" className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -1625,15 +1600,14 @@ export default function ControlePresencaTab({
         filteredGroups.length === 0 ? (
           <div className={`${PANEL} px-5 py-14 text-center text-sm text-[#5b6870]`}>{teamSearch.trim() ? 'Nenhuma equipe com esse nome.' : 'Nenhuma equipe cadastrada. Toque em Nova equipe para começar.'}</div>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
             {filteredGroups.map(group => {
               const members = group.funcionarioIds.map(id => safeFuncionarios.find(employee => employee.id === id)).filter(Boolean) as Funcionario[];
               return (
-                <article key={group.id} className={`${PANEL} p-5`}>
-                  <div className="flex items-start gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-900"><Users className="h-5 w-5" aria-hidden="true" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-black text-slate-900">{group.nome || 'Equipe sem nome'}</h2><span className={`rounded-md px-2 py-1 text-xs font-bold ${group.status === 'ativo' && group.linkAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-700'}`}>{group.status === 'ativo' && group.linkAtivo ? 'Ativa' : 'Inativa'}</span></div><p className="mt-1 text-sm text-[#5b6870]">{group.responsavel || 'Sem responsável'} · {group.frenteServico || 'Sem frente'}</p></div><button type="button" onClick={() => openGroup(group)} className={`grid size-11 shrink-0 place-items-center rounded-xl border border-slate-200 text-[#5b6870] hover:border-emerald-700 hover:text-emerald-800 ${FOCO}`} aria-label={`Editar ${group.nome}`}><Edit3 className="h-4 w-4" aria-hidden="true" /></button></div>
-                  <div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-slate-50 p-3"><strong className="text-2xl font-black text-slate-900">{members.length}</strong><span className="ml-2 text-xs text-[#5b6870]">colaboradores</span></div><div className="rounded-xl bg-slate-50 p-3"><strong className="text-sm font-black text-slate-900">{group.linkAtivo ? 'Disponível' : 'Pausado'}</strong><span className="mt-1 block text-xs text-[#5b6870]">link da equipe</span></div></div>
-                  {group.token && <div className="mt-4 flex gap-2"><button type="button" onClick={() => copyLink(group.token, `Link de ${group.nome}`)} className={`${SECONDARY_BUTTON} flex-1`}><ClipboardCopy className="h-4 w-4" aria-hidden="true" /> Copiar link</button><button type="button" onClick={() => shareOnWhatsApp(group)} className={`${PRIMARY_BUTTON} flex-1`}><MessageCircle className="h-4 w-4" aria-hidden="true" /> Enviar no WhatsApp</button></div>}
-                  <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4">{onDeleteGrupoEquipe && <button type="button" onClick={() => setEquipeExcluindo(group)} className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-bold text-rose-700 hover:text-rose-900 lg:min-h-9 ${FOCO}`}><Trash2 className="h-4 w-4" aria-hidden="true" /> Excluir</button>}<button type="button" onClick={() => openGroup({ ...group, token: generateToken() })} className={`ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-bold text-emerald-800 hover:text-emerald-950 lg:min-h-9 ${FOCO}`}><RotateCcw className="h-4 w-4" aria-hidden="true" /> Renovar link</button></div>
+                <article key={group.id} role="button" tabIndex={0} onClick={() => openGroup(group)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openGroup(group); } }} aria-label={`Abrir equipe ${group.nome || 'sem nome'} para editar`} className={`${PANEL} cursor-pointer p-3 transition hover:border-emerald-300 hover:bg-emerald-50/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)`}>
+                  <div className="flex items-center gap-3"><div className="grid size-10 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-900"><Users className="h-5 w-5" aria-hidden="true" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="truncate text-base font-black text-slate-900">{group.nome || 'Equipe sem nome'}</h2><span className={`rounded-md px-2 py-1 text-xs font-bold ${group.status === 'ativo' && group.linkAtivo ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-700'}`}>{group.status === 'ativo' && group.linkAtivo ? 'Ativa' : 'Inativa'}</span></div><p className="truncate text-xs text-[#5b6870]">{group.responsavel || 'Sem responsável'} · {group.frenteServico || 'Sem frente'}</p></div><Edit3 className="size-4 shrink-0 text-[#5b6870]" aria-hidden="true" /></div>
+                  <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs"><span><strong className="mr-1 text-lg font-black text-slate-900">{members.length}</strong><span className="text-[#5b6870]">colaboradores</span></span><span className="font-bold text-[#5b6870]">Clique para editar</span></div>
+                  <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2">{onDeleteGrupoEquipe && <button type="button" onClick={event => { event.stopPropagation(); setEquipeExcluindo(group); }} className={`inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-rose-700 hover:text-rose-900 ${FOCO}`}><Trash2 className="h-4 w-4" aria-hidden="true" /> Excluir</button>}<button type="button" onClick={event => { event.stopPropagation(); openGroup({ ...group, token: generateToken() }); }} className={`ml-auto inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-emerald-800 hover:text-emerald-950 ${FOCO}`}><RotateCcw className="h-4 w-4" aria-hidden="true" /> Renovar link</button></div>
                 </article>
               );
             })}

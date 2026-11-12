@@ -10,7 +10,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { AlertTriangle, ArrowLeft, ClipboardCheck, ClipboardList, FileSpreadsheet, History, LayoutGrid, List, PackagePlus, PackageSearch, Search, ShieldCheck, Upload, Users } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ClipboardCheck, ClipboardList, FileSpreadsheet, History, LayoutGrid, List, PackagePlus, PackageSearch, Search, ShieldCheck, Upload } from 'lucide-react';
 import { Modal, PageHeader, isoDay } from '../shared/ui';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { AbasDaTela, idDaAba, type ItemDasAbas } from '../shared/ui/AbasDaTela';
@@ -41,13 +41,12 @@ import {
 } from '../utils/solicitacoesPlanilha';
 import { NovaSolicitacao } from './solicitacoes/NovaSolicitacao';
 import { DetalheSolicitacao } from './solicitacoes/DetalheSolicitacao';
-import { PessoasSuprimentosLista } from './solicitacoes/PessoasSuprimentosLista';
 import { SeloSituacao } from './solicitacoes/SeloSituacao';
 import { SeloItem } from './solicitacoes/SeloItem';
 import { CartaoRastreio } from './solicitacoes/CartaoRastreio';
 import { AvatarPessoa, dataHora } from './solicitacoes/AvatarPessoa';
 
-type Subtela = 'pedidos' | 'nova' | 'conferencia' | 'historico' | 'pessoas';
+type Subtela = 'pedidos' | 'nova' | 'conferencia' | 'historico';
 
 interface SolicitacoesTabProps {
   solicitacoes: Solicitacao[];
@@ -58,7 +57,6 @@ interface SolicitacoesTabProps {
   /** Perfil do app que grava (leitura só consulta). */
   podeEditar: boolean;
   onSalvar: (registros: Solicitacao[], descricao: string) => void;
-  onSalvarPessoas: (pessoas: PessoaSuprimentos[]) => void;
 }
 
 type ComSituacao = { sol: Solicitacao; situacao: SituacaoSolicitacao };
@@ -98,7 +96,7 @@ const novoId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? 
 const contem = (termo: string, valores: Array<string | number | undefined>) =>
   !termo || valores.some(valor => valor !== undefined && String(valor).toLowerCase().includes(termo));
 
-export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmin, podeEditar, onSalvar, onSalvarPessoas }: SolicitacoesTabProps) {
+export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmin, podeEditar, onSalvar }: SolicitacoesTabProps) {
   const escopo = useRef<HTMLElement>(null);
   const arquivo = useRef<HTMLInputElement>(null);
   const hoje = isoDay(new Date());
@@ -239,7 +237,6 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
       : [acompanhar]),
     { id: 'conferencia', rotulo: 'Conferência', icone: ClipboardList, contador: itensComFalta, contadorRotulo: 'itens com falta' },
     { id: 'historico', rotulo: 'Histórico', icone: History },
-    ...(ehAdmin ? [{ id: 'pessoas' as const, rotulo: 'Pessoas e papéis', curto: 'Pessoas', icone: Users }] : []),
   ];
 
   const colunas: ColunaTabela<ComSituacao>[] = [
@@ -305,7 +302,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
             <ClipboardCheck className="size-4 shrink-0 text-[#176b4d]" aria-hidden="true" />
             {ator.papel
               ? <span className="truncate"><strong className="text-slate-900">{ator.nome}</strong> · {NOME_DO_PAPEL[ator.papel]}</span>
-              : <span>Seu login só consulta este módulo.{ehAdmin && ' Ligue o login a uma pessoa em "Pessoas e papéis".'}</span>}
+              : <span>Seu login só consulta este módulo.{ehAdmin && ' Vincule o login a uma pessoa em Cadastros > Acessos.'}</span>}
           </span>
           {exerce(ator, 'aprovador') && aguardandoAprovacao.length > 0 && !(subtela === 'pedidos' && filtro === 'aprovacao') && (
             <button type="button" onClick={() => irPara('aprovacao')} className="flex min-h-9 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 text-sm font-bold text-amber-900">
@@ -473,9 +470,6 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
           />
         )}
 
-        {subtela === 'pessoas' && ehAdmin && (
-          <PessoasSuprimentosLista pessoas={pessoas} onSalvar={onSalvarPessoas} />
-        )}
 
       </>)}
 

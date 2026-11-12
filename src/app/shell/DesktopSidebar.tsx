@@ -34,8 +34,8 @@ const readCollapsed = () => {
  * "deixar profissional"). Fundo branco como o resto do sistema, grupos
  * sempre abertos com o nome discreto (sem setas para abrir e fechar), item
  * aberto em verde-claro com a barrinha verde à esquerda, e o ambiente do
- * cliente num cartão logo abaixo da marca. Quem está logado e o botão de sair
- * ficam só na barra do topo, para não repetir.
+ * cliente num cartão compacto logo abaixo da marca. O projeto também aparece
+ * na barra superior.
  */
 export function DesktopSidebar({ activeTab, groups, onNavigate }: DesktopSidebarProps) {
   const [collapsed, setCollapsed] = useState(readCollapsed);

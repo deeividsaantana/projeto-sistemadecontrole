@@ -5,7 +5,6 @@ import {
   FolderPlus,
   Hammer,
   LayoutDashboard,
-  UserRound,
   Wrench,
   Activity,
   Users,
@@ -25,7 +24,7 @@ export const NAVIGATION_GROUPS = [
   {
     label: 'Visão geral',
     items: [
-      { id: 'dashboard', label: 'Painel de Controle', icon: LayoutDashboard },
+      { id: 'dashboard', label: 'Visão geral', icon: LayoutDashboard },
     ],
   },
   {
@@ -52,7 +51,6 @@ export const NAVIGATION_GROUPS = [
   {
     label: 'Pessoas',
     items: [
-      { id: 'colaboradores', label: 'Colaboradores', icon: UserRound },
       { id: 'presenca', label: 'Presença e Controle', icon: Users },
     ],
   },
@@ -117,6 +115,7 @@ export const MODULE_REDIRECTS: Readonly<Record<string, string>> = {
   // Administração saiu em 10/11/2026: Acessos e o Link de presença foram para
   // Cadastros (só o administrador vê); o resto saiu junto.
   administracao: 'cadastros',
+  colaboradores: 'cadastros',
 };
 
 const SIDEBAR_GROUP_LABELS: Record<string, string> = {
@@ -146,7 +145,10 @@ export const SIDEBAR_NAVIGATION_GROUPS = NAVIGATION_GROUPS
 
 export const ALL_NAVIGATION_ITEMS = SIDEBAR_NAVIGATION_GROUPS
   .map(group => group.items as readonly NavigationItem[])
-  .reduce<NavigationItem[]>((items, groupItems) => items.concat(groupItems), []);
+  .reduce<NavigationItem[]>((items, groupItems) => items.concat(groupItems), [])
+  // Colaboradores é uma vista de Cadastros: continua sendo um módulo válido
+  // para permissões e links antigos, mas não ganha um segundo botão na sidebar.
+  .concat({ id: 'colaboradores', label: 'Colaboradores', icon: Users });
 
 // Task 8: presenca-publica é acessível a todos os perfis (rota pública)
 const PRESENCA_PUBLICA = 'presenca-publica';
