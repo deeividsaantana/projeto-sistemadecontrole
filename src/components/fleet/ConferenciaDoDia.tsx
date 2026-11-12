@@ -4,7 +4,7 @@
  * A confirmar / Todos / Lançados) e a célula de situação da tabela.
  */
 import type { ReactNode } from 'react';
-import { AlertTriangle, CheckCircle2, Plus, type LucideIcon } from 'lucide-react';
+import { AlertTriangle, Camera, CheckCircle2, Plus, type LucideIcon } from 'lucide-react';
 import { CARTAO, FOCO } from '../cadastros/estilos';
 
 export type FiltroConferencia = 'pending' | 'all' | 'informed';
@@ -129,9 +129,12 @@ export function GradeConferencia({ itens, nomeFaltantes, nomeLancados, vazio, te
           <li key={item.id} data-linha-lista
             className={`flex min-w-0 flex-col gap-1.5 rounded-2xl p-3 ${item.informado ? 'border border-slate-200 bg-white' : 'border-2 border-amber-300 bg-amber-50'}`}>
             <span className="flex items-start justify-between gap-2">
-              <span className="min-w-0">
+              <span className="flex min-w-0 items-start gap-2">
+                {/^[A-Z]{2}\d/.test(item.titulo) && <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500" title="Foto da máquina"><Camera className="size-4" aria-hidden="true" /></span>}
+                <span className="min-w-0">
                 <strong className={`block truncate text-lg leading-tight text-slate-950 ${/^[A-Z]{2}\d/.test(item.titulo) ? 'font-mono' : ''}`} title={item.titulo}>{item.titulo}</strong>
                 <span className="block truncate text-sm text-[#5b6870]" title={item.detalhe}>{item.detalhe}{item.grupo ? ` · ${item.grupo}` : ''}</span>
+                </span>
               </span>
               {item.informado
                 ? <CheckCircle2 className="size-5 shrink-0 text-emerald-600" aria-hidden="true" />

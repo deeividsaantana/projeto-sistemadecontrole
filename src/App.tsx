@@ -127,6 +127,7 @@ import { CLIENTE } from './config/marca';
 
 // Supabase is authoritative for authentication and synchronization.
 const db = undefined;
+const localDemoMode = import.meta.env.DEV && import.meta.env.VITE_DEV_MODE === 'true';
 import { supabaseAuth as auth, type SupabaseAuthUser as User } from './auth/supabaseAuth';
 import { loadSupabaseMemberships } from './supabase/memberships';
 import {
@@ -917,7 +918,13 @@ export default function App() {
     hydrateLocalData();
   }, []);
 
-  useEffect(() => auth.onAuthStateChanged(async user => {
+  useEffect(() => {
+    if (localDemoMode) {
+      setCurrentUserRole('admin');
+      setIsAuthenticating(false);
+      return;
+    }
+    return auth.onAuthStateChanged(async user => {
     if (!user) {
       setCurrentUser(null);
       setIsLoggedIn(false);
@@ -947,7 +954,8 @@ export default function App() {
     } finally {
       setIsAuthenticating(false);
     }
-  }), []);
+    });
+  }, []);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -1816,7 +1824,7 @@ export default function App() {
     );
   };
 
-  const handleSaveObra = (recebido: ObraLocal, isNew: boolean) => {
+  const handleSaveObra = (recebido: ObraLocal, isNew: boolean, onError?: (error: Error) => void) => {
     const item: ObraLocal = { ...recebido, atualizadoEm: new Date().toISOString() };
     const previous = obras.find(x => x.id === item.id);
     const errors = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: item });
@@ -1835,6 +1843,7 @@ export default function App() {
         writeStorageValue(localStorage, 'renea_obras', JSON.stringify(updated));
       },
       { registroId: item.id, valorAnterior: previous, valorNovo: item, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' },
+      onError,
     );
   };
 
@@ -2094,7 +2103,7 @@ export default function App() {
     return { ok: true, mensagem: alvos.length === 1 ? `${alvos[0].rotulo} foi excluído de vez.` : `${alvos.length} cadastros foram excluídos de vez.` };
   };
 
-  const handleSaveEquipamento = (item: Equipamento, isNew: boolean) => {
+  const handleSaveEquipamento = (item: Equipamento, isNew: boolean, onError?: (error: Error) => void) => {
     const previous = equipamentos.find(x => x.id === item.id);
     const errors = validateCentralRecord({ empresas, equipamentos, funcionarios, obras, record: item });
     if (errors.length > 0) {
@@ -2112,6 +2121,7 @@ export default function App() {
         writeStorageValue(localStorage, 'renea_equipamentos', JSON.stringify(updated));
       },
       { registroId: item.id, valorAnterior: previous, valorNovo: item, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' },
+      onError,
     );
   };
 
@@ -2180,7 +2190,7 @@ export default function App() {
     );
   };
 
-  const handleSaveFuncionario = (item: Funcionario, isNew: boolean) => {
+  const handleSaveFuncionario = (item: Funcionario, isNew: boolean, onError?: (error: Error) => void) => {
     const now = new Date().toISOString();
     const previous = funcionarios.find(x => x.id === item.id);
     const normalizedItem = normalizeFuncionario(item, previous, now);
@@ -2200,6 +2210,7 @@ export default function App() {
         writeStorageValue(localStorage, 'renea_funcionarios', JSON.stringify(updated));
       },
       { registroId: normalizedItem.id, valorAnterior: previous, valorNovo: normalizedItem, tipoOperacao: isNew ? 'CREATE' : 'UPDATE' },
+      onError,
     );
   };
 
@@ -2270,7 +2281,7 @@ export default function App() {
     );
   };
 
-  const handleSaveComboio = (recebido: Comboio, isNew: boolean) => {
+  const handleSaveComboio = (recebido: Comboio, isNew: boolean, onError?: (error: Error) => void) => {
     const item: Comboio = { ...recebido, atualizadoEm: new Date().toISOString() };
     let updated;
     if (isNew) {
@@ -2286,7 +2297,9 @@ export default function App() {
       () => {
         setComboios(updated);
         writeStorageValue(localStorage, 'renea_comboios', JSON.stringify(updated));
-      }
+      },
+      undefined,
+      onError,
     );
   };
 
@@ -2309,7 +2322,7 @@ export default function App() {
     );
   };
 
-  const handleSaveCanteiro = (recebido: Canteiro, isNew: boolean) => {
+  const handleSaveCanteiro = (recebido: Canteiro, isNew: boolean, onError?: (error: Error) => void) => {
     const item: Canteiro = { ...recebido, atualizadoEm: new Date().toISOString() };
     const anterior = isNew ? undefined : canteiros.find(x => x.id === item.id);
     const updated = isNew ? [...canteiros, item] : canteiros.map(x => (x.id === item.id ? item : x));
@@ -2321,14 +2334,16 @@ export default function App() {
       () => {
         setCanteiros(updated);
         writeStorageValue(localStorage, 'renea_canteiros', JSON.stringify(updated));
-      }
+      },
+      undefined,
+      onError,
     );
     if (anterior && anterior.nome.trim() !== item.nome.trim()) {
       renomearCanteiroNosLancamentos(anterior.nome, item.nome);
     }
   };
 
-  const handleSaveTipoCombustivel = (item: TipoCombustivel, isNew: boolean) => {
+  const handleSaveTipoCombustivel = (item: TipoCombustivel, isNew: boolean, onError?: (error: Error) => void) => {
     let updated;
     if (isNew) {
       updated = [...combustiveis, item];
@@ -2343,11 +2358,13 @@ export default function App() {
       () => {
         setCombustiveis(updated);
         writeStorageValue(localStorage, 'renea_combustiveis', JSON.stringify(updated));
-      }
+      },
+      undefined,
+      onError,
     );
   };
 
-  const handleSaveProdutoLubrificacao = (item: ProdutoLubrificacao, isNew: boolean) => {
+  const handleSaveProdutoLubrificacao = (item: ProdutoLubrificacao, isNew: boolean, onError?: (error: Error) => void) => {
     let updated;
     if (isNew) {
       updated = [...lubrificantes, item];
@@ -2362,11 +2379,13 @@ export default function App() {
       () => {
         setLubrificantes(updated);
         writeStorageValue(localStorage, 'renea_lubrificantes', JSON.stringify(updated));
-      }
+      },
+      undefined,
+      onError,
     );
   };
 
-  const handleSaveEtapaServico = (item: EtapaServico, isNew: boolean) => {
+  const handleSaveEtapaServico = (item: EtapaServico, isNew: boolean, onError?: (error: Error) => void) => {
     let updated;
     if (isNew) {
       updated = [...etapas, item];
@@ -2381,7 +2400,9 @@ export default function App() {
       () => {
         setEtapas(updated);
         writeStorageValue(localStorage, 'renea_etapas', JSON.stringify(updated));
-      }
+      },
+      undefined,
+      onError,
     );
   };
 
@@ -3558,20 +3579,20 @@ export default function App() {
     [alertasSistema, preferenciasNotificacao, currentUserRole],
   );
 
-  const handleSaveFrente = (frente: FrenteServico, isNew: boolean) => {
+  const handleSaveFrente = (frente: FrenteServico, isNew: boolean, onError?: (error: Error) => void) => {
     const updated = isNew ? [frente, ...frentesServico] : frentesServico.map(item => item.id === frente.id ? frente : item);
     saveAndLog('Frentes de Serviço', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} a frente ${frente.nome} (${frente.situacao}).`, historyLogs, () => {
       setFrentesServico(updated);
       writeStorageValue(localStorage, STORAGE_KEYS.frentesServico, JSON.stringify(updated));
-    });
+    }, undefined, onError);
   };
 
-  const handleSaveServicoObra = (servico: ServicoObra, isNew: boolean) => {
+  const handleSaveServicoObra = (servico: ServicoObra, isNew: boolean, onError?: (error: Error) => void) => {
     const updated = isNew ? [servico, ...servicosObra] : servicosObra.map(item => item.id === servico.id ? servico : item);
     saveAndLog('Produção', isNew ? 'Criou' : 'Editou', `${isNew ? 'Cadastrou' : 'Editou'} o serviço ${servico.descricao}.`, historyLogs, () => {
       setServicosObra(updated);
       writeStorageValue(localStorage, STORAGE_KEYS.servicosObra, JSON.stringify(updated));
-    });
+    }, undefined, onError);
   };
 
   const handleSaveProducao = (registro: RegistroProducao, isNew: boolean) => {
@@ -4053,11 +4074,11 @@ export default function App() {
   }
 
   // Login Screen Render
-  if (isAuthenticating && !isLoggedIn) {
+  if (isAuthenticating && !isLoggedIn && !localDemoMode) {
     return <AuthLoadingScreen />;
   }
 
-  if (!isLoggedIn) {
+  if (!isLoggedIn && !localDemoMode) {
     return (
       <LoginScreen
         username={username}
@@ -4351,6 +4372,8 @@ export default function App() {
                 lancamentosCusto={lancamentosCusto}
                 orcamento={orcamentoItens}
                 frentes={frentesServico}
+                diariosObra={diariosObra}
+                solicitacoes={solicitacoes}
                 onNavigate={navigateTo}
               />
             )}
@@ -4438,7 +4461,6 @@ export default function App() {
                 ehAdmin={currentUserRole === 'admin'}
                 podeEditar={pode(currentUserRole, 'solicitacoes', 'editar')}
                 onSalvar={handleSaveSolicitacoes}
-                onSalvarPessoas={handleSavePessoasSuprimentos}
               />
             )}
 

@@ -3,26 +3,43 @@
  * pensa (onde, o quê) e a conferência ao lado. O aviso de cada item aparece
  * enquanto ela digita, antes de enviar.
  */
-import { useState } from 'react';
+import { useEffect, useState, type RefObject } from 'react';
 import { Plus, Send, Trash2 } from 'lucide-react';
 import { Campo, Conferencia, Conferido, Etapa } from '../../shared/ui/Lancamento';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO } from '../cadastros/estilos';
 import { UNIDADES, problemasDoItem, problemasPorCampo, type CampoDoItem, type DadosAbertura, type ItemDigitado } from '../../utils/solicitacoes';
 
-const itemVazio = (): ItemDigitado => ({ tipo: 'Material', descricao: '', quantidade: '', unidade: 'un', prazoDesejado: '', permiteParcial: null });
+const itemVazio = (): ItemDigitado => ({ tipo: 'Material', descricao: '', quantidade: '', unidade: 'un', prazoDesejado: '', permiteParcial: null, quantidadePrimeiraEntrega: '' });
 
 interface NovaSolicitacaoProps {
   solicitante: string;
   /** Devolve a mensagem de erro, ou null quando salvou. */
   onEnviar: (dados: DadosAbertura) => string | null;
+  formRef?: RefObject<HTMLFormElement | null>;
 }
 
-export function NovaSolicitacao({ solicitante, onEnviar }: NovaSolicitacaoProps) {
+export function NovaSolicitacao({ solicitante, onEnviar, formRef }: NovaSolicitacaoProps) {
   const [frente, setFrente] = useState('');
   const [estacamento, setEstacamento] = useState('');
   const [itens, setItens] = useState<ItemDigitado[]>([itemVazio()]);
   const [erro, setErro] = useState('');
   const [tentou, setTentou] = useState(false);
+  const chaveRascunho = `renea:solicitacao:rascunho:${solicitante}`;
+
+  useEffect(() => {
+    try {
+      const salvo = localStorage.getItem(chaveRascunho);
+      if (!salvo) return;
+      const rascunho = JSON.parse(salvo) as { frente?: string; estacamento?: string; itens?: ItemDigitado[] };
+      if (typeof rascunho.frente === 'string') setFrente(rascunho.frente);
+      if (typeof rascunho.estacamento === 'string') setEstacamento(rascunho.estacamento);
+      if (Array.isArray(rascunho.itens) && rascunho.itens.length) setItens(rascunho.itens);
+    } catch { /* rascunho corrompido não impede novo lançamento */ }
+  }, [chaveRascunho]);
+
+  useEffect(() => {
+    try { localStorage.setItem(chaveRascunho, JSON.stringify({ frente, estacamento, itens })); } catch { /* armazenamento indisponível não bloqueia o lançamento */ }
+  }, [chaveRascunho, frente, estacamento, itens]);
 
   const mudar = (indice: number, mudanca: Partial<ItemDigitado>) =>
     setItens(atual => atual.map((item, i) => (i === indice ? { ...item, ...mudanca } : item)));
@@ -34,12 +51,14 @@ export function NovaSolicitacao({ solicitante, onEnviar }: NovaSolicitacaoProps)
 
   const enviar = () => {
     setTentou(true);
+    if (!pronto) return;
     const resposta = onEnviar({ solicitante, frente, estacamento, itens });
     setErro(resposta ?? '');
+    if (!resposta) { try { localStorage.removeItem(chaveRascunho); } catch { /* segue após salvar */ } }
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <form ref={formRef} onSubmit={event => { event.preventDefault(); enviar(); }} data-testid="solicitacao-nova-form" className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="grid min-w-0 gap-4">
         <Etapa numero={1} titulo="Onde vai ser usado" feita={frente.trim().length > 0}>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -98,6 +117,11 @@ export function NovaSolicitacao({ solicitante, onEnviar }: NovaSolicitacaoProps)
                       ))}
                     </div>
                   </fieldset>
+                  {item.permiteParcial === true && (
+                    <Campo rotulo="Quantidade da 1ª entrega" para={`sol-primeira-${indice}`} obrigatorio erro={erroDe('quantidadePrimeiraEntrega')} className="sm:col-span-3">
+                      <input id={`sol-primeira-${indice}`} inputMode="decimal" value={item.quantidadePrimeiraEntrega ?? ''} onChange={event => mudar(indice, { quantidadePrimeiraEntrega: event.target.value })} placeholder="Ex.: 10" className={CAMPO} />
+                    </Campo>
+                  )}
                   {erroDe('permiteParcial') && (
                     <p className="text-sm font-semibold text-[#c2410c] sm:col-span-6">{erroDe('permiteParcial')}</p>
                   )}
@@ -118,10 +142,10 @@ export function NovaSolicitacao({ solicitante, onEnviar }: NovaSolicitacaoProps)
           <Conferido rotulo="Itens prontos" valor={`${itensProntos} de ${itens.length}`} ok={itensProntos === itens.length} />
         </dl>
         {erro && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700">{erro}</p>}
-        <button type="button" onClick={enviar} className={`${BOTAO_PRIMARIO} w-full`} aria-disabled={!pronto}>
+        <button type="submit" className={`${BOTAO_PRIMARIO} w-full`} aria-disabled={!pronto}>
           <Send className="size-4" aria-hidden="true" /> Enviar para Suprimentos
         </button>
       </Conferencia>
-    </div>
+    </form>
   );
 }

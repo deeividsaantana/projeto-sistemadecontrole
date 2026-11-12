@@ -7,7 +7,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { AlertTriangle, CheckCircle, Download, Network, Plus, Search, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Download, MoreVertical, Network, Plus, Search, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react';
 import type {
   Canteiro,
   Comboio,
@@ -88,16 +88,16 @@ interface CadastrosTabProps {
   onSaveGrupoEquipe?: (grupo: GrupoEquipe, isNew: boolean) => void;
 
   onSaveEmpresa: (item: Empresa, isNew: boolean, onError?: (error: Error) => void) => void;
-  onSaveObra: (item: ObraLocal, isNew: boolean) => void;
-  onSaveEquipamento: (item: Equipamento, isNew: boolean) => void;
-  onSaveFuncionario: (item: Funcionario, isNew: boolean) => void;
-  onSaveComboio: (item: Comboio, isNew: boolean) => void;
-  onSaveTipoCombustivel: (item: TipoCombustivel, isNew: boolean) => void;
-  onSaveProdutoLubrificacao: (item: ProdutoLubrificacao, isNew: boolean) => void;
-  onSaveCanteiro: (item: Canteiro, isNew: boolean) => void;
-  onSaveEtapaServico: (item: EtapaServico, isNew: boolean) => void;
-  onSaveFrente: (item: FrenteServico, isNew: boolean) => void;
-  onSaveServico: (item: ServicoObra, isNew: boolean) => void;
+  onSaveObra: (item: ObraLocal, isNew: boolean, onError?: (error: Error) => void) => void;
+  onSaveEquipamento: (item: Equipamento, isNew: boolean, onError?: (error: Error) => void) => void;
+  onSaveFuncionario: (item: Funcionario, isNew: boolean, onError?: (error: Error) => void) => void;
+  onSaveComboio: (item: Comboio, isNew: boolean, onError?: (error: Error) => void) => void;
+  onSaveTipoCombustivel: (item: TipoCombustivel, isNew: boolean, onError?: (error: Error) => void) => void;
+  onSaveProdutoLubrificacao: (item: ProdutoLubrificacao, isNew: boolean, onError?: (error: Error) => void) => void;
+  onSaveCanteiro: (item: Canteiro, isNew: boolean, onError?: (error: Error) => void) => void;
+  onSaveEtapaServico: (item: EtapaServico, isNew: boolean, onError?: (error: Error) => void) => void;
+  onSaveFrente: (item: FrenteServico, isNew: boolean, onError?: (error: Error) => void) => void;
+  onSaveServico: (item: ServicoObra, isNew: boolean, onError?: (error: Error) => void) => void;
   /** Inativa empresa, colaborador ou equipamento, mantendo o histórico. */
   onInativar: (tabela: string, id: string) => void;
   usosDoCadastro: (tabela: string, id: string) => UsoCadastro[];
@@ -117,6 +117,7 @@ interface Aviso {
   tipo: 'ok' | 'erro';
   texto: string;
   desfazer?: () => void;
+  tom?: 'erro' | 'aviso';
 }
 
 const TEMPO_DO_AVISO_MS = 10_000;
@@ -141,6 +142,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   const [situacao, setSituacao] = useState<SituacaoLista>('ativos');
   const [filtros, setFiltros] = useState<Record<string, string>>({});
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [acoesAbertas, setAcoesAbertas] = useState(false);
   const [ordem, setOrdem] = useState<{ coluna: string; direcao: 'asc' | 'desc' }>({ coluna: COLUNAS.funcionarios[0].id, direcao: 'asc' });
   const [pagina, setPagina] = useState(1);
   const [organograma, setOrganograma] = useState(false);
@@ -256,16 +258,16 @@ export default function CadastrosTab(props: CadastrosTabProps) {
   const gravar = (registro: RegistroCadastro, novo: boolean, onError?: (error: Error) => void, tabela = TABELA_DA_CATEGORIA[categoria]) => {
     const props = ultimas.current;
     if (tabela === 'empresas') props.onSaveEmpresa(registro as Empresa, novo, onError);
-    else if (tabela === 'funcionarios') props.onSaveFuncionario(registro as Funcionario, novo);
-    else if (tabela === 'equipamentos') props.onSaveEquipamento(registro as Equipamento, novo);
-    else if (tabela === 'obras') props.onSaveObra(registro as ObraLocal, novo);
-    else if (tabela === 'comboios') props.onSaveComboio(registro as Comboio, novo);
-    else if (tabela === 'combustiveis') props.onSaveTipoCombustivel(registro as TipoCombustivel, novo);
-    else if (tabela === 'lubrificantes') props.onSaveProdutoLubrificacao(registro as ProdutoLubrificacao, novo);
-    else if (tabela === 'canteiros') props.onSaveCanteiro(registro as Canteiro, novo);
-    else if (tabela === 'frentesServico') props.onSaveFrente(registro as FrenteServico, novo);
-    else if (tabela === 'servicosObra') props.onSaveServico(registro as ServicoObra, novo);
-    else props.onSaveEtapaServico(registro as EtapaServico, novo);
+    else if (tabela === 'funcionarios') props.onSaveFuncionario(registro as Funcionario, novo, onError);
+    else if (tabela === 'equipamentos') props.onSaveEquipamento(registro as Equipamento, novo, onError);
+    else if (tabela === 'obras') props.onSaveObra(registro as ObraLocal, novo, onError);
+    else if (tabela === 'comboios') props.onSaveComboio(registro as Comboio, novo, onError);
+    else if (tabela === 'combustiveis') props.onSaveTipoCombustivel(registro as TipoCombustivel, novo, onError);
+    else if (tabela === 'lubrificantes') props.onSaveProdutoLubrificacao(registro as ProdutoLubrificacao, novo, onError);
+    else if (tabela === 'canteiros') props.onSaveCanteiro(registro as Canteiro, novo, onError);
+    else if (tabela === 'frentesServico') props.onSaveFrente(registro as FrenteServico, novo, onError);
+    else if (tabela === 'servicosObra') props.onSaveServico(registro as ServicoObra, novo, onError);
+    else props.onSaveEtapaServico(registro as EtapaServico, novo, onError);
   };
 
   const abrirNovo = () => {
@@ -340,7 +342,12 @@ export default function CadastrosTab(props: CadastrosTabProps) {
     let falhou = false;
     gravar(montado.registro, novo, error => {
       falhou = true;
-      setAviso({ tipo: 'erro', texto: `Salvo neste aparelho, mas não chegou à nuvem: ${error.message}` });
+      // A gravação local já aconteceu, mas a edição volta para a tela com os
+      // valores preservados para que a pessoa possa reenviar sem redigitar.
+      setSalvando(false);
+      setFormulario({ editandoId: formulario.editandoId, valores });
+      setErroFormulario(`Salvo neste aparelho, mas não chegou à nuvem. Tente novamente: ${error.message}`);
+      setAviso({ tipo: 'erro', tom: 'aviso', texto: 'O cadastro foi preservado neste aparelho e ficou aguardando reenvio.' });
     });
     setSalvando(false);
     if (falhou) return;
@@ -709,18 +716,15 @@ export default function CadastrosTab(props: CadastrosTabProps) {
             title="Cadastros"
             abas={<AbasDaTela id="cadastros" rotulo="Tipos de cadastro" abas={abas} ativa={vista} onTrocar={escolherVista} idPainel="cadastros-dados" testId="cadastro-aba" />}
             actions={emSistema ? undefined : <>
-              {!emLixeira && (
-                <button type="button" onClick={exportar} disabled={exportando || linhasFiltradas.length === 0} className={`${BOTAO_SECUNDARIO} max-sm:hidden`}>
-                  <Download className="size-5" aria-hidden="true" />
-                  {exportando ? 'Gerando…' : 'Exportar lista'}
+              {!emLixeira && <div className="relative">
+                <button type="button" onClick={() => setAcoesAbertas(atual => !atual)} aria-expanded={acoesAbertas} aria-haspopup="menu" className={`${BOTAO_SECUNDARIO} size-11 min-w-11 justify-center !px-0`} aria-label="Mais ações">
+                  <MoreVertical className="size-5" aria-hidden="true" />
                 </button>
-              )}
-              {podeEditar && importaPlanilha && (
-                <button type="button" onClick={() => arquivoRef.current?.click()} className={BOTAO_SECUNDARIO}>
-                  <Upload className="size-5" aria-hidden="true" />
-                  Importar planilha
-                </button>
-              )}
+                {acoesAbertas && <div role="menu" className="absolute right-0 top-12 z-30 grid min-w-48 gap-1 rounded-md border border-slate-200 bg-white p-1.5 shadow-xl">
+                  <button type="button" role="menuitem" onClick={() => { setAcoesAbertas(false); void exportar(); }} disabled={exportando || linhasFiltradas.length === 0} className="min-h-10 rounded-lg px-3 text-left text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><Download className="mr-2 inline size-4" aria-hidden="true" />{exportando ? 'Gerando…' : 'Exportar lista'}</button>
+                  {podeEditar && importaPlanilha && <button type="button" role="menuitem" onClick={() => { setAcoesAbertas(false); arquivoRef.current?.click(); }} className="min-h-10 rounded-lg px-3 text-left text-sm font-bold text-slate-700 hover:bg-slate-50"><Upload className="mr-2 inline size-4" aria-hidden="true" />Importar planilha</button>}
+                </div>}
+              </div>}
               <input ref={arquivoRef} type="file" accept=".xlsx,.xlsm,.csv,.tsv" onChange={importarArquivo} className="hidden" />
               {podeEditar && (
                 <button type="button" data-testid="cadastro-acao-principal" onClick={abrirNovo} className={`${BOTAO_PRIMARIO} max-sm:order-first px-5`}>
@@ -912,16 +916,16 @@ export default function CadastrosTab(props: CadastrosTabProps) {
             ref={avisoRef}
             role="status"
             data-testid="cadastro-aviso"
-            className={`pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium shadow-2xl ${aviso.tipo === 'ok' ? 'bg-[#176b4d] text-white' : 'bg-rose-700 text-white'}`}
+            className={`pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium shadow-2xl ${aviso.tipo === 'ok' ? 'bg-[#176b4d] text-white' : aviso.tom === 'aviso' ? 'border border-amber-300 bg-amber-50 text-amber-950' : 'bg-rose-700 text-white'}`}
           >
-            {aviso.tipo === 'ok' ? <CheckCircle className="size-5 shrink-0 text-white" aria-hidden="true" /> : <AlertTriangle className="size-5 shrink-0" aria-hidden="true" />}
+            {aviso.tipo === 'ok' ? <CheckCircle className="size-5 shrink-0 text-white" aria-hidden="true" /> : <AlertTriangle className={`size-5 shrink-0 ${aviso.tom === 'aviso' ? 'text-amber-700' : 'text-white'}`} aria-hidden="true" />}
             <span className="min-w-0 flex-1">{aviso.texto}</span>
             {aviso.desfazer && (
               <button type="button" onClick={aviso.desfazer} className={`min-h-11 shrink-0 rounded-lg px-3 font-bold text-orange-300 hover:bg-white/10 ${FOCO}`}>
                 Desfazer
               </button>
             )}
-            <button type="button" aria-label="Fechar aviso" onClick={() => setAviso(null)} className={`inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-white/70 hover:bg-white/10 ${FOCO}`}>
+            <button type="button" aria-label="Fechar aviso" onClick={() => setAviso(null)} className={`inline-flex size-9 shrink-0 items-center justify-center rounded-lg ${aviso.tom === 'aviso' ? 'text-amber-700/70 hover:bg-amber-100' : 'text-white/70 hover:bg-white/10'} ${FOCO}`}>
               <X className="size-4" aria-hidden="true" />
             </button>
           </div>

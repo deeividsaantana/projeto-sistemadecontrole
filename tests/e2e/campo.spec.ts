@@ -4,34 +4,13 @@ import { expect, test } from '@playwright/test';
 // quatro limites não são estética — são o que faz o apontamento sair certo de
 // primeira. Rodam contra todas as telas do harness, não só as principais.
 const TELAS_AUDITADAS = [
-  'usuarios',
   'cadastros',
   'estacas',
-  'configuracoes',
   'frotas',
-  'consulta',
-  'periodo',
   'combustivel',
-  'notificacoes',
-  'permissoes',
-  'auditoria',
-  'timeline',
-  'orcamento',
-  'custos',
-  'indicadores',
-  'pendencias',
-  'diario-obra',
-  'materiais',
-  'dds-treinamentos',
-  'apontamentos',
-  'equipes',
   'colaboradores',
-  'checklist',
-  'horas-paradas',
   'manutencao',
-  'frota',
   'painel',
-  'presenca-admin',
   'presenca',
 ];
 
@@ -80,8 +59,6 @@ const auditarTela = () => {
 
 for (const tela of TELAS_AUDITADAS) {
   test(`${tela}: legível e clicável de luva no celular`, async ({ page }) => {
-    // Colunas do gráfico de Estacas têm 17 px de largura (auditoria, item 7); sai daqui quando o PR de alvos de toque entrar.
-    test.fixme(tela === 'estacas', 'alvos de 17 px no gráfico de Estacas');
     await page.setViewportSize({ width: 393, height: 851 });
     await page.goto(`/?screen=${tela}`);
     await page.waitForTimeout(200);

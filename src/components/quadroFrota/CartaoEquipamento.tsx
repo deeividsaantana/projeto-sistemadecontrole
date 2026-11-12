@@ -3,17 +3,17 @@
  * situação, prefixo grande, modelo, horímetro e operador. O cartão inteiro é
  * o botão que abre o detalhe.
  */
-import { Gauge } from 'lucide-react';
+import { Camera, Gauge } from 'lucide-react';
 import { ROTULO_GRUPO, type CartaoFrota, type GrupoStatus } from '../../modules/frota/quadroFrota';
 import { DesenhoMaquina } from './DesenhoMaquina';
 import { FOCO } from '../cadastros/estilos';
 
 /** Cor de cada situação: faixa, fundo do desenho, etiqueta e bolinha. */
 export const TOM: Record<GrupoStatus, { faixa: string; fundo: string; etiqueta: string; ponto: string }> = {
-  operando: { faixa: 'bg-[#176b4d]', fundo: 'from-emerald-50 to-white', etiqueta: 'bg-emerald-50 text-emerald-800 ring-emerald-200', ponto: 'bg-emerald-500' },
-  manutencao: { faixa: 'bg-rose-600', fundo: 'from-rose-50 to-white', etiqueta: 'bg-rose-50 text-rose-800 ring-rose-200', ponto: 'bg-rose-500' },
-  parado: { faixa: 'bg-amber-400', fundo: 'from-amber-50 to-white', etiqueta: 'bg-amber-50 text-amber-800 ring-amber-200', ponto: 'bg-amber-400' },
-  'sem-lancamento': { faixa: 'bg-slate-300', fundo: 'from-slate-100 to-white', etiqueta: 'bg-slate-100 text-slate-600 ring-slate-200', ponto: 'bg-slate-400' },
+  operando: { faixa: 'bg-[#176b4d]', fundo: 'bg-emerald-50', etiqueta: 'bg-emerald-50 text-emerald-800 ring-emerald-200', ponto: 'bg-emerald-500' },
+  manutencao: { faixa: 'bg-rose-600', fundo: 'bg-rose-50', etiqueta: 'bg-rose-50 text-rose-800 ring-rose-200', ponto: 'bg-rose-500' },
+  parado: { faixa: 'bg-amber-400', fundo: 'bg-amber-50', etiqueta: 'bg-amber-50 text-amber-800 ring-amber-200', ponto: 'bg-amber-400' },
+  'sem-lancamento': { faixa: 'bg-slate-300', fundo: 'bg-slate-100', etiqueta: 'bg-slate-100 text-slate-600 ring-slate-200', ponto: 'bg-slate-400' },
 };
 
 export const numero = (valor: number) => valor.toLocaleString('pt-BR');
@@ -29,10 +29,13 @@ export function CartaoEquipamento({ cartao, onAbrir }: { cartao: CartaoFrota; on
       data-quadro-cartao
       data-testid={`quadro-cartao-${cartao.prefixo}`}
       aria-label={`${cartao.prefixo}, ${cartao.modelo}, ${ROTULO_GRUPO[cartao.grupo]}${cartao.operador ? `, operador ${cartao.operador}` : ', sem operador'}`}
-      className={`group relative flex h-full min-h-[14rem] w-full flex-col overflow-hidden rounded-2xl bg-white text-left transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-1 hover:shadow-[0_20px_40px_-10px_rgba(15,40,31,0.15)] active:scale-[0.97] shadow-[0_2px_8px_rgba(15,40,31,0.08)] ring-1 ring-slate-200 hover:ring-slate-300 ${FOCO}`}
+      className={`group relative flex h-full min-h-[14rem] w-full flex-col overflow-hidden rounded-xl bg-white text-left transition duration-200 hover:ring-slate-300 active:scale-[0.99] ring-1 ring-slate-200 ${FOCO}`}
     >
-      <span className={`relative grid h-24 place-items-center overflow-hidden bg-gradient-to-b pr-9 ${tom.fundo}`}>
+      <span className={`relative grid h-24 place-items-center overflow-hidden pr-9 ${tom.fundo}`}>
         <span className={`absolute inset-x-0 top-0 h-1.5 ${tom.faixa}`} aria-hidden="true" />
+        <span className="absolute right-2 top-2 z-[1] grid size-8 place-items-center rounded-lg bg-white/90 text-slate-500 ring-1 ring-slate-200" title={cartao.foto ? 'Foto da máquina' : 'Máquina sem foto'}>
+          <Camera className="size-4" aria-hidden="true" />
+        </span>
         {cartao.foto
           ? <img src={cartao.foto} alt="" className="h-full w-full object-cover" loading="lazy" />
           : <DesenhoMaquina tipo={cartao.silhueta} className="h-14 w-28 drop-shadow-[0_8px_8px_rgba(15,40,31,0.14)] transition duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-0.5 group-hover:scale-[1.08]" />}

@@ -191,6 +191,9 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
               {(item.quantidadePedido !== undefined && item.quantidadePedido !== item.quantidade) && (
                 <span className="block text-slate-600">No pedido: {numeroBr(item.quantidadePedido)} {item.unidade}</span>
               )}
+              {item.quantidadePrimeiraEntrega !== undefined && (
+                <span className="block text-slate-600">1ª entrega planejada: {numeroBr(item.quantidadePrimeiraEntrega)} {item.unidade}</span>
+              )}
               {(item.quantidadeRecebida ?? 0) > 0 && (
                 <span className="block font-semibold text-[#176b4d]">Chegou: {numeroBr(item.quantidadeRecebida ?? 0)} {item.unidade} · falta {numeroBr(saldoDoItem(item))}</span>
               )}

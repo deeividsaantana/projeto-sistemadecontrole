@@ -165,18 +165,26 @@ export default function CortinaEstacas({ frente, escolhidaId, onEscolher }: Prop
                   <g
                     key={estaca.id}
                     className="cortina-estaca"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={rotulo}
-                    aria-pressed={escolhidaId === estaca.id}
-                    data-escolhida={escolhidaId === estaca.id}
                     onClick={() => onEscolher(estaca)}
-                    onKeyDown={event => escolherPeloTeclado(event, estaca)}
                     onMouseEnter={event => mostrar(event, estaca)}
                     onMouseLeave={() => setEmFoco(null)}
                     onFocus={event => mostrar(event, estaca)}
                     onBlur={() => setEmFoco(null)}
                   >
+                    <rect
+                      x={x - 80}
+                      y={FAIXA_PLANTA}
+                      width="160"
+                      height={Math.max(altura - FAIXA_PLANTA, 44)}
+                      fill="transparent"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={rotulo}
+                      aria-pressed={escolhidaId === estaca.id}
+                      data-escolhida={escolhidaId === estaca.id}
+                      onClick={() => onEscolher(estaca)}
+                      onKeyDown={event => escolherPeloTeclado(event, estaca)}
+                    />
                     {cravada ? (
                       <g data-desce={fundo + acima}>
                         <rect x={x + 1} y={topo} width={PASSO - 2} height={fundo + acima} className="cortina-cravada-corpo" />

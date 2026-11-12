@@ -64,7 +64,7 @@ const exemplo = (): Solicitacao[] => {
 export function SolicitacoesPreview() {
   const como = new URLSearchParams(location.search).get('como') || 'Cássia';
   const [lista, setLista] = useState(exemplo);
-  const [equipe, setEquipe] = useState(pessoas);
+  const [equipe] = useState(pessoas);
   return (
     <SolicitacoesTab
       solicitacoes={lista}
@@ -73,7 +73,6 @@ export function SolicitacoesPreview() {
       ehAdmin
       podeEditar
       onSalvar={registros => setLista(atual => [...registros.filter(r => !atual.some(a => a.id === r.id)), ...atual.map(a => registros.find(r => r.id === a.id) ?? a)])}
-      onSalvarPessoas={setEquipe}
     />
   );
 }

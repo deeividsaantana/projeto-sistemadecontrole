@@ -7,10 +7,10 @@
  * As regras (quem pode o quê, atraso, reagendamento com registro) estão em
  * src/utils/solicitacoes.ts; esta tela só mostra e chama.
  */
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { AlertTriangle, ArrowLeft, ClipboardCheck, ClipboardList, FileSpreadsheet, History, LayoutGrid, List, PackagePlus, PackageSearch, Search, ShieldCheck, Upload, Users } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ClipboardCheck, ClipboardList, FileSpreadsheet, History, LayoutGrid, List, PackagePlus, PackageSearch, Search, ShieldCheck, Upload } from 'lucide-react';
 import { Modal, PageHeader, isoDay } from '../shared/ui';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { AbasDaTela, idDaAba, type ItemDasAbas } from '../shared/ui/AbasDaTela';
@@ -41,13 +41,12 @@ import {
 } from '../utils/solicitacoesPlanilha';
 import { NovaSolicitacao } from './solicitacoes/NovaSolicitacao';
 import { DetalheSolicitacao } from './solicitacoes/DetalheSolicitacao';
-import { PessoasSuprimentosLista } from './solicitacoes/PessoasSuprimentosLista';
 import { SeloSituacao } from './solicitacoes/SeloSituacao';
 import { SeloItem } from './solicitacoes/SeloItem';
 import { CartaoRastreio } from './solicitacoes/CartaoRastreio';
 import { AvatarPessoa, dataHora } from './solicitacoes/AvatarPessoa';
 
-type Subtela = 'pedidos' | 'nova' | 'conferencia' | 'historico' | 'pessoas';
+type Subtela = 'pedidos' | 'nova' | 'conferencia' | 'historico';
 
 interface SolicitacoesTabProps {
   solicitacoes: Solicitacao[];
@@ -58,7 +57,6 @@ interface SolicitacoesTabProps {
   /** Perfil do app que grava (leitura só consulta). */
   podeEditar: boolean;
   onSalvar: (registros: Solicitacao[], descricao: string) => void;
-  onSalvarPessoas: (pessoas: PessoaSuprimentos[]) => void;
 }
 
 type ComSituacao = { sol: Solicitacao; situacao: SituacaoSolicitacao };
@@ -98,13 +96,16 @@ const novoId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? 
 const contem = (termo: string, valores: Array<string | number | undefined>) =>
   !termo || valores.some(valor => valor !== undefined && String(valor).toLowerCase().includes(termo));
 
-export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmin, podeEditar, onSalvar, onSalvarPessoas }: SolicitacoesTabProps) {
+export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmin, podeEditar, onSalvar }: SolicitacoesTabProps) {
   const escopo = useRef<HTMLElement>(null);
   const arquivo = useRef<HTMLInputElement>(null);
   const hoje = isoDay(new Date());
   const [subtela, setSubtela] = useState<Subtela>('pedidos');
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<Filtro>('abertos');
+  const [filtroSolicitante, setFiltroSolicitante] = useState('');
+  const [filtroDataInicio, setFiltroDataInicio] = useState('');
+  const [filtroDataFim, setFiltroDataFim] = useState('');
   const [modo, setModo] = useState<'cards' | 'lista'>('cards');
   const [mostrar, setMostrar] = useState(POR_VEZ);
   const [filtroConferencia, setFiltroConferencia] = useState<FiltroConferencia>('A conferir');
@@ -112,11 +113,27 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
   const [importacao, setImportacao] = useState<Importacao | null>(null);
   const [aviso, setAviso] = useState<{ tom: 'ok' | 'erro'; texto: string } | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const novaFormRef = useRef<HTMLFormElement>(null);
 
   const pessoa = pessoaDoUsuario(pessoas, { nome: usuario.nome, email: usuario.email });
   // Administrador sem pessoa ligada entra como dev: faz tudo no módulo.
   const papel = pessoa?.papel ?? (ehAdmin ? 'dev' : null);
   const ator: Ator = { nome: pessoa?.nome ?? usuario.nome, papel: podeEditar ? papel : null };
+
+  useEffect(() => {
+    const teclar = (event: KeyboardEvent) => {
+      const alvo = event.target as HTMLElement | null;
+      const digitando = Boolean(alvo?.closest('input, textarea, select, [contenteditable="true"]'));
+      if (event.key.toLowerCase() === 'n' && !digitando && !event.ctrlKey && !event.metaKey && !event.altKey && exerce(ator, 'solicitante')) {
+        event.preventDefault(); setAbertaId(null); setSubtela('nova');
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's' && subtela === 'nova' && exerce(ator, 'solicitante')) {
+        event.preventDefault(); novaFormRef.current?.requestSubmit();
+      }
+    };
+    document.addEventListener('keydown', teclar);
+    return () => document.removeEventListener('keydown', teclar);
+  }, [ator.nome, ator.papel, subtela]);
 
   useGSAP(() => {
     const raiz = escopo.current;
@@ -131,6 +148,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
   const aguardandoAprovacao = comSituacao.filter(item => item.situacao === 'Aguardando Aprovação');
   const emAtraso = comSituacao.filter(item => item.situacao === 'Em Atraso');
   const termo = busca.trim().toLowerCase();
+  const solicitantes = useMemo(() => [...new Set(solicitacoes.map(sol => sol.solicitante).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [solicitacoes]);
 
   const contagem = useMemo(
     () => Object.fromEntries(FILTROS.map(item => [item.id, comSituacao.filter(({ situacao }) => item.passa(situacao)).length])) as Record<Filtro, number>,
@@ -142,6 +160,9 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
     const regra = FILTROS.find(item => item.id === filtro) ?? FILTROS[0];
     return comSituacao
       .filter(({ situacao }) => regra.passa(situacao))
+      .filter(({ sol }) => !filtroSolicitante || sol.solicitante === filtroSolicitante)
+      .filter(({ sol }) => !filtroDataInicio || sol.abertaEm.slice(0, 10) >= filtroDataInicio)
+      .filter(({ sol }) => !filtroDataFim || sol.abertaEm.slice(0, 10) <= filtroDataFim)
       .filter(({ sol }) => contem(termo, [sol.numero, sol.numeroSc, sol.numeroPedido, sol.solicitante, sol.frente, sol.estacamento, sol.fornecedor, ...sol.itens.map(item => item.descricao)]))
       .sort((a, b) => Number(b.situacao === 'Em Atraso') - Number(a.situacao === 'Em Atraso')
         || (a.sol.prioridade ?? 999) - (b.sol.prioridade ?? 999)
@@ -239,7 +260,6 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
       : [acompanhar]),
     { id: 'conferencia', rotulo: 'Conferência', icone: ClipboardList, contador: itensComFalta, contadorRotulo: 'itens com falta' },
     { id: 'historico', rotulo: 'Histórico', icone: History },
-    ...(ehAdmin ? [{ id: 'pessoas' as const, rotulo: 'Pessoas e papéis', curto: 'Pessoas', icone: Users }] : []),
   ];
 
   const colunas: ColunaTabela<ComSituacao>[] = [
@@ -274,6 +294,14 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
   const comTabela = (subtela === 'pedidos' && modo === 'lista') || subtela === 'conferencia' || subtela === 'historico';
   const comBusca = subtela === 'pedidos' || subtela === 'conferencia' || subtela === 'historico';
   const irPara = (proximo: Filtro) => { setAbertaId(null); setSubtela('pedidos'); setFiltro(proximo); setMostrar(POR_VEZ); };
+  const irParaConferencia = () => { setAbertaId(null); setSubtela('conferencia'); setFiltroConferencia('A conferir'); };
+  const resumo = [
+    { id: 'abertos', rotulo: 'Em aberto', valor: contagem.abertos, detalhe: 'pedidos no fluxo', acao: () => irPara('abertos'), tom: 'text-[#176b4d]' },
+    { id: 'aprovacao', rotulo: 'Aprovações', valor: aguardandoAprovacao.length, detalhe: exerce(ator, 'aprovador') ? 'aguardando sua decisão' : 'aguardando gerência', acao: () => irPara('aprovacao'), tom: 'text-[#c2410c]' },
+    { id: 'atraso', rotulo: 'Em atraso', valor: emAtraso.length, detalhe: 'pedidos para cobrar', acao: () => irPara('atraso'), tom: 'text-rose-700' },
+    { id: 'conferencia', rotulo: 'A conferir', valor: itensComFalta, detalhe: 'itens aguardando chegada', acao: irParaConferencia, tom: 'text-slate-900' },
+    { id: 'entregues', rotulo: 'Entregues', valor: contagem.entregues, detalhe: 'pedidos concluídos', acao: () => irPara('entregues'), tom: 'text-[#176b4d]' },
+  ] as const;
 
   return (
     <TelaCheia ref={escopo} id="solicitacoes-tab" rotulo="Solicitações e compras"
@@ -285,6 +313,9 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
         actions={<>
           <button type="button" onClick={() => void exportar()} disabled={ocupado || solicitacoes.length === 0} className={BOTAO_SECUNDARIO}>
             <FileSpreadsheet className="size-4" aria-hidden="true" /> <span className="sm:hidden">Excel</span><span className="hidden sm:inline">Relatórios Excel</span>
+          </button>
+          <button type="button" onClick={() => void (async () => { setOcupado(true); try { const { gerarRelatorioSolicitacoesPdf } = await import('./solicitacoes/pdfReportSolicitacoes'); await gerarRelatorioSolicitacoesPdf(solicitacoes, hoje); setAviso({ tom: 'ok', texto: 'Relatório PDF gerado com os pedidos, itens, prazos e conferência.' }); } catch (error) { setAviso({ tom: 'erro', texto: error instanceof Error ? error.message : 'Não foi possível gerar o relatório PDF.' }); } finally { setOcupado(false); } })()} disabled={ocupado || solicitacoes.length === 0} className={BOTAO_SECUNDARIO} data-testid="solicitacoes-relatorio-pdf">
+            <ClipboardList className="size-4" aria-hidden="true" /> <span className="sm:hidden">PDF</span><span className="hidden sm:inline">Relatório PDF</span>
           </button>
           {podeImportar && podeEditar && (
             <button type="button" onClick={() => arquivo.current?.click()} disabled={ocupado} className={BOTAO_SECUNDARIO}>
@@ -299,13 +330,24 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
         </>}
       />}
       faixa={<div data-sol-reveal className="grid gap-2">
+        <section aria-label="Resumo operacional de solicitações" className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+          {resumo.map(item => (
+            <button key={item.id} type="button" onClick={item.acao} data-testid={`resumo-solicitacoes-${item.id}`} className="group min-h-16 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition hover:border-[#176b4d] hover:bg-[#f7f8f6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)">
+              <span className="flex items-center justify-between gap-2">
+                <span className="truncate text-xs font-bold text-slate-600">{item.rotulo}</span>
+                <strong className={`text-xl font-black tabular-nums ${item.tom}`}>{item.valor}</strong>
+              </span>
+              <span className="block truncate text-xs text-slate-500">{item.detalhe}</span>
+            </button>
+          ))}
+        </section>
         {/* Uma linha só: quem é você, avisos, busca e o jeito de mostrar. */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-slate-600">
           <span className={`min-w-0 items-center gap-1.5 ${ator.papel ? 'hidden sm:flex' : 'flex'}`}>
             <ClipboardCheck className="size-4 shrink-0 text-[#176b4d]" aria-hidden="true" />
             {ator.papel
               ? <span className="truncate"><strong className="text-slate-900">{ator.nome}</strong> · {NOME_DO_PAPEL[ator.papel]}</span>
-              : <span>Seu login só consulta este módulo.{ehAdmin && ' Ligue o login a uma pessoa em "Pessoas e papéis".'}</span>}
+              : <span>Seu login só consulta este módulo.{ehAdmin && ' Vincule o login a uma pessoa em Cadastros > Acessos.'}</span>}
           </span>
           {exerce(ator, 'aprovador') && aguardandoAprovacao.length > 0 && !(subtela === 'pedidos' && filtro === 'aprovacao') && (
             <button type="button" onClick={() => irPara('aprovacao')} className="flex min-h-9 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 text-sm font-bold text-amber-900">
@@ -344,6 +386,25 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
             </div>
           )}
         </div>
+        {subtela === 'pedidos' && !aberta && (
+          <div className="grid gap-2 rounded-xl border border-slate-200 bg-[#f7f8f6] p-2 sm:grid-cols-2 lg:grid-cols-4" aria-label="Filtros detalhados de pedidos">
+            <label className="grid gap-1 text-xs font-bold text-slate-600">Solicitante
+              <select value={filtroSolicitante} onChange={event => setFiltroSolicitante(event.target.value)} className={CAMPO}>
+                <option value="">Todos os solicitantes</option>
+                {solicitantes.map(nome => <option key={nome}>{nome}</option>)}
+              </select>
+            </label>
+            <label className="grid gap-1 text-xs font-bold text-slate-600">Data inicial
+              <input type="date" value={filtroDataInicio} onChange={event => setFiltroDataInicio(event.target.value)} className={CAMPO} />
+            </label>
+            <label className="grid gap-1 text-xs font-bold text-slate-600">Data final
+              <input type="date" value={filtroDataFim} onChange={event => setFiltroDataFim(event.target.value)} className={CAMPO} />
+            </label>
+            <button type="button" onClick={() => { setFiltroSolicitante(''); setFiltroDataInicio(''); setFiltroDataFim(''); setFiltro('abertos'); }} className={`${BOTAO_SECUNDARIO} self-end`}>
+              Limpar filtros
+            </button>
+          </div>
+        )}
         {aviso && (
           <p role={aviso.tom === 'erro' ? 'alert' : 'status'} className={`rounded-xl border px-3 py-2 text-sm font-bold ${aviso.tom === 'erro' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>{aviso.texto}</p>
         )}
@@ -462,6 +523,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
 
         {subtela === 'nova' && exerce(ator, 'solicitante') && (
           <NovaSolicitacao
+            formRef={novaFormRef}
             solicitante={ator.nome}
             onEnviar={dados => {
               const resultado = abrirSolicitacao(dados, ator, solicitacoes, new Date().toISOString(), novoId());
@@ -473,9 +535,6 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
           />
         )}
 
-        {subtela === 'pessoas' && ehAdmin && (
-          <PessoasSuprimentosLista pessoas={pessoas} onSalvar={onSalvarPessoas} />
-        )}
 
       </>)}
 

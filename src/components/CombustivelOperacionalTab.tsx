@@ -325,7 +325,8 @@ export default function CombustivelOperacionalTab({
   return (
     <TelaCheia ref={escopo} id="combustivel-tab" testId="combustivel-tab" rotulo="Combustível"
       idAbaAtiva={listaSomente ? undefined : idDaAba('combustivel', abaAtiva)} idDados="combustivel-dados" chaveRolagem={abaAtiva}
-      cabecalho={listaSomente ? undefined : <div data-comb-reveal>
+      classeDados={view === 'novo' ? 'h-full' : undefined}
+      cabecalho={listaSomente || view === 'novo' ? undefined : <div data-comb-reveal>
         <PageHeader compact eyebrow="Frota" title="Combustível"
           abas={<AbasDaTela id="combustivel" rotulo="Área de combustível" abas={vistas} ativa={abaAtiva} onTrocar={trocarVista} idPainel="combustivel-dados" />}
           actions={<>
@@ -349,7 +350,7 @@ export default function CombustivelOperacionalTab({
         </p>
         {view !== 'novo' && erro && <p role="alert" className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200" data-testid="combustivel-erro">{erro}</p>}
       </>}>
-      {view === 'novo' && <div data-comb-reveal className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl bg-white ring-1 ring-inset ring-slate-200" data-testid="combustivel-lancar">
+      {view === 'novo' && <div data-comb-reveal className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white" data-testid="combustivel-lancar">
         <LancamentoCombustivel
           key={lancamento.chave}
           abastecimentos={ativos}

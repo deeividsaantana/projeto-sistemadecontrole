@@ -99,6 +99,8 @@ export interface ItemSolicitado {
   unidade: string;
   prazoDesejado: string;
   permiteParcial: boolean;
+  /** Planejamento da primeira entrega quando o pedido aceita fracionamento. */
+  quantidadePrimeiraEntrega?: number;
   /** Quanto entra neste pedido de compra (Suprimentos fraciona se parcial = sim). */
   quantidadePedido?: number;
   /** Soma do que já chegou ao destino. */
@@ -242,11 +244,12 @@ export interface ItemDigitado {
   unidade?: string;
   prazoDesejado?: string;
   permiteParcial?: boolean | null;
+  quantidadePrimeiraEntrega?: number | string;
 }
 
-export type CampoDoItem = 'tipo' | 'descricao' | 'quantidade' | 'unidade' | 'prazoDesejado' | 'permiteParcial' | 'especificacao';
+export type CampoDoItem = 'tipo' | 'descricao' | 'quantidade' | 'unidade' | 'prazoDesejado' | 'permiteParcial' | 'quantidadePrimeiraEntrega' | 'especificacao';
 
-const ORDEM_DOS_CAMPOS: readonly CampoDoItem[] = ['tipo', 'descricao', 'quantidade', 'unidade', 'prazoDesejado', 'permiteParcial', 'especificacao'];
+const ORDEM_DOS_CAMPOS: readonly CampoDoItem[] = ['tipo', 'descricao', 'quantidade', 'unidade', 'prazoDesejado', 'permiteParcial', 'quantidadePrimeiraEntrega', 'especificacao'];
 
 /** Problema de cada campo do item (só os campos com problema), para o aviso ficar junto do campo. */
 export const problemasPorCampo = (item: ItemDigitado): Partial<Record<CampoDoItem, string>> => {
@@ -259,6 +262,13 @@ export const problemasPorCampo = (item: ItemDigitado): Partial<Record<CampoDoIte
   if (!UNIDADES.includes(item.unidade as Unidade)) problemas.unidade = `Unidade fora do padrão (${UNIDADES.join(', ')}).`;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(item.prazoDesejado || '')) problemas.prazoDesejado = 'Informe o prazo desejado.';
   if (typeof item.permiteParcial !== 'boolean') problemas.permiteParcial = 'Diga se aceita entrega parcial.';
+  // Registros legados/importados podem não ter o novo campo; o formulário
+  // novo cria a chave vazia e, nesse caso, exige o preenchimento.
+  if (item.permiteParcial === true && item.quantidadePrimeiraEntrega !== undefined) {
+    const primeira = Number(String(item.quantidadePrimeiraEntrega ?? '').replace(',', '.'));
+    if (!(primeira > 0)) problemas.quantidadePrimeiraEntrega = 'Informe a quantidade da 1ª entrega.';
+    else if (quantidade > 0 && primeira > quantidade) problemas.quantidadePrimeiraEntrega = 'A 1ª entrega não pode ser maior que a quantidade total.';
+  }
   if (descricao.length >= 3) {
     const falta = faltaEspecificacao(descricao);
     if (falta) problemas.especificacao = falta;
@@ -434,6 +444,7 @@ export const abrirSolicitacao = (
         unidade: item.unidade as Unidade,
         prazoDesejado: item.prazoDesejado as string,
         permiteParcial: item.permiteParcial as boolean,
+        ...(item.permiteParcial && item.quantidadePrimeiraEntrega !== undefined ? { quantidadePrimeiraEntrega: Number(String(item.quantidadePrimeiraEntrega).replace(',', '.')) } : {}),
       })),
       etapa: 'Pendente Suprimentos',
       statusAprovacao: 'Pendente',

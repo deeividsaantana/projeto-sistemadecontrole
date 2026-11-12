@@ -6,7 +6,7 @@ import { expect, test } from '@playwright/test';
  * fazia à mão a cada versão.
  */
 const TELAS: Array<{ screen: string; titulo: string | RegExp }> = [
-  { screen: 'painel', titulo: 'Painel de Controle' },
+  { screen: 'painel', titulo: 'Visão geral' },
   { screen: 'manutencao', titulo: 'Manutenção' },
   { screen: 'colaboradores', titulo: 'Colaboradores' },
   { screen: 'diario-obra', titulo: 'Diário de Obra' },
@@ -137,7 +137,9 @@ test('painel mostra cada indicador executivo uma única vez', async ({ page }) =
   const painel = page.locator('#dashboard-tab');
   await expect(painel.getByText('Fechamento operacional', { exact: true })).toBeHidden();
   await expect(painel.getByText('Pulso do dia', { exact: true })).toBeHidden();
-  await expect(painel.getByText('Combustível', { exact: true })).toHaveCount(1);
+  // Combustível aparece no KPI e no resumo de módulos, sem duplicar um mesmo
+  // indicador dentro do próprio bloco.
+  await expect(painel.getByText('Combustível', { exact: true })).toHaveCount(2);
   await expect(painel.getByText('Pessoas em campo', { exact: true })).toHaveCount(1);
   await expect(painel.locator('[data-dashboard-hero]')).toHaveCount(0);
 });
