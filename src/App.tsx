@@ -111,6 +111,7 @@ const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
 const SolicitacoesTab = lazy(() => import('./components/SolicitacoesTab'));
 const PluviometroTab = lazy(() => import('./components/PluviometroTab'));
+const ProgramacaoTerraplanagem = lazy(() => import('./components/ProgramacaoTerraplanagem'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -3603,6 +3604,14 @@ export default function App() {
     });
   };
 
+  const handleSavePlanejamento = (item: PlanejamentoItem, isNew: boolean) => {
+    const updated = isNew ? [item, ...planejamentoItens] : planejamentoItens.map(atual => atual.id === item.id ? item : atual);
+    saveAndLog('Planejamento', isNew ? 'Criou' : 'Editou', `${isNew ? 'Criou' : 'Editou'} a programação de ${item.servicoDescricao}.`, historyLogs, () => {
+      setPlanejamentoItens(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.planejamentoItens, JSON.stringify(updated));
+    });
+  };
+
   // Solicitações: a tela manda só os registros que mudaram; o resto fica.
   const handleSaveSolicitacoes = (registros: Solicitacao[], descricao: string) => {
     const ids = new Set(registros.map(item => item.id));
@@ -4471,6 +4480,18 @@ export default function App() {
                 responsavel={activeUserName}
                 podeEditar={pode(currentUserRole, 'diario-obra', 'editar') || pode(currentUserRole, 'pluviometro', 'editar')}
                 onSave={handleSaveDiarioObra}
+              />
+            )}
+
+            {activeTab === 'programacao' && (
+              <ProgramacaoTerraplanagem
+                planejamento={planejamentoItens}
+                producao={producaoRegistros}
+                servicos={servicosObra}
+                responsavel={activeUserName}
+                podeEditar={pode(currentUserRole, 'diario-obra', 'editar') || pode(currentUserRole, 'pluviometro', 'editar')}
+                onSavePlanejamento={handleSavePlanejamento}
+                onSaveProducao={handleSaveProducao}
               />
             )}
 

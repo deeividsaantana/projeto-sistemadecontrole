@@ -31,6 +31,7 @@ export const NAVIGATION_GROUPS = [
     label: 'Operação',
     items: [
       { id: 'pluviometro', label: 'Pluviômetro', icon: CloudRain },
+      { id: 'programacao', label: 'Programação', icon: CalendarRange },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
     ],
   },
@@ -69,6 +70,7 @@ export const NAVIGATION_GROUPS = [
 export const PRIMARY_MODULE_IDS = [
   'dashboard',
   'pluviometro',
+  'programacao',
   // Controle de Estacas é aba própria: a importação com prévia/lote/lineage
   // vive dentro dela (decisão confirmada com o usuário em 2026-09-22).
   'estacas',
@@ -106,9 +108,9 @@ export const MODULE_REDIRECTS: Readonly<Record<string, string>> = {
   equipes: 'presenca',
   auditoria: 'cadastros',
   permissoes: 'cadastros',
-  // Previsto x Executado saiu do menu em 10/11/2026, a pedido do usuário. Os
-  // planos salvos continuam guardados; o endereço antigo cai no Pluviômetro.
-  planejamento: 'pluviometro',
+  // O endereço antigo de Previsto x Executado agora abre a aba própria de
+  // Programação, preservando links já salvos.
+  planejamento: 'programacao',
   // Relatórios saiu do menu em 10/11/2026, a pedido do usuário: cada aba já
   // tem a sua parte de relatórios. O endereço antigo cai no Painel.
   relatorios: 'dashboard',
