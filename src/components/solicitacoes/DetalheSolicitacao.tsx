@@ -14,7 +14,9 @@ import {
   aplicarAcao,
   formatarDia,
   formatarReais,
+  PASSOS_RASTREIO,
   numeroBr,
+  rastreioDe,
   saldoDoItem,
   situacaoDe,
   situacaoDoItem,
@@ -26,7 +28,6 @@ import {
 } from '../../utils/solicitacoes';
 import { SeloSituacao } from './SeloSituacao';
 import { SeloItem } from './SeloItem';
-import { CartaoRastreio } from './CartaoRastreio';
 import { AvatarPessoa, dataHora } from './AvatarPessoa';
 
 interface DetalheProps {
@@ -62,6 +63,7 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
   const [erro, setErro] = useState('');
   const acoes = acoesDisponiveis(sol, ator);
   const situacao = situacaoDe(sol, hoje);
+  const rastreio = rastreioDe(sol, hoje);
 
   // Pedido de compra (Suprimentos)
   const [fornecedor, setFornecedor] = useState(sol.fornecedor ?? '');
@@ -125,21 +127,58 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
   const prazoPodeMudar = sol.etapa === 'Aprovado' || sol.etapa === 'Em Trânsito';
 
   return (
-    <div className="grid gap-5">
-      <ul className="grid grid-cols-1" aria-label="Onde o pedido está">
-        <CartaoRastreio sol={sol} hoje={hoje} ativo={false} onAbrir={() => document.getElementById('linha-do-tempo')?.scrollIntoView({ behavior: 'smooth' })} />
-      </ul>
-
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600">
+    // Na aba inteira: o pedido (itens, compra, entrega e ações) à esquerda e a
+    // linha do tempo à direita. Em tela estreita fica tudo um embaixo do outro.
+    <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)] lg:gap-6">
+    <section className={`${CARTAO} grid min-w-0 gap-4 p-4 lg:col-span-2 lg:p-5`} aria-label="Onde o pedido está">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className={`text-base font-black ${rastreio.tom === 'atraso' ? 'text-rose-700' : rastreio.tom === 'falta' ? 'text-[#c2410c]' : 'text-slate-900'}`}>{rastreio.frase}</p>
         <SeloSituacao situacao={situacao} />
-        {sol.numeroSc && <span>SC <strong className="text-slate-900">{sol.numeroSc}</strong></span>}
-        {sol.prioridade !== undefined && <span>Prioridade <strong className="text-[#c2410c]">{sol.prioridade}º</strong></span>}
-        {sol.comprador && <span>Comprador: <strong className="text-slate-900">{sol.comprador}</strong></span>}
-        {sol.origem === 'planilha-controle' && <span>Veio da planilha de controle</span>}
       </div>
+      {rastreio.tom !== 'cancelado' && (
+        <ol className="grid grid-cols-5" aria-label={`Etapa: ${PASSOS_RASTREIO[rastreio.passo]}`}>
+          {PASSOS_RASTREIO.map((passo, indice) => {
+            const feito = indice < rastreio.passo || rastreio.passo === 4;
+            const agora = indice === rastreio.passo && rastreio.passo !== 4;
+            const parado = rastreio.tom === 'atraso' || rastreio.tom === 'falta';
+            return (
+              <li key={passo} className="relative flex flex-col items-center gap-1.5" aria-current={agora ? 'step' : undefined}>
+                {indice > 0 && <span aria-hidden="true" className={`absolute right-1/2 top-4 h-1 w-full ${indice <= rastreio.passo ? 'bg-[#176b4d]' : 'bg-slate-200'}`} />}
+                <span aria-hidden="true" className={`relative z-10 grid size-9 place-items-center rounded-full text-sm font-black ${feito ? 'bg-[#176b4d] text-white' : agora ? (parado ? 'bg-rose-600 text-white' : 'bg-[#c2410c] text-white') : 'bg-slate-200 text-slate-600'}`}>
+                  {feito ? <CheckCircle2 className="size-5" /> : indice + 1}
+                </span>
+                <span className={`text-center text-xs sm:text-sm ${agora ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{passo}</span>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-slate-100 pt-4 text-sm sm:grid-cols-3 xl:grid-cols-6">
+        {([
+          ['Solicitante', sol.solicitante],
+          ['Frente', sol.origem === 'planilha-controle' ? '' : [sol.frente, sol.estacamento].filter(Boolean).join(' · ')],
+          ['SC', sol.numeroSc],
+          ['Prioridade', sol.prioridade !== undefined ? `${sol.prioridade}º` : ''],
+          ['Itens', `${rastreio.itensChegaram} de ${rastreio.itensTotal} chegaram`],
+          ['Comprador', sol.comprador],
+          ['Pedido de compra', sol.numeroPedido],
+          ['Fornecedor', sol.fornecedor],
+          ['Valor', sol.valorTotal !== undefined ? formatarReais(sol.valorTotal) : ''],
+          ['Entrega até', sol.janelaFim ? formatarDia(sol.janelaFim) : ''],
+          ['Aberto em', formatarDia(sol.abertaEm)],
+          ['Origem', sol.origem === 'planilha-controle' ? 'Planilha de controle' : 'Sistema'],
+        ] as const).filter(([, valor]) => valor).map(([rotulo, valor]) => (
+          <div key={rotulo} className="min-w-0">
+            <dt className="text-xs text-slate-600">{rotulo}</dt>
+            <dd className="truncate font-bold text-slate-900" title={String(valor)}>{valor}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
 
+    <div className="grid min-w-0 content-start gap-5">
       <Bloco titulo="Itens e conferência">
-        <ul className="grid gap-2">
+        <ul className="grid grid-cols-1 gap-2 xl:grid-cols-2">
           {sol.itens.map(item => (
             <li key={item.itemId} className={`${CARTAO} grid gap-1 p-3 text-sm`}>
               <span className="flex items-start justify-between gap-2">
@@ -395,6 +434,9 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
 
       {erro && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700">{erro}</p>}
 
+    </div>
+
+    <aside className={`${CARTAO} grid min-w-0 gap-3 p-4 lg:sticky lg:top-0`}>
       <Bloco titulo="Linha do tempo do pedido (histórico oficial)">
         <ol id="linha-do-tempo" className="grid gap-3 text-sm">
           {[...sol.eventos].reverse().map((evento, indice) => (
@@ -412,6 +454,7 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
           ))}
         </ol>
       </Bloco>
+    </aside>
     </div>
   );
 }

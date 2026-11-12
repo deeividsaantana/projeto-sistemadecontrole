@@ -297,3 +297,19 @@ test('rastreio: cada etapa do fluxo cai num passo do card', () => {
   assert.equal(rastreioDe(aprovado, '2026-11-20').tom, 'atraso');
   assert.equal(rastreioDe({ ...sol, etapa: 'Cancelado' }, '2026-11-12').tom, 'cancelado');
 });
+
+test('nuvem: o mesmo pedido mexido em dois aparelhos não perde lançamento da linha do tempo', async () => {
+  const { mergeCloudSnapshots } = await import('../src/cloudMerge');
+  const base = ateAprovado();
+  // Aparelho A: Cássia reagenda. Aparelho B (mais novo): almoxarife confere.
+  const a = ok(aplicarAcao(base, { tipo: 'reagendar', novaData: '2026-11-25', motivo: 'Usina parada' }, cassia, '2026-11-13T08:00:00.000Z'));
+  const b = ok(aplicarAcao(base, { tipo: 'apontarFalta', itemId: 1, observacao: 'não veio na carga' }, almox, '2026-11-13T09:00:00.000Z'));
+  const junto = mergeCloudSnapshots({ solicitacoes: [a] }, { solicitacoes: [b] }).solicitacoes as Solicitacao[];
+  assert.equal(junto.length, 1);
+  const [sol] = junto;
+  assert.ok(sol.eventos.some(evento => evento.acao === 'Apontou falta'));
+  assert.ok(sol.eventos.some(evento => evento.usuario === 'Cássia' && /Reagend/i.test(evento.acao)), 'o reagendamento do outro aparelho fica');
+  assert.equal(sol.reagendamentos.length, 1);
+  assert.equal(sol.itens[0].conferencias?.length, 1);
+  assert.equal(sol.eventos.length, new Set(sol.eventos.map(evento => `${evento.data}${evento.acao}`)).size, 'sem repetir');
+});

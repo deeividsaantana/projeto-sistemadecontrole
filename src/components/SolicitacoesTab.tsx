@@ -10,8 +10,8 @@
 import { useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { AlertTriangle, ClipboardCheck, ClipboardList, FileSpreadsheet, History, LayoutGrid, List, PackagePlus, PackageSearch, Search, ShieldCheck, Upload, Users } from 'lucide-react';
-import { Drawer, Modal, PageHeader, isoDay } from '../shared/ui';
+import { AlertTriangle, ArrowLeft, ClipboardCheck, ClipboardList, FileSpreadsheet, History, LayoutGrid, List, PackagePlus, PackageSearch, Search, ShieldCheck, Upload, Users } from 'lucide-react';
+import { Modal, PageHeader, isoDay } from '../shared/ui';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { AbasDaTela, idDaAba, type ItemDasAbas } from '../shared/ui/AbasDaTela';
 import { TabelaPadrao, type ColunaTabela } from '../shared/ui/TabelaPadrao';
@@ -164,6 +164,11 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
   );
 
   const aberta = solicitacoes.find(sol => sol.id === abertaId) ?? null;
+  // O pedido abre na aba inteira: volta ao topo para começar pelas etapas.
+  const abrirPedido = (id: string) => {
+    setAbertaId(id);
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0 });
+  };
 
   const salvarUma = (sol: Solicitacao, descricao: string) => {
     onSalvar([sol], descricao);
@@ -268,15 +273,15 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
 
   const comTabela = (subtela === 'pedidos' && modo === 'lista') || subtela === 'conferencia' || subtela === 'historico';
   const comBusca = subtela === 'pedidos' || subtela === 'conferencia' || subtela === 'historico';
-  const irPara = (proximo: Filtro) => { setSubtela('pedidos'); setFiltro(proximo); setMostrar(POR_VEZ); };
+  const irPara = (proximo: Filtro) => { setAbertaId(null); setSubtela('pedidos'); setFiltro(proximo); setMostrar(POR_VEZ); };
 
   return (
     <TelaCheia ref={escopo} id="solicitacoes-tab" rotulo="Solicitações e compras"
-      longa={!comTabela} idAbaAtiva={idDaAba('solicitacoes', subtela)} idDados="solicitacoes-dados" chaveRolagem={subtela}
+      longa={!comTabela || Boolean(aberta)} idAbaAtiva={idDaAba('solicitacoes', subtela)} idDados="solicitacoes-dados" chaveRolagem={`${subtela}-${abertaId ?? ''}`}
       cabecalho={<PageHeader
         eyebrow="Suprimentos"
         title="Solicitações e compras"
-        abas={<AbasDaTela<Subtela> id="solicitacoes" rotulo="Subtelas de solicitações" abas={subtelas} ativa={subtela} onTrocar={setSubtela} idPainel="solicitacoes-dados" testId="solicitacoes-aba" />}
+        abas={<AbasDaTela<Subtela> id="solicitacoes" rotulo="Subtelas de solicitações" abas={subtelas} ativa={subtela} onTrocar={proxima => { setAbertaId(null); setSubtela(proxima); }} idPainel="solicitacoes-dados" testId="solicitacoes-aba" />}
         actions={<>
           <button type="button" onClick={() => void exportar()} disabled={ocupado || solicitacoes.length === 0} className={BOTAO_SECUNDARIO}>
             <FileSpreadsheet className="size-4" aria-hidden="true" /> <span className="sm:hidden">Excel</span><span className="hidden sm:inline">Relatórios Excel</span>
@@ -313,7 +318,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
               <AlertTriangle className="size-4 shrink-0" aria-hidden="true" /> {emAtraso.length} em atraso
             </button>
           )}
-          {comBusca && (
+          {comBusca && !aberta && (
             <div className="flex min-w-0 flex-[1_1_20rem] items-center gap-2">
               <label className="relative min-w-0 flex-1 basis-48">
                 <span className="sr-only">Buscar</span>
@@ -342,7 +347,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
         {aviso && (
           <p role={aviso.tom === 'erro' ? 'alert' : 'status'} className={`rounded-xl border px-3 py-2 text-sm font-bold ${aviso.tom === 'erro' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>{aviso.texto}</p>
         )}
-        {subtela === 'pedidos' && (
+        {subtela === 'pedidos' && !aberta && (
           <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 xl:flex-wrap" role="group" aria-label="Filtrar pedidos">
             {FILTROS.map(item => (
               <button key={item.id} type="button" aria-pressed={filtro === item.id} onClick={() => { setFiltro(item.id); setMostrar(POR_VEZ); }}
@@ -359,101 +364,19 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
     >
       <input ref={arquivo} type="file" accept=".xlsx,.csv" hidden onChange={event => void escolherArquivo(event.target.files?.[0])} />
 
-      {subtela === 'pedidos' && modo === 'cards' && (
-        pedidos.length === 0 ? (
-          <p data-sol-reveal className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-600">
-            Nenhum pedido neste filtro.{solicitacoes.length === 0 && ' Abra uma solicitação ou traga a planilha de controle em "Importar planilha".'}
-          </p>
-        ) : (
-          <div className="grid gap-3">
-            <ul data-sol-reveal className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {pedidos.slice(0, mostrar).map(({ sol }) => (
-                <CartaoRastreio key={sol.id} sol={sol} hoje={hoje} ativo={sol.id === abertaId} onAbrir={() => setAbertaId(sol.id)} />
-              ))}
-            </ul>
-            {pedidos.length > mostrar && (
-              <button type="button" onClick={() => setMostrar(atual => atual + POR_VEZ)} className={`${BOTAO_SECUNDARIO} justify-self-center`}>
-                Mostrar mais {Math.min(POR_VEZ, pedidos.length - mostrar)} de {pedidos.length - mostrar} restantes
-              </button>
-            )}
+      {aberta ? (
+        <section data-sol-reveal aria-labelledby="pedido-aberto-titulo" className="grid min-w-0 gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" onClick={() => setAbertaId(null)} className={BOTAO_SECUNDARIO} data-testid="pedido-voltar">
+              <ArrowLeft className="size-4" aria-hidden="true" /> Voltar
+            </button>
+            <div className="min-w-0">
+              <h2 id="pedido-aberto-titulo" className="text-lg font-black text-slate-900">
+                {aberta.origem === 'planilha-controle' || !aberta.frente ? aberta.numero : `${aberta.numero} · ${aberta.frente}`}
+              </h2>
+              <p className="text-sm text-slate-600">Aberta por {aberta.solicitante} em {formatarDia(aberta.abertaEm)}</p>
+            </div>
           </div>
-        )
-      )}
-
-      {subtela === 'pedidos' && modo === 'lista' && (
-        <div data-sol-reveal className="min-h-0 flex-1">
-          <TabelaPadrao
-            titulo="Pedidos"
-            linhas={pedidos}
-            colunas={colunas}
-            idDaLinha={({ sol }) => sol.id}
-            nomeDoItem={{ um: 'pedido', varios: 'pedidos' }}
-            onAbrirLinha={({ sol }) => setAbertaId(sol.id)}
-            linhaAtivaId={abertaId}
-            classeLinha={({ situacao }) => (situacao === 'Em Atraso' ? 'bg-rose-50' : undefined)}
-            vazio="Nenhum pedido neste filtro."
-            testIdLinha="solicitacao-linha"
-            densa
-          />
-        </div>
-      )}
-
-      {subtela === 'conferencia' && (
-        <div data-sol-reveal className="min-h-0 flex-1">
-          <TabelaPadrao
-            titulo="Conferência de itens"
-            linhas={linhasConferencia}
-            colunas={colunasConferencia}
-            idDaLinha={({ sol, item }) => `${sol.id}-${item.itemId}`}
-            nomeDoItem={{ um: 'item', varios: 'itens' }}
-            onAbrirLinha={({ sol }) => setAbertaId(sol.id)}
-            classeLinha={({ situacao }) => (situacao === 'Falta' ? 'bg-rose-50' : undefined)}
-            vazio={filtroConferencia === 'A conferir' ? 'Nada esperando conferência.' : 'Nenhum item neste filtro.'}
-            testIdLinha="conferencia-linha"
-            densa
-          />
-        </div>
-      )}
-
-      {subtela === 'historico' && (
-        <div data-sol-reveal className="min-h-0 flex-1">
-          <TabelaPadrao
-            titulo="Histórico de todos os pedidos"
-            linhas={linhasHistorico}
-            colunas={colunasHistorico}
-            idDaLinha={evento => evento.id}
-            nomeDoItem={{ um: 'registro', varios: 'registros' }}
-            onAbrirLinha={evento => setAbertaId(evento.sol.id)}
-            ordenacaoInicial={{ chave: 'data', direcao: 'desc' }}
-            vazio="Nenhum registro ainda."
-            testIdLinha="historico-linha"
-            densa
-          />
-        </div>
-      )}
-
-      {subtela === 'nova' && exerce(ator, 'solicitante') && (
-        <NovaSolicitacao
-          solicitante={ator.nome}
-          onEnviar={dados => {
-            const resultado = abrirSolicitacao(dados, ator, solicitacoes, new Date().toISOString(), novoId());
-            if ('erro' in resultado) return resultado.erro;
-            salvarUma(resultado.solicitacao, `Abriu a solicitação ${resultado.solicitacao.numero}. Suprimentos já vê na fila.`);
-            irPara('abertos');
-            return null;
-          }}
-        />
-      )}
-
-      {subtela === 'pessoas' && ehAdmin && (
-        <PessoasSuprimentosLista pessoas={pessoas} onSalvar={onSalvarPessoas} />
-      )}
-
-      <Drawer open={Boolean(aberta)} onClose={() => setAbertaId(null)}
-        title={aberta ? (aberta.origem === 'planilha-controle' ? aberta.numero : `${aberta.numero} · ${aberta.frente}`) : ''}
-        description={aberta ? `Aberta por ${aberta.solicitante} em ${formatarDia(aberta.abertaEm)}` : undefined}
-        className="sm:max-w-xl">
-        {aberta && (
           <DetalheSolicitacao
             key={`${aberta.id}-${aberta.atualizadoEm}`}
             solicitacao={aberta}
@@ -462,8 +385,100 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
             hoje={hoje}
             onSalvar={salvarUma}
           />
+        </section>
+      ) : (<>
+        {subtela === 'pedidos' && modo === 'cards' && (
+          pedidos.length === 0 ? (
+            <p data-sol-reveal className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-600">
+              Nenhum pedido neste filtro.{solicitacoes.length === 0 && ' Abra uma solicitação ou traga a planilha de controle em "Importar planilha".'}
+            </p>
+          ) : (
+            <div className="grid gap-3">
+              <ul data-sol-reveal className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                {pedidos.slice(0, mostrar).map(({ sol }) => (
+                  <CartaoRastreio key={sol.id} sol={sol} hoje={hoje} ativo={sol.id === abertaId} onAbrir={() => abrirPedido(sol.id)} />
+                ))}
+              </ul>
+              {pedidos.length > mostrar && (
+                <button type="button" onClick={() => setMostrar(atual => atual + POR_VEZ)} className={`${BOTAO_SECUNDARIO} justify-self-center`}>
+                  Mostrar mais {Math.min(POR_VEZ, pedidos.length - mostrar)} de {pedidos.length - mostrar} restantes
+                </button>
+              )}
+            </div>
+          )
         )}
-      </Drawer>
+
+        {subtela === 'pedidos' && modo === 'lista' && (
+          <div data-sol-reveal className="min-h-0 flex-1">
+            <TabelaPadrao
+              titulo="Pedidos"
+              linhas={pedidos}
+              colunas={colunas}
+              idDaLinha={({ sol }) => sol.id}
+              nomeDoItem={{ um: 'pedido', varios: 'pedidos' }}
+              onAbrirLinha={({ sol }) => abrirPedido(sol.id)}
+              linhaAtivaId={abertaId}
+              classeLinha={({ situacao }) => (situacao === 'Em Atraso' ? 'bg-rose-50' : undefined)}
+              vazio="Nenhum pedido neste filtro."
+              testIdLinha="solicitacao-linha"
+              densa
+            />
+          </div>
+        )}
+
+        {subtela === 'conferencia' && (
+          <div data-sol-reveal className="min-h-0 flex-1">
+            <TabelaPadrao
+              titulo="Conferência de itens"
+              linhas={linhasConferencia}
+              colunas={colunasConferencia}
+              idDaLinha={({ sol, item }) => `${sol.id}-${item.itemId}`}
+              nomeDoItem={{ um: 'item', varios: 'itens' }}
+              onAbrirLinha={({ sol }) => abrirPedido(sol.id)}
+              classeLinha={({ situacao }) => (situacao === 'Falta' ? 'bg-rose-50' : undefined)}
+              vazio={filtroConferencia === 'A conferir' ? 'Nada esperando conferência.' : 'Nenhum item neste filtro.'}
+              testIdLinha="conferencia-linha"
+              densa
+            />
+          </div>
+        )}
+
+        {subtela === 'historico' && (
+          <div data-sol-reveal className="min-h-0 flex-1">
+            <TabelaPadrao
+              titulo="Histórico de todos os pedidos"
+              linhas={linhasHistorico}
+              colunas={colunasHistorico}
+              idDaLinha={evento => evento.id}
+              nomeDoItem={{ um: 'registro', varios: 'registros' }}
+              onAbrirLinha={evento => abrirPedido(evento.sol.id)}
+              ordenacaoInicial={{ chave: 'data', direcao: 'desc' }}
+              vazio="Nenhum registro ainda."
+              testIdLinha="historico-linha"
+              densa
+            />
+          </div>
+        )}
+
+        {subtela === 'nova' && exerce(ator, 'solicitante') && (
+          <NovaSolicitacao
+            solicitante={ator.nome}
+            onEnviar={dados => {
+              const resultado = abrirSolicitacao(dados, ator, solicitacoes, new Date().toISOString(), novoId());
+              if ('erro' in resultado) return resultado.erro;
+              salvarUma(resultado.solicitacao, `Abriu a solicitação ${resultado.solicitacao.numero}. Suprimentos já vê na fila.`);
+              irPara('abertos');
+              return null;
+            }}
+          />
+        )}
+
+        {subtela === 'pessoas' && ehAdmin && (
+          <PessoasSuprimentosLista pessoas={pessoas} onSalvar={onSalvarPessoas} />
+        )}
+
+      </>)}
+
 
       <Modal open={Boolean(importacao)} onClose={() => setImportacao(null)} title={importacao?.tipo === 'controle' ? 'Trazer a planilha de controle' : 'Conferir importação'} size="lg"
         footer={<div className="flex flex-wrap justify-end gap-2">
