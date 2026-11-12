@@ -432,18 +432,17 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; text-wrap: bal
 .erp-topbar__pending button:hover:not(:disabled) { background: #d97706; }
 .erp-topbar__pending button:disabled { cursor: wait; opacity: .65; }
 .erp-topbar__user { display: flex; min-width: 0; align-items: center; gap: .5rem; padding-left: .75rem; border-left: 1px solid #dce4df; }
-.erp-topbar__avatar { display: grid; width: 2rem; height: 2rem; flex: 0 0 auto; place-items: center; border: 1px solid #b8d9c8; border-radius: 8px; background: #eff8f2; color: #087345; font-size: .75rem; font-weight: 800; }
-.erp-topbar__user > span:last-child { display: grid; min-width: 0; gap: 0; line-height: 1.25; }
-.erp-topbar__user strong { max-width: 11rem; overflow: hidden; color: #10211c; font-size: .75rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.erp-topbar__user small { color: #60716a; font-size: .75rem; }
+.erp-topbar__avatar { display: grid; width: 2rem; height: 2rem; flex: 0 0 auto; place-items: center; border-radius: 999px; color: #fff; font-size: .75rem; font-weight: 800; cursor: pointer; }
+.erp-topbar__avatar--verde { background: #176b4d; }
+.erp-topbar__avatar--azul { background: #1d4ed8; }
+.erp-topbar__avatar:focus-visible { outline: 2px solid var(--renea-focus); outline-offset: 2px; }
+.erp-topbar__user strong { max-width: 11rem; overflow: hidden; color: #10211c; font-size: .875rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .erp-topbar button { min-height: 2.25rem; }
 
-/* Notebook de 1366 px: o nome do usuário cede lugar à obra (fica no title
-   do avatar). Abaixo de 1280 px o status vira só o ponto (o texto continua no
-   title e para leitor de tela) e a trilha sai, porque o título da tela e o
-   item aceso no menu já dizem onde a pessoa está. */
+/* O nome de quem entrou fica sempre à vista (pedido de 11/11/2026); em telas
+   menores ele só encurta com reticências. */
 @media (max-width: 1439px) {
-  .erp-topbar__user > span:last-child { display: none; }
+  .erp-topbar__user strong { max-width: 8rem; }
   .erp-topbar__user { padding-left: .5rem; }
 }
 @media (max-width: 1279px) {

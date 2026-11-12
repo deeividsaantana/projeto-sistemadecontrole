@@ -1,15 +1,14 @@
 import {
   CalendarRange,
   ClipboardList,
+  CloudRain,
   FolderPlus,
   Hammer,
   LayoutDashboard,
-  SunMedium,
   UserRound,
   Wrench,
   Activity,
   Users,
-  NotebookPen,
   ShoppingCart,
   type LucideIcon,
 } from 'lucide-react';
@@ -27,13 +26,12 @@ export const NAVIGATION_GROUPS = [
     label: 'Visão geral',
     items: [
       { id: 'dashboard', label: 'Painel de Controle', icon: LayoutDashboard },
-      { id: 'meu-dia', label: 'Meu dia', icon: SunMedium },
     ],
   },
   {
     label: 'Operação',
     items: [
-      { id: 'diario-obra', label: 'Diário de Obra', icon: NotebookPen },
+      { id: 'pluviometro', label: 'Pluviômetro', icon: CloudRain },
       { id: 'estacas', label: 'Controle de Estacas', icon: Hammer },
     ],
   },
@@ -72,10 +70,7 @@ export const NAVIGATION_GROUPS = [
  */
 export const PRIMARY_MODULE_IDS = [
   'dashboard',
-  // Rotina do assistente de engenharia, pedida em 2026-09-27: checklist do
-  // dia, pendências com prioridade e fechamento do dia.
-  'meu-dia',
-  'diario-obra',
+  'pluviometro',
   // Controle de Estacas é aba própria: a importação com prévia/lote/lineage
   // vive dentro dela (decisão confirmada com o usuário em 2026-09-22).
   'estacas',
@@ -102,17 +97,20 @@ export const isPrimaryModule = (id: string) => SIDEBAR_MODULE_IDS.has(id);
 // por um link guardado. Cada um abre a tela onde aquele dado mora hoje; o que
 // não estiver aqui e não for do menu cai no Painel.
 export const MODULE_REDIRECTS: Readonly<Record<string, string>> = {
-  // Frentes e produção vivem na parte Frentes do Meu dia.
-  frentes: 'meu-dia',
-  producao: 'meu-dia',
+  // Diário de Obra e Meu dia saíram em 11/11/2026; os endereços antigos (e
+  // frentes e produção, que caíam no Meu dia) abrem o Pluviômetro.
+  frentes: 'pluviometro',
+  producao: 'pluviometro',
+  'meu-dia': 'pluviometro',
+  'diario-obra': 'pluviometro',
   // Telas antigas cortadas em 16/10/2026 (auditoria das abas, G6/G7).
   frota: 'controle-equipamentos',
   equipes: 'presenca',
   auditoria: 'cadastros',
   permissoes: 'cadastros',
   // Previsto x Executado saiu do menu em 10/11/2026, a pedido do usuário. Os
-  // planos salvos continuam guardados; o endereço antigo cai no Meu dia.
-  planejamento: 'meu-dia',
+  // planos salvos continuam guardados; o endereço antigo cai no Pluviômetro.
+  planejamento: 'pluviometro',
   // Relatórios saiu do menu em 10/11/2026, a pedido do usuário: cada aba já
   // tem a sua parte de relatórios. O endereço antigo cai no Painel.
   relatorios: 'dashboard',

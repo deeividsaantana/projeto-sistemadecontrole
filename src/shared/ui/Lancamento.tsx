@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { cloneElement, isValidElement, type ReactElement, type ReactNode } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { CARTAO } from '../../components/cadastros/estilos';
 
@@ -26,14 +26,24 @@ export function Etapa({ numero, titulo, ajuda, feita, children }: { numero: numb
   );
 }
 
-/** Campo com o nome em cima: lê de cima para baixo, igual no celular e no computador. */
-export function Campo({ rotulo, para, dica, children, className }: { rotulo: string; para?: string; dica?: ReactNode; children: ReactNode; className?: string }) {
+/**
+ * Campo com o nome em cima: lê de cima para baixo, igual no celular e no computador.
+ * Com `erro`, o campo ganha aria-invalid e o aviso fica ligado a ele por
+ * aria-describedby (precisa de `para`, o id do campo).
+ */
+export function Campo({ rotulo, para, dica, erro, obrigatorio, children, className }: { rotulo: string; para?: string; dica?: ReactNode; erro?: string | null; obrigatorio?: boolean; children: ReactNode; className?: string }) {
+  const erroId = para && erro ? `${para}-erro` : undefined;
+  const campo = erroId && isValidElement<{ 'aria-invalid'?: boolean; 'aria-describedby'?: string }>(children)
+    ? cloneElement(children as ReactElement<{ 'aria-invalid'?: boolean; 'aria-describedby'?: string }>, { 'aria-invalid': true, 'aria-describedby': erroId })
+    : children;
+  const nome = <>{rotulo}{obrigatorio && <span aria-hidden="true" className="text-[#c2410c]"> *</span>}</>;
   return (
     <div className={`min-w-0 ${className ?? ''}`}>
       {para
-        ? <label htmlFor={para} className="mb-1 block text-sm font-bold text-slate-700">{rotulo}</label>
-        : <span className="mb-1 block text-sm font-bold text-slate-700">{rotulo}</span>}
-      {children}
+        ? <label htmlFor={para} className="mb-1 block text-sm font-bold text-slate-700">{nome}</label>
+        : <span className="mb-1 block text-sm font-bold text-slate-700">{nome}</span>}
+      {campo}
+      {erro && <p id={erroId} className="mt-1 text-sm font-semibold text-[#c2410c]">{erro}</p>}
       {dica && <p className="mt-1 text-sm text-slate-600">{dica}</p>}
     </div>
   );
