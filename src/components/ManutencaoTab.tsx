@@ -147,7 +147,7 @@ export default function ManutencaoTab({
   const [editando, setEditando] = useState<OrdemServico | null>(null);
   const [formAberto, setFormAberto] = useState(false);
   const [form, setForm] = useState(formularioVazio());
-  const [erro, setErro] = useState('');
+  const [tentouSalvar, setTentouSalvar] = useState(false);
   const [exclusao, setExclusao] = useState<OrdemServico | null>(null);
   const [exportando, setExportando] = useState(false);
   const [avisoExport, setAvisoExport] = useState('');
@@ -280,7 +280,7 @@ export default function ManutencaoTab({
   const abrirNova = () => {
     setEditando(null);
     setForm(formularioVazio());
-    setErro('');
+    setTentouSalvar(false);
     setFormAberto(true);
   };
 
@@ -300,21 +300,22 @@ export default function ManutencaoTab({
       horaConclusao: ordem.horaConclusao || '',
       observacao: ordem.observacao || '',
     });
-    setErro('');
+    setTentouSalvar(false);
     setFormAberto(true);
   };
 
+  // Aviso de cada campo obrigatório, junto do campo; some quando a pessoa corrige.
+  const errosCampo = tentouSalvar ? {
+    equipamento: form.equipamentoId ? null : 'Selecione o equipamento da ordem.',
+    descricao: form.descricao.trim() ? null : 'Descreva o problema para a oficina saber o que atender.',
+    dataAbertura: form.dataAbertura ? null : 'Informe a data de abertura.',
+  } : { equipamento: null, descricao: null, dataAbertura: null };
+
   const salvar = () => {
-    if (!form.equipamentoId) {
-      setErro('Selecione o equipamento da ordem.');
-      return;
-    }
-    if (!form.descricao.trim()) {
-      setErro('Descreva o problema para a oficina saber o que atender.');
-      return;
-    }
-    if (!form.dataAbertura) {
-      setErro('Informe a data de abertura.');
+    setTentouSalvar(true);
+    const primeiroInvalido = !form.equipamentoId ? 'os-equipamento' : !form.descricao.trim() ? 'os-descricao' : !form.dataAbertura ? 'os-dia' : null;
+    if (primeiroInvalido) {
+      document.getElementById(primeiroInvalido)?.focus();
       return;
     }
     const base: OrdemServico = {
@@ -701,7 +702,7 @@ export default function ManutencaoTab({
           <div className="grid min-w-0 gap-4">
             <Etapa numero={1} titulo="Qual equipamento e o que houve?" ajuda="O problema é o que a oficina lê primeiro." feita={Boolean(form.equipamentoId && form.descricao.trim())}>
               <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-                <Campo rotulo="Equipamento" para="os-equipamento">
+                <Campo rotulo="Equipamento" para="os-equipamento" obrigatorio erro={errosCampo.equipamento}>
                   <select id="os-equipamento" ref={equipamentoFieldRef} value={form.equipamentoId} onChange={event => setForm({ ...form, equipamentoId: event.target.value })} className={CAMPO}>
                     <option value="">Escolha</option>
                     {[...equipamentos]
@@ -717,7 +718,7 @@ export default function ManutencaoTab({
                 <Campo rotulo="Problema" para="os-motivo" className="sm:col-span-2">
                   <input id="os-motivo" value={form.motivo} onChange={event => setForm({ ...form, motivo: event.target.value })} placeholder="Quebra, preventiva, pneu, elétrica..." className={CAMPO} />
                 </Campo>
-                <Campo rotulo="Descrição" para="os-descricao" className="sm:col-span-2">
+                <Campo rotulo="Descrição" para="os-descricao" obrigatorio erro={errosCampo.descricao} className="sm:col-span-2">
                   <textarea id="os-descricao" value={form.descricao} onChange={event => setForm({ ...form, descricao: event.target.value })} rows={3} placeholder="O que aconteceu e o que precisa ser atendido" className={CAMPO} />
                 </Campo>
               </div>
@@ -725,7 +726,7 @@ export default function ManutencaoTab({
 
             <Etapa numero={2} titulo="Quando parou?" feita={Boolean(form.dataAbertura)}>
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                <Campo rotulo="Dia" para="os-dia">
+                <Campo rotulo="Dia" para="os-dia" obrigatorio erro={errosCampo.dataAbertura}>
                   <input id="os-dia" type="date" value={form.dataAbertura} onChange={event => setForm({ ...form, dataAbertura: event.target.value })} className={CAMPO} />
                 </Campo>
                 <Campo rotulo="Hora" para="os-hora">
@@ -772,7 +773,6 @@ export default function ManutencaoTab({
                 Horas paradas (até 10 h por dia): <strong>{horasDaOrdem(editando)?.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} h</strong>
               </p>
             )}
-            {erro && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2.5 text-sm font-bold text-rose-700">{erro}</p>}
           </Conferencia>
         </div>
       </Modal>

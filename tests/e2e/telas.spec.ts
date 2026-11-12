@@ -334,10 +334,15 @@ test('manutenção abre OS por N, foca equipamento e valida salvar por CTRL+ENTE
 
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByLabel('Equipamento')).toBeFocused();
+  const equipamento = dialog.getByRole('combobox', { name: 'Equipamento', exact: true });
+  await expect(equipamento).toBeFocused();
 
   await page.keyboard.press('Control+Enter');
   await expect(dialog.getByText('Selecione o equipamento da ordem.')).toBeVisible();
+  // O erro fica ligado ao campo, para leitor de tela e para quem vê só a cor.
+  await expect(equipamento).toHaveAttribute('aria-invalid', 'true');
+  await expect(equipamento).toHaveAccessibleDescription('Selecione o equipamento da ordem.');
+  await expect(equipamento).toBeFocused();
 });
 
 test('manutenção apresenta uma fila operacional acionável sem cards duplicados', async ({ page }) => {
