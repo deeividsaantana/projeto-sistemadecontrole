@@ -46,6 +46,24 @@ const footer = (doc: jsPDF) => {
   }
 };
 
+const headerAbnt = (doc: jsPDF, logos: { renea?: string; spmar?: string }, titulo: string) => {
+  if (logos.renea) doc.addImage(logos.renea, 'PNG', 30, 10, 30, 17, undefined, 'FAST');
+  if (logos.spmar) doc.addImage(logos.spmar, 'PNG', 160, 13, 30, 7, undefined, 'FAST');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor('#10223A'); doc.text(titulo.toUpperCase(), 105, 35, { align: 'center' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor('#086B3D'); doc.text(`${OBRA.nome} · documentação operacional`, 105, 41, { align: 'center' });
+  doc.setDrawColor('#15824B'); doc.setLineWidth(0.4); doc.line(30, 46, 190, 46);
+};
+
+const footerAbnt = (doc: jsPDF) => {
+  const pages = doc.getNumberOfPages();
+  for (let page = 1; page <= pages; page += 1) {
+    doc.setPage(page); doc.setDrawColor('#15824B'); doc.setLineWidth(0.4); doc.line(30, 277, 190, 277);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor('#717980');
+    doc.text(`RENEA · ${OBRA.nome} · Gerado em ${new Date().toLocaleString('pt-BR')}`, 30, 283);
+    doc.text(`Página ${page} de ${pages}`, 190, 283, { align: 'right' });
+  }
+};
+
 const metric = (doc: jsPDF, x: number, label: string, value: string | number, color: string) => {
   doc.setDrawColor('#C9CDD1'); doc.setFillColor('#FFFFFF'); doc.roundedRect(x, 28, 53.5, 18, 1, 1, 'FD');
   doc.setFont('helvetica', 'bold'); doc.setFontSize(6.2); doc.setTextColor('#10223A'); doc.text(label, x + 4, 34);
@@ -103,18 +121,19 @@ export const gerarFichaSolicitacaoPdf = async (sol: Solicitacao, hoje: string) =
   const doc = new JsPdf({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
   const situacao = situacaoDe(sol, hoje);
   const ultimaConferencia = sol.itens.flatMap(item => item.conferencias ?? []).sort((a, b) => b.data.localeCompare(a.data))[0];
-  header(doc, { renea: logos[0], spmar: logos[1] }, `Ficha ${sol.numero}`, 'documento operacional de solicitação e compra');
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor('#10223A'); doc.text(sol.numero, 12, 34);
-  doc.setFontSize(8); doc.setTextColor(statusColor(situacao)); doc.text(situacao.toUpperCase(), 198, 34, { align: 'right' });
-  doc.setDrawColor('#C9CDD1'); doc.setFillColor('#F7F8F6'); doc.roundedRect(10, 39, 190, 35, 2, 2, 'FD');
+  headerAbnt(doc, { renea: logos[0], spmar: logos[1] }, `Ficha ${sol.numero}`);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor('#10223A'); doc.text(sol.numero, 30, 59);
+  doc.setFontSize(8); doc.setTextColor(statusColor(situacao)); doc.text(situacao.toUpperCase(), 190, 59, { align: 'right' });
+  doc.setDrawColor('#C9CDD1'); doc.setFillColor('#F7F8F6'); doc.roundedRect(30, 64, 160, 35, 2, 2, 'FD');
   doc.setFontSize(8); doc.setTextColor('#10223A');
-  doc.text(`Solicitante: ${text(sol.solicitante)}`, 15, 47); doc.text(`Frente: ${text(sol.frente)}`, 15, 54); doc.text(`SC: ${text(sol.numeroSc)}`, 15, 61); doc.text(`Aberta em: ${formatarDia(sol.abertaEm)}`, 15, 68);
-  doc.text(`Fornecedor: ${text(sol.fornecedor)}`, 108, 47); doc.text(`Pedido de compra: ${text(sol.numeroPedido)}`, 108, 54); doc.text(`Entrega: ${formatarDia(sol.janelaInicio)} a ${formatarDia(sol.janelaFim)}`, 108, 61); doc.text(`Valor: ${moeda(sol.valorTotal)}`, 108, 68);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.text('Itens e logística', 10, 83);
-  autoTable(doc, { startY: 87, margin: { left: 10, right: 10, bottom: 18 }, head: [['ITEM', 'SOLICITADO', '1ª ENTREGA', 'RECEBIDO', 'UN.', 'PRAZO', 'SITUAÇÃO']], body: sol.itens.map(item => [item.descricao, text(item.quantidadePedido ?? item.quantidade), item.quantidadePrimeiraEntrega === undefined ? '—' : text(item.quantidadePrimeiraEntrega), text(item.quantidadeRecebida ?? 0), item.unidade, formatarDia(item.prazoDesejado), situacaoDoItem(item)]), theme: 'grid', styles: { font: 'helvetica', fontSize: 7, cellPadding: 2, lineColor: '#C9CDD1', textColor: '#242A30', valign: 'middle' }, headStyles: { fillColor: '#082343', textColor: '#FFFFFF', fontStyle: 'bold' }, alternateRowStyles: { fillColor: '#FAFAFA' }, columnStyles: { 0: { cellWidth: 57 }, 1: { cellWidth: 23, halign: 'right' }, 2: { cellWidth: 23, halign: 'right' }, 3: { cellWidth: 22, halign: 'right' }, 4: { cellWidth: 15, halign: 'center' }, 5: { cellWidth: 23, halign: 'center' }, 6: { cellWidth: 27, halign: 'center' } } });
+  doc.text(`Solicitante: ${text(sol.solicitante)}`, 35, 72); doc.text(`Frente: ${text(sol.frente)}`, 35, 79); doc.text(`SC: ${text(sol.numeroSc)}`, 35, 86); doc.text(`Aberta em: ${formatarDia(sol.abertaEm)}`, 35, 93);
+  doc.text(`Fornecedor: ${text(sol.fornecedor)}`, 112, 72); doc.text(`Pedido de compra: ${text(sol.numeroPedido)}`, 112, 79); doc.text(`Entrega: ${formatarDia(sol.janelaInicio)} a ${formatarDia(sol.janelaFim)}`, 112, 86); doc.text(`Valor: ${moeda(sol.valorTotal)}`, 112, 93);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.text('Itens e logística', 30, 108);
+  autoTable(doc, { startY: 112, margin: { left: 30, right: 20, bottom: 24 }, head: [['ITEM', 'SOLICITADO', '1ª ENTREGA', 'RECEBIDO', 'UN.', 'PRAZO', 'SITUAÇÃO']], body: sol.itens.map(item => [item.descricao, text(item.quantidadePedido ?? item.quantidade), item.quantidadePrimeiraEntrega === undefined ? '—' : text(item.quantidadePrimeiraEntrega), text(item.quantidadeRecebida ?? 0), item.unidade, formatarDia(item.prazoDesejado), situacaoDoItem(item)]), theme: 'grid', styles: { font: 'helvetica', fontSize: 7, cellPadding: 2, lineColor: '#C9CDD1', textColor: '#242A30', valign: 'middle' }, headStyles: { fillColor: '#082343', textColor: '#FFFFFF', fontStyle: 'bold' }, alternateRowStyles: { fillColor: '#FAFAFA' }, columnStyles: { 0: { cellWidth: 47 }, 1: { cellWidth: 20, halign: 'right' }, 2: { cellWidth: 20, halign: 'right' }, 3: { cellWidth: 20, halign: 'right' }, 4: { cellWidth: 13, halign: 'center' }, 5: { cellWidth: 20, halign: 'center' }, 6: { cellWidth: 20, halign: 'center' } } });
   const y = ((doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? 95) + 9;
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor('#10223A'); doc.text('Rastreabilidade e assinaturas', 10, y);
-  autoTable(doc, { startY: y + 4, margin: { left: 10, right: 10, bottom: 18 }, head: [['ETAPA', 'RESPONSÁVEL', 'DATA / OBSERVAÇÃO']], body: [['Solicitação', sol.solicitante, formatarDia(sol.abertaEm)], ['Aprovação', sol.aprovador || 'Pendente', sol.decisaoEm ? `${formatarDia(sol.decisaoEm)} · ${sol.parecer || 'Aprovado'}` : 'Pendente'], ['Suprimentos', sol.comprador || 'Pendente', sol.enviadaAprovacaoEm ? formatarDia(sol.enviadaAprovacaoEm) : 'Pendente'], ['Recebimento', ultimaConferencia?.usuario || 'Pendente', ultimaConferencia ? `${formatarDia(ultimaConferencia.data)} · ${sol.localDestino || 'Local não informado'}` : 'Pendente']], theme: 'grid', styles: { font: 'helvetica', fontSize: 8, cellPadding: 2.5, lineColor: '#C9CDD1', textColor: '#242A30' }, headStyles: { fillColor: '#15824B', textColor: '#FFFFFF', fontStyle: 'bold' } });
-  footer(doc);
+  const topoAssinaturas = Math.min(y, 215);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor('#10223A'); doc.text('Rastreabilidade e assinaturas', 30, topoAssinaturas);
+  autoTable(doc, { startY: topoAssinaturas + 4, margin: { left: 30, right: 20, bottom: 24 }, head: [['ETAPA', 'RESPONSÁVEL', 'DATA / OBSERVAÇÃO']], body: [['Solicitação', sol.solicitante, formatarDia(sol.abertaEm)], ['Aprovação', sol.aprovador || 'Pendente', sol.decisaoEm ? `${formatarDia(sol.decisaoEm)} · ${sol.parecer || 'Aprovado'}` : 'Pendente'], ['Suprimentos', sol.comprador || 'Pendente', sol.enviadaAprovacaoEm ? formatarDia(sol.enviadaAprovacaoEm) : 'Pendente'], ['Recebimento', ultimaConferencia?.usuario || 'Pendente', ultimaConferencia ? `${formatarDia(ultimaConferencia.data)} · ${sol.localDestino || 'Local não informado'}` : 'Pendente']], theme: 'grid', styles: { font: 'helvetica', fontSize: 8, cellPadding: 2.5, lineColor: '#C9CDD1', textColor: '#242A30' }, headStyles: { fillColor: '#15824B', textColor: '#FFFFFF', fontStyle: 'bold' } });
+  footerAbnt(doc);
   const fileName = `FICHA_${sol.numero}.pdf`; doc.save(fileName); return { fileName, pages: doc.getNumberOfPages() };
 };

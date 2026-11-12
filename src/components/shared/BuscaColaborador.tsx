@@ -25,20 +25,6 @@ export function BuscaColaborador({ funcionarios, onSelecionado, onFechado }: Pro
     onFechado?.();
   };
 
-  // Registra o listener para tecla 'n'
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'n' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
-        e.preventDefault();
-        setAberto(true);
-        setTimeout(() => inputRef.current?.focus(), 0);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   // Atualiza a lista filtrada quando o termo muda
   useEffect(() => {
     if (!termo.trim()) {
