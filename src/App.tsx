@@ -3640,6 +3640,16 @@ export default function App() {
     });
   };
 
+  const handleExcluirSolicitacao = (id: string) => {
+    const alvo = solicitacoes.find(item => item.id === id);
+    if (!alvo || currentUserRole !== 'admin') return;
+    const updated = solicitacoes.filter(item => item.id !== id);
+    saveAndLog('Solicitações', 'Excluiu', `Excluiu a solicitação ${alvo.numero}.`, historyLogs, () => {
+      setSolicitacoes(updated);
+      writeStorageValue(localStorage, STORAGE_KEYS.solicitacoes, JSON.stringify(updated));
+    });
+  };
+
   const handleSavePessoasSuprimentos = (pessoas: PessoaSuprimentos[]) => {
     saveAndLog('Solicitações', 'Editou', 'Atualizou as pessoas e papéis de Solicitações.', historyLogs, () => {
       setPessoasSuprimentos(pessoas);
@@ -4488,6 +4498,7 @@ export default function App() {
                 ehGestor={currentUserRole === 'gestor'}
                 podeEditar={pode(currentUserRole, 'solicitacoes', 'editar')}
                 onSalvar={handleSaveSolicitacoes}
+                onExcluir={handleExcluirSolicitacao}
               />
             )}
 

@@ -59,6 +59,7 @@ interface SolicitacoesTabProps {
   /** Perfil do app que grava (leitura só consulta). */
   podeEditar: boolean;
   onSalvar: (registros: Solicitacao[], descricao: string) => void;
+  onExcluir?: (id: string) => void;
 }
 
 type ComSituacao = { sol: Solicitacao; situacao: SituacaoSolicitacao };
@@ -98,7 +99,7 @@ const novoId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? 
 const contem = (termo: string, valores: Array<string | number | undefined>) =>
   !termo || valores.some(valor => valor !== undefined && String(valor).toLowerCase().includes(termo));
 
-export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmin, ehGestor = false, podeEditar, onSalvar }: SolicitacoesTabProps) {
+export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmin, ehGestor = false, podeEditar, onSalvar, onExcluir }: SolicitacoesTabProps) {
   const escopo = useRef<HTMLElement>(null);
   const arquivo = useRef<HTMLInputElement>(null);
   const hoje = isoDay(new Date());
@@ -341,8 +342,8 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
           )}
         </>}
       />}
-      faixa={<div data-sol-reveal className="grid gap-1.5">
-        <section aria-label="Resumo operacional de solicitações" className="-mx-1 flex flex-nowrap gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:thin]">
+      faixa={<div data-sol-reveal className="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
+        <section aria-label="Resumo operacional de solicitações" className="contents">
           {resumo.map(item => (
             <button key={item.id} type="button" onClick={item.acao} data-testid={`resumo-solicitacoes-${item.id}`} className="group min-h-14 min-w-[10.5rem] flex-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-left transition hover:border-[#176b4d] hover:bg-[#f7f8f6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)">
               <span className="flex items-center justify-between gap-2">
@@ -354,7 +355,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
           ))}
         </section>
         {/* Uma linha só: quem é você, avisos, busca e o jeito de mostrar. */}
-        <div className="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto text-sm text-slate-600 [scrollbar-width:thin]">
+        <div className="contents text-sm text-slate-600">
           <span className={`min-w-0 items-center gap-1.5 ${ator.papel ? 'hidden sm:flex' : 'flex'}`}>
             <ClipboardCheck className="size-4 shrink-0 text-[#176b4d]" aria-hidden="true" />
             {ator.papel
@@ -373,7 +374,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
             </button>
           )}
           {comBusca && !aberta && (
-            <div className="flex min-w-[42rem] flex-1 flex-nowrap items-center gap-1.5">
+            <div className="contents">
               <label className="relative min-w-[16rem] flex-1">
                 <span className="sr-only">Buscar</span>
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
@@ -422,7 +423,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
           </div>
         )}
         {subtela === 'pedidos' && !aberta && (
-          <div className="-mx-1 flex flex-nowrap gap-1 overflow-x-auto px-1 pb-0.5" role="group" aria-label="Filtrar pedidos">
+          <div className="contents" role="group" aria-label="Filtrar pedidos">
             {FILTROS.map(item => (
               <button key={item.id} type="button" aria-pressed={filtro === item.id} onClick={() => { setFiltro(item.id); setMostrar(POR_VEZ); }}
                 data-testid={`filtro-${item.id}`}
@@ -458,6 +459,8 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
             ator={ator}
             hoje={hoje}
             onSalvar={salvarUma}
+            podeExcluir={ehAdmin}
+            onExcluir={() => { onExcluir?.(aberta.id); setAbertaId(null); }}
           />
         </section>
       ) : (<>

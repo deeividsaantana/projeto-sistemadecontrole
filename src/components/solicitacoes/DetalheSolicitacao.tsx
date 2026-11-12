@@ -4,7 +4,7 @@
  * pessoa logada pode fazer nesta etapa (acoesDisponiveis).
  */
 import { useState, type ReactNode } from 'react';
-import { CalendarClock, CheckCircle2, FileDown, LoaderCircle, PackageCheck, PackageX, Send, ShieldCheck, ShieldX, Truck, XCircle } from 'lucide-react';
+import { CalendarClock, CheckCircle2, FileDown, LoaderCircle, PackageCheck, PackageX, Send, ShieldCheck, ShieldX, Trash2, Truck, XCircle } from 'lucide-react';
 import { BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO } from '../cadastros/estilos';
 import { Campo } from '../../shared/ui/Lancamento';
 import {
@@ -36,6 +36,8 @@ interface DetalheProps {
   ator: Ator;
   hoje: string;
   onSalvar: (sol: Solicitacao, descricao: string) => void;
+  podeExcluir?: boolean;
+  onExcluir?: () => void;
 }
 
 /** "58.000,50" e "58000.50" viram 58000.5. */
@@ -59,7 +61,7 @@ function Linha({ rotulo, valor }: { rotulo: string; valor: ReactNode }) {
   );
 }
 
-export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalvar }: DetalheProps) {
+export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalvar, podeExcluir = false, onExcluir }: DetalheProps) {
   const [erro, setErro] = useState('');
   const [acaoEmAndamento, setAcaoEmAndamento] = useState<Acao['tipo'] | null>(null);
   const [confirmacao, setConfirmacao] = useState('');
@@ -93,6 +95,7 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
   const [novaData, setNovaData] = useState('');
   const [motivo, setMotivo] = useState('');
   const [cancelar, setCancelar] = useState(false);
+  const [confirmarExclusao, setConfirmarExclusao] = useState(false);
   // Apontar falta (conferência por item)
   const [faltaDe, setFaltaDe] = useState<number | null>(null);
   const [faltaObs, setFaltaObs] = useState('');
@@ -446,6 +449,20 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
         ) : (
           <button type="button" onClick={() => setCancelar(true)} className={BOTAO_PERIGO_LEVE}>
             <XCircle className="size-4" aria-hidden="true" /> Cancelar solicitação
+          </button>
+        )
+      )}
+
+      {podeExcluir && onExcluir && (
+        confirmarExclusao ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+            <span className="mr-auto">Excluir esta solicitação permanentemente?</span>
+            <button type="button" onClick={onExcluir} className={BOTAO_PERIGO_LEVE}>Confirmar exclusão</button>
+            <button type="button" onClick={() => setConfirmarExclusao(false)} className={BOTAO_SECUNDARIO}>Voltar</button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setConfirmarExclusao(true)} className={BOTAO_PERIGO_LEVE}>
+            <Trash2 className="size-4" aria-hidden="true" /> Excluir solicitação
           </button>
         )
       )}
