@@ -11,12 +11,18 @@ import {
   paraEsquemaJson,
   pessoaDoUsuario,
   proximoNumero,
+  rastreioDe,
   situacaoDe,
+  situacaoDoItem,
   type Ator,
   type Solicitacao,
 } from '../src/utils/solicitacoes';
 import {
+  ehPlanilhaDeControle,
+  historicoGeral,
+  importarPlanilhaDeControle,
   lerCsv,
+  linhasDeConferencia,
   relatorioAprovador,
   relatorioLogistico,
   relatorioPorSolicitante,
@@ -204,4 +210,106 @@ test('relatórios: solicitante, suprimentos, aprovador e logística', () => {
   const logistica = relatorioLogistico(todas, '2026-11-20');
   assert.deepEqual(logistica.diario, [{ periodo: '2026-11-17', noLocal: 0, descarte: 1 }]);
   assert.equal(logistica.emAberto[0].atraso, true);
+});
+
+test('dev faz tudo: abre, cota, aprova, recebe e reagenda', () => {
+  const dev: Ator = { nome: 'Deivid', papel: 'dev' };
+  let sol = ok(abrirSolicitacao({ solicitante: 'Deivid', frente: 'Ramo 200', itens: [{ tipo: 'Serviço', descricao: 'Locação de rolo compactador', quantidade: '20', unidade: 'h', prazoDesejado: '2026-11-20', permiteParcial: false }] }, dev, [], T0, 'dev-1'));
+  sol = ok(aplicarAcao(sol, { tipo: 'assumir' }, dev, T0));
+  sol = ok(aplicarAcao(sol, { tipo: 'enviarParaAprovacao', pedido }, dev, T0));
+  // Conferência de chegada fica aberta em qualquer etapa do fluxo (11/11/2026).
+  assert.deepEqual(acoesDisponiveis(sol, dev), ['aprovar', 'rejeitar', 'receber', 'apontarFalta']);
+  sol = ok(aplicarAcao(sol, { tipo: 'aprovar' }, dev, T0));
+  sol = ok(aplicarAcao(sol, { tipo: 'reagendar', novaData: '2026-11-22', motivo: 'Ajuste de agenda' }, dev, T0));
+  sol = ok(aplicarAcao(sol, { tipo: 'receber', recebimento: { tipo: 'Chegou ao Local', local: 'Canteiro Padre Eustáquio', notaFiscal: '7', quantidades: { 1: 20 } } }, dev, T0));
+  assert.equal(sol.etapa, 'Entregue');
+});
+
+// Planilha "Controle de pedidos de compra" dos auxiliares (11/11/2026).
+const abasDeControle = () => [
+  {
+    nome: 'Solicitações',
+    linhas: [
+      { linha: 3, valores: { Data: new Date('2026-06-12T00:00:00Z'), 'N° do pedido': 51, Solicitante: 'Carlos ', Item: 'Enxada', Unidade: 'Und.', Quantidade: 2, 'Solicitação de compra SC  (N°)': 92995523, 'previsão de entrega': '' } },
+      { linha: 4, valores: { Data: new Date('2026-06-12T00:00:00Z'), 'N° do pedido': 51, Solicitante: 'Carlos ', Item: 'Tinta spray', Unidade: 'Latas', Quantidade: 6, 'Solicitação de compra SC  (N°)': 92995523, 'previsão de entrega': '15/09/2026' } },
+      { linha: 5, valores: { Data: new Date('2026-06-15T00:00:00Z'), 'N° do pedido': 52, Solicitante: 'Thiago', Item: 'Arame recozido', Unidade: 'Kg', Quantidade: 10, 'Solicitação de compra SC  (N°)': '', 'previsão de entrega': 'OK' } },
+      { linha: 6, valores: { Data: new Date('2026-06-16T00:00:00Z'), 'N° do pedido': 53, Solicitante: 'Alvaro', Item: 'Pá', Unidade: 'Und.', Quantidade: 1, 'Solicitação de compra SC  (N°)': '', 'previsão de entrega': '' } },
+      { linha: 7, valores: { Data: new Date('2026-06-16T00:00:00Z'), 'N° do pedido': '', Solicitante: 'Alvaro', Item: 'Sem pedido', Unidade: 'Und.', Quantidade: 1, 'Solicitação de compra SC  (N°)': '', 'previsão de entrega': '' } },
+    ],
+  },
+  { nome: 'Prioridade', linhas: [{ linha: 2, valores: { 'Coluna 1': '1º', 'Coluna 2': new Date('2026-08-13T00:00:00Z'), 'Coluna 3': 53 } }] },
+];
+
+test('planilha de controle: cada pedido vira um card no fluxo, sem duplicar nem inventar', () => {
+  assert.equal(ehPlanilhaDeControle(abasDeControle()), true);
+  assert.equal(ehPlanilhaDeControle([{ nome: 'x', linhas: [{ linha: 2, valores: { Solicitante: 'Thiago' } }] }]), false);
+  const r = importarPlanilhaDeControle(abasDeControle(), [], 'Cássia', '2026-11-11T20:00:00.000Z');
+  assert.equal(r.novas.length, 3);
+  assert.equal(r.itens, 4);
+  assert.deepEqual(r.rejeitadas.map(item => item.linha), [7]);
+  const [p51, p52, p53] = r.novas;
+  assert.equal(p51.numero, 'SOL-2026-0051');
+  assert.equal(p51.etapa, 'Em Cotação', 'com SC: Suprimentos já trata');
+  assert.equal(p51.numeroSc, '92995523');
+  assert.equal(p51.solicitante, 'Carlos');
+  assert.equal(p51.janelaFim, '2026-09-15');
+  assert.deepEqual(p51.itens.map(item => item.unidade), ['un', 'lata']);
+  assert.equal(p52.etapa, 'Entregue', 'OK na previsão conta como entregue');
+  assert.equal(p53.etapa, 'Pendente Suprimentos', 'sem SC: fila de Suprimentos');
+  assert.equal(p53.prioridade, 1);
+  assert.equal(p51.origem, 'planilha-controle');
+  assert.ok(p51.eventos.some(evento => evento.acao === 'Importou da planilha de controle' && evento.usuario === 'Cássia'));
+  const deNovo = importarPlanilhaDeControle(abasDeControle(), r.novas, 'Cássia', '2026-11-12T08:00:00.000Z');
+  assert.equal(deNovo.novas.length, 0);
+  assert.deepEqual(deNovo.jaImportados, [51, 52, 53]);
+});
+
+test('conferência por item: chegou, parcial e falta ficam registrados e não pulam etapa', () => {
+  const [p51] = importarPlanilhaDeControle(abasDeControle(), [], 'Cássia', '2026-11-11T20:00:00.000Z').novas;
+  assert.deepEqual(acoesDisponiveis(p51, almox), ['receber', 'apontarFalta']);
+  const negado = aplicarAcao(p51, { tipo: 'apontarFalta', itemId: 1, observacao: 'não veio' }, thiago, T0);
+  assert.match((negado as { erro: string }).erro, /recebimento/);
+  let sol = ok(aplicarAcao(p51, { tipo: 'apontarFalta', itemId: 2, observacao: 'não veio na carga' }, almox, T0));
+  assert.equal(situacaoDoItem(sol.itens[1]), 'Falta');
+  assert.equal(rastreioDe(sol, '2026-09-01').tom, 'falta');
+  // Só um item chegou nesta carga: o outro fica como estava.
+  sol = ok(aplicarAcao(sol, { tipo: 'receber', recebimento: { tipo: 'Chegou ao Local', local: 'Almoxarifado', notaFiscal: '54', quantidades: { 1: 2 } } }, almox, '2026-11-12T09:00:00.000Z'));
+  assert.equal(situacaoDoItem(sol.itens[1]), 'Falta');
+  sol = ok(aplicarAcao(sol, { tipo: 'receber', recebimento: { tipo: 'Chegou ao Local', local: 'Almoxarifado', notaFiscal: '55', quantidades: { 2: 3 } } }, almox, '2026-11-12T10:00:00.000Z'));
+  assert.equal(situacaoDoItem(sol.itens[0]), 'Chegou');
+  assert.equal(situacaoDoItem(sol.itens[1]), 'Parcial');
+  assert.equal(sol.etapa, 'Em Cotação', 'entrega parcial não pula Suprimentos nem a aprovação');
+  assert.equal(sol.itens[1].conferencias?.length, 2, 'o registro só cresce');
+  const conferir = linhasDeConferencia([sol]);
+  assert.deepEqual(conferir.map(linha => linha.situacao), ['Chegou', 'Parcial']);
+  sol = ok(aplicarAcao(sol, { tipo: 'receber', recebimento: { tipo: 'Chegou ao Local', local: 'Almoxarifado', notaFiscal: '56', quantidades: { 2: 3 } } }, almox, '2026-11-13T10:00:00.000Z'));
+  assert.equal(sol.etapa, 'Entregue');
+  assert.equal(rastreioDe(sol, '2026-11-13').passo, 4);
+  assert.equal(historicoGeral([sol])[0].acao, 'Chegou ao Local', 'histórico geral do mais novo para o mais antigo');
+});
+
+test('rastreio: cada etapa do fluxo cai num passo do card', () => {
+  const sol = nova();
+  assert.equal(rastreioDe(sol, '2026-11-12').passo, 1);
+  assert.equal(rastreioDe(sol, '2026-11-12').frase, 'Na fila de Suprimentos');
+  const aprovado = ateAprovado();
+  assert.equal(rastreioDe(aprovado, '2026-11-12').passo, 3);
+  assert.equal(rastreioDe(aprovado, '2026-11-20').tom, 'atraso');
+  assert.equal(rastreioDe({ ...sol, etapa: 'Cancelado' }, '2026-11-12').tom, 'cancelado');
+});
+
+test('nuvem: o mesmo pedido mexido em dois aparelhos não perde lançamento da linha do tempo', async () => {
+  const { mergeCloudSnapshots } = await import('../src/cloudMerge');
+  const base = ateAprovado();
+  // Aparelho A: Cássia reagenda. Aparelho B (mais novo): almoxarife confere.
+  const a = ok(aplicarAcao(base, { tipo: 'reagendar', novaData: '2026-11-25', motivo: 'Usina parada' }, cassia, '2026-11-13T08:00:00.000Z'));
+  const b = ok(aplicarAcao(base, { tipo: 'apontarFalta', itemId: 1, observacao: 'não veio na carga' }, almox, '2026-11-13T09:00:00.000Z'));
+  const junto = mergeCloudSnapshots({ solicitacoes: [a] }, { solicitacoes: [b] }).solicitacoes as Solicitacao[];
+  assert.equal(junto.length, 1);
+  const [sol] = junto;
+  assert.ok(sol.eventos.some(evento => evento.acao === 'Apontou falta'));
+  assert.ok(sol.eventos.some(evento => evento.usuario === 'Cássia' && /Reagend/i.test(evento.acao)), 'o reagendamento do outro aparelho fica');
+  assert.equal(sol.reagendamentos.length, 1);
+  assert.equal(sol.itens[0].conferencias?.length, 1);
+  assert.equal(sol.eventos.length, new Set(sol.eventos.map(evento => `${evento.data}${evento.acao}`)).size, 'sem repetir');
 });

@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import SolicitacoesTab from '../src/components/SolicitacoesTab';
 import { PESSOAS_INICIAIS, abrirSolicitacao, aplicarAcao, type Ator, type Solicitacao } from '../src/utils/solicitacoes';
+import { importarPlanilhaDeControle } from '../src/utils/solicitacoesPlanilha';
 
 const pessoas = [...PESSOAS_INICIAIS, { id: 'sup-almox', nome: 'Almoxarife', papel: 'recebedor' as const, ativo: true }];
 const ator = (nome: string): Ator => ({ nome, papel: pessoas.find(p => p.nome === nome)?.papel ?? null });
@@ -41,6 +42,22 @@ const exemplo = (): Solicitacao[] => {
   passo(e, { tipo: 'enviarParaAprovacao', pedido: pedido('Transportes Lara ME / 33.444.555/0001-66', 7200, -6) }, 'Sérgio', -14);
   passo(e, { tipo: 'aprovar' }, 'Bruno', -13);
   passo(e, { tipo: 'receber', recebimento: { tipo: 'Chegou ao Local de Descarte', local: 'Bota-Fora Lara', notaFiscal: '4512', quantidades: { 1: 40 } } }, 'Almoxarife', -7);
+  // Pedidos trazidos da planilha de controle, com SC, prioridade e conferência.
+  const linha = (n: number, pedidoN: number, quem: string, item: string, und: string, qtd: number, sc: string) =>
+    ({ linha: n, valores: { Data: dias(-20), 'N° do pedido': pedidoN, Solicitante: quem, Item: item, Unidade: und, Quantidade: qtd, 'Solicitação de compra SC  (N°)': sc, 'previsão de entrega': dias(-2) } });
+  const { novas } = importarPlanilhaDeControle([
+    { nome: 'Solicitações', linhas: [
+      linha(3, 101, 'Lucas', 'TUBOS DE PVC 400mm de 6m', 'Und.', 12, '93021654'),
+      linha(4, 109, 'Carlos', 'MADEIRITE PLASTIFICADO 18mm', 'Und.', 30, '93041040'),
+      linha(5, 109, 'Carlos', 'SARRAFO 10cm x 2,5cm x 3m', 'Und.', 80, '93041040'),
+      linha(6, 109, 'Carlos', 'ESPUMA EXPANSIVA', 'Und.', 12, '93041040'),
+    ] },
+    { nome: 'Prioridade', linhas: [{ linha: 2, valores: { a: '1º', b: '', c: 101 } }] },
+  ], lista, 'Cássia', quando(-1));
+  lista.push(...novas);
+  const i109 = lista.findIndex(sol => sol.id === 'controle-pedido-109');
+  passo(i109, { tipo: 'receber', recebimento: { tipo: 'Chegou ao Local', local: 'Almoxarifado', notaFiscal: '88120', quantidades: { 1: 30, 2: 40 } } }, 'Almoxarife', -1);
+  passo(i109, { tipo: 'apontarFalta', itemId: 3, observacao: 'não veio na carga de hoje' }, 'Almoxarife', -1);
   return lista;
 };
 

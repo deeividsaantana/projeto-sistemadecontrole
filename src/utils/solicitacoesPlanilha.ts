@@ -7,6 +7,7 @@ import {
   UNIDADES,
   estaEmAtraso,
   problemasDoItem,
+  situacaoDoItem,
   type DadosAbertura,
   type PessoaSuprimentos,
   type Solicitacao,
@@ -260,3 +261,173 @@ export const relatorioLogistico = (sols: readonly Solicitacao[], hoje: string) =
       .sort((a, b) => Number(b.atraso) - Number(a.atraso) || (a.sol.janelaFim || '').localeCompare(b.sol.janelaFim || '')),
   };
 };
+
+// ---------------------------------------------------------------------------
+// Planilha de controle de pedidos de compra (a que os auxiliares já usam)
+
+export interface LinhaDeAba { linha: number; valores: Record<string, unknown> }
+export interface AbaLida { nome: string; linhas: LinhaDeAba[] }
+
+/** É a planilha de controle? Tem "N° do pedido" e "Item" no cabeçalho. */
+export const ehPlanilhaDeControle = (abas: readonly AbaLida[]) => abas.some(aba => {
+  const cabecalhos = Object.keys(aba.linhas[0]?.valores ?? {}).map(normalizar);
+  return cabecalhos.some(nome => /^n.? ?do pedido/.test(nome)) && cabecalhos.includes('item');
+});
+
+const UNIDADE_DA_PLANILHA: Record<string, string> = {
+  und: 'un', 'und.': 'un', unid: 'un', 'unid.': 'un', un: 'un', 'un.': 'un', unidade: 'un', unidades: 'un',
+  kg: 'kg', m: 'm', ml: 'm', mt: 'm', m2: 'm²', 'm²': 'm²', m3: 'm³', 'm³': 'm³', t: 'ton', ton: 'ton',
+  lata: 'lata', latas: 'lata', cx: 'cx', caixa: 'cx', caixas: 'cx', pc: 'pç', 'pç': 'pç', peca: 'pç', pecas: 'pç',
+  rolo: 'rolo', rolos: 'rolo', l: 'L', lt: 'L', litro: 'L', litros: 'L', sc: 'sc', saco: 'sc', sacos: 'sc',
+  par: 'par', pares: 'par', kit: 'kit', jogo: 'jogo', h: 'h', vb: 'vb', galao: 'galão', galoes: 'galão', balde: 'balde',
+};
+
+/** Unidade da planilha no jeito do sistema; o que não conhece fica como veio. */
+export const unidadeDaPlanilha = (valor: unknown) => {
+  const texto = normalizar(valor);
+  return UNIDADE_DA_PLANILHA[texto] ?? UNIDADE_DA_PLANILHA[texto.replace(/\.$/, '')] ?? (String(valor ?? '').trim() || 'un');
+};
+
+const valorDe = (valores: Record<string, unknown>, regra: RegExp) => {
+  const chave = Object.keys(valores).find(nome => regra.test(normalizar(nome)));
+  return chave === undefined ? undefined : valores[chave];
+};
+
+const textoDe = (valor: unknown) => {
+  if (valor && typeof valor === 'object' && 'text' in (valor as Record<string, unknown>)) return String((valor as { text: unknown }).text ?? '').trim();
+  if (valor && typeof valor === 'object' && 'result' in (valor as Record<string, unknown>)) return String((valor as { result: unknown }).result ?? '').trim();
+  return String(valor ?? '').trim();
+};
+
+export interface ResultadoControle {
+  novas: Solicitacao[];
+  /** Pedidos que já estavam no sistema: ficam como estão. */
+  jaImportados: number[];
+  rejeitadas: LinhaRejeitada[];
+  itens: number;
+}
+
+/**
+ * Cada "N° do pedido" vira uma solicitação com todos os itens dele. Pedido que
+ * já foi trazido antes não entra de novo (a importação pode ser repetida sem
+ * duplicar). Situação que a planilha não diz não é inventada: sem SC o pedido
+ * entra na fila de Suprimentos, com SC entra em cotação; só "OK" na previsão
+ * de entrega conta como entregue.
+ */
+export const importarPlanilhaDeControle = (
+  abas: readonly AbaLida[],
+  existentes: readonly Solicitacao[],
+  quem: string,
+  agora: string,
+): ResultadoControle => {
+  const principal = abas.find(aba => {
+    const cabecalhos = Object.keys(aba.linhas[0]?.valores ?? {}).map(normalizar);
+    return cabecalhos.some(nome => /^n.? ?do pedido/.test(nome)) && cabecalhos.includes('item');
+  });
+  const rejeitadas: LinhaRejeitada[] = [];
+  if (!principal) return { novas: [], jaImportados: [], rejeitadas: [{ linha: 0, motivo: 'Não achei a aba com "N° do pedido" e "Item".' }], itens: 0 };
+
+  // Prioridade: a aba guarda "1º", data, nº do pedido... na mesma ordem da principal.
+  const prioridades = new Map<number, number>();
+  for (const aba of abas) {
+    if (!/prioridade/.test(normalizar(aba.nome))) continue;
+    for (const { valores } of aba.linhas) {
+      const lista = Object.values(valores);
+      const ordem = Number(textoDe(lista[0]).replace(/\D/g, ''));
+      const pedido = Number(textoDe(lista[2]));
+      if (ordem > 0 && pedido > 0 && !prioridades.has(pedido)) prioridades.set(pedido, ordem);
+    }
+  }
+
+  const grupos = new Map<number, LinhaDeAba[]>();
+  for (const linha of principal.linhas) {
+    const pedido = Number(textoDe(valorDe(linha.valores, /^n.? ?do pedido/)));
+    const item = textoDe(valorDe(linha.valores, /^item/));
+    if (!item && !pedido) continue;
+    if (!(pedido > 0)) { rejeitadas.push({ linha: linha.linha, motivo: 'Linha sem número do pedido.' }); continue; }
+    if (!item) { rejeitadas.push({ linha: linha.linha, motivo: `Pedido ${pedido}: linha sem item.` }); continue; }
+    grupos.set(pedido, [...(grupos.get(pedido) ?? []), linha]);
+  }
+
+  const jaImportados: number[] = [];
+  const novas: Solicitacao[] = [];
+  let itensTotal = 0;
+  const numerosUsados = new Set(existentes.map(sol => sol.numero));
+  for (const [pedido, linhas] of [...grupos.entries()].sort((a, b) => a[0] - b[0])) {
+    const id = `controle-pedido-${pedido}`;
+    if (existentes.some(sol => sol.id === id)) { jaImportados.push(pedido); continue; }
+    const primeira = linhas[0].valores;
+    const abertaEm = paraData(valorDe(primeira, /^data/)) || agora.slice(0, 10);
+    const ano = Number(abertaEm.slice(0, 4));
+    let numero = `SOL-${ano}-${String(pedido).padStart(4, '0')}`;
+    if (numerosUsados.has(numero)) numero = proximoNumeroLivre(numerosUsados, ano);
+    numerosUsados.add(numero);
+    const scs = [...new Set(linhas.map(linha => textoDe(valorDe(linha.valores, /^solicitacao de compra|^sc\b/))).filter(Boolean))];
+    const previsoes = linhas.map(linha => valorDe(linha.valores, /^previsao/));
+    const datasPrevistas = previsoes.map(paraData).filter(Boolean).sort();
+    const tudoOk = previsoes.length > 0 && previsoes.every(valor => normalizar(valor) === 'ok');
+    const itens = linhas.map((linha, indice) => {
+      const quantidade = Number(textoDe(valorDe(linha.valores, /^quantidade/)).replace(',', '.')) || 0;
+      const okDaLinha = normalizar(valorDe(linha.valores, /^previsao/)) === 'ok';
+      return {
+        itemId: indice + 1,
+        tipo: 'Material' as const,
+        descricao: textoDe(valorDe(linha.valores, /^item/)),
+        quantidade,
+        unidade: unidadeDaPlanilha(valorDe(linha.valores, /^unidade/)),
+        prazoDesejado: paraData(valorDe(linha.valores, /^previsao/)),
+        permiteParcial: true,
+        ...(okDaLinha ? { quantidadeRecebida: quantidade } : {}),
+      };
+    });
+    itensTotal += itens.length;
+    const solicitante = textoDe(valorDe(primeira, /^solicitante/)).replace(/\s+/g, ' ') || 'Não informado';
+    const abertura = `${abertaEm}T12:00:00.000Z`;
+    novas.push({
+      id,
+      numero,
+      abertaEm: abertura,
+      solicitante,
+      frente: 'Não informada na planilha',
+      itens,
+      // Com SC aberta, Suprimentos já está tratando o pedido (Em Cotação).
+      etapa: tudoOk ? 'Entregue' : scs.length ? 'Em Cotação' : 'Pendente Suprimentos',
+      statusAprovacao: 'Pendente',
+      statusLogistico: tudoOk ? 'Chegou ao Local' : 'Aguardando Envio',
+      ...(scs.length ? { numeroSc: scs.join(', ') } : {}),
+      ...(datasPrevistas.length ? { janelaFim: datasPrevistas[datasPrevistas.length - 1] } : {}),
+      ...(prioridades.has(pedido) ? { prioridade: prioridades.get(pedido) } : {}),
+      origem: 'planilha-controle',
+      reagendamentos: [],
+      eventos: [
+        { data: abertura, usuario: solicitante, acao: `Pedido nº ${pedido} registrado na planilha de controle` },
+        { data: agora, usuario: quem, acao: 'Importou da planilha de controle', detalhe: `${itens.length} item(ns)${scs.length ? ` · SC ${scs.join(', ')}` : ' · sem SC'}${tudoOk ? ' · planilha marcava OK na entrega' : ''}` },
+      ],
+      atualizadoEm: agora,
+    });
+  }
+  return { novas, jaImportados, rejeitadas, itens: itensTotal };
+};
+
+const proximoNumeroLivre = (usados: Set<string>, ano: number) => {
+  let n = 1;
+  while (usados.has(`SOL-${ano}-${String(n).padStart(4, '0')}`)) n += 1;
+  return `SOL-${ano}-${String(n).padStart(4, '0')}`;
+};
+
+// ---------------------------------------------------------------------------
+// Conferência de itens e histórico geral (listas da tela e do Excel)
+
+export interface LinhaConferencia {
+  sol: Solicitacao;
+  item: Solicitacao['itens'][number];
+  situacao: ReturnType<typeof situacaoDoItem>;
+}
+
+export const linhasDeConferencia = (sols: readonly Solicitacao[]): LinhaConferencia[] => sols
+  .filter(sol => sol.etapa !== 'Cancelado')
+  .flatMap(sol => sol.itens.map(item => ({ sol, item, situacao: situacaoDoItem(item) })));
+
+export const historicoGeral = (sols: readonly Solicitacao[]) => sols
+  .flatMap(sol => sol.eventos.map((evento, indice) => ({ id: `${sol.id}-${indice}`, sol, ...evento })))
+  .sort((a, b) => b.data.localeCompare(a.data));

@@ -387,8 +387,6 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; text-wrap: bal
 .erp-topbar nav[aria-label="Trilha de navegação"] { flex: 0 1 auto; max-width: 16rem; font-size: .8125rem; }
 #app-root .erp-topbar nav[aria-label="Trilha de navegação"] :is(span, button, svg) { color: #63736c; }
 #app-root .erp-topbar nav[aria-label="Trilha de navegação"] [aria-current="page"] { color: #10211c; }
-.erp-topbar__searchbox { min-width: 10rem; flex: 1 1 18rem; max-width: 24rem; }
-.erp-topbar__searchbox input { height: 2.25rem; min-height: 2.25rem; }
 .erp-topbar__project {
   display: flex;
   min-width: 0;

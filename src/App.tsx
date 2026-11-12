@@ -4211,9 +4211,6 @@ export default function App() {
         />}
         <main className="erp-workspace" id="main-workspace">
         {!combustivelListaSomente && <DesktopTopBar
-          groups={filteredNavigationGroups}
-          menuSearch={menuSearch}
-          onMenuSearchChange={setMenuSearch}
           currentUser={currentUser}
           isNotificationOpen={isNotifDropdownOpen}
           notifications={notifications}

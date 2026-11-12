@@ -4,7 +4,7 @@
  * pessoa logada pode fazer nesta etapa (acoesDisponiveis).
  */
 import { useState, type ReactNode } from 'react';
-import { CalendarClock, CheckCircle2, PackageCheck, Send, ShieldCheck, ShieldX, Truck, XCircle } from 'lucide-react';
+import { CalendarClock, CheckCircle2, PackageCheck, PackageX, Send, ShieldCheck, ShieldX, Truck, XCircle } from 'lucide-react';
 import { BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO } from '../cadastros/estilos';
 import { Campo } from '../../shared/ui/Lancamento';
 import {
@@ -14,9 +14,12 @@ import {
   aplicarAcao,
   formatarDia,
   formatarReais,
+  PASSOS_RASTREIO,
   numeroBr,
+  rastreioDe,
   saldoDoItem,
   situacaoDe,
+  situacaoDoItem,
   type Acao,
   type Ator,
   type CotacaoFornecedor,
@@ -24,6 +27,8 @@ import {
   type TipoChegada,
 } from '../../utils/solicitacoes';
 import { SeloSituacao } from './SeloSituacao';
+import { SeloItem } from './SeloItem';
+import { AvatarPessoa, dataHora } from './AvatarPessoa';
 
 interface DetalheProps {
   solicitacao: Solicitacao;
@@ -58,6 +63,7 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
   const [erro, setErro] = useState('');
   const acoes = acoesDisponiveis(sol, ator);
   const situacao = situacaoDe(sol, hoje);
+  const rastreio = rastreioDe(sol, hoje);
 
   // Pedido de compra (Suprimentos)
   const [fornecedor, setFornecedor] = useState(sol.fornecedor ?? '');
@@ -84,6 +90,9 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
   const [novaData, setNovaData] = useState('');
   const [motivo, setMotivo] = useState('');
   const [cancelar, setCancelar] = useState(false);
+  // Apontar falta (conferência por item)
+  const [faltaDe, setFaltaDe] = useState<number | null>(null);
+  const [faltaObs, setFaltaObs] = useState('');
 
   const executar = (acao: Acao, descricao: (s: Solicitacao) => string) => {
     const resultado = aplicarAcao(sol, acao, ator, new Date().toISOString(), todas);
@@ -97,6 +106,8 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
     setNovaData('');
     setNf('');
     setCancelar(false);
+    setFaltaDe(null);
+    setFaltaObs('');
     onSalvar(resultado.solicitacao, descricao(resultado.solicitacao));
   };
 
@@ -116,25 +127,105 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
   const prazoPodeMudar = sol.etapa === 'Aprovado' || sol.etapa === 'Em Trânsito';
 
   return (
-    <div className="grid gap-5">
-      <div className="flex flex-wrap items-center gap-2">
+    // Na aba inteira: o pedido (itens, compra, entrega e ações) à esquerda e a
+    // linha do tempo à direita. Em tela estreita fica tudo um embaixo do outro.
+    <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)] lg:gap-6">
+    <section className={`${CARTAO} grid min-w-0 gap-4 p-4 lg:col-span-2 lg:p-5`} aria-label="Onde o pedido está">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className={`text-base font-black ${rastreio.tom === 'atraso' ? 'text-rose-700' : rastreio.tom === 'falta' ? 'text-[#c2410c]' : 'text-slate-900'}`}>{rastreio.frase}</p>
         <SeloSituacao situacao={situacao} />
-        {sol.comprador && <span className="text-sm text-slate-600">Comprador: <strong className="text-slate-900">{sol.comprador}</strong></span>}
       </div>
+      {rastreio.tom !== 'cancelado' && (
+        <ol className="grid grid-cols-5" aria-label={`Etapa: ${PASSOS_RASTREIO[rastreio.passo]}`}>
+          {PASSOS_RASTREIO.map((passo, indice) => {
+            const feito = indice < rastreio.passo || rastreio.passo === 4;
+            const agora = indice === rastreio.passo && rastreio.passo !== 4;
+            const parado = rastreio.tom === 'atraso' || rastreio.tom === 'falta';
+            return (
+              <li key={passo} className="relative flex flex-col items-center gap-1.5" aria-current={agora ? 'step' : undefined}>
+                {indice > 0 && <span aria-hidden="true" className={`absolute right-1/2 top-4 h-1 w-full ${indice <= rastreio.passo ? 'bg-[#176b4d]' : 'bg-slate-200'}`} />}
+                <span aria-hidden="true" className={`relative z-10 grid size-9 place-items-center rounded-full text-sm font-black ${feito ? 'bg-[#176b4d] text-white' : agora ? (parado ? 'bg-rose-600 text-white' : 'bg-[#c2410c] text-white') : 'bg-slate-200 text-slate-600'}`}>
+                  {feito ? <CheckCircle2 className="size-5" /> : indice + 1}
+                </span>
+                <span className={`text-center text-xs sm:text-sm ${agora ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{passo}</span>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-slate-100 pt-4 text-sm sm:grid-cols-3 xl:grid-cols-6">
+        {([
+          ['Solicitante', sol.solicitante],
+          ['Frente', sol.origem === 'planilha-controle' ? '' : [sol.frente, sol.estacamento].filter(Boolean).join(' · ')],
+          ['SC', sol.numeroSc],
+          ['Prioridade', sol.prioridade !== undefined ? `${sol.prioridade}º` : ''],
+          ['Itens', `${rastreio.itensChegaram} de ${rastreio.itensTotal} chegaram`],
+          ['Comprador', sol.comprador],
+          ['Pedido de compra', sol.numeroPedido],
+          ['Fornecedor', sol.fornecedor],
+          ['Valor', sol.valorTotal !== undefined ? formatarReais(sol.valorTotal) : ''],
+          ['Entrega até', sol.janelaFim ? formatarDia(sol.janelaFim) : ''],
+          ['Aberto em', formatarDia(sol.abertaEm)],
+          ['Origem', sol.origem === 'planilha-controle' ? 'Planilha de controle' : 'Sistema'],
+        ] as const).filter(([, valor]) => valor).map(([rotulo, valor]) => (
+          <div key={rotulo} className="min-w-0">
+            <dt className="text-xs text-slate-600">{rotulo}</dt>
+            <dd className="truncate font-bold text-slate-900" title={String(valor)}>{valor}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
 
-      <Bloco titulo="Itens">
-        <ul className="grid gap-2">
+    <div className="grid min-w-0 content-start gap-5">
+      <Bloco titulo="Itens e conferência">
+        <ul className="grid grid-cols-1 gap-2 xl:grid-cols-2">
           {sol.itens.map(item => (
-            <li key={item.itemId} className={`${CARTAO} p-3 text-sm`}>
-              <strong className="block text-slate-900">{item.itemId}. {item.descricao}</strong>
+            <li key={item.itemId} className={`${CARTAO} grid gap-1 p-3 text-sm`}>
+              <span className="flex items-start justify-between gap-2">
+                <strong className="text-slate-900">{item.itemId}. {item.descricao}</strong>
+                <SeloItem situacao={situacaoDoItem(item)} />
+              </span>
               <span className="block text-slate-600">
-                {item.tipo} · {numeroBr(item.quantidade)} {item.unidade} · até {formatarDia(item.prazoDesejado)} · parcial: {item.permiteParcial ? 'sim' : 'não'}
+                {item.tipo} · {numeroBr(item.quantidade)} {item.unidade}{item.prazoDesejado ? ` · até ${formatarDia(item.prazoDesejado)}` : ''} · parcial: {item.permiteParcial ? 'sim' : 'não'}
               </span>
               {(item.quantidadePedido !== undefined && item.quantidadePedido !== item.quantidade) && (
                 <span className="block text-slate-600">No pedido: {numeroBr(item.quantidadePedido)} {item.unidade}</span>
               )}
               {(item.quantidadeRecebida ?? 0) > 0 && (
-                <span className="block font-semibold text-[#176b4d]">Recebido: {numeroBr(item.quantidadeRecebida ?? 0)} {item.unidade} · saldo {numeroBr(saldoDoItem(item))}</span>
+                <span className="block font-semibold text-[#176b4d]">Chegou: {numeroBr(item.quantidadeRecebida ?? 0)} {item.unidade} · falta {numeroBr(saldoDoItem(item))}</span>
+              )}
+              {(item.conferencias?.length ?? 0) > 0 && (
+                <ol className="mt-1 grid gap-1.5 text-xs text-slate-600">
+                  {item.conferencias?.map((conf, indice) => (
+                    <li key={`${conf.data}-${indice}`} className="flex items-start gap-2">
+                      <AvatarPessoa nome={conf.usuario} tamanho="sm" />
+                      <span className="min-w-0">
+                        <strong className="text-slate-900">{conf.usuario}</strong> · {dataHora(conf.data)}
+                        <span className="block">
+                          <strong className={conf.situacao === 'Falta' ? 'text-rose-700' : 'text-slate-800'}>{conf.situacao === 'Falta' ? 'Faltou' : `Chegou ${numeroBr(conf.quantidade)} ${item.unidade}`}</strong>
+                          {conf.notaFiscal ? ` · NF ${conf.notaFiscal}` : ''}{conf.observacao ? ` · ${conf.observacao}` : ''}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              {acoes.includes('apontarFalta') && situacaoDoItem(item) !== 'Chegou' && (
+                faltaDe === item.itemId ? (
+                  <div className="mt-1 grid gap-2">
+                    <Campo rotulo="O que faltou?" para={`falta-${item.itemId}`}>
+                      <input id={`falta-${item.itemId}`} value={faltaObs} onChange={event => setFaltaObs(event.target.value)} placeholder="Ex.: não veio na carga de hoje" className={CAMPO} />
+                    </Campo>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => executar({ tipo: 'apontarFalta', itemId: item.itemId, observacao: faltaObs }, s => `${s.numero}: falta registrada no item ${item.itemId}.`)} className={BOTAO_PERIGO_LEVE}>Gravar falta</button>
+                      <button type="button" onClick={() => setFaltaDe(null)} className={BOTAO_SECUNDARIO}>Voltar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => { setFaltaDe(item.itemId); setFaltaObs(''); }} className={`${BOTAO_SECUNDARIO} mt-1 justify-self-start`}>
+                    <PackageX className="size-4" aria-hidden="true" /> Apontar falta
+                  </button>
+                )
               )}
             </li>
           ))}
@@ -269,7 +360,7 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
       )}
 
       {acoes.includes('receber') && (
-        <Bloco titulo="Confirmar chegada">
+        <Bloco titulo="Conferir o que chegou">
           <div className="grid grid-cols-2 gap-2" role="group" aria-label="Onde chegou">
             {(['Chegou ao Local', 'Chegou ao Local de Descarte'] as const).map(opcao => (
               <button key={opcao} type="button" aria-pressed={tipoChegada === opcao} onClick={() => setTipoChegada(opcao)}
@@ -343,17 +434,27 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
 
       {erro && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700">{erro}</p>}
 
-      <Bloco titulo="Histórico">
-        <ol className="grid gap-2 border-l-2 border-slate-200 pl-3 text-sm">
+    </div>
+
+    <aside className={`${CARTAO} grid min-w-0 gap-3 p-4 lg:sticky lg:top-0`}>
+      <Bloco titulo="Linha do tempo do pedido (histórico oficial)">
+        <ol id="linha-do-tempo" className="grid gap-3 text-sm">
           {[...sol.eventos].reverse().map((evento, indice) => (
-            <li key={`${evento.data}-${indice}`}>
-              <strong className="text-slate-900">{evento.acao}</strong>
-              <span className="block text-slate-600">{evento.usuario} · {new Date(evento.data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
-              {evento.detalhe && <span className="block text-slate-700">{evento.detalhe}</span>}
+            <li key={`${evento.data}-${indice}`} className="flex gap-3">
+              <AvatarPessoa nome={evento.usuario} />
+              <div className="min-w-0 flex-1 border-b border-slate-100 pb-3">
+                <p className="flex flex-wrap items-baseline justify-between gap-x-2">
+                  <strong className="text-slate-900">{evento.usuario}</strong>
+                  <span className="text-xs text-slate-600">{dataHora(evento.data)}</span>
+                </p>
+                <p className="font-bold text-slate-800">{evento.acao}</p>
+                {evento.detalhe && <p className="text-slate-700">{evento.detalhe}</p>}
+              </div>
             </li>
           ))}
         </ol>
       </Bloco>
+    </aside>
     </div>
   );
 }
