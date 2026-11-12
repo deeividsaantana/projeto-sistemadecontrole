@@ -1,1 +1,0 @@
-const e=t=>String(t||"").split("-").reverse().join("/"),o=(t,r=3)=>Number(t||0).toLocaleString("pt-BR",{maximumFractionDigits:r}),a=t=>Number(t||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});export{e as f,a as m,o as n};

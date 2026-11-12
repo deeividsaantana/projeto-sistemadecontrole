@@ -52,3 +52,8 @@ export const supabaseAuth = {
 };
 
 export type SupabaseAuth = typeof supabaseAuth;
+
+/** Renova a sessão para o nome novo valer já nos próximos lançamentos. */
+export const atualizarSessao = async () => {
+  await getSupabaseClient().auth.refreshSession();
+};

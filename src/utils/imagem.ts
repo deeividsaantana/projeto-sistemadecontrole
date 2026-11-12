@@ -62,3 +62,29 @@ export const comprimirImagem = async (arquivo: File): Promise<string> => {
     return original;
   }
 };
+
+const LADO_FOTO_PERFIL = 160;
+
+/**
+ * Foto de perfil: corta o meio da imagem em quadrado e reduz para 160 px em
+ * JPEG. Fica com poucos kB, então a lista de pessoas carrega rápido até no
+ * celular com sinal fraco.
+ */
+export const fotoDePerfil = async (arquivo: File): Promise<string> => {
+  if (!arquivo.type.startsWith('image/')) throw new Error('Escolha uma foto (JPG ou PNG).');
+  const original = await lerComoDataUrl(arquivo);
+  const imagem = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const elemento = new Image();
+    elemento.onload = () => resolve(elemento);
+    elemento.onerror = () => reject(new Error('Não foi possível abrir essa foto. Tente outra.'));
+    elemento.src = original;
+  });
+  const lado = Math.min(imagem.width, imagem.height);
+  const canvas = document.createElement('canvas');
+  canvas.width = LADO_FOTO_PERFIL;
+  canvas.height = LADO_FOTO_PERFIL;
+  const contexto = canvas.getContext('2d');
+  if (!contexto) throw new Error('Este navegador não conseguiu preparar a foto.');
+  contexto.drawImage(imagem, (imagem.width - lado) / 2, (imagem.height - lado) / 2, lado, lado, 0, 0, LADO_FOTO_PERFIL, LADO_FOTO_PERFIL);
+  return canvas.toDataURL('image/jpeg', 0.82);
+};

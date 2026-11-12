@@ -205,3 +205,4 @@ import './padraoErp.test';
 import './solicitacoes.test';
 import './campoComErro.test';
 import './nomeDaPessoa.test';
+import './perfilAvatar.test';

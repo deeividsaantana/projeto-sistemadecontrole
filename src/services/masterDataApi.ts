@@ -66,6 +66,7 @@ export interface ManagedUser {
   active: boolean;
   profileName?: string | null;
   avatarColor?: string | null;
+  avatarPhoto?: string | null;
   jobTitle?: string | null;
   phone?: string | null;
   area?: string | null;
@@ -143,6 +144,7 @@ export const createManagedUser = async (input: {
   role: ManagedUserRole;
   profileName?: string;
   avatarColor?: string;
+  avatarPhoto?: string;
   jobTitle?: string;
   phone?: string;
   area?: string;
@@ -163,6 +165,7 @@ export const updateManagedUser = async (input: {
   fullName?: string;
   profileName?: string;
   avatarColor?: string;
+  avatarPhoto?: string;
   jobTitle?: string;
   phone?: string;
   area?: string;
@@ -174,6 +177,43 @@ export const updateManagedUser = async (input: {
     body: JSON.stringify({ action: 'update-user', ...input }),
   });
   return response.data;
+};
+
+/** Nome, cor e foto de uma pessoa da equipe, para os avatares. */
+export interface PessoaComAvatar {
+  userId: string;
+  nome: string;
+  cor: string;
+  foto: string | null;
+}
+
+export interface MeuPerfil {
+  userId: string;
+  email: string | null;
+  fullName: string;
+  role: string;
+  avatarColor: string;
+  avatarPhoto: string | null;
+  jobTitle: string | null;
+}
+
+export const loadMyProfile = async (): Promise<MeuPerfil> => {
+  const response = await request<MeuPerfil>(endpoint + '?action=me');
+  return response.data;
+};
+
+/** avatarPhoto: data URL nova, '' para tirar a foto, ou ausente para manter. */
+export const updateMyProfile = async (input: { fullName: string; avatarColor: string; avatarPhoto?: string }) => {
+  const response = await request<Pick<MeuPerfil, 'userId' | 'fullName' | 'avatarColor' | 'avatarPhoto'>>(endpoint, {
+    method: 'PATCH',
+    body: JSON.stringify({ action: 'update-me', ...input }),
+  });
+  return response.data;
+};
+
+export const loadPeopleWithAvatars = async (): Promise<PessoaComAvatar[]> => {
+  const response = await request<{ pessoas: PessoaComAvatar[] }>(endpoint + '?action=people');
+  return response.data.pessoas;
 };
 
 export const deleteManagedUser = async (uid: string): Promise<{ uid: string }> => {

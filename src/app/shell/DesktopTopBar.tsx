@@ -1,5 +1,7 @@
-import { useRef, useState } from 'react';
-import { iniciaisDoNome, nomeDaPessoa } from '../../auth/nomeDaPessoa';
+import { useRef } from 'react';
+import { nomeDaPessoa } from '../../auth/nomeDaPessoa';
+import { Avatar } from '../../shared/ui';
+import type { MeuAvatar } from '../perfil/usePerfis';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { reduzMovimento } from '../../shared/motion/reduzMovimento';
@@ -12,10 +14,11 @@ import { OBRA } from '../../config/obra';
 import { descreverSalvamento, type DescricaoSalvamento } from '../../cloud/estadoSalvamento';
 
 const ICON_STROKE = 1.75;
-const COR_AVATAR_KEY = 'cintravyse_cor_avatar';
 
 interface DesktopTopBarProps {
   currentUser: User | null;
+  meuAvatar: MeuAvatar | null;
+  onAbrirPerfil: () => void;
   isNotificationOpen: boolean;
   notifications: AppNotification[];
   unreadCount: number;
@@ -39,6 +42,8 @@ interface DesktopTopBarProps {
 
 export function DesktopTopBar({
   currentUser,
+  meuAvatar,
+  onAbrirPerfil,
   isNotificationOpen,
   notifications,
   unreadCount,
@@ -61,18 +66,7 @@ export function DesktopTopBar({
   const salvamento = salvamentoRecebido ?? descreverSalvamento({ online: true, conectado: isCloudConnected, enviando: false, pendente: false, falhasSeguidas: 0 });
   const headerRef = useRef<HTMLElement>(null);
   const logoutBtnRef = useRef<HTMLButtonElement>(null);
-  const userName = nomeDaPessoa(currentUser);
-  const userInitials = iniciaisDoNome(userName);
-  // Cor do ícone da pessoa: verde ou azul, escolhida clicando no ícone e
-  // guardada neste navegador (pedido de 11/11/2026).
-  const [corAvatar, setCorAvatar] = useState<'verde' | 'azul'>(() => {
-    try { return localStorage.getItem(COR_AVATAR_KEY) === 'azul' ? 'azul' : 'verde'; } catch { return 'verde'; }
-  });
-  const trocarCorAvatar = () => {
-    const proxima = corAvatar === 'verde' ? 'azul' : 'verde';
-    setCorAvatar(proxima);
-    try { localStorage.setItem(COR_AVATAR_KEY, proxima); } catch { /* sem armazenamento: vale só nesta sessão */ }
-  };
+  const userName = meuAvatar?.nome || nomeDaPessoa(currentUser);
 
   useGSAP(() => {
     if (!logoutBtnRef.current || reduzMovimento()) return;
@@ -159,18 +153,16 @@ export function DesktopTopBar({
           alertas={alertas}
           onAlertaClick={onNavigate}
         />
-        <div className="erp-topbar__user">
-          <button
-            type="button"
-            onClick={trocarCorAvatar}
-            className={`erp-topbar__avatar erp-topbar__avatar--${corAvatar}`}
-            title={`Trocar a cor do ícone para ${corAvatar === 'verde' ? 'azul' : 'verde'}`}
-            aria-label={`Trocar a cor do ícone para ${corAvatar === 'verde' ? 'azul' : 'verde'}`}
-          >
-            {userInitials}
-          </button>
-          <strong title={userName}>{userName}</strong>
-        </div>
+        <button
+          type="button"
+          onClick={onAbrirPerfil}
+          className="erp-topbar__user"
+          title="Meu perfil: trocar nome e foto"
+        >
+          <Avatar nome={userName} foto={meuAvatar?.foto} cor={meuAvatar?.cor} />
+          <strong>{userName}</strong>
+          <span className="sr-only">, abrir meu perfil</span>
+        </button>
         <button
           ref={logoutBtnRef}
           type="button"

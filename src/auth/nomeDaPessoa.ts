@@ -11,12 +11,3 @@ export function nomeDaPessoa(usuario: { displayName?: string | null; email?: str
   if (partes.length === 0) return 'Usuário';
   return partes.map(parte => parte.charAt(0).toUpperCase() + parte.slice(1).toLowerCase()).join(' ');
 }
-
-/** Iniciais do nome: primeira letra do primeiro e do último nome. */
-export function iniciaisDoNome(nome: string): string {
-  const partes = nome.trim().split(/\s+/).filter(Boolean);
-  if (partes.length === 0) return '?';
-  const primeira = partes[0].charAt(0);
-  const ultima = partes.length > 1 ? partes[partes.length - 1].charAt(0) : '';
-  return (primeira + ultima).toUpperCase();
-}
