@@ -27,6 +27,7 @@ const TELAS: Array<[arquivo: string, inicio: string]> = [
   ['ManutencaoTab.tsx', 'const subtelas = ['],
   ['ControlePresencaTab.tsx', 'const navItems: ReadonlyArray<ItemDasAbas<View>> = ['],
   ['CombustivelOperacionalTab.tsx', 'const vistas'],
+  ['SolicitacoesTab.tsx', 'const subtelas: ItemDasAbas<Subtela>[] = ['],
 ];
 
 const entradasDePrimeiroNivel = (fonte: string, inicio: string) => {

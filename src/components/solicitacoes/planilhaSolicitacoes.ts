@@ -3,34 +3,79 @@
  * este arquivo com import() só quando a pessoa pede, para o ExcelJS não pesar
  * na abertura da aba.
  */
-import { readWorkbookFile } from '../../imports/workbookReader';
 import {
   configureCorporateWorkbook,
   createCorporateWorkbook,
   downloadCorporateWorkbook,
+  loadValidatedWorkbook,
+  stripUnsupportedWorkbookVisuals,
   styleCorporateWorksheet,
 } from '../../utils/excelCorporate';
 import { formatarDia, situacaoDe, type Solicitacao } from '../../utils/solicitacoes';
 import {
   COLUNAS_IMPORTACAO,
+  historicoGeral,
+  linhasDeConferencia,
   lerCsv,
   relatorioAprovador,
   relatorioLogistico,
   relatorioPorSolicitante,
   relatorioSuprimentos,
+  type AbaLida,
 } from '../../utils/solicitacoesPlanilha';
 
-/** Linhas da primeira aba (ou do CSV), com o número da linha no arquivo. */
-export const lerArquivoDeImportacao = async (arquivo: File) => {
+/** Valor da célula do ExcelJS como dado simples (texto rico, fórmula e link viram o valor). */
+const valorSimples = (valor: unknown): unknown => {
+  if (valor === null || valor === undefined || valor instanceof Date || typeof valor !== 'object') return valor ?? '';
+  const objeto = valor as Record<string, unknown>;
+  if ('result' in objeto) return valorSimples(objeto.result);
+  if ('richText' in objeto && Array.isArray(objeto.richText)) return objeto.richText.map(parte => (parte as { text?: string }).text ?? '').join('');
+  if ('text' in objeto) return valorSimples(objeto.text);
+  return '';
+};
+
+/**
+ * Lê cada aba por inteiro. O cabeçalho é a primeira linha (entre as dez
+ * primeiras) só de textos, com três ou mais nomes diferentes: assim o título mesclado
+ * em cima ("Pedidos de compras") não engana. Aba sem cabeçalho (a de
+ * Prioridade) fica com "Coluna 1", "Coluna 2"... na ordem das colunas.
+ */
+const lerAbasDoExcel = async (arquivo: File): Promise<AbaLida[]> => {
+  const livro = await loadValidatedWorkbook(new File([await stripUnsupportedWorkbookVisuals(new Uint8Array(await arquivo.arrayBuffer()))], arquivo.name));
+  return livro.worksheets.map(aba => {
+    const total = Math.min(aba.columnCount, 60);
+    const valoresDa = (numero: number) => Array.from({ length: total }, (_, i) => valorSimples(aba.getRow(numero).getCell(i + 1).value));
+    let cabecalho = 0;
+    for (let numero = 1; numero <= Math.min(10, aba.rowCount); numero += 1) {
+      const preenchidas = valoresDa(numero).filter(valor => String(valor ?? '').trim() !== '');
+      // Título mesclado repete o mesmo texto em todas as células: não conta.
+      if (new Set(preenchidas).size >= 3 && preenchidas.every(valor => typeof valor === 'string')) { cabecalho = numero; break; }
+    }
+    const nomes = (cabecalho ? valoresDa(cabecalho) : []).map((valor, i) => String(valor ?? '').trim() || `Coluna ${i + 1}`);
+    const chaves = Array.from({ length: total }, (_, i) => {
+      const nome = nomes[i] ?? `Coluna ${i + 1}`;
+      return nomes.indexOf(nome) === i ? nome : `${nome} (${i + 1})`;
+    });
+    const linhas: AbaLida['linhas'] = [];
+    for (let numero = cabecalho + 1; numero <= aba.rowCount; numero += 1) {
+      const lista = valoresDa(numero);
+      if (lista.every(valor => String(valor ?? '').trim() === '')) continue;
+      linhas.push({ linha: numero, valores: Object.fromEntries(chaves.map((chave, i) => [chave, lista[i]])) });
+    }
+    return { nome: aba.name.trim(), linhas };
+  });
+};
+
+/** Todas as abas do arquivo (o CSV vira uma aba só), com o número da linha no arquivo. */
+export const lerArquivoDeImportacao = async (arquivo: File): Promise<AbaLida[]> => {
   if (/\.csv$/i.test(arquivo.name)) {
     const texto = await arquivo.text();
-    return lerCsv(texto).map((valores, indice) => ({ linha: indice + 2, valores: valores as Record<string, unknown> }));
+    return [{ nome: arquivo.name, linhas: lerCsv(texto).map((valores, indice) => ({ linha: indice + 2, valores: valores as Record<string, unknown> })) }];
   }
   if (!/\.xlsx$/i.test(arquivo.name)) throw new Error('Use um arquivo .xlsx ou .csv.');
-  const lido = await readWorkbookFile(arquivo);
-  const aba = lido.sheets[0];
-  if (!aba) throw new Error('A planilha não tem abas.');
-  return aba.rows.map(linha => ({ linha: linha.rowNumber, valores: linha.values }));
+  const abas = await lerAbasDoExcel(arquivo);
+  if (!abas.length) throw new Error('A planilha não tem abas.');
+  return abas;
 };
 
 /** Modelo vazio com as colunas obrigatórias e uma linha de exemplo. */
@@ -46,7 +91,7 @@ export const baixarModeloDeImportacao = async () => {
 
 const VERMELHO = 'FFFEE2E2';
 
-/** Os quatro relatórios gerenciais num arquivo só, uma aba cada. */
+/** Os relatórios gerenciais, a conferência e o histórico num arquivo só, uma aba cada. */
 export const baixarRelatorios = async (sols: readonly Solicitacao[], hoje: string) => {
   const livro = await createCorporateWorkbook();
   configureCorporateWorkbook(livro, 'Solicitações, suprimentos e logística');
@@ -98,6 +143,30 @@ export const baixarRelatorios = async (sols: readonly Solicitacao[], hoje: strin
       celula.font = { bold: true, color: { argb: 'FFB91C1C' }, size: 10 };
     });
   });
+
+  const conferencia = livro.addWorksheet('Conferência');
+  conferencia.addRows([[], []]);
+  conferencia.addRow(['Pedido', 'SC', 'Prioridade', 'Solicitante', 'Item', 'Qtd. pedida', 'Unidade', 'Chegou', 'Situação', 'Última conferência', 'Quem', 'Observação']);
+  const linhasConf = linhasDeConferencia(sols);
+  linhasConf.forEach(({ sol, item, situacao }) => {
+    const ultima = item.conferencias?.[item.conferencias.length - 1];
+    conferencia.addRow([sol.numero, sol.numeroSc ?? '', sol.prioridade ?? '', sol.solicitante, item.descricao, item.quantidadePedido ?? item.quantidade, item.unidade, item.quantidadeRecebida ?? 0, situacao, ultima ? formatarDia(ultima.data) : '', ultima?.usuario ?? '', ultima?.observacao ?? '']);
+  });
+  titulo(conferencia, 'Conferência de itens', conferencia.rowCount - 3);
+  linhasConf.forEach(({ situacao }, indice) => {
+    if (situacao !== 'Falta') return;
+    conferencia.getRow(4 + indice).eachCell(celula => {
+      celula.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: VERMELHO } };
+    });
+  });
+
+  const historico = livro.addWorksheet('Histórico');
+  historico.addRows([[], []]);
+  historico.addRow(['Quando', 'Pedido', 'SC', 'Quem', 'O que aconteceu', 'Detalhe']);
+  historicoGeral(sols).forEach(evento => historico.addRow([
+    new Date(evento.data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }), evento.sol.numero, evento.sol.numeroSc ?? '', evento.usuario, evento.acao, evento.detalhe ?? '',
+  ]));
+  titulo(historico, 'Histórico de todos os pedidos', historico.rowCount - 3);
 
   await downloadCorporateWorkbook(livro, `relatorios-solicitacoes-${hoje}.xlsx`);
 };
