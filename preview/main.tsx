@@ -459,15 +459,12 @@ const screens: Record<string, React.ReactNode> = {
       <main className="erp-workspace">
         <DesktopTopBar
           activeTab="dashboard"
-          groups={previewGroups}
-          menuSearch=""
           currentUser={{ displayName: 'Deivid Santana', email: 'deivid@renea.com.br' } as never}
           isNotificationOpen={false}
           notifications={previewNotifications}
           unreadCount={1}
           isCloudConnected
           lastCloudSync="04/09/2026 21:40"
-          onMenuSearchChange={noop}
           onNavigate={noop}
           onToggleNotifications={noop}
           onCloseNotifications={noop}
@@ -692,15 +689,12 @@ createRoot(document.getElementById('app-root')!).render(
         <main className="erp-workspace" id="main-workspace">
           <DesktopTopBar
             activeTab={abaAtiva}
-            groups={previewGroups}
-            menuSearch=""
             currentUser={{ displayName: 'Deivid Santana', email: 'deivid@renea.com.br' } as never}
             isNotificationOpen={false}
             notifications={previewNotifications}
             unreadCount={1}
             isCloudConnected
             lastCloudSync="04/09/2026 21:40"
-            onMenuSearchChange={noop}
             onNavigate={noop}
             onToggleNotifications={noop}
             onCloseNotifications={noop}

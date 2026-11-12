@@ -27,6 +27,7 @@ import {
 import { SeloSituacao } from './SeloSituacao';
 import { SeloItem } from './SeloItem';
 import { CartaoRastreio } from './CartaoRastreio';
+import { AvatarPessoa, dataHora } from './AvatarPessoa';
 
 interface DetalheProps {
   solicitacao: Solicitacao;
@@ -125,7 +126,7 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
 
   return (
     <div className="grid gap-5">
-      <ul className="grid" aria-label="Onde o pedido está">
+      <ul className="grid grid-cols-1" aria-label="Onde o pedido está">
         <CartaoRastreio sol={sol} hoje={hoje} ativo={false} onAbrir={() => document.getElementById('linha-do-tempo')?.scrollIntoView({ behavior: 'smooth' })} />
       </ul>
 
@@ -155,11 +156,17 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
                 <span className="block font-semibold text-[#176b4d]">Chegou: {numeroBr(item.quantidadeRecebida ?? 0)} {item.unidade} · falta {numeroBr(saldoDoItem(item))}</span>
               )}
               {(item.conferencias?.length ?? 0) > 0 && (
-                <ol className="mt-1 grid gap-0.5 border-l-2 border-slate-200 pl-2 text-xs text-slate-600">
+                <ol className="mt-1 grid gap-1.5 text-xs text-slate-600">
                   {item.conferencias?.map((conf, indice) => (
-                    <li key={`${conf.data}-${indice}`}>
-                      <strong className={conf.situacao === 'Falta' ? 'text-rose-700' : 'text-slate-800'}>{conf.situacao === 'Falta' ? 'Faltou' : `Chegou ${numeroBr(conf.quantidade)} ${item.unidade}`}</strong>
-                      {' '}· {conf.usuario} · {formatarDia(conf.data)}{conf.notaFiscal ? ` · NF ${conf.notaFiscal}` : ''}{conf.observacao ? ` · ${conf.observacao}` : ''}
+                    <li key={`${conf.data}-${indice}`} className="flex items-start gap-2">
+                      <AvatarPessoa nome={conf.usuario} tamanho="sm" />
+                      <span className="min-w-0">
+                        <strong className="text-slate-900">{conf.usuario}</strong> · {dataHora(conf.data)}
+                        <span className="block">
+                          <strong className={conf.situacao === 'Falta' ? 'text-rose-700' : 'text-slate-800'}>{conf.situacao === 'Falta' ? 'Faltou' : `Chegou ${numeroBr(conf.quantidade)} ${item.unidade}`}</strong>
+                          {conf.notaFiscal ? ` · NF ${conf.notaFiscal}` : ''}{conf.observacao ? ` · ${conf.observacao}` : ''}
+                        </span>
+                      </span>
                     </li>
                   ))}
                 </ol>
@@ -389,12 +396,18 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
       {erro && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700">{erro}</p>}
 
       <Bloco titulo="Linha do tempo do pedido (histórico oficial)">
-        <ol id="linha-do-tempo" className="grid gap-2 border-l-2 border-slate-200 pl-3 text-sm">
+        <ol id="linha-do-tempo" className="grid gap-3 text-sm">
           {[...sol.eventos].reverse().map((evento, indice) => (
-            <li key={`${evento.data}-${indice}`}>
-              <strong className="text-slate-900">{evento.acao}</strong>
-              <span className="block text-slate-600">{evento.usuario} · {new Date(evento.data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
-              {evento.detalhe && <span className="block text-slate-700">{evento.detalhe}</span>}
+            <li key={`${evento.data}-${indice}`} className="flex gap-3">
+              <AvatarPessoa nome={evento.usuario} />
+              <div className="min-w-0 flex-1 border-b border-slate-100 pb-3">
+                <p className="flex flex-wrap items-baseline justify-between gap-x-2">
+                  <strong className="text-slate-900">{evento.usuario}</strong>
+                  <span className="text-xs text-slate-600">{dataHora(evento.data)}</span>
+                </p>
+                <p className="font-bold text-slate-800">{evento.acao}</p>
+                {evento.detalhe && <p className="text-slate-700">{evento.detalhe}</p>}
+              </div>
             </li>
           ))}
         </ol>

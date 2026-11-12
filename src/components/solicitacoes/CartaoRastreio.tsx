@@ -7,6 +7,7 @@ import { Check } from 'lucide-react';
 import { CARTAO } from '../cadastros/estilos';
 import { PASSOS_RASTREIO, rastreioDe, situacaoDe, type Solicitacao } from '../../utils/solicitacoes';
 import { SeloSituacao } from './SeloSituacao';
+import { AvatarPessoa, dataHora } from './AvatarPessoa';
 
 const COR_FRASE = {
   normal: 'text-slate-700',
@@ -28,10 +29,11 @@ export function CartaoRastreio({ sol, hoje, ativo, onAbrir }: CartaoRastreioProp
   const parado = rastreio.tom === 'atraso' || rastreio.tom === 'falta';
   const cancelado = rastreio.tom === 'cancelado';
   const primeiro = sol.itens[0]?.descricao ?? '';
+  const ultimo = sol.eventos[sol.eventos.length - 1];
   return (
-    <li data-testid="pedido-card">
+    <li data-testid="pedido-card" className="min-w-0">
       <button type="button" onClick={onAbrir} aria-current={ativo || undefined}
-        className={`${CARTAO} grid h-full w-full gap-2 p-3 text-left transition-colors hover:border-[#176b4d] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus) ${ativo ? 'border-[#176b4d]' : ''} ${rastreio.tom === 'atraso' ? 'border-rose-300' : ''}`}>
+        className={`${CARTAO} grid h-full w-full min-w-0 grid-cols-1 gap-2 p-3 text-left transition-colors hover:border-[#176b4d] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus) ${ativo ? 'border-[#176b4d]' : ''} ${rastreio.tom === 'atraso' ? 'border-rose-300' : ''}`}>
         <span className="flex items-start justify-between gap-2">
           <span className="min-w-0">
             <strong className="block text-base font-black text-slate-900">{sol.numero}</strong>
@@ -80,6 +82,15 @@ export function CartaoRastreio({ sol, hoje, ativo, onAbrir }: CartaoRastreioProp
         <span className={`block text-sm ${COR_FRASE[rastreio.tom]}`}>{rastreio.frase}</span>
         {rastreio.itensTotal > 1 && !cancelado && rastreio.tom !== 'fechado' && (
           <span className="block text-xs text-slate-600">{rastreio.itensChegaram} de {rastreio.itensTotal} itens já chegaram</span>
+        )}
+        {ultimo && (
+          <span className="flex items-center gap-2 border-t border-slate-100 pt-2 text-xs text-slate-600">
+            <AvatarPessoa nome={ultimo.usuario} tamanho="sm" />
+            <span className="min-w-0">
+              <span className="block truncate"><strong className="text-slate-800">{ultimo.usuario}</strong> · {dataHora(ultimo.data)}</span>
+              <span className="block truncate">{ultimo.acao}</span>
+            </span>
+          </span>
         )}
       </button>
     </li>

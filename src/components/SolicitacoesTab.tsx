@@ -45,6 +45,7 @@ import { PessoasSuprimentosLista } from './solicitacoes/PessoasSuprimentosLista'
 import { SeloSituacao } from './solicitacoes/SeloSituacao';
 import { SeloItem } from './solicitacoes/SeloItem';
 import { CartaoRastreio } from './solicitacoes/CartaoRastreio';
+import { AvatarPessoa, dataHora } from './solicitacoes/AvatarPessoa';
 
 type Subtela = 'pedidos' | 'nova' | 'conferencia' | 'historico' | 'pessoas';
 
@@ -254,13 +255,13 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
     { chave: 'chegou', titulo: 'Chegou', alinhamento: 'direita', larguraIdeal: 84, render: ({ item }) => `${numeroBr(item.quantidadeRecebida ?? 0)} ${item.unidade}`, valorOrdenacao: ({ item }) => item.quantidadeRecebida ?? 0 },
     { chave: 'situacao', titulo: 'Conferência', larguraIdeal: 110, render: ({ situacao }) => <SeloItem situacao={situacao} />, valorOrdenacao: ({ situacao }) => situacao, valorExportacao: ({ situacao }) => situacao },
     { chave: 'solicitante', titulo: 'Solicitante', larguraIdeal: 120, render: ({ sol }) => sol.solicitante, valorOrdenacao: ({ sol }) => sol.solicitante },
-    { chave: 'ultima', titulo: 'Última conferência', larguraIdeal: 150, render: ({ item }) => { const ultima = item.conferencias?.[item.conferencias.length - 1]; return ultima ? `${formatarDia(ultima.data)} · ${ultima.usuario}` : '—'; } },
+    { chave: 'ultima', titulo: 'Última conferência', larguraIdeal: 150, render: ({ item }) => { const ultima = item.conferencias?.[item.conferencias.length - 1]; return ultima ? <span className="flex items-center gap-2"><AvatarPessoa nome={ultima.usuario} tamanho="sm" />{formatarDia(ultima.data)}</span> : '—'; }, dica: ({ item }) => item.conferencias?.[item.conferencias.length - 1]?.usuario, valorExportacao: ({ item }) => { const ultima = item.conferencias?.[item.conferencias.length - 1]; return ultima ? `${formatarDia(ultima.data)} · ${ultima.usuario}` : ''; } },
   ];
 
   const colunasHistorico: ColunaTabela<(typeof historico)[number]>[] = [
-    { chave: 'data', titulo: 'Quando', larguraIdeal: 130, render: evento => new Date(evento.data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }), valorOrdenacao: evento => evento.data },
+    { chave: 'data', titulo: 'Quando', larguraIdeal: 130, render: evento => dataHora(evento.data), valorOrdenacao: evento => evento.data },
     { chave: 'pedido', titulo: 'Pedido', larguraIdeal: 120, render: evento => <strong className="font-black text-slate-900">{evento.sol.numero}</strong>, valorOrdenacao: evento => evento.sol.numero, valorExportacao: evento => evento.sol.numero },
-    { chave: 'quem', titulo: 'Quem', larguraIdeal: 120, render: evento => evento.usuario, valorOrdenacao: evento => evento.usuario },
+    { chave: 'quem', titulo: 'Quem', larguraIdeal: 150, render: evento => <span className="flex items-center gap-2"><AvatarPessoa nome={evento.usuario} tamanho="sm" />{evento.usuario}</span>, valorOrdenacao: evento => evento.usuario, valorExportacao: evento => evento.usuario },
     { chave: 'acao', titulo: 'O que aconteceu', larguraIdeal: 190, render: evento => evento.acao, valorOrdenacao: evento => evento.acao },
     { chave: 'detalhe', titulo: 'Detalhe', larguraIdeal: 260, render: evento => evento.detalhe ?? '', dica: evento => evento.detalhe },
   ];
@@ -365,7 +366,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
           </p>
         ) : (
           <div className="grid gap-3">
-            <ul data-sol-reveal className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <ul data-sol-reveal className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {pedidos.slice(0, mostrar).map(({ sol }) => (
                 <CartaoRastreio key={sol.id} sol={sol} hoje={hoje} ativo={sol.id === abertaId} onAbrir={() => setAbertaId(sol.id)} />
               ))}
