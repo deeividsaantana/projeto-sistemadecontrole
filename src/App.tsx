@@ -685,6 +685,8 @@ export default function App() {
         { key: 'renea_combustiveis', value: JSON.stringify(INITIAL_TIPOS_COMBUSTIVEL) },
         { key: 'renea_lubrificantes', value: JSON.stringify(INITIAL_PRODUTOS_LUBRIFICACAO) },
         { key: 'renea_etapas', value: JSON.stringify(INITIAL_ETAPAS_SERVICO) },
+        { key: STORAGE_KEYS.servicosObra, value: JSON.stringify(INITIAL_PROGRAMACAO.servicos) },
+        { key: STORAGE_KEYS.planejamentoItens, value: JSON.stringify(INITIAL_PROGRAMACAO.itens) },
         { key: 'renea_abastecimentos', value: JSON.stringify(INITIAL_ABASTECIMENTOS) },
         { key: 'renea_lubrificacoes', value: JSON.stringify(INITIAL_LUBRIFICACOES) },
         { key: 'renea_listas_presenca', value: JSON.stringify(INITIAL_PRESENCAS) },
@@ -1246,6 +1248,17 @@ export default function App() {
         // token herdado para este trocar e republicar, e o link mudava sozinho
         // em looping. Token fraco é tratado uma vez, na carga local.
         const data: CloudData = { ...downloadedData };
+        // A programação fornecida pelo usuário é uma carga operacional real,
+        // não uma amostra visual. Se o retrato remoto ainda não tiver essas
+        // duas tabelas, incorpora os registros estáveis e publica depois do
+        // download. A chave estável torna a operação idempotente.
+        const devePublicarProgramacaoInicial = currentUserRoleRef.current !== 'leitura'
+          && (!Array.isArray(data.servicosObra) || data.servicosObra.length === 0)
+          && (!Array.isArray(data.planejamentoItens) || data.planejamentoItens.length === 0);
+        if (devePublicarProgramacaoInicial) {
+          data.servicosObra = INITIAL_PROGRAMACAO.servicos;
+          data.planejamentoItens = INITIAL_PROGRAMACAO.itens;
+        }
         const remotePresence = Array.isArray(data.presencasLink) ? data.presencasLink : [];
         const localPresence = parseStoredJson<PresencaApontamento[]>(
           localStorage.getItem('renea_presencas_link'),
@@ -1488,6 +1501,9 @@ export default function App() {
         // para diferenciar exclusões locais de novidades dos colegas depois.
         cloudBaselineRef.current = downloadedBaseline;
         setBaixouDaNuvemNestaSessao(true);
+        if (devePublicarProgramacaoInicial) {
+          queueMicrotask(() => { void handleUploadToSupabase({}, { forcar: true }); });
+        }
         if (edicoesLocais.length && !devolverParaNuvem.length && !novidadesLocais.length) {
           queueMicrotask(() => { void handleUploadToSupabase(); });
           const editados = edicoesLocais.reduce((total, item) => total + item.editados, 0);
