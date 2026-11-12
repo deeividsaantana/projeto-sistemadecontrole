@@ -102,11 +102,11 @@ export function ManutencaoHoje({ relatorio, registros, equipamentos, motoristas,
         ))}
       </GradeIndicadores>
 
-      <section aria-labelledby="manutencao-hoje-titulo" className="mt-8">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4 pb-4 border-b border-slate-100">
+      <section aria-labelledby="manutencao-hoje-titulo" className="mt-2">
+        <div className="mb-2 flex flex-nowrap items-center justify-between gap-3 overflow-x-auto border-b border-slate-100 pb-2">
           <div className="min-w-0 flex-1">
             <h2 id="manutencao-hoje-titulo" className="text-lg font-bold text-slate-900">Equipamentos que pararam hoje</h2>
-            <p className="mt-1.5 text-sm text-slate-600">Primeiro os que ainda estão na oficina. A conta para em 10 h por dia, salvo quem segue além.</p>
+            <p className="truncate text-sm text-slate-600">Primeiro os que ainda estão na oficina. A conta para em 10 h por dia, salvo quem segue além.</p>
           </div>
           <span className="flex-none text-xs font-semibold tabular-nums text-slate-500">Atualizado às {horaAgora}</span>
         </div>

@@ -29,7 +29,6 @@ import { downloadManutencaoWorkbook, downloadRelatorioManutencaoDia } from '../u
 import { OBSERVACAO_LIMITE, horasMedidasDaOrdem } from '../utils/manutencaoLimite';
 import { montarRelatorioManutencaoDia } from '../utils/relatorioManutencaoDia';
 import { dataDeHoje, diasParaConferir, motivosDoDia, registrosDeManutencao } from '../utils/conferenciaManutencao';
-import { buildMaintenanceQueue } from '../utils/maintenanceQueue';
 import {
   Badge,
   ConfirmDialog,
@@ -49,7 +48,6 @@ import { TelaCheia } from '../shared/ui/TelaCheia';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO } from './cadastros/estilos';
 import { Campo, Conferencia, Conferido, Etapa } from '../shared/ui/Lancamento';
 import { ManutencaoHoje } from './manutencao/ManutencaoHoje';
-import { FilaOficina } from './manutencao/FilaOficina';
 import { ConferenciaManutencao } from './manutencao/ConferenciaManutencao';
 import { RelatorioManutencaoDia } from './manutencao/RelatorioManutencaoDia';
 
@@ -128,6 +126,8 @@ export default function ManutencaoTab({
   const escopo = useRef<HTMLElement>(null);
   // Quem chega do Quadro com um prefixo vai direto às ordens, onde fica a busca.
   const [subtela, setSubtela] = useState<Subtela>(buscaInicial ? 'ordens' : 'hoje');
+  // A ação continua parte do contrato da tela para os cartões que apontam ao Quadro.
+  // onVerNoQuadro={onVerNoQuadro}
   // As horas do dia correm com o relógio: refaz a conta a cada minuto.
   const [agora, setAgora] = useState(() => new Date());
   useEffect(() => {
@@ -232,12 +232,6 @@ export default function ManutencaoTab({
       criticas: abertas.filter(ordem => ['Alta', 'Urgente'].includes(ordem.prioridade)).length,
     };
   }, [lista]);
-
-  /** Fila de oficina: uma OS ativa por cartão, sem esconder equipamento sem cadastro. */
-  const filaOperacional = useMemo(
-    () => buildMaintenanceQueue(ordensServico, equipamentos, agora, controlesEquipamentos),
-    [ordensServico, equipamentos, agora, controlesEquipamentos],
-  );
 
   const familiasComOrdens = useMemo(() => {
     const contagem = new Map<EquipmentFamily, number>();
@@ -625,7 +619,6 @@ export default function ManutencaoTab({
             onSaveControle={onSaveControle}
             onSalvarConferencia={onSalvarConferencia}
           />
-          <FilaOficina fila={filaOperacional} ordensServico={ordensServico} podeEditar={podeEditar} onAvancar={avancar} onEditar={abrirEdicao} onVerNoQuadro={onVerNoQuadro} />
         </>
       )}
 
