@@ -9,9 +9,10 @@ import {
 test('sidebar expõe os módulos primários visíveis do ERP', () => {
   const rendered = SIDEBAR_NAVIGATION_GROUPS.flatMap(group => group.items.map(item => item.id));
   assert.deepEqual(rendered, [...PRIMARY_MODULE_IDS].filter(id => id !== 'colaboradores'));
-  assert.equal(rendered.length, 9);
+  assert.equal(rendered.length, 10);
   // Solicitações e Compras entrou em 2026-11-11, a pedido do usuário.
   assert.equal(isPrimaryModule('solicitacoes'), true);
+  assert.equal(isPrimaryModule('programacao'), true);
   assert.equal(isPrimaryModule('manutencao'), true);
   assert.equal(isPrimaryModule('central-operacional'), false);
   // Controle de Estacas voltou à navegação principal em 2026-09-22. Materiais
