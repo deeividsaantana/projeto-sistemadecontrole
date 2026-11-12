@@ -5,7 +5,7 @@ import {
   FolderPlus,
   Hammer,
   LayoutDashboard,
-  Wrench,
+  Truck,
   Activity,
   Users,
   ShoppingCart,
@@ -44,7 +44,7 @@ export const NAVIGATION_GROUPS = [
     label: 'Equipamentos',
     items: [
       { id: 'controle-equipamentos', label: 'Controle Operacional de Frotas', icon: Activity },
-      { id: 'manutencao', label: 'Manutenção', icon: Wrench },
+      { id: 'manutencao', label: 'Manutenção', icon: Truck },
       { id: 'lancamentos', label: 'Combustível', icon: ClipboardList },
     ],
   },

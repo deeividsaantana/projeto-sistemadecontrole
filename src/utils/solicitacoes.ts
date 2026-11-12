@@ -529,7 +529,7 @@ export const aplicarAcao = (
       return comEvento(sol, ator, agora, 'Marcou como em trânsito', undefined, { etapa: 'Em Trânsito', statusLogistico: 'Em Trânsito' });
     }
     case 'receber': {
-      if (!exerce(ator, 'recebedor')) return falha('Só o recebimento (fiscal ou almoxarife) confirma a chegada.');
+      if (!exerce(ator, 'recebedor') && !exerce(ator, 'suprimentos')) return falha('Só Recebimento/Auxiliar ou Suprimentos confirma a chegada.');
       if (sol.etapa === 'Cancelado' || sol.etapa === 'Entregue') return falha('Esta solicitação já está fechada.');
       const { recebimento } = acao;
       if (!recebimento.local.trim()) return falha('Informe onde o material chegou.');
@@ -615,7 +615,7 @@ export const acoesDisponiveis = (sol: Solicitacao, ator: Ator): Acao['tipo'][] =
     if (etapa === 'Aprovado' || etapa === 'Em Trânsito') acoes.push('reagendar');
   }
   if (exerce(ator, 'aprovador') && etapa === 'Aguardando Aprovação') acoes.push('aprovar', 'rejeitar');
-  if (exerce(ator, 'recebedor') && etapa !== 'Cancelado' && etapa !== 'Entregue') acoes.push('receber', 'apontarFalta');
+  if ((exerce(ator, 'recebedor') || exerce(ator, 'suprimentos')) && etapa !== 'Cancelado' && etapa !== 'Entregue') acoes.push('receber', 'apontarFalta');
   if ((etapa === 'Pendente Suprimentos' || etapa === 'Em Cotação')
     && (exerce(ator, 'suprimentos') || (exerce(ator, 'solicitante') && ator.nome === sol.solicitante))) acoes.push('cancelar');
   return acoes;

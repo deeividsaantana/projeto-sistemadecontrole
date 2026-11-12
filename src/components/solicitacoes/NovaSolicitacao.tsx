@@ -13,18 +13,20 @@ const itemVazio = (): ItemDigitado => ({ tipo: 'Material', descricao: '', quanti
 
 interface NovaSolicitacaoProps {
   solicitante: string;
+  solicitantesPermitidos: string[];
   /** Devolve a mensagem de erro, ou null quando salvou. */
   onEnviar: (dados: DadosAbertura) => string | null;
   formRef?: RefObject<HTMLFormElement | null>;
 }
 
-export function NovaSolicitacao({ solicitante, onEnviar, formRef }: NovaSolicitacaoProps) {
+export function NovaSolicitacao({ solicitante, solicitantesPermitidos, onEnviar, formRef }: NovaSolicitacaoProps) {
+  const [solicitanteSelecionado, setSolicitanteSelecionado] = useState(solicitantesPermitidos.includes(solicitante) ? solicitante : '');
   const [frente, setFrente] = useState('');
   const [estacamento, setEstacamento] = useState('');
   const [itens, setItens] = useState<ItemDigitado[]>([itemVazio()]);
   const [erro, setErro] = useState('');
   const [tentou, setTentou] = useState(false);
-  const chaveRascunho = `renea:solicitacao:rascunho:${solicitante}`;
+  const chaveRascunho = `renea:solicitacao:rascunho:${solicitanteSelecionado || solicitante || 'sem-solicitante'}`;
 
   useEffect(() => {
     try {
@@ -47,12 +49,13 @@ export function NovaSolicitacao({ solicitante, onEnviar, formRef }: NovaSolicita
   const problemas = itens.map(problemasDoItem);
   const porCampo = itens.map(problemasPorCampo);
   const itensProntos = problemas.filter(lista => lista.length === 0).length;
-  const pronto = frente.trim().length > 0 && itensProntos === itens.length;
+  const pronto = Boolean(solicitanteSelecionado) && frente.trim().length > 0 && itensProntos === itens.length;
 
   const enviar = () => {
     setTentou(true);
     if (!pronto) return;
-    const resposta = onEnviar({ solicitante, frente, estacamento, itens });
+    if (!solicitanteSelecionado) { setErro('Selecione uma das pessoas autorizadas antes de enviar.'); return; }
+    const resposta = onEnviar({ solicitante: solicitanteSelecionado, frente, estacamento, itens });
     setErro(resposta ?? '');
     if (!resposta) { try { localStorage.removeItem(chaveRascunho); } catch { /* segue após salvar */ } }
   };
@@ -60,6 +63,15 @@ export function NovaSolicitacao({ solicitante, onEnviar, formRef }: NovaSolicita
   return (
     <form ref={formRef} onSubmit={event => { event.preventDefault(); enviar(); }} data-testid="solicitacao-nova-form" className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="grid min-w-0 gap-4">
+        <Etapa numero={0} titulo="Quem está solicitando" feita={Boolean(solicitanteSelecionado)}>
+          <Campo rotulo="Solicitante autorizado" para="sol-solicitante" obrigatorio erro={tentou && !solicitanteSelecionado ? 'Selecione José Augusto, Thiago, Alvaro ou José Augusto Mineiro.' : null}>
+            <select id="sol-solicitante" value={solicitanteSelecionado} onChange={event => setSolicitanteSelecionado(event.target.value)} className={CAMPO}>
+              <option value="">Selecione uma pessoa</option>
+              {solicitantesPermitidos.map(nome => <option key={nome}>{nome}</option>)}
+            </select>
+          </Campo>
+          <p className="text-xs text-slate-600">Toda solicitação precisa ficar vinculada a uma pessoa da frente de obra.</p>
+        </Etapa>
         <Etapa numero={1} titulo="Onde vai ser usado" feita={frente.trim().length > 0}>
           <div className="grid gap-3 sm:grid-cols-2">
             <Campo rotulo="Frente de trabalho ou ramo" para="sol-frente" obrigatorio erro={tentou && frente.trim().length === 0 ? 'Informe a frente de trabalho ou o ramo.' : null}>
@@ -137,7 +149,7 @@ export function NovaSolicitacao({ solicitante, onEnviar, formRef }: NovaSolicita
 
       <Conferencia subtitulo="Ao enviar, a solicitação entra na fila de Suprimentos.">
         <dl className="divide-y divide-slate-100">
-          <Conferido rotulo="Solicitante" valor={solicitante} ok />
+          <Conferido rotulo="Solicitante" valor={solicitanteSelecionado || '—'} ok={Boolean(solicitanteSelecionado)} />
           <Conferido rotulo="Frente" valor={frente.trim() || '—'} ok={frente.trim().length > 0} />
           <Conferido rotulo="Itens prontos" valor={`${itensProntos} de ${itens.length}`} ok={itensProntos === itens.length} />
         </dl>

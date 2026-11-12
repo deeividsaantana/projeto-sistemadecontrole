@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import { CloudRain, NotebookPen } from 'lucide-react';
@@ -23,6 +23,7 @@ const hoje = new Date();
 
 export default function PluviometroTab({ diarios, obras, responsavel, podeEditar, onSave }: PluviometroTabProps) {
   const escopo = useRef<HTMLElement>(null);
+  const salvarRef = useRef<HTMLButtonElement>(null);
   const meses = useMemo(() => {
     const encontrados = mesesComDiario(diarios);
     return encontrados.length > 0 ? encontrados : [{ ano: hoje.getFullYear(), mes: hoje.getMonth() + 1 }];
@@ -74,6 +75,27 @@ export default function PluviometroTab({ diarios, obras, responsavel, podeEditar
     }, !diario);
     setRascunho({});
   };
+
+  useEffect(() => {
+    const teclar = (event: KeyboardEvent) => {
+      const alvo = event.target as HTMLElement | null;
+      const digitando = alvo?.matches('input, textarea, select, [contenteditable="true"]');
+      if (event.altKey) return;
+      if (event.key.toLowerCase() === 'n' && !digitando && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        setAba('lancamentos');
+        setDiaSelecionado(`${mesSelecionado}-01`);
+        setObraId('');
+        setRascunho({});
+        window.setTimeout(() => salvarRef.current?.focus(), 0);
+      } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's' && aba === 'lancamentos' && podeEditar) {
+        event.preventDefault();
+        salvar();
+      }
+    };
+    window.addEventListener('keydown', teclar);
+    return () => window.removeEventListener('keydown', teclar);
+  }, [aba, mesSelecionado, podeEditar, salvar]);
 
   return (
     <TelaCheia
@@ -158,7 +180,7 @@ export default function PluviometroTab({ diarios, obras, responsavel, podeEditar
                 <label className="mt-3 block text-xs font-bold text-slate-600">Horas paradas por chuva
                   <input disabled={!podeEditar} type="number" min="0" step="0.5" value={valor.horasParadasClima ?? ''} onChange={event => setRascunho({ ...rascunho, horasParadasClima: Number(event.target.value) })} className={`${CAMPO} mt-1 disabled:bg-slate-50`} />
                 </label>
-                {podeEditar && <button type="button" onClick={salvar} className="mt-4 min-h-11 w-full rounded-lg bg-[#176b4d] px-4 text-sm font-bold text-white hover:opacity-90">{diario ? 'Atualizar lançamento' : 'Registrar lançamento'}</button>}
+                {podeEditar && <button ref={salvarRef} type="button" onClick={salvar} className="mt-4 min-h-11 w-full rounded-lg bg-[#176b4d] px-4 text-sm font-bold text-white hover:opacity-90">{diario ? 'Atualizar lançamento' : 'Registrar lançamento'}</button>}
               </div>
             </div>
           </section>

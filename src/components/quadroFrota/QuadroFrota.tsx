@@ -405,7 +405,8 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
             </button>
           </div>
         </div>
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Situação" data-testid="quadro-situacoes">
+        <div className="-mx-1 flex flex-nowrap gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Filtros rápidos do quadro">
+        <div className="flex shrink-0 gap-2" role="group" aria-label="Situação" data-testid="quadro-situacoes">
           {([['', 'Todas', indicadores.total, 'bg-slate-400'], ['operando', ROTULO_GRUPO.operando, indicadores.operando, TOM.operando.ponto], ['manutencao', ROTULO_GRUPO.manutencao, indicadores.manutencao, TOM.manutencao.ponto], ['parado', ROTULO_GRUPO.parado, indicadores.parado, TOM.parado.ponto], ['sem-lancamento', ROTULO_GRUPO['sem-lancamento'], indicadores.semLancamento, TOM['sem-lancamento'].ponto]] as const).map(([grupo, rotulo, total, ponto]) => {
             const ligado = filtros.grupo === grupo;
             return (
@@ -417,10 +418,11 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
             );
           })}
         </div>
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Canteiro">
+        <div className="flex shrink-0 gap-2" role="group" aria-label="Canteiro">
           {chipCanteiro('', 'Todos', cartoes.length)}
           {canteiros.map(nome => chipCanteiro(nome, nome, contagemCanteiro.get(nome) || 0))}
           {(contagemCanteiro.get(SEM_CANTEIRO) || 0) > 0 && chipCanteiro(SEM_CANTEIRO, SEM_CANTEIRO, contagemCanteiro.get(SEM_CANTEIRO) || 0)}
+        </div>
         </div>
         {maisFiltros && (
           <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" data-testid="quadro-painel-filtros">
