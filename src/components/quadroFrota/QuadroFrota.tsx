@@ -418,14 +418,14 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
             );
           })}
         </div>
-        <div className="flex shrink-0 gap-2" role="group" aria-label="Canteiro">
-          {chipCanteiro('', 'Todos', cartoes.length)}
-          {canteiros.map(nome => chipCanteiro(nome, nome, contagemCanteiro.get(nome) || 0))}
-          {(contagemCanteiro.get(SEM_CANTEIRO) || 0) > 0 && chipCanteiro(SEM_CANTEIRO, SEM_CANTEIRO, contagemCanteiro.get(SEM_CANTEIRO) || 0)}
-        </div>
         </div>
         {maisFiltros && (
           <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" data-testid="quadro-painel-filtros">
+            <div className="col-span-full flex min-w-0 gap-2 overflow-x-auto pb-1" role="group" aria-label="Canteiro">
+              {chipCanteiro('', 'Todos', cartoes.length)}
+              {canteiros.map(nome => chipCanteiro(nome, nome, contagemCanteiro.get(nome) || 0))}
+              {(contagemCanteiro.get(SEM_CANTEIRO) || 0) > 0 && chipCanteiro(SEM_CANTEIRO, SEM_CANTEIRO, contagemCanteiro.get(SEM_CANTEIRO) || 0)}
+            </div>
             <select value={filtros.frente} onChange={event => mudar({ frente: event.target.value })} aria-label="Frente" className={`${CAMPO} text-xs`}>
               <option value="">Frentes</option>
               {opcoesFrente.map(frente => <option key={frente} value={frente}>{frente}</option>)}

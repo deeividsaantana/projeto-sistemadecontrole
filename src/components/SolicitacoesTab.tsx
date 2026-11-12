@@ -319,12 +319,14 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
         title="Solicitações e compras"
         abas={<AbasDaTela<Subtela> id="solicitacoes" rotulo="Subtelas de solicitações" abas={subtelas} ativa={subtela} onTrocar={proxima => { setAbertaId(null); setSubtela(proxima); }} idPainel="solicitacoes-dados" testId="solicitacoes-aba" />}
         actions={<>
+          {!aberta && <>
           <button type="button" onClick={() => void exportar()} disabled={ocupado || solicitacoes.length === 0} className={BOTAO_SECUNDARIO}>
             <FileSpreadsheet className="size-4" aria-hidden="true" /> <span className="sm:hidden">Excel</span><span className="hidden sm:inline">Relatórios Excel</span>
           </button>
           <button type="button" onClick={() => void (async () => { setOcupado(true); try { const { gerarRelatorioSolicitacoesPdf } = await import('./solicitacoes/pdfReportSolicitacoes'); await gerarRelatorioSolicitacoesPdf(solicitacoes, hoje); setAviso({ tom: 'ok', texto: 'Relatório PDF gerado com os pedidos, itens, prazos e conferência.' }); } catch (error) { setAviso({ tom: 'erro', texto: error instanceof Error ? error.message : 'Não foi possível gerar o relatório PDF.' }); } finally { setOcupado(false); } })()} disabled={ocupado || solicitacoes.length === 0} className={BOTAO_SECUNDARIO} data-testid="solicitacoes-relatorio-pdf">
             <ClipboardList className="size-4" aria-hidden="true" /> <span className="sm:hidden">PDF</span><span className="hidden sm:inline">Relatório PDF</span>
           </button>
+          </>}
           {podeImportar && podeEditar && (
             <button type="button" onClick={() => arquivo.current?.click()} disabled={ocupado} className={BOTAO_SECUNDARIO}>
               <Upload className="size-4" aria-hidden="true" /> <span className="sm:hidden">Importar</span><span className="hidden sm:inline">Importar planilha</span>
@@ -408,25 +410,6 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
             </div>
           )}
         </div>
-        {subtela === 'pedidos' && !aberta && (
-          <div className="grid gap-2 rounded-xl border border-slate-200 bg-[#f7f8f6] p-2 sm:grid-cols-2 lg:grid-cols-4" aria-label="Filtros detalhados de pedidos">
-            <label className="grid gap-1 text-xs font-bold text-slate-600">Solicitante
-              <select value={filtroSolicitante} onChange={event => setFiltroSolicitante(event.target.value)} className={CAMPO}>
-                <option value="">Todos os solicitantes</option>
-                {solicitantes.map(nome => <option key={nome}>{nome}</option>)}
-              </select>
-            </label>
-            <label className="grid gap-1 text-xs font-bold text-slate-600">Data inicial
-              <input type="date" value={filtroDataInicio} onChange={event => setFiltroDataInicio(event.target.value)} className={CAMPO} />
-            </label>
-            <label className="grid gap-1 text-xs font-bold text-slate-600">Data final
-              <input type="date" value={filtroDataFim} onChange={event => setFiltroDataFim(event.target.value)} className={CAMPO} />
-            </label>
-            <button type="button" onClick={() => { setFiltroSolicitante(''); setFiltroDataInicio(''); setFiltroDataFim(''); setFiltro('abertos'); }} className={`${BOTAO_SECUNDARIO} self-end`}>
-              Limpar filtros
-            </button>
-          </div>
-        )}
         {aviso && (
           <p role={aviso.tom === 'erro' ? 'alert' : 'status'} className={`rounded-xl border px-3 py-2 text-sm font-bold ${aviso.tom === 'erro' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>{aviso.texto}</p>
         )}
