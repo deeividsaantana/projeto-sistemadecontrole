@@ -4485,6 +4485,7 @@ export default function App() {
                 pessoas={pessoasSuprimentos}
                 usuario={{ nome: activeUserName, email: currentUser?.email }}
                 ehAdmin={currentUserRole === 'admin'}
+                ehGestor={currentUserRole === 'gestor'}
                 podeEditar={pode(currentUserRole, 'solicitacoes', 'editar')}
                 onSalvar={handleSaveSolicitacoes}
               />
