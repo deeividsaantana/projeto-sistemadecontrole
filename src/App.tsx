@@ -77,6 +77,7 @@ import {
 import { registrosComCanteiroRenomeado } from './utils/frenteServico';
 import { INITIAL_CONTROLE_ESTACAS } from './utils/initialEstacasData';
 import { INITIAL_CONTROLE_EQUIPAMENTOS_DIARIO } from './utils/initialControleEquipamentosDiario';
+import { INITIAL_PROGRAMACAO } from './utils/initialProgramacaoData';
 import { OPERATIONAL_DRIVERS } from './fleet/operationalDrivers';
 import { juntarComLancamentoDoDia } from './fleet/duplicidadeDiaria';
 import type { PreviaCadastroSge } from './fleet/sgeApontamentos';
@@ -805,9 +806,9 @@ export default function App() {
       setDiariosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.diariosObra), STORAGE_KEYS.diariosObra, [] as DiarioObra[]));
       setSolicitacoes(parseStoredJson(localStorage.getItem(STORAGE_KEYS.solicitacoes), STORAGE_KEYS.solicitacoes, [] as Solicitacao[]));
       setPessoasSuprimentos(parseStoredJson(localStorage.getItem(STORAGE_KEYS.pessoasSuprimentos), STORAGE_KEYS.pessoasSuprimentos, PESSOAS_INICIAIS));
-      setServicosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.servicosObra), STORAGE_KEYS.servicosObra, [] as ServicoObra[]));
+      setServicosObra(parseStoredJson(localStorage.getItem(STORAGE_KEYS.servicosObra), STORAGE_KEYS.servicosObra, INITIAL_PROGRAMACAO.servicos));
       setProducaoRegistros(parseStoredJson(localStorage.getItem(STORAGE_KEYS.producaoRegistros), STORAGE_KEYS.producaoRegistros, [] as RegistroProducao[]));
-      setPlanejamentoItens(parseStoredJson(localStorage.getItem(STORAGE_KEYS.planejamentoItens), STORAGE_KEYS.planejamentoItens, [] as PlanejamentoItem[]));
+      setPlanejamentoItens(parseStoredJson(localStorage.getItem(STORAGE_KEYS.planejamentoItens), STORAGE_KEYS.planejamentoItens, INITIAL_PROGRAMACAO.itens));
       setModelosFvs(parseStoredJson(localStorage.getItem(STORAGE_KEYS.modelosFvs), STORAGE_KEYS.modelosFvs, [] as ModeloFvs[]));
       setFichasFvs(parseStoredJson(localStorage.getItem(STORAGE_KEYS.fichasFvs), STORAGE_KEYS.fichasFvs, [] as FichaVerificacaoServico[]));
       setInspecoes(parseStoredJson(localStorage.getItem(STORAGE_KEYS.inspecoes), STORAGE_KEYS.inspecoes, [] as Inspecao[]));
