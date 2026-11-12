@@ -369,8 +369,8 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
             </button>
           )}
           {comBusca && !aberta && (
-            <div className="flex min-w-0 flex-[1_1_28rem] flex-wrap items-center gap-2">
-              <label className="relative min-w-0 flex-1 basis-48">
+            <div className="flex min-w-0 flex-[1_1_28rem] flex-wrap items-center gap-2 xl:flex-nowrap xl:overflow-x-auto xl:pb-1">
+              <label className="relative min-w-0 flex-[1_1_20rem] basis-48 xl:min-w-[18rem]">
                 <span className="sr-only">Buscar</span>
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                 <input type="search" value={busca} onChange={event => { setBusca(event.target.value); setMostrar(POR_VEZ); }}
@@ -394,7 +394,7 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
               {subtela === 'pedidos' && (
                 <>
                   <label className="sr-only" htmlFor="filtro-solicitante">Solicitante</label>
-                  <select id="filtro-solicitante" aria-label="Filtrar por solicitante" value={filtroSolicitante} onChange={event => setFiltroSolicitante(event.target.value)} className={`${CAMPO} min-w-40 flex-1 sm:flex-none`}>
+                  <select id="filtro-solicitante" aria-label="Filtrar por solicitante" value={filtroSolicitante} onChange={event => setFiltroSolicitante(event.target.value)} className={`${CAMPO} min-w-40 flex-1 shrink-0 sm:flex-none`}>
                     <option value="">Todos os solicitantes</option>
                     {solicitantes.map(nome => <option key={nome}>{nome}</option>)}
                   </select>
