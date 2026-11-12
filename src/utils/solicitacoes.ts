@@ -38,6 +38,8 @@ export interface PessoaSuprimentos {
   email?: string;
   papel: PapelSuprimentos;
   ativo: boolean;
+  /** Permissão explícita, configurável em Acessos, para decidir pedidos. */
+  podeAprovar?: boolean;
 }
 
 /** Equipe da obra do Complexo Viário Alto Tietê, como veio no pedido. */
@@ -48,7 +50,7 @@ export const PESSOAS_INICIAIS: PessoaSuprimentos[] = [
   { id: 'sup-jose-augusto-mineiro', nome: 'José Augusto Mineiro', papel: 'solicitante', ativo: true },
   { id: 'sup-cassia', nome: 'Cássia', papel: 'suprimentos', ativo: true },
   { id: 'sup-sergio', nome: 'Sérgio', papel: 'suprimentos', ativo: true },
-  { id: 'sup-bruno', nome: 'Bruno', papel: 'aprovador', ativo: true },
+  { id: 'sup-bruno', nome: 'Bruno', papel: 'aprovador', ativo: true, podeAprovar: true },
 ];
 
 export const UNIDADES = ['ton', 'm³', 'm', 'un', 'kg', 'vb', 'h'] as const;
@@ -180,10 +182,15 @@ export interface Solicitacao {
 export interface Ator {
   nome: string;
   papel: PapelSuprimentos | null;
+  podeAprovar?: boolean;
 }
 
 /** A pessoa exerce este papel? O dev exerce todos. */
-export const exerce = (ator: Ator, papel: Exclude<PapelSuprimentos, 'dev'>) => ator.papel === papel || ator.papel === 'dev';
+export const exerce = (ator: Ator, papel: Exclude<PapelSuprimentos, 'dev'>) => {
+  if (ator.papel === 'dev') return true;
+  if (papel === 'aprovador' && ator.podeAprovar !== undefined) return ator.podeAprovar;
+  return ator.papel === papel;
+};
 
 export const MENSAGEM_PRAZO_NEGADO = 'Permissão negada. A alteração de prazos logísticos e reagendamento de entregas é de alçada exclusiva dos operadores de Suprimentos (Cássia e Sérgio).';
 

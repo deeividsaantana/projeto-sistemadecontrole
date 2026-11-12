@@ -54,6 +54,8 @@ interface SolicitacoesTabProps {
   usuario: { nome: string; email?: string | null };
   /** Administrador do app: liga cada login a um papel do módulo. */
   ehAdmin: boolean;
+  /** O perfil global de gestor também pode decidir pedidos, mesmo sem cadastro em Pessoas e papéis. */
+  ehGestor?: boolean;
   /** Perfil do app que grava (leitura só consulta). */
   podeEditar: boolean;
   onSalvar: (registros: Solicitacao[], descricao: string) => void;
@@ -96,7 +98,7 @@ const novoId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? 
 const contem = (termo: string, valores: Array<string | number | undefined>) =>
   !termo || valores.some(valor => valor !== undefined && String(valor).toLowerCase().includes(termo));
 
-export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmin, podeEditar, onSalvar }: SolicitacoesTabProps) {
+export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmin, ehGestor = false, podeEditar, onSalvar }: SolicitacoesTabProps) {
   const escopo = useRef<HTMLElement>(null);
   const arquivo = useRef<HTMLInputElement>(null);
   const hoje = isoDay(new Date());
@@ -117,8 +119,8 @@ export default function SolicitacoesTab({ solicitacoes, pessoas, usuario, ehAdmi
 
   const pessoa = pessoaDoUsuario(pessoas, { nome: usuario.nome, email: usuario.email });
   // Administrador sem pessoa ligada entra como dev: faz tudo no módulo.
-  const papel = pessoa?.papel ?? (ehAdmin ? 'dev' : null);
-  const ator: Ator = { nome: pessoa?.nome ?? usuario.nome, papel: podeEditar ? papel : null };
+  const papel = pessoa?.papel ?? (ehAdmin ? 'dev' : ehGestor ? 'aprovador' : null);
+  const ator: Ator = { nome: pessoa?.nome ?? usuario.nome, papel: podeEditar ? papel : null, podeAprovar: pessoa?.podeAprovar ?? (ehAdmin || ehGestor ? true : undefined) };
 
   useEffect(() => {
     const teclar = (event: KeyboardEvent) => {

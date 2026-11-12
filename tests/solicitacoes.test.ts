@@ -174,6 +174,15 @@ test('pessoa do login: por e-mail, senão pelo nome sem acento', () => {
   assert.equal(pessoaDoUsuario(pessoas, { nome: 'Desconhecido' }), null);
 });
 
+test('permissão de aprovação é configurável em Acessos', () => {
+  const semPermissao: Ator = { nome: 'Bruno', papel: 'aprovador', podeAprovar: false };
+  const comPermissao: Ator = { nome: 'Bruno', papel: 'solicitante', podeAprovar: true };
+  let pendente = ok(aplicarAcao(nova(), { tipo: 'assumir' }, cassia, T0));
+  pendente = ok(aplicarAcao(pendente, { tipo: 'enviarParaAprovacao', pedido }, cassia, T0));
+  assert.equal(acoesDisponiveis(pendente, semPermissao).includes('aprovar'), false);
+  assert.equal(acoesDisponiveis(pendente, comPermissao).includes('aprovar'), true);
+});
+
 test('importação recusa solicitante não autorizado e unidade fora do padrão', () => {
   const csv = 'Solicitante;Tipo (Material/Serviço);Ramo/Local;Descrição;Quantidade;Unidade;Prazo Desejado;Permite Parcial (S/N)\n'
     + 'Alvaro;Material;Ramo 200;Areia média lavada;12,5;m3;20/11/2026;S\n'

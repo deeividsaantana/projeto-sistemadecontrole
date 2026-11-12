@@ -26,6 +26,12 @@ export function PessoasSuprimentosLista({ pessoas, onSalvar }: { pessoas: Pessoa
         {PAPEIS_SUPRIMENTOS.map(papel => <option key={papel} value={papel}>{NOME_DO_PAPEL[papel]}</option>)}
       </select>
     ), valorOrdenacao: pessoa => pessoa.papel, valorExportacao: pessoa => NOME_DO_PAPEL[pessoa.papel] },
+    { chave: 'podeAprovar', titulo: 'Pode aprovar', larguraMinima: 150, render: pessoa => (
+      <label className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-slate-700">
+        <input type="checkbox" aria-label={`Pode aprovar pedidos: ${pessoa.nome}`} checked={pessoa.podeAprovar === true} onChange={event => mudar(pessoa.id, { podeAprovar: event.target.checked })} className="size-5 accent-[#176b4d]" />
+        {pessoa.podeAprovar ? 'Sim' : 'Não'}
+      </label>
+    ), valorExportacao: pessoa => (pessoa.podeAprovar ? 'Sim' : 'Não') },
     { chave: 'ativo', titulo: 'Ativo', render: pessoa => (
       <label className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-slate-700">
         <input type="checkbox" checked={pessoa.ativo} onChange={event => mudar(pessoa.id, { ativo: event.target.checked })} className="size-5 accent-[#176b4d]" />
