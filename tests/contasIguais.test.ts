@@ -44,10 +44,6 @@ test('M35: sem dado aparece "—", não 0%, e a média ignora dia vazio', () => 
   assert.equal(buildWeeklyFleetReport([], DIA).averages.availabilityRate, null);
 });
 
-test('A28: Meu dia não conta abastecimento inativado', () => {
-  assert.match(ler('src/App.tsx'), /onSaveModelo=\{handleSaveModeloRotina\}\s*abastecimentos=\{abastecimentosAtivos\}\s*controlesFrota=/);
-});
-
 test('M37: a planilha não desmobiliza outra empresa e reativa quem volta', () => {
   const pessoa = (matricula: string, empresaId: string, status: Funcionario['status'] = 'ATIVO') => ({
     id: `f-${matricula}`, matricula, nome: `Pessoa ${matricula}`, cargo: 'AJUDANTE', telefone: '', empresaId, ativo: status === 'ATIVO', status,

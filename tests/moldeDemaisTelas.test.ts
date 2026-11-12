@@ -4,7 +4,7 @@ import test from 'node:test';
 
 /**
  * Trava do molde nas demais telas (auditoria de front de 21/10/2026, fase 2):
- * Painel, Meu dia, Diário de Obra, Previsto x Executado, Relatórios,
+ * Painel, Diário de Obra, Previsto x Executado, Relatórios,
  * Administração e Manutenção nascem em tela cheia, com o PageHeader no topo e
  * as subtelas no AbasDaTela. A casca usa as janelas comuns.
  */
@@ -12,7 +12,6 @@ const ler = (caminho: string) => readFileSync(caminho, 'utf8');
 
 const TELAS = {
   'src/components/Dashboard.tsx': { id: 'dashboard-tab', abas: false },
-  'src/components/MeuDiaTab.tsx': { id: 'meu-dia-tab', abas: true },
   'src/components/DiarioObraTab.tsx': { id: 'diario-obra-tab', abas: false },
   'src/components/ManutencaoTab.tsx': { id: 'manutencao-tab', abas: true },
 } as const;
@@ -40,10 +39,6 @@ test('o mapa de chuvas é uma grade completa, com linhas por semana (M7)', () =>
   assert.match(mapa, /role="columnheader"/);
   assert.match(mapa, /role="gridcell"/);
   assert.match(mapa, /ArrowDown: 7/, 'as setas andam pelo calendário');
-});
-
-test('Meu dia: caixas de marcar de 24 px no Fechamento (M4)', () => {
-  assert.match(ler('src/components/meuDia/ChecklistDoDia.tsx'), /type="checkbox"\s+className="size-6/);
 });
 
 test('a casca usa as janelas comuns (A11)', () => {

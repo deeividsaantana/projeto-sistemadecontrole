@@ -24,11 +24,10 @@ test('destinoDaAba: aba do perfil, endereço antigo ou nada', () => {
   assert.equal(destinoDaAba('presenca', ROLE_ACCESS.leitura), null);
 });
 
-test('A10: todo cartão do Painel e do Meu dia leva a uma tela que existe', () => {
+test('A10: todo cartão do Painel leva a uma tela que existe', () => {
   for (const arquivo of [
     'src/components/Dashboard.tsx',
     'src/components/dashboard/TeamActivity.tsx',
-    'src/components/meuDia/ObraNoDia.tsx',
   ]) {
     const destinos = destinosLiterais(ler(arquivo));
     assert.ok(destinos.length > 0, `${arquivo} tem destinos`);

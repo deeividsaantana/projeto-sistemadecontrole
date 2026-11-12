@@ -1,4 +1,5 @@
-import { useMemo, useRef } from 'react';
+import { useRef, useState } from 'react';
+import { iniciaisDoNome, nomeDaPessoa } from '../../auth/nomeDaPessoa';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { reduzMovimento } from '../../shared/motion/reduzMovimento';
@@ -7,14 +8,12 @@ import type { SupabaseAuthUser as User } from '../../auth/supabaseAuth';
 import type { AppNotification } from '../../types';
 import { NotificationCenter } from './NotificationCenter';
 import type { Alerta } from '../../utils/alertas';
-import { SIDEBAR_NAVIGATION_GROUPS } from '../navigation/navigation';
-import { Breadcrumb } from '../../shared/ui';
 import { OBRA } from '../../config/obra';
 
 const ICON_STROKE = 1.75;
+const COR_AVATAR_KEY = 'cintravyse_cor_avatar';
 
 interface DesktopTopBarProps {
-  activeTab: string;
   currentUser: User | null;
   isNotificationOpen: boolean;
   notifications: AppNotification[];
@@ -35,7 +34,6 @@ interface DesktopTopBarProps {
 }
 
 export function DesktopTopBar({
-  activeTab,
   currentUser,
   isNotificationOpen,
   notifications,
@@ -56,18 +54,18 @@ export function DesktopTopBar({
 }: DesktopTopBarProps) {
   const headerRef = useRef<HTMLElement>(null);
   const logoutBtnRef = useRef<HTMLButtonElement>(null);
-  const userName = currentUser?.displayName || currentUser?.email || 'Usuário';
-  const userInitials = userName.trim().slice(0, 2).toUpperCase();
-
-  // A trilha vem do mapa completo do menu, com os mesmos nomes do menu
-  // lateral ("Frota", não "Equipamentos").
-  const breadcrumbItems = useMemo(() => {
-    for (const group of SIDEBAR_NAVIGATION_GROUPS) {
-      const item = group.items.find(entry => entry.id === activeTab);
-      if (item) return [{ label: group.label }, { label: item.label }];
-    }
-    return [];
-  }, [activeTab]);
+  const userName = nomeDaPessoa(currentUser);
+  const userInitials = iniciaisDoNome(userName);
+  // Cor do ícone da pessoa: verde ou azul, escolhida clicando no ícone e
+  // guardada neste navegador (pedido de 11/11/2026).
+  const [corAvatar, setCorAvatar] = useState<'verde' | 'azul'>(() => {
+    try { return localStorage.getItem(COR_AVATAR_KEY) === 'azul' ? 'azul' : 'verde'; } catch { return 'verde'; }
+  });
+  const trocarCorAvatar = () => {
+    const proxima = corAvatar === 'verde' ? 'azul' : 'verde';
+    setCorAvatar(proxima);
+    try { localStorage.setItem(COR_AVATAR_KEY, proxima); } catch { /* sem armazenamento: vale só nesta sessão */ }
+  };
 
   useGSAP(() => {
     if (!logoutBtnRef.current || reduzMovimento()) return;
@@ -95,10 +93,6 @@ export function DesktopTopBar({
       className="erp-topbar hidden lg:flex"
       aria-label="Barra de contexto do sistema"
     >
-      {/* A trilha é o único jeito de saber "onde estou" nesse cabeçalho — não
-          pode sumir antes do resto da barra (o cabeçalho inteiro já se
-          esconde abaixo de lg, ver .erp-topbar em index.css). */}
-      <Breadcrumb items={breadcrumbItems} className="hidden shrink-0 lg:flex" />
       {/* Sem busca geral aqui (pedido de 11/11/2026): cada aba tem a busca
           dela, e duas barras de busca na mesma tela confundem. */}
 
@@ -153,15 +147,17 @@ export function DesktopTopBar({
           alertas={alertas}
           onAlertaClick={onNavigate}
         />
-        <div className="erp-topbar__user" title={userName}>
-          <span className="erp-topbar__avatar">{userInitials}</span>
-          <span>
-            <strong>{userName}</strong>
-            <small className="flex items-center gap-1 text-emerald-600">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Online
-            </small>
-          </span>
+        <div className="erp-topbar__user">
+          <button
+            type="button"
+            onClick={trocarCorAvatar}
+            className={`erp-topbar__avatar erp-topbar__avatar--${corAvatar}`}
+            title={`Trocar a cor do ícone para ${corAvatar === 'verde' ? 'azul' : 'verde'}`}
+            aria-label={`Trocar a cor do ícone para ${corAvatar === 'verde' ? 'azul' : 'verde'}`}
+          >
+            {userInitials}
+          </button>
+          <strong title={userName}>{userName}</strong>
         </div>
         <button
           ref={logoutBtnRef}
