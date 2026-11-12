@@ -274,6 +274,27 @@ export default function ProgramacaoTerraplanagemTab({
           Math.max(0, Math.ceil(simSaldo / simMetaCalculada) - 1),
         )
       : "";
+  const adicionarDiasRespeitandoRegra = (
+    inicio: string,
+    quantidade: number,
+  ) => {
+    let dia = inicio;
+    let restantes = quantidade;
+    while (restantes > 0) {
+      dia = adicionarDias(dia, 1);
+      if (!semDomingo || new Date(`${dia}T12:00:00`).getDay() !== 0) {
+        restantes -= 1;
+      }
+    }
+    return dia;
+  };
+  const simFimCalculadoComRegra =
+    simItem && simMetaCalculada > 0
+      ? adicionarDiasRespeitandoRegra(
+          dataSelecionada,
+          Math.max(0, Math.ceil(simSaldo / simMetaCalculada) - 1),
+        )
+      : "";
   const semanaProgramacao = useMemo(
     () =>
       Array.from({ length: 7 }, (_, offset) =>
@@ -370,6 +391,19 @@ export default function ProgramacaoTerraplanagemTab({
     linhasGantt[0]?.dataFim || dataSelecionada,
   );
   const intervaloGantt = Math.max(1, diasUteis(inicioGantt, fimGantt));
+  const diasGantt = useMemo(() => {
+    const total = Math.max(
+      1,
+      Math.round(
+        (new Date(`${fimGantt}T12:00:00`).getTime() -
+          new Date(`${inicioGantt}T12:00:00`).getTime()) /
+          86400000,
+      ) + 1,
+    );
+    return Array.from({ length: total }, (_, indice) =>
+      adicionarDias(inicioGantt, indice),
+    );
+  }, [fimGantt, inicioGantt]);
   const percentualGantt = (data: string) =>
     Math.max(
       0,
@@ -402,19 +436,26 @@ export default function ProgramacaoTerraplanagemTab({
     setSimMensagem("Programação copiada.");
   };
   const aplicarSimulacao = () => {
-    if (!podeEditar || !simItem || !(simMetaCalculada > 0) || !simFimCalculado)
+    if (
+      !podeEditar ||
+      !simItem ||
+      !(simMetaCalculada > 0) ||
+      !simFimCalculadoComRegra
+    )
       return;
     const agora = new Date().toISOString();
     onSavePlanejamento(
       {
         ...simItem,
-        dataFim: simFim || simFimCalculado,
+        dataFim: simFim || simFimCalculadoComRegra,
         observacao: `${simItem.observacao || ""}${simItem.observacao ? " · " : ""}Meta diária: ${simMetaCalculada} ${simItem.unidade}; simulação em ${agora.slice(0, 10)}`,
         atualizadoEm: agora,
       },
       false,
     );
-    setSimMensagem(`Prazo atualizado para ${simFim || simFimCalculado}.`);
+    setSimMensagem(
+      `Prazo atualizado para ${simFim || simFimCalculadoComRegra}.`,
+    );
   };
   const linhasProducao = producao.filter(
     (item) =>
@@ -530,6 +571,137 @@ export default function ProgramacaoTerraplanagemTab({
       valorOrdenacao: (item) => item.meta,
     },
   ];
+  const linhasProgramacao = linhasGantt.map((item, indice) => ({
+    ...item,
+    sequencia: indice + 1,
+    prioridade:
+      item.observacao?.match(/Prioridade:\s*([^.;]+)/i)?.[1] || "Média",
+    diasDisponiveis: diasUteis(item.dataInicio, item.dataFim, semDomingo),
+    extensao: item.quantidadePlanejada,
+    meta: metaDoDia(item),
+    equipamento: item.observacao?.match(/Equipamento:\s*([^.;]+)/i)?.[1] || "—",
+  }));
+  const colunasProgramacao: ColunaTabela<(typeof linhasProgramacao)[number]>[] =
+    [
+      {
+        chave: "sequencia",
+        titulo: "Seq.",
+        render: (item) => item.sequencia,
+        valorOrdenacao: (item) => item.sequencia,
+      },
+      {
+        chave: "prioridade",
+        titulo: "Prior.",
+        render: (item) => <span className="font-bold">{item.prioridade}</span>,
+        valorOrdenacao: (item) => item.prioridade,
+      },
+      {
+        chave: "frente",
+        titulo: "Ramo",
+        render: (item) => item.frente || "—",
+        valorOrdenacao: (item) => item.frente || "",
+      },
+      {
+        chave: "servico",
+        titulo: "Serviço",
+        render: (item) => (
+          <span className="font-bold">{item.servicoDescricao}</span>
+        ),
+        valorOrdenacao: (item) => item.servicoDescricao,
+      },
+      {
+        chave: "responsavel",
+        titulo: "Responsável",
+        render: (item) => item.responsavel || item.equipeNome || "—",
+        valorOrdenacao: (item) => item.responsavel || item.equipeNome || "",
+      },
+      {
+        chave: "inicio",
+        titulo: "Início",
+        render: (item) => item.dataInicio,
+        valorOrdenacao: (item) => item.dataInicio,
+      },
+      {
+        chave: "fim",
+        titulo: "Término",
+        render: (item) => item.dataFim,
+        valorOrdenacao: (item) => item.dataFim,
+      },
+      {
+        chave: "dias",
+        titulo: "Dias disp.",
+        alinhamento: "direita",
+        render: (item) => item.diasDisponiveis,
+        valorOrdenacao: (item) => item.diasDisponiveis,
+      },
+      {
+        chave: "estacaInicial",
+        titulo: "Est. inicial",
+        render: (item) =>
+          item.observacao?.match(/Estaca inicial:\s*([^.;]+)/i)?.[1] || "—",
+        valorOrdenacao: (item) =>
+          item.observacao?.match(/Estaca inicial:\s*([^.;]+)/i)?.[1] || "",
+      },
+      {
+        chave: "estacaFinal",
+        titulo: "Est. final",
+        render: (item) =>
+          item.observacao?.match(/Estaca final:\s*([^.;]+)/i)?.[1] || "—",
+        valorOrdenacao: (item) =>
+          item.observacao?.match(/Estaca final:\s*([^.;]+)/i)?.[1] || "",
+      },
+      {
+        chave: "extensao",
+        titulo: "Extensão",
+        alinhamento: "direita",
+        render: (item) => `${item.extensao} ${item.unidade}`,
+        valorOrdenacao: (item) => item.extensao,
+      },
+      {
+        chave: "quantidade",
+        titulo: "Quantidade",
+        alinhamento: "direita",
+        render: (item) => `${item.quantidadePlanejada} ${item.unidade}`,
+        valorOrdenacao: (item) => item.quantidadePlanejada,
+      },
+      {
+        chave: "lados",
+        titulo: "Lados",
+        render: (item) =>
+          item.observacao?.match(/Lados:\s*([^.;]+)/i)?.[1] || "—",
+        valorOrdenacao: (item) =>
+          item.observacao?.match(/Lados:\s*([^.;]+)/i)?.[1] || "",
+      },
+      {
+        chave: "unidade",
+        titulo: "Un.",
+        render: (item) => item.unidade,
+        valorOrdenacao: (item) => item.unidade,
+      },
+      {
+        chave: "meta",
+        titulo: "Meta/dia",
+        alinhamento: "direita",
+        render: (item) => (
+          <span className="font-bold text-emerald-700">{item.meta}</span>
+        ),
+        valorOrdenacao: (item) => item.meta,
+      },
+      {
+        chave: "equipamento",
+        titulo: "Equipamentos",
+        render: (item) => item.equipamento,
+        valorOrdenacao: (item) => item.equipamento,
+      },
+      {
+        chave: "situacao",
+        titulo: "Status",
+        render: (item) => (
+          <span className="whitespace-nowrap">{item.situacao}</span>
+        ),
+        valorOrdenacao: (item) => item.situacao,
+      },
+    ];
   return (
     <TelaCheia
       id="programacao-tab"
@@ -664,6 +836,14 @@ export default function ProgramacaoTerraplanagemTab({
                 onChange={(event) => setDataFim(event.target.value)}
                 aria-label="Data final"
               />
+              <label className="flex shrink-0 items-center gap-2 text-xs font-bold text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={semDomingo}
+                  onChange={(event) => setSemDomingo(event.target.checked)}
+                />
+                Não trabalhar aos domingos
+              </label>
               {(busca ||
                 frente ||
                 dataInicio ||
@@ -1132,6 +1312,41 @@ export default function ProgramacaoTerraplanagemTab({
           )}
           {visao === "programacao" && (
             <div className="space-y-3">
+              <section
+                className={`${CARTAO} flex flex-wrap items-end justify-between gap-3 p-3`}
+                aria-label="Cabeçalho da programação"
+              >
+                <div>
+                  <p className="text-xs font-bold uppercase text-emerald-700">
+                    Planejamento e reprogramação
+                  </p>
+                  <h2 className="text-xl font-black text-slate-900">
+                    Programação das atividades
+                  </h2>
+                  <p className="mt-1 max-w-3xl text-sm text-slate-500">
+                    Informe início, término e estacas. As colunas em verde são
+                    calculadas: dias disponíveis, quantidade, extensão e meta
+                    diária.
+                  </p>
+                </div>
+                {podeEditar && (
+                  <button
+                    type="button"
+                    className={BOTAO_PRIMARIO}
+                    onClick={() =>
+                      document
+                        .getElementById("novo-plano-form")
+                        ?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "center",
+                        })
+                    }
+                  >
+                    <Plus className="size-4" aria-hidden="true" /> Nova
+                    atividade
+                  </button>
+                )}
+              </section>
               <div className="flex flex-nowrap items-end justify-between gap-3 overflow-x-auto">
                 <div className="shrink-0">
                   <p className="text-xs font-bold text-slate-500">
@@ -1200,113 +1415,191 @@ export default function ProgramacaoTerraplanagemTab({
                   PDF / imprimir
                 </button>
               </div>
-              {ativos.length === 0 ? (
-                <div
-                  className={`${CARTAO} p-8 text-center text-sm text-slate-500`}
+              <div
+                className={`${CARTAO} flex flex-nowrap items-center gap-2 overflow-x-auto p-2`}
+                aria-label="Filtros da programação"
+              >
+                <span className="shrink-0 text-xs font-black uppercase text-slate-500">
+                  Responsável
+                </span>
+                <button
+                  type="button"
+                  className={
+                    encarregado === "" ? BOTAO_PRIMARIO : BOTAO_SECUNDARIO
+                  }
+                  onClick={() => setEncarregado("")}
                 >
-                  Nenhuma atividade encontrada para este dia e filtros.
-                </div>
-              ) : (
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  {ativos.map((item) => {
-                    const realizado = totalDoItem(item);
-                    const meta = metaDoDia(item);
-                    const percentualItem =
-                      meta > 0
-                        ? Math.min(
-                            100,
-                            Math.round(
-                              (realizado / item.quantidadePlanejada) * 100,
-                            ),
-                          )
-                        : 0;
-                    return (
-                      <article
-                        key={item.id}
-                        className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
-                      >
-                        <div className="bg-slate-100 px-3 py-2 text-xs font-black uppercase text-slate-700">
-                          {item.situacao || "Programado"}
-                        </div>
-                        <div className="space-y-2 p-3">
-                          <p className="truncate text-xs font-bold uppercase text-emerald-700">
-                            {item.frente || "Sem frente"} ·{" "}
-                            {item.responsavel ||
-                              item.equipeNome ||
-                              "Equipe não definida"}
-                          </p>
-                          <h3
-                            className="truncate text-base font-black text-slate-900"
-                            title={item.servicoDescricao}
-                          >
-                            {item.servicoDescricao}
-                          </h3>
-                          <p className="truncate font-mono text-xs text-slate-600">
-                            {item.observacao ||
-                              `Período ${item.dataInicio} → ${item.dataFim}`}
-                          </p>
-                          <div className="flex items-end gap-1 pt-1">
-                            <span className="text-xs font-bold uppercase text-slate-500">
-                              Meta de hoje
-                            </span>
-                            <strong className="text-3xl font-black leading-none text-slate-900">
-                              {meta}
-                            </strong>
-                            <span className="pb-0.5 text-xs text-slate-600">
-                              {item.unidade}
-                            </span>
+                  Todos
+                </button>
+                {encarregados.map((nome) => (
+                  <button
+                    key={nome}
+                    type="button"
+                    className={
+                      encarregado === nome ? BOTAO_PRIMARIO : BOTAO_SECUNDARIO
+                    }
+                    onClick={() => setEncarregado(nome)}
+                  >
+                    {nome}
+                  </button>
+                ))}
+                <span className="ml-2 shrink-0 text-xs font-black uppercase text-slate-500">
+                  Frente
+                </span>
+                <select
+                  className={`${CAMPO} w-auto min-w-36 shrink-0`}
+                  value={frente}
+                  onChange={(event) => setFrente(event.target.value)}
+                  aria-label="Filtrar por frente"
+                >
+                  <option value="">Todas</option>
+                  {frentes.map((nome) => (
+                    <option key={nome} value={nome}>
+                      {nome}
+                    </option>
+                  ))}
+                </select>
+                <span className="shrink-0 text-xs font-black uppercase text-slate-500">
+                  Situação
+                </span>
+                <select
+                  className={`${CAMPO} w-auto shrink-0`}
+                  value={status}
+                  onChange={(event) => setStatus(event.target.value)}
+                  aria-label="Filtrar por situação"
+                >
+                  <option value="todos">Todas</option>
+                  <option value="Planejado">Planejado</option>
+                  <option value="Em execução">Em execução</option>
+                  <option value="Concluído">Concluído</option>
+                  <option value="Cancelado">Cancelado</option>
+                </select>
+              </div>
+              <section
+                className={`${CARTAO} min-w-0 p-0`}
+                aria-label="Tabela de programação das atividades"
+              >
+                <TabelaPadrao
+                  titulo="Programação das atividades"
+                  linhas={linhasProgramacao}
+                  colunas={colunasProgramacao}
+                  idDaLinha={(item) => item.id}
+                  nomeDoItem={{ um: "atividade", varios: "atividades" }}
+                  vazio="Nenhuma atividade encontrada para os filtros selecionados."
+                  densa
+                  semPaginacao
+                  exportar
+                />
+              </section>
+              <div className="hidden">
+                {ativos.length === 0 ? (
+                  <div
+                    className={`${CARTAO} p-8 text-center text-sm text-slate-500`}
+                  >
+                    Nenhuma atividade encontrada para este dia e filtros.
+                  </div>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    {ativos.map((item) => {
+                      const realizado = totalDoItem(item);
+                      const meta = metaDoDia(item);
+                      const percentualItem =
+                        meta > 0
+                          ? Math.min(
+                              100,
+                              Math.round(
+                                (realizado / item.quantidadePlanejada) * 100,
+                              ),
+                            )
+                          : 0;
+                      return (
+                        <article
+                          key={item.id}
+                          className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                        >
+                          <div className="bg-slate-100 px-3 py-2 text-xs font-black uppercase text-slate-700">
+                            {item.situacao || "Programado"}
                           </div>
-                          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                            <div
-                              className="h-full rounded-full bg-[#176b4d]"
-                              style={{ width: `${percentualItem}%` }}
-                            />
-                          </div>
-                          <div className="flex justify-between text-xs text-slate-600">
-                            <span>
-                              Feito {realizado} de {item.quantidadePlanejada}{" "}
-                              {item.unidade}
-                            </span>
-                            <strong>{percentualItem}%</strong>
-                          </div>
-                          <div className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600">
-                            Termina em {item.dataFim}
-                          </div>
-                        </div>
-                        {podeEditar && (
-                          <form
-                            className="flex gap-2 border-t border-slate-200 bg-slate-50 p-2"
-                            onSubmit={(event) => {
-                              event.preventDefault();
-                              lancarNoCard(item);
-                            }}
-                          >
-                            <input
-                              className={`${CAMPO} min-w-0 flex-1`}
-                              inputMode="decimal"
-                              value={quantidadesHoje[item.id] || ""}
-                              onChange={(event) =>
-                                setQuantidadesHoje((atual) => ({
-                                  ...atual,
-                                  [item.id]: event.target.value,
-                                }))
-                              }
-                              placeholder={`Feito hoje (${item.unidade})`}
-                              aria-label={`Feito hoje ${item.servicoDescricao}`}
-                            />
-                            <button
-                              type="submit"
-                              className={`${BOTAO_PRIMARIO} shrink-0 px-3`}
+                          <div className="space-y-2 p-3">
+                            <p className="truncate text-xs font-bold uppercase text-emerald-700">
+                              {item.frente || "Sem frente"} ·{" "}
+                              {item.responsavel ||
+                                item.equipeNome ||
+                                "Equipe não definida"}
+                            </p>
+                            <h3
+                              className="truncate text-base font-black text-slate-900"
+                              title={item.servicoDescricao}
                             >
-                              Lançar
-                            </button>
-                          </form>
-                        )}
-                      </article>
-                    );
-                  })}
-                </div>
-              )}
+                              {item.servicoDescricao}
+                            </h3>
+                            <p className="truncate font-mono text-xs text-slate-600">
+                              {item.observacao ||
+                                `Período ${item.dataInicio} → ${item.dataFim}`}
+                            </p>
+                            <div className="flex items-end gap-1 pt-1">
+                              <span className="text-xs font-bold uppercase text-slate-500">
+                                Meta de hoje
+                              </span>
+                              <strong className="text-3xl font-black leading-none text-slate-900">
+                                {meta}
+                              </strong>
+                              <span className="pb-0.5 text-xs text-slate-600">
+                                {item.unidade}
+                              </span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                              <div
+                                className="h-full rounded-full bg-[#176b4d]"
+                                style={{ width: `${percentualItem}%` }}
+                              />
+                            </div>
+                            <div className="flex justify-between text-xs text-slate-600">
+                              <span>
+                                Feito {realizado} de {item.quantidadePlanejada}{" "}
+                                {item.unidade}
+                              </span>
+                              <strong>{percentualItem}%</strong>
+                            </div>
+                            <div className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600">
+                              Termina em {item.dataFim}
+                            </div>
+                          </div>
+                          {podeEditar && (
+                            <form
+                              className="flex gap-2 border-t border-slate-200 bg-slate-50 p-2"
+                              onSubmit={(event) => {
+                                event.preventDefault();
+                                lancarNoCard(item);
+                              }}
+                            >
+                              <input
+                                className={`${CAMPO} min-w-0 flex-1`}
+                                inputMode="decimal"
+                                value={quantidadesHoje[item.id] || ""}
+                                onChange={(event) =>
+                                  setQuantidadesHoje((atual) => ({
+                                    ...atual,
+                                    [item.id]: event.target.value,
+                                  }))
+                                }
+                                placeholder={`Feito hoje (${item.unidade})`}
+                                aria-label={`Feito hoje ${item.servicoDescricao}`}
+                              />
+                              <button
+                                type="submit"
+                                className={`${BOTAO_PRIMARIO} shrink-0 px-3`}
+                              >
+                                Lançar
+                              </button>
+                            </form>
+                          )}
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
               {simMensagem && (
                 <p className="text-sm font-bold text-emerald-700" role="status">
                   {simMensagem}
@@ -1393,25 +1686,25 @@ export default function ProgramacaoTerraplanagemTab({
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                     <div className="rounded-lg bg-slate-50 p-2">
-                      Saldo
+                      Saldo restante
                       <strong className="mt-1 block text-base">
                         {simSaldo} {simItem?.unidade || ""}
                       </strong>
                     </div>
                     <div className="rounded-lg bg-slate-50 p-2">
-                      Dias planejados
+                      Dias disponíveis
                       <strong className="mt-1 block text-base">
                         {simDias}
                       </strong>
                     </div>
-                    <div className="rounded-lg bg-slate-50 p-2">
-                      Fim calculado
+                    <div className="rounded-lg bg-emerald-50 p-2 text-emerald-900">
+                      Meta diária → fim previsto
                       <strong className="mt-1 block text-base">
-                        {simFimCalculado || "—"}
+                        {simFimCalculadoComRegra || "—"}
                       </strong>
                     </div>
-                    <div className="rounded-lg bg-slate-50 p-2">
-                      Meta necessária
+                    <div className="rounded-lg bg-amber-50 p-2 text-amber-950">
+                      Data final → meta necessária
                       <strong className="mt-1 block text-base">
                         {simMetaCalculada} {simItem?.unidade || ""}/dia
                       </strong>
@@ -1439,9 +1732,14 @@ export default function ProgramacaoTerraplanagemTab({
                   </span>
                 </div>
                 <div className="mt-3 overflow-x-auto">
-                  <div className="min-w-[48rem]">
-                    <div className="ml-48 grid grid-cols-7 gap-1 text-center text-xs text-slate-500">
-                      {semanaProgramacao.map((dia) => (
+                  <div className="min-w-[72rem]">
+                    <div
+                      className="ml-48 grid gap-1 text-center text-xs text-slate-500"
+                      style={{
+                        gridTemplateColumns: `repeat(${diasGantt.length}, minmax(2.25rem, 1fr))`,
+                      }}
+                    >
+                      {diasGantt.map((dia) => (
                         <span key={dia}>{formatarDia(dia)}</span>
                       ))}
                     </div>
@@ -1473,11 +1771,118 @@ export default function ProgramacaoTerraplanagemTab({
                   </div>
                 </div>
               </section>
+              <div className="grid gap-3 lg:grid-cols-2">
+                <section
+                  className={`${CARTAO} p-3`}
+                  aria-label="Impacto no cronograma"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="font-black">Impacto no cronograma</h2>
+                    <button
+                      type="button"
+                      className={BOTAO_SECUNDARIO}
+                      onClick={() =>
+                        setSimMensagem(
+                          "Linha de base visualizada com os dados atuais.",
+                        )
+                      }
+                    >
+                      Fixar linha de base
+                    </button>
+                  </div>
+                  <div className="mt-3 grid gap-2 text-sm">
+                    {linhasProgramacao.slice(0, 6).map((item) => {
+                      const atraso =
+                        item.dataFim < dataSelecionada &&
+                        item.situacao !== "Concluído";
+                      return (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between gap-3 border-b border-slate-100 py-2"
+                        >
+                          <span className="min-w-0 truncate">
+                            <strong>{item.servicoDescricao}</strong>
+                            <span className="ml-2 text-xs text-slate-500">
+                              {item.frente || "Sem frente"}
+                            </span>
+                          </span>
+                          <span
+                            className={
+                              atraso
+                                ? "font-bold text-rose-700"
+                                : "font-bold text-emerald-700"
+                            }
+                          >
+                            {atraso ? "Atrasada" : "Programada"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+                <section
+                  className={`${CARTAO} p-3`}
+                  aria-label="Dados do sistema"
+                >
+                  <h2 className="font-black">Dados do sistema</h2>
+                  <p className="mt-2 text-sm text-slate-500">
+                    As alterações ficam salvas no navegador e podem ser levadas
+                    para outro computador.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className={BOTAO_SECUNDARIO}
+                      onClick={() =>
+                        baixarArquivo(
+                          `programacao-${dataSelecionada}.json`,
+                          JSON.stringify(
+                            {
+                              referencia: dataSelecionada,
+                              planejamento,
+                              producao,
+                            },
+                            null,
+                            2,
+                          ),
+                        )
+                      }
+                    >
+                      <FileJson className="size-4" aria-hidden="true" /> Copiar
+                      dados JSON
+                    </button>
+                    <button
+                      type="button"
+                      className={BOTAO_SECUNDARIO}
+                      onClick={() =>
+                        baixarArquivo(
+                          `apontamentos-${dataSelecionada}.csv`,
+                          `data;serviço;frente;quantidade;unidade\n${producao.map((item) => `${item.data};${item.servicoDescricao};${item.frente || ""};${item.quantidade};${item.unidade}`).join("\n")}`,
+                          "text/csv",
+                        )
+                      }
+                    >
+                      <Download className="size-4" aria-hidden="true" />{" "}
+                      Exportar CSV
+                    </button>
+                    <button
+                      type="button"
+                      className={BOTAO_SECUNDARIO}
+                      onClick={() => window.print()}
+                    >
+                      Imprimir programação
+                    </button>
+                  </div>
+                </section>
+              </div>
             </div>
           )}
         </div>
         {podeEditar && (
-          <div className={`${CARTAO} grid gap-2 p-3 sm:grid-cols-5`}>
+          <div
+            id="novo-plano-form"
+            className={`${CARTAO} grid gap-2 p-3 sm:grid-cols-5`}
+          >
             <select
               className={`${CAMPO} sm:col-span-2`}
               value={form.servicoId}
