@@ -12,6 +12,7 @@
 //    nuvem, para não sobrescrever o trabalho alheio com uma cópia velha.
 
 import { TABELA_EXCLUSOES, aplicarExclusoes } from './cloud/exclusoes';
+import { MESCLA_DO_MESMO_REGISTRO } from './cloud/mesclaSolicitacoes';
 
 type CloudRecord = Record<string, unknown>;
 export type CloudSnapshot = Record<string, unknown>;
@@ -48,7 +49,8 @@ const pickNewer = (remote: unknown, local: unknown): unknown => {
   return remote;
 };
 
-export const mergeCloudTable = (remoteItems: unknown[], localItems: unknown[]): unknown[] => {
+export const mergeCloudTable = (remoteItems: unknown[], localItems: unknown[], tabela?: string): unknown[] => {
+  const mesclar = tabela ? MESCLA_DO_MESMO_REGISTRO[tabela] : undefined;
   const merged: unknown[] = [];
   const indexById = new Map<string, number>();
   const seenWithoutId = new Set<string>();
@@ -71,7 +73,10 @@ export const mergeCloudTable = (remoteItems: unknown[], localItems: unknown[]): 
       return;
     }
     if (!isLocal) return;
-    merged[existing] = pickNewer(merged[existing], item);
+    const vencedor = pickNewer(merged[existing], item);
+    // Tabela com registro só de acréscimo dentro do registro (linha do tempo
+    // dos pedidos): soma o que o outro lado tinha em vez de perder.
+    merged[existing] = mesclar ? mesclar(vencedor, vencedor === item ? merged[existing] : item) : vencedor;
   };
 
   remoteItems.forEach(item => absorb(item, false));
@@ -133,8 +138,9 @@ export const mergeCloudTableWithBaseline = (
   remoteItems: unknown[],
   localItems: unknown[],
   baselineIds: string[] | undefined,
+  tabela?: string,
 ): unknown[] => {
-  const merged = mergeCloudTable(remoteItems, localItems);
+  const merged = mergeCloudTable(remoteItems, localItems, tabela);
   if (!baselineIds || baselineIds.length === 0) return merged;
 
   const baseline = new Set(baselineIds);
@@ -240,8 +246,8 @@ export const mergeCloudSnapshotsWithBaseline = (
     const localValue = local[key];
     if (Array.isArray(remoteValue) && Array.isArray(localValue)) {
       merged[key] = TABELAS_SOMENTE_ACRESCIMO.has(key)
-        ? mergeCloudTable(remoteValue, localValue)
-        : mergeCloudTableWithBaseline(remoteValue, localValue, baseline?.[key]);
+        ? mergeCloudTable(remoteValue, localValue, key)
+        : mergeCloudTableWithBaseline(remoteValue, localValue, baseline?.[key], key);
     }
   }
   // Um lado pode ainda ter o registro que o outro excluiu; a marca de
@@ -259,7 +265,7 @@ export const mergeCloudSnapshots = (
     const remoteValue = (remote as CloudSnapshot)[key];
     const localValue = local[key];
     if (Array.isArray(remoteValue) && Array.isArray(localValue)) {
-      merged[key] = mergeCloudTable(remoteValue, localValue);
+      merged[key] = mergeCloudTable(remoteValue, localValue, key);
     }
   }
   return aplicarExclusoes(merged);
