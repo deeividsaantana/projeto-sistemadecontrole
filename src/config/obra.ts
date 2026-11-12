@@ -7,7 +7,7 @@
  */
 export const OBRA = {
   /** Nome oficial, usado em tela, PDF, Excel e relatórios. */
-  nome: 'Rodoanel Complexo do Alto Tietê · Alça',
+  nome: 'Rodoanel Complexo do Alto Tietê · Trecho Leste',
   /** Versão curta para espaços estreitos, como o celular. */
   nomeCurto: 'Rodoanel Alto Tietê',
 } as const;
