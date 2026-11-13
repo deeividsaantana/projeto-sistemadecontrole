@@ -123,6 +123,19 @@ test('só o aprovador aprova; só Suprimentos cota', () => {
   assert.deepEqual(acoesDisponiveis(sol, thiago), []);
 });
 
+test('somente Bruno aprova e somente Recepção/Campo confirma recebimento', () => {
+  const outroAprovador: Ator = { nome: 'Outro gerente', papel: 'aprovador', podeAprovar: true };
+  const pendente = ok(aplicarAcao(nova(), { tipo: 'assumir' }, cassia, T0));
+  const aguardando = ok(aplicarAcao(pendente, { tipo: 'enviarParaAprovacao', pedido }, cassia, T0));
+  assert.equal(aplicarAcao(aguardando, { tipo: 'aprovar' }, outroAprovador, T0).ok, false);
+
+  const aprovado = ok(aplicarAcao(aguardando, { tipo: 'aprovar' }, bruno, T0));
+  const emTransito = ok(aplicarAcao(aprovado, { tipo: 'despachar' }, cassia, T0));
+  const recebimento = { tipo: 'Chegou ao Local' as const, local: 'Canteiro', notaFiscal: 'NF-1', quantidades: { 1: 10 } };
+  assert.equal(aplicarAcao(emTransito, { tipo: 'receber', recebimento }, cassia, T0).ok, false);
+  assert.equal(aplicarAcao(emTransito, { tipo: 'receber', recebimento }, almox, T0).ok, true);
+});
+
 test('atraso automático depois do fim da janela sem confirmação', () => {
   const sol = ateAprovado();
   assert.equal(estaEmAtraso(sol, '2026-11-18'), false);
@@ -174,13 +187,13 @@ test('pessoa do login: por e-mail, senão pelo nome sem acento', () => {
   assert.equal(pessoaDoUsuario(pessoas, { nome: 'Desconhecido' }), null);
 });
 
-test('permissão de aprovação é configurável em Acessos', () => {
-  const semPermissao: Ator = { nome: 'Bruno', papel: 'aprovador', podeAprovar: false };
-  const comPermissao: Ator = { nome: 'Bruno', papel: 'solicitante', podeAprovar: true };
+test('aprovação fica restrita nominalmente a Bruno', () => {
+  const outroAprovador: Ator = { nome: 'Gerente auxiliar', papel: 'aprovador', podeAprovar: true };
+  const brunoSemFlag: Ator = { nome: 'Bruno', papel: 'aprovador', podeAprovar: false };
   let pendente = ok(aplicarAcao(nova(), { tipo: 'assumir' }, cassia, T0));
   pendente = ok(aplicarAcao(pendente, { tipo: 'enviarParaAprovacao', pedido }, cassia, T0));
-  assert.equal(acoesDisponiveis(pendente, semPermissao).includes('aprovar'), false);
-  assert.equal(acoesDisponiveis(pendente, comPermissao).includes('aprovar'), true);
+  assert.equal(acoesDisponiveis(pendente, outroAprovador).includes('aprovar'), false);
+  assert.equal(acoesDisponiveis(pendente, brunoSemFlag).includes('aprovar'), true);
 });
 
 test('importação recusa solicitante não autorizado e unidade fora do padrão', () => {
@@ -221,17 +234,13 @@ test('relatórios: solicitante, suprimentos, aprovador e logística', () => {
   assert.equal(logistica.emAberto[0].atraso, true);
 });
 
-test('dev faz tudo: abre, cota, aprova, recebe e reagenda', () => {
+test('dev pode operar, mas não substitui Bruno na aprovação', () => {
   const dev: Ator = { nome: 'Deivid', papel: 'dev' };
   let sol = ok(abrirSolicitacao({ solicitante: 'Deivid', frente: 'Ramo 200', itens: [{ tipo: 'Serviço', descricao: 'Locação de rolo compactador', quantidade: '20', unidade: 'h', prazoDesejado: '2026-11-20', permiteParcial: false }] }, dev, [], T0, 'dev-1'));
   sol = ok(aplicarAcao(sol, { tipo: 'assumir' }, dev, T0));
   sol = ok(aplicarAcao(sol, { tipo: 'enviarParaAprovacao', pedido }, dev, T0));
-  // Conferência de chegada fica aberta em qualquer etapa do fluxo (11/11/2026).
-  assert.deepEqual(acoesDisponiveis(sol, dev), ['aprovar', 'rejeitar', 'receber', 'apontarFalta']);
-  sol = ok(aplicarAcao(sol, { tipo: 'aprovar' }, dev, T0));
-  sol = ok(aplicarAcao(sol, { tipo: 'reagendar', novaData: '2026-11-22', motivo: 'Ajuste de agenda' }, dev, T0));
-  sol = ok(aplicarAcao(sol, { tipo: 'receber', recebimento: { tipo: 'Chegou ao Local', local: 'Canteiro Padre Eustáquio', notaFiscal: '7', quantidades: { 1: 20 } } }, dev, T0));
-  assert.equal(sol.etapa, 'Entregue');
+  assert.deepEqual(acoesDisponiveis(sol, dev), ['receber', 'apontarFalta']);
+  assert.equal(aplicarAcao(sol, { tipo: 'aprovar' }, dev, T0).ok, false);
 });
 
 // Planilha "Controle de pedidos de compra" dos auxiliares (11/11/2026).
