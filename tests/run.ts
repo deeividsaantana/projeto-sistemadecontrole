@@ -203,6 +203,8 @@ import './lazyLoading.test';
 import './exportarTabela.test';
 import './padraoErp.test';
 import './solicitacoes.test';
+import './apiProcurementAuthorization.test';
+import './sql/procurementSchema.test';
 import './campoComErro.test';
 import './nomeDaPessoa.test';
 import './perfilAvatar.test';
