@@ -65,7 +65,7 @@ test('abre com número SOL-ano-sequência e vai para a fila de Suprimentos', () 
 });
 
 test('valida campos obrigatórios e só solicitante abre', () => {
-  const base = { solicitante: 'Thiago', frente: 'Ramo 200', itens: [{ tipo: 'Material', descricao: 'Areia média', quantidade: '5', unidade: 'm³', prazoDesejado: '2026-11-20', permiteParcial: null }] };
+  const base = { solicitante: 'Thiago', frente: 'Ramo 200', estacamento: 'Estaca 200+0,00', itens: [{ tipo: 'Material', descricao: 'Areia média', quantidade: '5', unidade: 'm³', prazoDesejado: '2026-11-20', permiteParcial: null }] };
   const semParcial = abrirSolicitacao(base, thiago, [], T0, 'x');
   assert.equal(semParcial.ok, false);
   assert.match((semParcial as { erro: string }).erro, /entrega parcial/);
@@ -73,6 +73,13 @@ test('valida campos obrigatórios e só solicitante abre', () => {
   assert.match((unidadeErrada as { erro: string }).erro, /Unidade fora do padrão/);
   const porSuprimentos = abrirSolicitacao({ ...base, itens: [{ ...base.itens[0], permiteParcial: true }] }, cassia, [], T0, 'x');
   assert.equal(porSuprimentos.ok, false);
+});
+
+test('solicitação nova exige frente/ramo e estaca/aplicação', () => {
+  const dados = { solicitante: 'Thiago', frente: 'Ramo 200', itens: [{ tipo: 'Material', descricao: 'Areia média', quantidade: '5', unidade: 'm³', prazoDesejado: '2026-11-20', permiteParcial: true }] };
+  const resultado = abrirSolicitacao(dados, thiago, [], T0, 'sem-estaca');
+  assert.equal(resultado.ok, false);
+  assert.match((resultado as { erro: string }).erro, /estaca|aplica/i);
 });
 
 test('rigor técnico: aço, drenagem e pavimentação pedem o parâmetro de engenharia', () => {
@@ -236,7 +243,7 @@ test('relatórios: solicitante, suprimentos, aprovador e logística', () => {
 
 test('dev pode operar, mas não substitui Bruno na aprovação', () => {
   const dev: Ator = { nome: 'Deivid', papel: 'dev' };
-  let sol = ok(abrirSolicitacao({ solicitante: 'Deivid', frente: 'Ramo 200', itens: [{ tipo: 'Serviço', descricao: 'Locação de rolo compactador', quantidade: '20', unidade: 'h', prazoDesejado: '2026-11-20', permiteParcial: false }] }, dev, [], T0, 'dev-1'));
+  let sol = ok(abrirSolicitacao({ solicitante: 'Deivid', frente: 'Ramo 200', estacamento: 'Estaca 200+0,00', itens: [{ tipo: 'Serviço', descricao: 'Locação de rolo compactador', quantidade: '20', unidade: 'h', prazoDesejado: '2026-11-20', permiteParcial: false }] }, dev, [], T0, 'dev-1'));
   sol = ok(aplicarAcao(sol, { tipo: 'assumir' }, dev, T0));
   sol = ok(aplicarAcao(sol, { tipo: 'enviarParaAprovacao', pedido }, dev, T0));
   assert.deepEqual(acoesDisponiveis(sol, dev), ['receber', 'apontarFalta']);

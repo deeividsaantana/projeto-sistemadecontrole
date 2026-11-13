@@ -427,6 +427,7 @@ export const abrirSolicitacao = (
 ): Resultado => {
   if (!exerce(ator, 'solicitante')) return falha('Só quem está cadastrado como solicitante abre requisições.');
   if (!dados.frente.trim()) return falha('Informe a frente de trabalho ou o ramo.');
+  if (!dados.estacamento?.trim()) return falha('Informe a estaca ou aplicação vinculada à frente/ramo.');
   if (dados.itens.length === 0) return falha('Inclua pelo menos um item.');
   for (const [indice, item] of dados.itens.entries()) {
     const problemas = problemasDoItem(item);
