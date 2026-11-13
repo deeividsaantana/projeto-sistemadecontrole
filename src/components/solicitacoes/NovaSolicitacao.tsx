@@ -49,7 +49,7 @@ export function NovaSolicitacao({ solicitante, solicitantesPermitidos, onEnviar,
   const problemas = itens.map(problemasDoItem);
   const porCampo = itens.map(problemasPorCampo);
   const itensProntos = problemas.filter(lista => lista.length === 0).length;
-  const pronto = Boolean(solicitanteSelecionado) && frente.trim().length > 0 && itensProntos === itens.length;
+  const pronto = Boolean(solicitanteSelecionado) && frente.trim().length > 0 && estacamento.trim().length > 0 && itensProntos === itens.length;
 
   const enviar = () => {
     setTentou(true);
@@ -77,7 +77,7 @@ export function NovaSolicitacao({ solicitante, solicitantesPermitidos, onEnviar,
             <Campo rotulo="Frente de trabalho ou ramo" para="sol-frente" obrigatorio erro={tentou && frente.trim().length === 0 ? 'Informe a frente de trabalho ou o ramo.' : null}>
               <input id="sol-frente" value={frente} onChange={event => setFrente(event.target.value)} placeholder="Ramo 1400, OAE Marginal..." className={CAMPO} />
             </Campo>
-            <Campo rotulo="Estaca ou aplicação (opcional)" para="sol-estaca">
+            <Campo rotulo="Estaca ou aplicação" para="sol-estaca" obrigatorio erro={tentou && estacamento.trim().length === 0 ? 'Informe a estaca ou aplicação.' : null}>
               <input id="sol-estaca" value={estacamento} onChange={event => setEstacamento(event.target.value)} placeholder="Estaca 1401+0,00 ou Apoio 18" className={CAMPO} />
             </Campo>
           </div>
@@ -115,11 +115,11 @@ export function NovaSolicitacao({ solicitante, solicitantesPermitidos, onEnviar,
                       {UNIDADES.map(unidade => <option key={unidade}>{unidade}</option>)}
                     </select>
                   </Campo>
-                  <Campo rotulo="Prazo desejado" para={`sol-prazo-${indice}`} obrigatorio erro={erroDe('prazoDesejado')} className="sm:col-span-3">
+                  <Campo rotulo="Prazo de entrega" para={`sol-prazo-${indice}`} obrigatorio erro={erroDe('prazoDesejado')} className="sm:col-span-3">
                     <input id={`sol-prazo-${indice}`} type="date" value={item.prazoDesejado} onChange={event => mudar(indice, { prazoDesejado: event.target.value })} className={CAMPO} />
                   </Campo>
                   <fieldset className="sm:col-span-6">
-                    <legend className="mb-1 text-sm font-bold text-slate-700">Aceita entrega parcial?</legend>
+                    <legend className="mb-1 text-sm font-bold text-slate-700">Entra total ou parcial?</legend>
                     <div className="flex gap-2">
                       {[{ valor: true, rotulo: 'Sim' }, { valor: false, rotulo: 'Não' }].map(opcao => (
                         <button key={opcao.rotulo} type="button" aria-pressed={item.permiteParcial === opcao.valor} onClick={() => mudar(indice, { permiteParcial: opcao.valor })}
@@ -151,6 +151,7 @@ export function NovaSolicitacao({ solicitante, solicitantesPermitidos, onEnviar,
         <dl className="divide-y divide-slate-100">
           <Conferido rotulo="Solicitante" valor={solicitanteSelecionado || '—'} ok={Boolean(solicitanteSelecionado)} />
           <Conferido rotulo="Frente" valor={frente.trim() || '—'} ok={frente.trim().length > 0} />
+          <Conferido rotulo="Estaca/aplicação" valor={estacamento.trim() || '—'} ok={estacamento.trim().length > 0} />
           <Conferido rotulo="Itens prontos" valor={`${itensProntos} de ${itens.length}`} ok={itensProntos === itens.length} />
         </dl>
         {erro && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700">{erro}</p>}
