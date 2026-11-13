@@ -531,39 +531,13 @@ export default function SolicitacoesTab({
     exerce(ator, "suprimentos") ||
     exerce(ator, "recebedor");
 
-  const acompanhar = {
-    id: "pedidos" as const,
-    rotulo: "Acompanhar pedidos",
-    curto: "Pedidos",
-    icone: PackageSearch,
-    contador: emAtraso.length,
-    contadorRotulo: "em atraso",
-  };
-  const abasPedidos = [
-    acompanhar,
-    ...(exerce(ator, "solicitante")
-      ? [
-          {
-            id: "nova" as const,
-            rotulo: "Nova solicitação",
-            curto: "Nova",
-            icone: PackagePlus,
-          },
-        ]
-      : []),
-    {
-      id: "filtros" as const,
-      rotulo: "Filtros",
-      curto: "Filtros",
-      icone: Filter,
-    },
-  ];
   const subtelas: ItemDasAbas<Subtela>[] = [
     {
-      grupo: "pedidos",
+      id: "pedidos",
       rotulo: "Pedidos",
       icone: PackageSearch,
-      abas: abasPedidos,
+      contador: emAtraso.length,
+      contadorRotulo: "em atraso",
     },
     ...(exerce(ator, "aprovador")
       ? [
@@ -961,6 +935,17 @@ export default function SolicitacoesTab({
           data-sol-reveal
           className="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]"
         >
+          {subtela === "pedidos" && (
+            <button
+              type="button"
+              onClick={() => setSubtela("filtros")}
+              className={`${BOTAO_SECUNDARIO} min-h-10 shrink-0 px-3`}
+              aria-label="Abrir filtros de solicitações"
+            >
+              <Filter className="size-4" aria-hidden="true" />
+              <span>Filtros</span>
+            </button>
+          )}
           {subtela === "pedidos" && (
             <section
               aria-label="Resumo operacional de solicitações"
