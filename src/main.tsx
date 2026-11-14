@@ -5,7 +5,7 @@ import { APP_VERSION } from './app/version';
 import './index.css';
 import '@fontsource-variable/outfit';
 import '@fontsource-variable/geist';
-import { isPublicLinkUrl } from './app/routing/publicRoutes';
+import { isContratacaoLinkUrl, isPublicLinkUrl } from './app/routing/publicRoutes';
 import { parsePrivatePath } from './app/routing/privateRoutes';
 import { isSupabaseCloudEnabled } from './platform/cloudProvider';
 import { mirrorReneaLocalStorage, restoreMissingReneaLocalStorage, startReneaStorageMirror } from './utils/resilientStorage';
@@ -36,6 +36,13 @@ const startApplication = async () => {
     root.render(
       <StrictMode>
         <PublicLinksApp />
+      </StrictMode>,
+    );
+  } else if (isContratacaoLinkUrl()) {
+    const { default: ContratacaoLinkApp } = await import('./ContratacaoLinkApp');
+    root.render(
+      <StrictMode>
+        <ContratacaoLinkApp />
       </StrictMode>,
     );
   } else {

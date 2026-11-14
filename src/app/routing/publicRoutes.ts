@@ -23,3 +23,9 @@ export const isPublicLinkUrl = (location?: PublicLocation) => {
   if (!resolvedLocation) return false;
   return Boolean(getPresenceTokenFromUrl(resolvedLocation));
 };
+
+/** Link da Solicitação de Contratação: abre leve, como o de presença, mas pede login. */
+export const isContratacaoLinkUrl = (location?: PublicLocation) => {
+  const resolvedLocation = getLocation(location);
+  return Boolean(resolvedLocation && /^\/contratacao\/?$/.test(resolvedLocation.pathname));
+};
