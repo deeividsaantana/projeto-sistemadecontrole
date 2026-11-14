@@ -12,6 +12,7 @@ import { handler as masterData } from '../api/master-data.js';
 import { handler as usageTelemetry } from '../api/usage-telemetry.js';
 import { handler as cleanupCloudData } from '../api/cleanup-cloud-data.js';
 import { handler as procurement } from '../api/procurement.js';
+import { syncProcurementSpreadsheet } from './procurementSpreadsheetSyncJob.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, '..', 'dist');
@@ -91,4 +92,9 @@ app.get('*', (req, res) => {
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`RENEA ERP no ar em http://localhost:${port}`);
+  if (process.env.PROCUREMENT_SPREADSHEET_URL) {
+    const everyThreeHours = 3 * 60 * 60 * 1000;
+    void syncProcurementSpreadsheet().catch(error => console.error('Sincronização da planilha de compras falhou:', error));
+    setInterval(() => void syncProcurementSpreadsheet().catch(error => console.error('Sincronização da planilha de compras falhou:', error)), everyThreeHours).unref();
+  }
 });

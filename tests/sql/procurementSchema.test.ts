@@ -37,3 +37,9 @@ test('SC guarda observações e assinaturas sem apagar histórico', () => {
   assert.match(migration, /p_action = 'cancel'/is);
   assert.match(migration, /p_action = 'sign'/is);
 });
+
+test('sincronização da planilha é idempotente e auditável', () => {
+  assert.match(migration, /erp_procurement_sheet_rows/is);
+  assert.match(migration, /unique \(organization_id, source_key\)/is);
+  assert.match(migration, /erp_procurement_sync_runs/is);
+});

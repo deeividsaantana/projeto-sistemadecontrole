@@ -116,6 +116,38 @@ create table if not exists public.erp_request_signatures (
   signed_at timestamptz not null default now()
 );
 
+create table if not exists public.erp_procurement_sheet_rows (
+  id uuid primary key default gen_random_uuid(),
+  organization_id text not null default 'renea',
+  source_key text not null,
+  sheet_name text not null,
+  source_request_number text,
+  request_date date,
+  requester_name text,
+  item_description text,
+  unit text,
+  quantity_requested numeric(18,3),
+  source_purchase_order text,
+  delivery_deadline date,
+  raw_data jsonb not null default '{}'::jsonb,
+  source_updated_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (organization_id, source_key)
+);
+
+create table if not exists public.erp_procurement_sync_runs (
+  id uuid primary key default gen_random_uuid(),
+  organization_id text not null default 'renea',
+  source text not null,
+  status text not null check (status in ('SUCESSO', 'FALHA')),
+  rows_seen integer not null default 0,
+  rows_written integer not null default 0,
+  error_message text,
+  started_at timestamptz not null default now(),
+  finished_at timestamptz
+);
+
 create index if not exists erp_requests_org_status_idx on public.erp_requests (organization_id, status, updated_at desc);
 create index if not exists erp_requests_requester_idx on public.erp_requests (organization_id, requester_user_id, created_at desc);
 create index if not exists erp_purchase_orders_request_idx on public.erp_purchase_orders (organization_id, request_id);
