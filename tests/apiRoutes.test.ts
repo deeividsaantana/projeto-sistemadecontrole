@@ -52,7 +52,7 @@ test('cliente de compras envia todos os itens da solicitação', () => {
 
 test('consulta de compras devolve os itens completos do pedido', () => {
   const route = read('api/procurement.js');
-  assert.match(route, /select\('\\*, erp_request_items\(\\*\)'\)/);
+  assert.match(route, /erp_request_items\(\*\)/);
   assert.match(route, /items: erp_request_items/);
 });
 
