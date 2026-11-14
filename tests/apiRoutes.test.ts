@@ -50,6 +50,12 @@ test('cliente de compras envia todos os itens da solicitação', () => {
   assert.match(client, /\/api\/procurement/);
 });
 
+test('consulta de compras devolve os itens completos do pedido', () => {
+  const route = read('api/procurement.js');
+  assert.match(route, /select\('\\*, erp_request_items\(\\*\)'\)/);
+  assert.match(route, /items: erp_request_items/);
+});
+
 test('adaptador Supabase representa documento ausente sem ler id de null', () => {
   const source = read('api/_shared/supabase-admin.js');
   assert.match(source, /id:\s*row\?\.id/);

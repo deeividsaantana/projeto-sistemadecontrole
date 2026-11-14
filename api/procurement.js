@@ -87,12 +87,13 @@ const createRequest = async (event, staff, actor) => {
 
 const listRequests = async (staff, actor, query = {}) => {
   const client = getSupabaseAdmin();
-  let request = client.from('erp_requests').select('*').eq('organization_id', staff.organizationId).order('created_at', { ascending: false }).limit(200);
+  let request = client.from('erp_requests').select('*, erp_request_items(*)').eq('organization_id', staff.organizationId).order('created_at', { ascending: false }).limit(200);
   if (actor.role === 'solicitante') request = request.eq('requester_user_id', staff.uid);
   if (query.status) request = request.eq('status', cleanString(query.status, 60));
   const { data, error } = await request;
   if (error) throw error;
-  return jsonResponse(200, { success: true, data: data || [] });
+  const rows = (data || []).map(({ erp_request_items = [], ...header }) => ({ ...header, items: erp_request_items }));
+  return jsonResponse(200, { success: true, data: rows });
 };
 
 const transitionRequest = async (event, staff, actor) => {
