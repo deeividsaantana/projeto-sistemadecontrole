@@ -21,21 +21,22 @@ const request = async <T>(init: RequestInit = {}) => {
 };
 
 export const createProcurementRequest = async (dados: DadosAbertura, requestNumber: string) => {
-  const item = dados.itens[0];
-  if (!item) throw new Error('Inclua pelo menos um item.');
+  if (!dados.itens.length) throw new Error('Inclua pelo menos um item.');
   return request<Solicitacao>({
     method: 'POST',
     body: JSON.stringify({
       request_number: requestNumber,
       work_front: dados.frente,
       stake_application: dados.estacamento,
-      item_type: item.tipo,
-      technical_description: item.descricao,
-      quantity_requested: item.quantidade,
-      unit: item.unidade,
-      desired_deadline: item.prazoDesejado,
-      allow_partial: item.permiteParcial,
-      quantity_first_delivery: item.quantidadePrimeiraEntrega,
+      items: dados.itens.map(item => ({
+        item_type: item.tipo,
+        technical_description: item.descricao,
+        quantity_requested: item.quantidade,
+        unit: item.unidade,
+        desired_deadline: item.prazoDesejado,
+        allow_partial: item.permiteParcial,
+        quantity_first_delivery: item.quantidadePrimeiraEntrega,
+      })),
     }),
   });
 };

@@ -43,6 +43,13 @@ test('transições de compras usam PATCH, versão esperada e função SQL autori
   assert.match(migration, /Somente Recepção\/Campo recebe/is);
 });
 
+test('cliente de compras envia todos os itens da solicitação', () => {
+  const client = read('src/services/procurementApi.ts');
+  assert.match(client, /dados\.itens\.map/);
+  assert.match(client, /quantity_first_delivery/);
+  assert.match(client, /\/api\/procurement/);
+});
+
 test('adaptador Supabase representa documento ausente sem ler id de null', () => {
   const source = read('api/_shared/supabase-admin.js');
   assert.match(source, /id:\s*row\?\.id/);
