@@ -23,13 +23,13 @@ test('suprimentos mantém alçada de cotação e reagendamento', () => {
 });
 
 test('matriz nominal define visualização, solicitação e compras', () => {
-  assert.doesNotThrow(() => assertProcurementPermission({ name: 'Lucas' }, 'view'));
-  assert.doesNotThrow(() => assertProcurementPermission({ name: 'Deivid' }, 'view'));
-  assert.doesNotThrow(() => assertProcurementPermission({ name: 'Michele' }, 'request'));
-  assert.doesNotThrow(() => assertProcurementPermission({ name: 'Sérgio' }, 'dispatch'));
-  assert.doesNotThrow(() => assertProcurementPermission({ name: 'Bruno' }, 'comment'));
-  assert.throws(() => assertProcurementPermission({ name: 'Lucas' }, 'request'), /403/);
-  assert.throws(() => assertProcurementPermission({ name: 'Michele' }, 'dispatch'), /403/);
+  assert.doesNotThrow(() => assertProcurementPermission({ name: 'Lucas', role: 'visualizador' }, 'view'));
+  assert.doesNotThrow(() => assertProcurementPermission({ name: 'Deivid', role: 'visualizador' }, 'view'));
+  assert.doesNotThrow(() => assertProcurementPermission({ name: 'Michele', role: 'solicitante' }, 'request'));
+  assert.doesNotThrow(() => assertProcurementPermission({ name: 'Sérgio', role: 'suprimentos' }, 'dispatch'));
+  assert.doesNotThrow(() => assertProcurementPermission({ name: 'Bruno', role: 'aprovador' }, 'comment'));
+  assert.throws(() => assertProcurementPermission({ name: 'Lucas', role: 'visualizador' }, 'request'), /403/);
+  assert.throws(() => assertProcurementPermission({ name: 'Michele', role: 'solicitante' }, 'dispatch'), /403/);
 });
 
 test('API rejeita primeira entrega parcial acima da quantidade solicitada', () => {
