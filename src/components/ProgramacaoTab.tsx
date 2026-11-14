@@ -22,7 +22,7 @@ import {
   type ResumoAtividade,
   type SituacaoAtividade,
 } from '../utils/programacao';
-import { AtividadeModal } from './programacao/AtividadeModal';
+import { AtividadeForm } from './programacao/AtividadeForm';
 import { CartoesDoDia } from './programacao/CartoesDoDia';
 import { QuadroProgramacao } from './programacao/QuadroProgramacao';
 import { BarraAvanco, COR_SITUACAO, SeloSituacao, diaMes, numeroObra } from './programacao/visual';
@@ -253,7 +253,7 @@ export default function ProgramacaoTab({ planejamento, producao, servicos, respo
       ref={escopo}
       id="programacao-tab"
       rotulo="Programação"
-      longa={aba === 'hoje'}
+      longa={aba === 'hoje' && !aberta}
       idAbaAtiva={idDaAba('programacao', aba)}
       idDados="programacao-dados"
       chaveRolagem={aba}
@@ -277,7 +277,7 @@ export default function ProgramacaoTab({ planejamento, producao, servicos, respo
               ]}
             />
           )}
-          actions={(
+          actions={aberta ? undefined : (
             <>
               <div className="relative">
                 <button type="button" onClick={() => setMenuExportar(atual => !atual)} aria-expanded={menuExportar} aria-haspopup="menu" disabled={exportando} className={BOTAO_SECUNDARIO} data-testid="programacao-exportar">
@@ -308,9 +308,9 @@ export default function ProgramacaoTab({ planejamento, producao, servicos, respo
           )}
         />
       )}
-      faixa={faixa}
+      faixa={aberta ? undefined : faixa}
     >
-      {aba === 'hoje' && (
+      {!aberta && aba === 'hoje' && (
         <CartoesDoDia
           resumos={filtrados}
           dia={dia}
@@ -323,7 +323,7 @@ export default function ProgramacaoTab({ planejamento, producao, servicos, respo
         />
       )}
 
-      {aba === 'quadro' && (
+      {!aberta && aba === 'quadro' && (
         <QuadroProgramacao
           resumos={filtrados}
           inicio={inicioQuadro}
@@ -334,7 +334,7 @@ export default function ProgramacaoTab({ planejamento, producao, servicos, respo
         />
       )}
 
-      {aba === 'lista' && (
+      {!aberta && aba === 'lista' && (
         <TabelaPadrao
           titulo="Atividades programadas"
           linhas={filtrados}
@@ -349,7 +349,7 @@ export default function ProgramacaoTab({ planejamento, producao, servicos, respo
         />
       )}
 
-      {aba === 'producao' && (
+      {!aberta && aba === 'producao' && (
         <TabelaPadrao
           titulo="Produção lançada"
           linhas={producaoFiltrada}
@@ -363,7 +363,7 @@ export default function ProgramacaoTab({ planejamento, producao, servicos, respo
         />
       )}
 
-      <AtividadeModal
+      <AtividadeForm
         aberto={Boolean(aberta)}
         resumo={resumoAberto}
         producao={resumoAberto ? producaoDaAtividade(resumoAberto.item, producao) : []}
