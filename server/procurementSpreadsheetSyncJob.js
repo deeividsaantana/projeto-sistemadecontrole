@@ -12,12 +12,12 @@ export const syncProcurementSpreadsheet = async () => {
   const client = getSupabaseAdmin();
   try {
     const parsed = await parseProcurementWorkbook(await downloadProcurementWorkbook());
-    const rows = parsed.requests.map(row => ({
+    const rows = parsed.allRows.map(row => ({
       organization_id: 'renea', source_key: keyFor(row), sheet_name: row.source,
-      source_request_number: row.source_request_number || null, request_date: row.request_date || null,
-      requester_name: row.requester_name || null, item_description: row.item_description || null,
-      unit: row.unit || null, quantity_requested: row.quantity_requested,
-      source_purchase_order: row.source_purchase_order || null, delivery_deadline: row.delivery_deadline || null,
+      source_request_number: row.source_request_number || row.pedido || row.request_number || null, request_date: row.request_date || row.data || null,
+      requester_name: row.requester_name || row.solicitante || null, item_description: row.item_description || row.item || row.produto || null,
+      unit: row.unit || row.unidade || null, quantity_requested: row.quantity_requested ?? row.quantidade ?? null,
+      source_purchase_order: row.source_purchase_order || row.sc || null, delivery_deadline: row.delivery_deadline || row.previsao || row.fim || null,
       raw_data: row, source_updated_at: startedAt, updated_at: startedAt,
     }));
     if (rows.length) {
