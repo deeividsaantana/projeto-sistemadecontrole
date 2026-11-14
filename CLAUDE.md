@@ -5,6 +5,7 @@ Leia antes de qualquer mudança:
 1. `AGENTS.md`: stack, invariantes de dados e regras de migração Firebase para Supabase.
 2. `CONTRIBUTING.md`: estrutura de pastas, nomes, etapas, checklist do PR e revisão.
 3. `docs/superpowers/CHECKLIST_REDESIGN_ABAS.md`: padrão visual das telas.
+4. `docs/CONTEXTO_CLAUDE.md`: quem mantém o projeto, como responder e histórico do Sistema RENEA.
 
 ## Regras que não mudam
 
