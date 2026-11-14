@@ -1,4 +1,4 @@
-import type { EtapaServico, HistoryLog, FrenteServico, RegistroProducao, ServicoObra } from '../src/types';
+import type { EtapaServico, HistoryLog, FrenteServico, PlanejamentoItem, RegistroProducao, ServicoObra } from '../src/types';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -17,6 +17,8 @@ import ManutencaoTab from '../src/components/ManutencaoTab';
 import ColaboradoresTab from '../src/components/ColaboradoresTab';
 import DiarioObraTab from '../src/components/DiarioObraTab';
 import { SolicitacoesPreview } from './solicitacoesPreview';
+import ProgramacaoTab from '../src/components/ProgramacaoTab';
+import { INITIAL_PROGRAMACAO } from '../src/utils/initialProgramacaoData';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
 import { MeuPerfilModal } from '../src/components/perfil/MeuPerfilModal';
@@ -428,8 +430,33 @@ function TopoPreview(props: Omit<React.ComponentProps<typeof DesktopTopBar>, 'me
   );
 }
 
+
+/** Programação com estado: criar, editar e lançar produção voltam para a tela. */
+function ProgramacaoPreview() {
+  const [itens, setItens] = React.useState<PlanejamentoItem[]>(INITIAL_PROGRAMACAO.itens.map(item => ({ ...item })));
+  const [producao, setProducao] = React.useState<RegistroProducao[]>([
+    { id: 'p1', data: '2026-11-12', servicoId: 'servico-guia', planejamentoId: 'programacao-ramo-1400-guia', servicoDescricao: 'GUIA', unidade: 'M', quantidade: 24, frente: 'RAMO 1400', responsavel: 'SILLAME', ativo: true, criadoEm: '2026-11-12T18:00:00Z', atualizadoEm: '2026-11-12T18:00:00Z' },
+    { id: 'p2', data: '2026-11-13', servicoId: 'servico-guia', planejamentoId: 'programacao-ramo-1400-guia', servicoDescricao: 'GUIA', unidade: 'M', quantidade: 20, frente: 'RAMO 1400', responsavel: 'SILLAME', ativo: true, criadoEm: '2026-11-13T18:00:00Z', atualizadoEm: '2026-11-13T18:00:00Z' },
+    { id: 'p3', data: '2026-11-12', servicoId: 'servico-sarjeta', planejamentoId: 'programacao-ramo-1400-sarjeta', servicoDescricao: 'SARJETA', unidade: 'M', quantidade: 30, frente: 'RAMO 1400', responsavel: 'SILLAME', ativo: true, criadoEm: '2026-11-12T18:00:00Z', atualizadoEm: '2026-11-12T18:00:00Z' },
+    { id: 'p4', data: '2026-11-13', servicoId: 'servico-sub-base', planejamentoId: 'programacao-ramo-200a-sub-base', servicoDescricao: 'SUB BASE', unidade: 'M', quantidade: 55, frente: 'RAMO 200A', responsavel: 'LAGOA', ativo: true, criadoEm: '2026-11-13T18:00:00Z', atualizadoEm: '2026-11-13T18:00:00Z' },
+    { id: 'p5', data: '2026-11-13', servicoId: 'servico-tubo', planejamentoId: 'programacao-ramo-1300-tubo', servicoDescricao: 'TUBO', unidade: 'M', quantidade: 6, frente: 'RAMO 1300', responsavel: 'SILLAME E RODRIGO', ativo: true, criadoEm: '2026-11-13T18:00:00Z', atualizadoEm: '2026-11-13T18:00:00Z' },
+  ]);
+  return (
+    <ProgramacaoTab
+      planejamento={itens}
+      producao={producao}
+      servicos={INITIAL_PROGRAMACAO.servicos}
+      responsavel="Deivid Santana"
+      podeEditar
+      onSavePlanejamento={(item, novo) => setItens(atual => (novo ? [item, ...atual] : atual.map(linha => (linha.id === item.id ? item : linha))))}
+      onSaveProducao={(item, novo) => setProducao(atual => (novo ? [item, ...atual] : atual.map(linha => (linha.id === item.id ? item : linha))))}
+    />
+  );
+}
+
 const screens: Record<string, React.ReactNode> = {
   molde: <MoldePreview />,
+  programacao: <ProgramacaoPreview />,
   sidebar: (
     <div className="erp-shell" style={{ height: '100dvh' }}>
       <DesktopSidebar

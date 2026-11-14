@@ -213,3 +213,4 @@ import './procurementSpreadsheetSync.test';
 import './campoComErro.test';
 import './nomeDaPessoa.test';
 import './perfilAvatar.test';
+import './programacao.test';

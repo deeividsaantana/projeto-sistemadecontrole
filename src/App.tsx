@@ -112,7 +112,7 @@ const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
 const SolicitacoesTab = lazy(() => import('./components/SolicitacoesTab'));
 const PluviometroTab = lazy(() => import('./components/PluviometroTab'));
-const ProgramacaoTerraplanagem = lazy(() => import('./components/ProgramacaoTerraplanagem'));
+const ProgramacaoTab = lazy(() => import('./components/ProgramacaoTab'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
 import OfflineStatusV29 from './components/OfflineStatusV29';
 
@@ -4513,7 +4513,7 @@ export default function App() {
             )}
 
             {activeTab === 'programacao' && (
-              <ProgramacaoTerraplanagem
+              <ProgramacaoTab
                 planejamento={planejamentoItens}
                 producao={producaoRegistros}
                 servicos={servicosObra}
