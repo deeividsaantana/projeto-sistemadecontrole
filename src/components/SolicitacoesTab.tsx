@@ -70,11 +70,11 @@ import { PlanilhaCompras } from "./solicitacoes/PlanilhaCompras";
 type Subtela =
   | "pedidos"
   | "nova"
-  | "filtros"
   | "aprovacao"
   | "conferencia"
   | "historico"
-  | "planilha";
+  | "planilha"
+  | "arquivos";
 
 interface SolicitacoesTabProps {
   solicitacoes: Solicitacao[];
@@ -162,8 +162,6 @@ type Importacao =
   | { tipo: "modelo"; resultado: ResultadoImportacao }
   | { tipo: "controle"; resultado: ResultadoControle };
 
-const POR_VEZ = 60;
-
 const novoId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
@@ -196,7 +194,7 @@ export default function SolicitacoesTab({
   const [filtroDataInicio, setFiltroDataInicio] = useState("");
   const [filtroDataFim, setFiltroDataFim] = useState("");
   const [modo, setModo] = useState<"cards" | "lista">("cards");
-  const [mostrar, setMostrar] = useState(POR_VEZ);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [filtroConferencia, setFiltroConferencia] =
     useState<FiltroConferencia>("A conferir");
   const [abertaId, setAbertaId] = useState<string | null>(null);
@@ -421,9 +419,8 @@ export default function SolicitacoesTab({
     setOcupado(true);
     setAviso(null);
     try {
-      const { lerArquivoDeImportacao } = await import(
-        "./solicitacoes/planilhaSolicitacoes"
-      );
+      const { lerArquivoDeImportacao } =
+        await import("./solicitacoes/planilhaSolicitacoes");
       const abas = await lerArquivoDeImportacao(selecionado);
       setImportacao(
         ehPlanilhaDeControle(abas)
@@ -503,9 +500,8 @@ export default function SolicitacoesTab({
   const exportar = async () => {
     setOcupado(true);
     try {
-      const { baixarRelatorios } = await import(
-        "./solicitacoes/planilhaSolicitacoes"
-      );
+      const { baixarRelatorios } =
+        await import("./solicitacoes/planilhaSolicitacoes");
       await baixarRelatorios(solicitacoes, hoje);
     } catch (error) {
       setAviso({
@@ -520,10 +516,33 @@ export default function SolicitacoesTab({
     }
   };
 
+  const gerarPdf = async () => {
+    setOcupado(true);
+    try {
+      const { gerarRelatorioSolicitacoesPdf } =
+        await import("./solicitacoes/pdfReportSolicitacoes");
+      await gerarRelatorioSolicitacoesPdf(solicitacoes, hoje);
+      setAviso({
+        tom: "ok",
+        texto:
+          "Relatório PDF gerado com os pedidos, itens, prazos e conferência.",
+      });
+    } catch (error) {
+      setAviso({
+        tom: "erro",
+        texto:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível gerar o relatório PDF.",
+      });
+    } finally {
+      setOcupado(false);
+    }
+  };
+
   const baixarModelo = async () => {
-    const { baixarModeloDeImportacao } = await import(
-      "./solicitacoes/planilhaSolicitacoes"
-    );
+    const { baixarModeloDeImportacao } =
+      await import("./solicitacoes/planilhaSolicitacoes");
     await baixarModeloDeImportacao();
   };
 
@@ -555,6 +574,7 @@ export default function SolicitacoesTab({
     {
       id: "conferencia",
       rotulo: "Conferência",
+      curto: "Conferir",
       icone: ClipboardList,
       contador: itensComFalta,
       contadorRotulo: "itens com falta",
@@ -566,6 +586,7 @@ export default function SolicitacoesTab({
       abas: [
         { id: "historico", rotulo: "Histórico", icone: History },
         { id: "planilha", rotulo: "Planilha", icone: FileSpreadsheet },
+        { id: "arquivos", rotulo: "Excel, PDF e importar", icone: Upload },
       ],
     },
   ];
@@ -778,7 +799,6 @@ export default function SolicitacoesTab({
     setAbertaId(null);
     setSubtela("pedidos");
     setFiltro(proximo);
-    setMostrar(POR_VEZ);
   };
   const irParaAprovacao = () => {
     setAbertaId(null);
@@ -844,87 +864,39 @@ export default function SolicitacoesTab({
           eyebrow="Suprimentos"
           title="Solicitações e compras"
           abas={
-            <AbasDaTela<Subtela>
-              id="solicitacoes"
-              rotulo="Subtelas de solicitações"
-              abas={subtelas}
-              ativa={subtela}
-              onTrocar={(proxima) => {
-                setAbertaId(null);
-                setSubtela(proxima);
-              }}
-              idPainel="solicitacoes-dados"
-              testId="solicitacoes-aba"
-            />
+            <div className="flex w-full min-w-0 max-w-full items-start gap-2">
+              <AbasDaTela<Subtela>
+                className="min-w-0 flex-1 sm:flex-none"
+                id="solicitacoes"
+                rotulo="Subtelas de solicitações"
+                abas={subtelas}
+                ativa={subtela}
+                onTrocar={(proxima) => {
+                  setAbertaId(null);
+                  setSubtela(proxima);
+                }}
+                idPainel="solicitacoes-dados"
+                testId="solicitacoes-aba"
+              />
+              {subtela === "pedidos" && !aberta && (
+                <span className="hidden shrink-0 self-stretch sm:block">
+                  <button
+                    type="button"
+                    onClick={() => setFiltrosAbertos((aberto) => !aberto)}
+                    aria-expanded={filtrosAbertos}
+                    aria-controls="filtros-solicitacoes"
+                    className={`${filtrosAbertos ? BOTAO_PRIMARIO : BOTAO_SECUNDARIO} h-full px-3`}
+                    data-testid="solicitacoes-filtros"
+                  >
+                    <Filter className="size-4" aria-hidden="true" />
+                    <span>Filtros</span>
+                  </button>
+                </span>
+              )}
+            </div>
           }
           actions={
             <>
-              {!aberta && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => void exportar()}
-                    disabled={ocupado || solicitacoes.length === 0}
-                    className={BOTAO_SECUNDARIO}
-                  >
-                    <FileSpreadsheet className="size-4" aria-hidden="true" />{" "}
-                    <span className="sm:hidden">Excel</span>
-                    <span className="hidden sm:inline">Relatórios Excel</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void (async () => {
-                        setOcupado(true);
-                        try {
-                          const { gerarRelatorioSolicitacoesPdf } =
-                            await import(
-                              "./solicitacoes/pdfReportSolicitacoes"
-                            );
-                          await gerarRelatorioSolicitacoesPdf(
-                            solicitacoes,
-                            hoje,
-                          );
-                          setAviso({
-                            tom: "ok",
-                            texto:
-                              "Relatório PDF gerado com os pedidos, itens, prazos e conferência.",
-                          });
-                        } catch (error) {
-                          setAviso({
-                            tom: "erro",
-                            texto:
-                              error instanceof Error
-                                ? error.message
-                                : "Não foi possível gerar o relatório PDF.",
-                          });
-                        } finally {
-                          setOcupado(false);
-                        }
-                      })()
-                    }
-                    disabled={ocupado || solicitacoes.length === 0}
-                    className={BOTAO_SECUNDARIO}
-                    data-testid="solicitacoes-relatorio-pdf"
-                  >
-                    <ClipboardList className="size-4" aria-hidden="true" />{" "}
-                    <span className="sm:hidden">PDF</span>
-                    <span className="hidden sm:inline">Relatório PDF</span>
-                  </button>
-                </>
-              )}
-              {podeImportar && podeEditar && (
-                <button
-                  type="button"
-                  onClick={() => arquivo.current?.click()}
-                  disabled={ocupado}
-                  className={BOTAO_SECUNDARIO}
-                >
-                  <Upload className="size-4" aria-hidden="true" />{" "}
-                  <span className="sm:hidden">Importar</span>
-                  <span className="hidden sm:inline">Importar planilha</span>
-                </button>
-              )}
               {exerce(ator, "solicitante") && subtela !== "nova" && (
                 <button
                   type="button"
@@ -945,16 +917,20 @@ export default function SolicitacoesTab({
           data-sol-reveal
           className="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]"
         >
+          {/* No celular as abas ocupam a linha toda; o Filtros vem para cá. */}
           {subtela === "pedidos" && (
-            <button
-              type="button"
-              onClick={() => setSubtela("filtros")}
-              className={`${BOTAO_SECUNDARIO} min-h-10 shrink-0 px-3`}
-              aria-label="Abrir filtros de solicitações"
-            >
-              <Filter className="size-4" aria-hidden="true" />
-              <span>Filtros</span>
-            </button>
+            <span className="shrink-0 sm:hidden">
+              <button
+                type="button"
+                onClick={() => setFiltrosAbertos((aberto) => !aberto)}
+                aria-expanded={filtrosAbertos}
+                aria-controls="filtros-solicitacoes"
+                className={`${filtrosAbertos ? BOTAO_PRIMARIO : BOTAO_SECUNDARIO} min-h-10 px-3`}
+              >
+                <Filter className="size-4" aria-hidden="true" />
+                <span>Filtros</span>
+              </button>
+            </span>
           )}
           {subtela === "pedidos" && (
             <section
@@ -969,7 +945,7 @@ export default function SolicitacoesTab({
                   className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
                   title={`${item.rotulo}: ${item.valor} ${item.detalhe}`}
                 >
-                  <span className="truncate text-xs font-bold text-slate-600">
+                  <span className="hidden truncate text-xs font-bold text-slate-600 sm:inline">
                     {item.rotulo}
                   </span>
                   <strong
@@ -1043,7 +1019,6 @@ export default function SolicitacoesTab({
                     value={busca}
                     onChange={(event) => {
                       setBusca(event.target.value);
-                      setMostrar(POR_VEZ);
                     }}
                     placeholder={
                       subtela === "historico"
@@ -1150,170 +1125,145 @@ export default function SolicitacoesTab({
         </section>
       ) : (
         <>
-          {subtela === "filtros" && (
+          {subtela === "pedidos" && filtrosAbertos && (
             <section
-              data-sol-reveal
-              aria-labelledby="filtros-solicitacoes-titulo"
-              className="grid min-h-0 content-start gap-4"
+              id="filtros-solicitacoes"
+              aria-label="Filtros dos pedidos"
+              className={`${CARTAO} grid shrink-0 gap-3 p-3 sm:p-4`}
             >
-              <div className={`${CARTAO} grid gap-4 p-4`}>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-bold uppercase text-[#176b4d]">
-                      Pesquisa avançada
-                    </p>
-                    <h2
-                      id="filtros-solicitacoes-titulo"
-                      className="text-xl font-black text-slate-900"
-                    >
-                      Filtrar solicitações
-                    </h2>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Os filtros ficam separados para deixar a aba de pedidos
-                      livre e com o máximo de espaço para os cards.
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-bold text-[#176b4d]">
-                    {pedidos.length} resultado(s)
-                  </span>
-                </div>
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_12rem_12rem]">
-                  <label className="grid gap-1.5 text-sm font-bold text-slate-700 lg:col-span-3">
-                    Buscar pedido, SC, item ou solicitante
-                    <span className="relative">
-                      <Search
-                        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500"
-                        aria-hidden="true"
-                      />
-                      <input
-                        type="search"
-                        value={busca}
-                        onChange={(event) => {
-                          setBusca(event.target.value);
-                          setMostrar(POR_VEZ);
-                        }}
-                        placeholder="Ex.: José Augusto, SOL-2026, tubos..."
-                        className={`${CAMPO} pl-9`}
-                      />
-                    </span>
-                  </label>
-                  <label className="grid gap-1.5 text-sm font-bold text-slate-700">
-                    Solicitante
-                    <select
-                      aria-label="Filtrar por solicitante"
-                      value={filtroSolicitante}
-                      onChange={(event) =>
-                        setFiltroSolicitante(event.target.value)
-                      }
-                      className={CAMPO}
-                    >
-                      <option value="">Todos</option>
-                      {solicitantes.map((nome) => (
-                        <option key={nome}>{nome}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="grid gap-1.5 text-sm font-bold text-slate-700">
-                    Data inicial
-                    <input
-                      aria-label="Data inicial"
-                      type="date"
-                      value={filtroDataInicio}
-                      onChange={(event) =>
-                        setFiltroDataInicio(event.target.value)
-                      }
-                      className={CAMPO}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-[minmax(0,1fr)_12rem_10rem_10rem]">
+                <label className="grid gap-1.5 text-sm font-bold text-slate-700 col-span-2 sm:col-span-3 lg:col-span-1">
+                  Buscar
+                  <span className="relative">
+                    <Search
+                      className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500"
+                      aria-hidden="true"
                     />
-                  </label>
-                  <label className="grid gap-1.5 text-sm font-bold text-slate-700">
-                    Data final
                     <input
-                      aria-label="Data final"
-                      type="date"
-                      value={filtroDataFim}
-                      onChange={(event) => setFiltroDataFim(event.target.value)}
-                      className={CAMPO}
-                    />
-                  </label>
-                </div>
-                <div className="grid gap-2">
-                  <span className="text-sm font-bold text-slate-700">
-                    Situação do pedido
-                  </span>
-                  <div
-                    className="flex flex-wrap gap-2"
-                    role="group"
-                    aria-label="Filtrar por situação"
-                  >
-                    {FILTROS.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        aria-pressed={filtro === item.id}
-                        onClick={() => {
-                          setFiltro(item.id);
-                          setMostrar(POR_VEZ);
-                        }}
-                        data-testid={`filtro-${item.id}`}
-                        className={`flex min-h-10 items-center gap-1.5 rounded-full border px-3 text-sm font-bold ${filtro === item.id ? "border-[#176b4d] bg-[#176b4d] text-white" : item.id === "atraso" && contagem.atraso > 0 ? "border-rose-200 bg-rose-50 text-rose-700" : "border-slate-200 bg-white text-slate-700 hover:border-[#176b4d]"}`}
-                      >
-                        {item.rotulo}{" "}
-                        <span className="tabular-nums opacity-80">
-                          {contagem[item.id]}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
-                  <div
-                    className="flex items-center gap-2"
-                    role="group"
-                    aria-label="Modo de visualização"
-                  >
-                    <span className="text-sm font-bold text-slate-700">
-                      Exibição
-                    </span>
-                    {(
-                      [
-                        ["cards", "Cards", LayoutGrid],
-                        ["lista", "Lista", List],
-                      ] as const
-                    ).map(([id, rotulo, Icone]) => (
-                      <button
-                        key={id}
-                        type="button"
-                        aria-pressed={modo === id}
-                        onClick={() => setModo(id)}
-                        className={`${modo === id ? BOTAO_PRIMARIO : BOTAO_SECUNDARIO} min-h-10`}
-                      >
-                        <Icone className="size-4" aria-hidden="true" /> {rotulo}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBusca("");
-                        setFiltro("abertos");
-                        setFiltroSolicitante("");
-                        setFiltroDataInicio("");
-                        setFiltroDataFim("");
-                        setMostrar(POR_VEZ);
+                      type="search"
+                      value={busca}
+                      onChange={(event) => {
+                        setBusca(event.target.value);
                       }}
-                      className={BOTAO_SECUNDARIO}
-                    >
-                      Limpar filtros
-                    </button>
+                      placeholder="Ex.: José Augusto, SOL-2026, tubos..."
+                      className={`${CAMPO} pl-9`}
+                    />
+                  </span>
+                </label>
+                <label className="col-span-2 grid gap-1.5 text-sm font-bold text-slate-700 sm:col-span-1">
+                  Solicitante
+                  <select
+                    aria-label="Filtrar por solicitante"
+                    value={filtroSolicitante}
+                    onChange={(event) =>
+                      setFiltroSolicitante(event.target.value)
+                    }
+                    className={CAMPO}
+                  >
+                    <option value="">Todos</option>
+                    {solicitantes.map((nome) => (
+                      <option key={nome}>{nome}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid min-w-0 gap-1.5 text-sm font-bold text-slate-700">
+                  Data inicial
+                  <input
+                    aria-label="Data inicial"
+                    type="date"
+                    value={filtroDataInicio}
+                    onChange={(event) =>
+                      setFiltroDataInicio(event.target.value)
+                    }
+                    className={`${CAMPO} min-w-0`}
+                  />
+                </label>
+                <label className="grid min-w-0 gap-1.5 text-sm font-bold text-slate-700">
+                  Data final
+                  <input
+                    aria-label="Data final"
+                    type="date"
+                    value={filtroDataFim}
+                    onChange={(event) => setFiltroDataFim(event.target.value)}
+                    className={`${CAMPO} min-w-0`}
+                  />
+                </label>
+              </div>
+              <div className="grid gap-2">
+                <span className="text-sm font-bold text-slate-700">
+                  Situação do pedido
+                </span>
+                <div
+                  className="flex flex-wrap gap-2"
+                  role="group"
+                  aria-label="Filtrar por situação"
+                >
+                  {FILTROS.map((item) => (
                     <button
+                      key={item.id}
                       type="button"
-                      onClick={() => setSubtela("pedidos")}
-                      className={BOTAO_PRIMARIO}
+                      aria-pressed={filtro === item.id}
+                      onClick={() => {
+                        setFiltro(item.id);
+                      }}
+                      data-testid={`filtro-${item.id}`}
+                      className={`flex min-h-10 items-center gap-1.5 rounded-full border px-3 text-sm font-bold ${filtro === item.id ? "border-[#176b4d] bg-[#176b4d] text-white" : item.id === "atraso" && contagem.atraso > 0 ? "border-rose-200 bg-rose-50 text-rose-700" : "border-slate-200 bg-white text-slate-700 hover:border-[#176b4d]"}`}
                     >
-                      Ver pedidos
+                      {item.rotulo}{" "}
+                      <span className="tabular-nums opacity-80">
+                        {contagem[item.id]}
+                      </span>
                     </button>
-                  </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-2.5">
+                <div
+                  className="flex items-center gap-2"
+                  role="group"
+                  aria-label="Modo de visualização"
+                >
+                  <span className="text-sm font-bold text-slate-700">
+                    Exibição
+                  </span>
+                  {(
+                    [
+                      ["cards", "Cards", LayoutGrid],
+                      ["lista", "Lista", List],
+                    ] as const
+                  ).map(([id, rotulo, Icone]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-pressed={modo === id}
+                      onClick={() => setModo(id)}
+                      className={`${modo === id ? BOTAO_PRIMARIO : BOTAO_SECUNDARIO} min-h-10`}
+                    >
+                      <Icone className="size-4" aria-hidden="true" /> {rotulo}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBusca("");
+                      setFiltro("abertos");
+                      setFiltroSolicitante("");
+                      setFiltroDataInicio("");
+                      setFiltroDataFim("");
+                    }}
+                    className={BOTAO_SECUNDARIO}
+                  >
+                    Limpar filtros
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFiltrosAbertos(false)}
+                    className={BOTAO_PRIMARIO}
+                  >
+                    Fechar
+                  </button>
                 </div>
               </div>
             </section>
@@ -1327,7 +1277,7 @@ export default function SolicitacoesTab({
               >
                 Nenhum pedido neste filtro.
                 {solicitacoes.length === 0 &&
-                  ' Abra uma solicitação ou traga a planilha de controle em "Importar planilha".'}
+                  ' Abra uma solicitação ou traga a planilha de controle em Relatórios > "Excel, PDF e importar".'}
               </p>
             ) : (
               <div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -1335,7 +1285,7 @@ export default function SolicitacoesTab({
                   data-sol-reveal
                   className="grid min-h-0 flex-1 content-start grid-cols-1 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
                 >
-                  {pedidos.slice(0, mostrar).map(({ sol }) => (
+                  {pedidos.map(({ sol }) => (
                     <CartaoCompraCompacto
                       key={sol.id}
                       sol={sol}
@@ -1345,16 +1295,6 @@ export default function SolicitacoesTab({
                     />
                   ))}
                 </ul>
-                {pedidos.length > mostrar && (
-                  <button
-                    type="button"
-                    onClick={() => setMostrar((atual) => atual + POR_VEZ)}
-                    className={`${BOTAO_SECUNDARIO} justify-self-center`}
-                  >
-                    Mostrar mais {Math.min(POR_VEZ, pedidos.length - mostrar)}{" "}
-                    de {pedidos.length - mostrar} restantes
-                  </button>
-                )}
               </div>
             ))}
 
@@ -1435,6 +1375,66 @@ export default function SolicitacoesTab({
             </div>
           )}
           {subtela === "planilha" && <PlanilhaCompras />}
+          {subtela === "arquivos" && (
+            <section
+              data-sol-reveal
+              aria-label="Relatórios em Excel e PDF e importação de planilha"
+              className="grid content-start gap-3 sm:grid-cols-2 lg:grid-cols-3"
+            >
+              {[
+                {
+                  id: "excel",
+                  titulo: "Relatório em Excel",
+                  texto: "Baixa a planilha com todos os pedidos e itens.",
+                  Icone: FileSpreadsheet,
+                  acao: () => void exportar(),
+                  desligado: ocupado || solicitacoes.length === 0,
+                  mostra: true,
+                },
+                {
+                  id: "pdf",
+                  titulo: "Relatório em PDF",
+                  texto:
+                    "Pedidos, itens, prazos e conferência, pronto para imprimir.",
+                  Icone: ClipboardList,
+                  acao: () => void gerarPdf(),
+                  desligado: ocupado || solicitacoes.length === 0,
+                  mostra: true,
+                },
+                {
+                  id: "importar",
+                  titulo: "Importar planilha",
+                  texto:
+                    "Traz a planilha de controle de pedidos para o sistema.",
+                  Icone: Upload,
+                  acao: () => arquivo.current?.click(),
+                  desligado: ocupado,
+                  mostra: podeImportar && podeEditar,
+                },
+              ]
+                .filter((opcao) => opcao.mostra)
+                .map(({ id, titulo, texto, Icone, acao, desligado }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={acao}
+                    disabled={desligado}
+                    data-testid={`solicitacoes-arquivo-${id}`}
+                    className={`${CARTAO} flex min-h-24 items-start gap-3 p-4 text-left transition hover:border-[#176b4d] disabled:cursor-not-allowed disabled:opacity-60`}
+                  >
+                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-emerald-50 text-[#176b4d]">
+                      <Icone className="size-5" aria-hidden="true" />
+                    </span>
+                    <span className="grid gap-1">
+                      <strong className="text-base font-black text-slate-900">
+                        {titulo}
+                      </strong>
+                      <span className="text-sm text-slate-600">{texto}</span>
+                    </span>
+                  </button>
+                ))}
+            </section>
+          )}
 
           {subtela === "nova" && exerce(ator, "solicitante") && (
             <NovaSolicitacao
