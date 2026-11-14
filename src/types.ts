@@ -650,6 +650,8 @@ export interface RegistroProducao {
   servicoDescricao: string;
   unidade: string;
   quantidade: number;
+  /** Atividade da Programação que recebeu esta produção (lançamentos antigos não têm). */
+  planejamentoId?: string;
   obraId?: string;
   frente?: string;
   grupoId?: string;
@@ -681,6 +683,13 @@ export interface PlanejamentoItem {
   equipeNome?: string;
   responsavel: string;
   situacao: SituacaoPlano;
+  /** Meta por dia informada na programação. Sem ela, a meta é a quantidade ÷ dias de trabalho. */
+  metaDiaria?: number;
+  /** Estacas do trecho, como a obra escreve (ex.: "1401+10"). */
+  estacaInicial?: string;
+  estacaFinal?: string;
+  /** Equipamentos previstos para a atividade, em texto livre. */
+  equipamentos?: string;
   observacao?: string;
   ativo: boolean;
   criadoEm: string;
