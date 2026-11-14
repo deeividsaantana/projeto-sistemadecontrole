@@ -5,6 +5,7 @@ import { formatarDia, situacaoDe, situacaoDoItem } from '../../utils/solicitacoe
 import reneaLogoUrl from '../../assets/images/renea_logo_new.png';
 import spmarLogoUrl from '../../assets/images/spmar_logo.png';
 import { OBRA } from '../../config/obra';
+import { resumoDoPeriodo, textoPct, type Parte } from '../../utils/relatorioSolicitacoes';
 
 type AutoTable = (doc: jsPDF, options: Record<string, unknown>) => void;
 
@@ -70,7 +71,12 @@ const metric = (doc: jsPDF, x: number, label: string, value: string | number, co
   doc.setFontSize(15); doc.setTextColor(color); doc.text(String(value), x + 4, 42);
 };
 
-export const gerarRelatorioSolicitacoesPdf = async (solicitacoes: readonly Solicitacao[], hoje: string) => {
+export const gerarRelatorioSolicitacoesPdf = async (
+  solicitacoes: readonly Solicitacao[],
+  hoje: string,
+  periodo?: { from: string; to: string; pessoa?: string },
+) => {
+  const subtitulo = periodo ? `pedidos abertos de ${formatarDia(periodo.from)} a ${formatarDia(periodo.to)}${periodo.pessoa ? ` · ${periodo.pessoa}` : ''}` : `posição em ${formatarDia(hoje)}`;
   const [JsPdf, autoTableModule, logos] = await Promise.all([
     loadJsPdf(), loadAutoTable(), Promise.all([loadImage(reneaLogoUrl), loadImage(spmarLogoUrl)]),
   ]);
@@ -79,7 +85,7 @@ export const gerarRelatorioSolicitacoesPdf = async (solicitacoes: readonly Solic
   const atrasadas = solicitacoes.filter(sol => situacaoDe(sol, hoje) === 'Em Atraso').length;
   const entregues = solicitacoes.filter(sol => sol.etapa === 'Entregue').length;
   const itens = solicitacoes.reduce((total, sol) => total + sol.itens.length, 0);
-  header(doc, { renea: logos[0], spmar: logos[1] }, 'Relatório de solicitações e suprimentos', `posição em ${formatarDia(hoje)}`);
+  header(doc, { renea: logos[0], spmar: logos[1] }, 'Relatório de solicitações e suprimentos', subtitulo);
   metric(doc, 9, 'PEDIDOS', solicitacoes.length, '#15824B');
   metric(doc, 64, 'ITENS', itens, '#10223A');
   metric(doc, 119, 'EM ATRASO', atrasadas, atrasadas ? '#B91C1C' : '#15824B');
@@ -100,14 +106,35 @@ export const gerarRelatorioSolicitacoesPdf = async (solicitacoes: readonly Solic
     didParseCell: (data: { section: string; column: { index: number }; cell: { raw: unknown; styles: Record<string, unknown> } }) => {
       if (data.section === 'body' && data.column.index === 8) { data.cell.styles.textColor = statusColor(String(data.cell.raw)); data.cell.styles.fontStyle = 'bold'; }
     },
-    didDrawPage: (data: { pageNumber: number }) => { if (data.pageNumber > 1) header(doc, { renea: logos[0], spmar: logos[1] }, 'Relatório de solicitações e suprimentos', `posição em ${formatarDia(hoje)}`); },
+    didDrawPage: (data: { pageNumber: number }) => { if (data.pageNumber > 1) header(doc, { renea: logos[0], spmar: logos[1] }, 'Relatório de solicitações e suprimentos', subtitulo); },
   });
+  // Resumo em porcentagem: o mesmo que a tela mostra nas pizzas.
+  const resumo = resumoDoPeriodo(solicitacoes, hoje);
+  doc.addPage('a4', 'landscape');
+  header(doc, { renea: logos[0], spmar: logos[1] }, 'Resumo do período em porcentagem', subtitulo);
+  metric(doc, 9, 'ENTREGUES', textoPct(resumo.pctEntregues), '#15824B');
+  metric(doc, 64, 'EM ATRASO', textoPct(resumo.pctEmAtraso), resumo.emAtraso ? '#B91C1C' : '#15824B');
+  metric(doc, 119, 'ITENS RECEBIDOS', textoPct(resumo.pctItensRecebidos), '#10223A');
+  metric(doc, 174, 'DIAS ATÉ CHEGAR (MÉDIA)', resumo.diasAteEntrega === null ? '—' : String(resumo.diasAteEntrega).replace('.', ','), '#10223A');
+  metric(doc, 229, 'CANCELADOS', resumo.cancelados, '#10223A');
+  const quadro = (titulo: string, partes: Parte[], x: number, y: number) => autoTable(doc, {
+    startY: y, margin: { left: x, right: 297 - x - 136 }, tableWidth: 136,
+    head: [[titulo.toUpperCase(), 'QTD.', '%']],
+    body: partes.length ? partes.map(parte => [parte.nome, String(parte.quantidade), `${parte.percentual}%`]) : [['Nenhum registro', '—', '—']],
+    theme: 'grid', styles: { font: 'helvetica', fontSize: 7, cellPadding: 1.4, lineColor: '#C9CDD1', textColor: '#242A30' },
+    headStyles: { fillColor: '#082343', textColor: '#FFFFFF', fontStyle: 'bold' }, alternateRowStyles: { fillColor: '#FAFAFA' },
+    columnStyles: { 0: { cellWidth: 96 }, 1: { cellWidth: 20, halign: 'right' }, 2: { cellWidth: 20, halign: 'right', fontStyle: 'bold' } },
+  });
+  quadro('Situação dos pedidos', resumo.porSituacao, 9, 51);
+  quadro('Pedidos por solicitante', resumo.porSolicitante.slice(0, 12), 152, 51);
+  quadro('Conferência dos itens', resumo.porConferencia, 9, 125);
+  quadro('Pedidos por frente', resumo.porFrente.slice(0, 10), 152, 125);
   doc.addPage('a4', 'landscape');
   header(doc, { renea: logos[0], spmar: logos[1] }, 'Conferência e histórico', `solicitações · ${formatarDia(hoje)}`);
   const linhas = solicitacoes.flatMap(sol => sol.itens.map(item => [sol.numero, item.descricao, `${item.quantidade} ${item.unidade}`, `${item.quantidadeRecebida ?? 0} ${item.unidade}`, situacaoDoItem(item), sol.notaFiscal || '—']));
   autoTable(doc, { startY: 29, margin: { top: 28, left: 9, right: 9, bottom: 16 }, head: [['PEDIDO', 'ITEM', 'SOLICITADO', 'RECEBIDO', 'CONFERÊNCIA', 'NF']], body: linhas.length ? linhas : [['—', 'Nenhum item para conferência.', '—', '—', '—', '—']], theme: 'grid', styles: { font: 'helvetica', fontSize: 7, cellPadding: 1.6, lineColor: '#C9CDD1', textColor: '#242A30' }, headStyles: { fillColor: '#082343', textColor: '#FFFFFF', fontStyle: 'bold' }, alternateRowStyles: { fillColor: '#FAFAFA' }, showHead: 'everyPage', columnStyles: { 0: { cellWidth: 25, fontStyle: 'bold' }, 1: { cellWidth: 100 }, 2: { cellWidth: 30, halign: 'right' }, 3: { cellWidth: 30, halign: 'right' }, 4: { cellWidth: 38, halign: 'center' }, 5: { cellWidth: 38 } } });
   footer(doc);
-  const fileName = `RELATORIO_SOLICITACOES_SUPRIMENTOS_${hoje}.pdf`;
+  const fileName = periodo ? `RELATORIO_SOLICITACOES_${periodo.from}_a_${periodo.to}.pdf` : `RELATORIO_SOLICITACOES_SUPRIMENTOS_${hoje}.pdf`;
   doc.save(fileName);
   return { fileName, pages: doc.getNumberOfPages(), rows: itens };
 };

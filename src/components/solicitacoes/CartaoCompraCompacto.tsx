@@ -1,4 +1,4 @@
-import { Check, ChevronRight, Package, UserRound } from "lucide-react";
+import { Check, UserRound } from "lucide-react";
 import { CARTAO } from "../cadastros/estilos";
 import {
   PASSOS_RASTREIO,
@@ -73,9 +73,6 @@ export function CartaoCompraCompacto({ sol, hoje, ativo, onAbrir }: Props) {
       >
         <span className="flex min-w-0 items-start justify-between gap-3">
           <span className="flex min-w-0 items-start gap-2">
-            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-emerald-50 text-[#176b4d]">
-              <Package className="size-5" aria-hidden="true" />
-            </span>
             <span className="min-w-0">
               <strong className="block truncate text-base font-black text-slate-900">
                 {sol.numero}
@@ -88,10 +85,6 @@ export function CartaoCompraCompacto({ sol, hoje, ativo, onAbrir }: Props) {
           </span>
           <span className="flex shrink-0 items-center gap-1">
             <SeloSituacao situacao={situacao} />
-            <ChevronRight
-              className="size-4 text-slate-500 transition group-hover:translate-x-0.5"
-              aria-hidden="true"
-            />
           </span>
         </span>
 
@@ -146,44 +139,44 @@ export function CartaoCompraCompacto({ sol, hoje, ativo, onAbrir }: Props) {
           </span>
         )}
 
+        {/* Rodapé numa linha só: como está e até quando. A barra de recebido
+            só aparece quando chegou parte do pedido. */}
         <span className="grid gap-2 border-t border-slate-100 pt-2">
-          <span
-            className={`truncate text-sm ${parado ? "font-bold text-rose-700" : "text-slate-700"}`}
-          >
-            {textoStatus(sol, hoje)}
-          </span>
-          <span className="flex items-center justify-between gap-2 text-xs text-slate-500">
-            <span>
-              {sol.itens.length} item(ns) · {sol.itens[0]?.unidade ?? "un."}
-            </span>
-            <span className="font-bold text-slate-700">
-              {percentual}% recebido
-            </span>
-          </span>
-          <span
-            className="h-1.5 overflow-hidden rounded-full bg-slate-100"
-            aria-hidden="true"
-          >
+          <span className="flex min-w-0 items-center justify-between gap-2 text-sm">
             <span
-              className="block h-full rounded-full bg-[#176b4d]"
-              style={{ width: `${percentual}%` }}
-            />
-          </span>
-        </span>
-
-        <span className="flex items-center justify-between gap-2 text-xs text-slate-500">
-          <span>
-            {sol.janelaFim
-              ? `Entrega até ${sol.janelaFim.split("-").reverse().join("/")}`
-              : "Prazo não informado"}
-          </span>
-          {sol.prioridade !== undefined &&
+              className={`truncate ${parado ? "font-bold text-rose-700" : "text-slate-700"}`}
+            >
+              {textoStatus(sol, hoje)}
+            </span>
+            {sol.prioridade !== undefined &&
             sol.etapa !== "Entregue" &&
-            sol.etapa !== "Cancelado" && (
-              <span className="rounded-full bg-orange-50 px-2 py-0.5 font-bold text-[#c2410c]">
+            sol.etapa !== "Cancelado" ? (
+              <span className="shrink-0 rounded-full bg-orange-50 px-2 py-0.5 text-xs font-bold text-[#c2410c]">
                 Prioridade {sol.prioridade}º
               </span>
+            ) : (
+              sol.janelaFim &&
+              sol.etapa !== "Entregue" && (
+                <span className="shrink-0 text-xs tabular-nums text-slate-500">
+                  até {sol.janelaFim.split("-").reverse().join("/")}
+                </span>
+              )
             )}
+          </span>
+          {percentual > 0 && percentual < 100 && (
+            <span className="flex items-center gap-2 text-xs font-bold text-slate-700">
+              <span
+                className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100"
+                aria-hidden="true"
+              >
+                <span
+                  className="block h-full rounded-full bg-[#176b4d]"
+                  style={{ width: `${percentual}%` }}
+                />
+              </span>
+              {percentual}% recebido
+            </span>
+          )}
         </span>
       </button>
     </li>
