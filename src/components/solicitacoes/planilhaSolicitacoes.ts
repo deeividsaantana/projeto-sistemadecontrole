@@ -97,7 +97,7 @@ const VERMELHO = 'FFFEE2E2';
 export const baixarRelatorios = async (
   sols: readonly Solicitacao[],
   hoje: string,
-  periodo?: { from: string; to: string },
+  periodo?: { from: string; to: string; pessoa?: string },
   /** Todos os pedidos, para o "Por dia" contar entregas de pedidos abertos antes do período. */
   todas: readonly Solicitacao[] = sols,
 ) => {
@@ -200,6 +200,7 @@ export const baixarRelatorios = async (
 
   addCorporateSummarySheet(livro, 'Relatório de solicitações e compras', [
     ['Período', periodo ? `${formatarDia(periodo.from)} a ${formatarDia(periodo.to)}` : `Posição em ${formatarDia(hoje)}`],
+    ['Pessoa que pediu', periodo?.pessoa || 'Todas'],
     ['Pedidos', resumo.pedidos],
     ['Itens', resumo.itens],
     ['Entregues', `${resumo.entregues} (${textoPct(resumo.pctEntregues)})`],

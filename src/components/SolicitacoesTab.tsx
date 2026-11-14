@@ -501,12 +501,13 @@ export default function SolicitacoesTab({
   const exportar = async (
     lista: readonly Solicitacao[],
     periodo: { from: string; to: string },
+    todas: readonly Solicitacao[],
   ) => {
     setOcupado(true);
     try {
       const { baixarRelatorios } =
         await import("./solicitacoes/planilhaSolicitacoes");
-      await baixarRelatorios(lista, hoje, periodo, solicitacoes);
+      await baixarRelatorios(lista, hoje, periodo, todas);
     } catch (error) {
       setAviso({
         tom: "erro",
@@ -969,28 +970,21 @@ export default function SolicitacoesTab({
               ))}
             </section>
           )}
-          {/* Uma linha só: quem é você, avisos, busca e o jeito de mostrar. */}
+          {/* Uma linha só: avisos, busca e o jeito de mostrar. */}
           <div className="contents text-sm text-slate-600">
-            <span
-              className={`min-w-0 items-center gap-1.5 ${ator.papel ? "hidden sm:flex" : "flex"}`}
-            >
-              <ClipboardCheck
-                className="size-4 shrink-0 text-[#176b4d]"
-                aria-hidden="true"
-              />
-              {ator.papel ? (
-                <span className="truncate">
-                  <strong className="text-slate-900">{ator.nome}</strong> ·{" "}
-                  {NOME_DO_PAPEL[ator.papel]}
-                </span>
-              ) : (
+            {!ator.papel && (
+              <span className="flex min-w-0 items-center gap-1.5">
+                <ClipboardCheck
+                  className="size-4 shrink-0 text-[#176b4d]"
+                  aria-hidden="true"
+                />
                 <span>
                   Seu login só consulta este módulo.
                   {ehAdmin &&
                     " Vincule o login a uma pessoa em Cadastros > Acessos."}
                 </span>
-              )}
-            </span>
+              </span>
+            )}
             {exerce(ator, "aprovador") &&
               aguardandoAprovacao.length > 0 &&
               subtela !== "aprovacao" && (
@@ -1003,13 +997,14 @@ export default function SolicitacoesTab({
                   {aguardandoAprovacao.length} para você aprovar
                 </button>
               )}
+            {/* Pedidos e Relatórios já mostram "Em atraso" nos números. */}
             {emAtraso.length > 0 &&
-              !(subtela === "pedidos" && filtro === "atraso") && (
+              (subtela === "conferencia" || subtela === "aprovacao") && (
                 <button
                   type="button"
                   onClick={() => irPara("atraso")}
                   title="Passou o fim da janela sem confirmação de chegada"
-                  className={`min-h-9 items-center ${subtela === "pedidos" ? "hidden sm:flex" : "flex"} gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 text-sm font-bold text-rose-800`}
+                  className={`flex min-h-9 items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 text-sm font-bold text-rose-800`}
                 >
                   <AlertTriangle
                     className="size-4 shrink-0"
@@ -1392,7 +1387,9 @@ export default function SolicitacoesTab({
               solicitacoes={solicitacoes}
               hoje={hoje}
               ocupado={ocupado}
-              onExcel={(lista, periodo) => void exportar(lista, periodo)}
+              onExcel={(lista, periodo, todas) =>
+                void exportar(lista, periodo, todas)
+              }
               onPdf={(lista, periodo) => void gerarPdf(lista, periodo)}
               onImportar={
                 podeImportar && podeEditar

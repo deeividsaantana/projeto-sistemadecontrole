@@ -1,19 +1,19 @@
 import { useMemo, useState } from 'react';
-import { ClipboardList, FileSpreadsheet, Upload } from 'lucide-react';
+import { ClipboardList, FileSpreadsheet, Upload, Users } from 'lucide-react';
 import { PeriodFilter, buildPeriod, type PeriodValue } from '../../shared/ui';
 import { montarPizza } from '../../utils/pizza';
 import type { Solicitacao } from '../../utils/solicitacoes';
 import { movimentoPorDia, pedidosDoPeriodo, resumoDoPeriodo, textoPct, type Parte } from '../../utils/relatorioSolicitacoes';
 import { GraficoMovimento } from './GraficoMovimento';
 import GraficoPizza from '../presenca/GraficoPizza';
-import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CARTAO } from '../cadastros/estilos';
+import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO } from '../cadastros/estilos';
 
 interface Props {
   solicitacoes: readonly Solicitacao[];
   hoje: string;
   ocupado: boolean;
-  onExcel: (lista: readonly Solicitacao[], periodo: PeriodValue) => void;
-  onPdf: (lista: readonly Solicitacao[], periodo: PeriodValue) => void;
+  onExcel: (lista: readonly Solicitacao[], periodo: PeriodValue & { pessoa: string }, todas: readonly Solicitacao[]) => void;
+  onPdf: (lista: readonly Solicitacao[], periodo: PeriodValue & { pessoa: string }) => void;
   /** Sem permissão para importar, o botão não aparece. */
   onImportar?: () => void;
 }
@@ -34,9 +34,18 @@ const itens = (valor: number) => `${valor.toLocaleString('pt-BR')} ${valor === 1
  */
 export function RelatorioDoPeriodo({ solicitacoes, hoje, ocupado, onExcel, onPdf, onImportar }: Props) {
   const [periodo, setPeriodo] = useState<PeriodValue>(() => buildPeriod('mes'));
-  const lista = useMemo(() => pedidosDoPeriodo(solicitacoes, periodo), [periodo, solicitacoes]);
+  const [pessoa, setPessoa] = useState('');
+  const pessoas = useMemo(
+    () => [...new Set(solicitacoes.map(sol => sol.solicitante).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    [solicitacoes],
+  );
+  const daPessoa = useMemo(
+    () => (pessoa ? solicitacoes.filter(sol => sol.solicitante === pessoa) : solicitacoes),
+    [pessoa, solicitacoes],
+  );
+  const lista = useMemo(() => pedidosDoPeriodo(daPessoa, periodo), [daPessoa, periodo]);
   const resumo = useMemo(() => resumoDoPeriodo(lista, hoje), [hoje, lista]);
-  const movimento = useMemo(() => movimentoPorDia(solicitacoes, periodo), [periodo, solicitacoes]);
+  const movimento = useMemo(() => movimentoPorDia(daPessoa, periodo), [daPessoa, periodo]);
   const pizzaSituacao = useMemo(() => pizzaDe(resumo.porSituacao), [resumo]);
   const pizzaSolicitante = useMemo(() => pizzaDe(resumo.porSolicitante), [resumo]);
   const pizzaConferencia = useMemo(() => pizzaDe(resumo.porConferencia), [resumo]);
@@ -50,17 +59,27 @@ export function RelatorioDoPeriodo({ solicitacoes, hoje, ocupado, onExcel, onPdf
     { rotulo: 'Até chegar', valor: resumo.diasAteEntrega === null ? '—' : `${resumo.diasAteEntrega.toLocaleString('pt-BR')} d`, nota: 'Média entre abrir e chegar', tom: 'text-slate-900' },
     { rotulo: 'Valor aprovado', valor: dinheiro(resumo.valorAprovado), nota: 'Soma dos pedidos aprovados', tom: 'text-slate-900' },
   ];
-  const vazio = 'Nenhum pedido aberto neste período.';
+  const vazio = pessoa ? `Nenhum pedido de ${pessoa} neste período.` : 'Nenhum pedido aberto neste período.';
 
   return (
     <div data-sol-reveal className="grid content-start gap-4" data-testid="solicitacoes-relatorio-periodo">
       <div className={`${CARTAO} flex flex-wrap items-center justify-between gap-3 p-3`}>
-        <PeriodFilter value={periodo} onChange={setPeriodo} />
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <PeriodFilter value={periodo} onChange={setPeriodo} />
+          <label className="flex min-w-0 items-center gap-2 text-sm font-bold text-slate-700">
+            <Users className="size-4 shrink-0 text-slate-500" aria-hidden="true" />
+            <span className="sr-only">Pessoa que pediu</span>
+            <select value={pessoa} onChange={evento => setPessoa(evento.target.value)} className={`${CAMPO} w-auto min-w-48`} data-testid="solicitacoes-relatorio-pessoa">
+              <option value="">Todas as pessoas</option>
+              {pessoas.map(nome => <option key={nome}>{nome}</option>)}
+            </select>
+          </label>
+        </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => onExcel(lista, periodo)} disabled={ocupado || !lista.length} className={BOTAO_PRIMARIO} data-testid="solicitacoes-arquivo-excel">
+          <button type="button" onClick={() => onExcel(lista, { ...periodo, pessoa }, daPessoa)} disabled={ocupado || !lista.length} className={BOTAO_PRIMARIO} data-testid="solicitacoes-arquivo-excel">
             <FileSpreadsheet className="size-4" aria-hidden="true" /> Baixar Excel
           </button>
-          <button type="button" onClick={() => onPdf(lista, periodo)} disabled={ocupado || !lista.length} className={BOTAO_SECUNDARIO} data-testid="solicitacoes-arquivo-pdf">
+          <button type="button" onClick={() => onPdf(lista, { ...periodo, pessoa })} disabled={ocupado || !lista.length} className={BOTAO_SECUNDARIO} data-testid="solicitacoes-arquivo-pdf">
             <ClipboardList className="size-4" aria-hidden="true" /> Baixar PDF
           </button>
           {onImportar && (

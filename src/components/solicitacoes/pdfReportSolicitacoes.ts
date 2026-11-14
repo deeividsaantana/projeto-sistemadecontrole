@@ -74,9 +74,9 @@ const metric = (doc: jsPDF, x: number, label: string, value: string | number, co
 export const gerarRelatorioSolicitacoesPdf = async (
   solicitacoes: readonly Solicitacao[],
   hoje: string,
-  periodo?: { from: string; to: string },
+  periodo?: { from: string; to: string; pessoa?: string },
 ) => {
-  const subtitulo = periodo ? `pedidos abertos de ${formatarDia(periodo.from)} a ${formatarDia(periodo.to)}` : `posição em ${formatarDia(hoje)}`;
+  const subtitulo = periodo ? `pedidos abertos de ${formatarDia(periodo.from)} a ${formatarDia(periodo.to)}${periodo.pessoa ? ` · ${periodo.pessoa}` : ''}` : `posição em ${formatarDia(hoje)}`;
   const [JsPdf, autoTableModule, logos] = await Promise.all([
     loadJsPdf(), loadAutoTable(), Promise.all([loadImage(reneaLogoUrl), loadImage(spmarLogoUrl)]),
   ]);
