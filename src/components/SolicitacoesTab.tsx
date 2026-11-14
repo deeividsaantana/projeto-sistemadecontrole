@@ -18,13 +18,13 @@ import {
   FileSpreadsheet,
   Filter,
   History,
+  PieChart,
   LayoutGrid,
   List,
   PackagePlus,
   PackageSearch,
   Search,
   ShieldCheck,
-  Upload,
 } from "lucide-react";
 import { Modal, PageHeader, isoDay } from "../shared/ui";
 import { TelaCheia } from "../shared/ui/TelaCheia";
@@ -66,6 +66,7 @@ import { SeloItem } from "./solicitacoes/SeloItem";
 import { CartaoCompraCompacto } from "./solicitacoes/CartaoCompraCompacto";
 import { AvatarPessoa, dataHora } from "./solicitacoes/AvatarPessoa";
 import { PlanilhaCompras } from "./solicitacoes/PlanilhaCompras";
+import { RelatorioDoPeriodo } from "./solicitacoes/RelatorioDoPeriodo";
 
 type Subtela =
   | "pedidos"
@@ -74,7 +75,7 @@ type Subtela =
   | "conferencia"
   | "historico"
   | "planilha"
-  | "arquivos";
+  | "relatorio";
 
 interface SolicitacoesTabProps {
   solicitacoes: Solicitacao[];
@@ -497,12 +498,16 @@ export default function SolicitacoesTab({
     setImportacao(null);
   };
 
-  const exportar = async () => {
+  const exportar = async (
+    lista: readonly Solicitacao[],
+    periodo: { from: string; to: string },
+    todas: readonly Solicitacao[],
+  ) => {
     setOcupado(true);
     try {
       const { baixarRelatorios } =
         await import("./solicitacoes/planilhaSolicitacoes");
-      await baixarRelatorios(solicitacoes, hoje);
+      await baixarRelatorios(lista, hoje, periodo, todas);
     } catch (error) {
       setAviso({
         tom: "erro",
@@ -516,12 +521,15 @@ export default function SolicitacoesTab({
     }
   };
 
-  const gerarPdf = async () => {
+  const gerarPdf = async (
+    lista: readonly Solicitacao[],
+    periodo: { from: string; to: string },
+  ) => {
     setOcupado(true);
     try {
       const { gerarRelatorioSolicitacoesPdf } =
         await import("./solicitacoes/pdfReportSolicitacoes");
-      await gerarRelatorioSolicitacoesPdf(solicitacoes, hoje);
+      await gerarRelatorioSolicitacoesPdf(lista, hoje, periodo);
       setAviso({
         tom: "ok",
         texto:
@@ -584,9 +592,14 @@ export default function SolicitacoesTab({
       rotulo: "Relatórios",
       icone: History,
       abas: [
+        {
+          id: "relatorio",
+          rotulo: "Relatório do período",
+          curto: "Período",
+          icone: PieChart,
+        },
         { id: "historico", rotulo: "Histórico", icone: History },
         { id: "planilha", rotulo: "Planilha", icone: FileSpreadsheet },
-        { id: "arquivos", rotulo: "Excel, PDF e importar", icone: Upload },
       ],
     },
   ];
@@ -957,28 +970,21 @@ export default function SolicitacoesTab({
               ))}
             </section>
           )}
-          {/* Uma linha só: quem é você, avisos, busca e o jeito de mostrar. */}
+          {/* Uma linha só: avisos, busca e o jeito de mostrar. */}
           <div className="contents text-sm text-slate-600">
-            <span
-              className={`min-w-0 items-center gap-1.5 ${ator.papel ? "hidden sm:flex" : "flex"}`}
-            >
-              <ClipboardCheck
-                className="size-4 shrink-0 text-[#176b4d]"
-                aria-hidden="true"
-              />
-              {ator.papel ? (
-                <span className="truncate">
-                  <strong className="text-slate-900">{ator.nome}</strong> ·{" "}
-                  {NOME_DO_PAPEL[ator.papel]}
-                </span>
-              ) : (
+            {!ator.papel && (
+              <span className="flex min-w-0 items-center gap-1.5">
+                <ClipboardCheck
+                  className="size-4 shrink-0 text-[#176b4d]"
+                  aria-hidden="true"
+                />
                 <span>
                   Seu login só consulta este módulo.
                   {ehAdmin &&
                     " Vincule o login a uma pessoa em Cadastros > Acessos."}
                 </span>
-              )}
-            </span>
+              </span>
+            )}
             {exerce(ator, "aprovador") &&
               aguardandoAprovacao.length > 0 &&
               subtela !== "aprovacao" && (
@@ -991,13 +997,14 @@ export default function SolicitacoesTab({
                   {aguardandoAprovacao.length} para você aprovar
                 </button>
               )}
+            {/* Pedidos e Relatórios já mostram "Em atraso" nos números. */}
             {emAtraso.length > 0 &&
-              !(subtela === "pedidos" && filtro === "atraso") && (
+              (subtela === "conferencia" || subtela === "aprovacao") && (
                 <button
                   type="button"
                   onClick={() => irPara("atraso")}
                   title="Passou o fim da janela sem confirmação de chegada"
-                  className={`min-h-9 items-center ${subtela === "pedidos" ? "hidden sm:flex" : "flex"} gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 text-sm font-bold text-rose-800`}
+                  className={`flex min-h-9 items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 text-sm font-bold text-rose-800`}
                 >
                   <AlertTriangle
                     className="size-4 shrink-0"
@@ -1277,7 +1284,7 @@ export default function SolicitacoesTab({
               >
                 Nenhum pedido neste filtro.
                 {solicitacoes.length === 0 &&
-                  ' Abra uma solicitação ou traga a planilha de controle em Relatórios > "Excel, PDF e importar".'}
+                  ' Abra uma solicitação ou traga a planilha de controle em Relatórios > "Relatório do período".'}
               </p>
             ) : (
               <div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -1375,65 +1382,21 @@ export default function SolicitacoesTab({
             </div>
           )}
           {subtela === "planilha" && <PlanilhaCompras />}
-          {subtela === "arquivos" && (
-            <section
-              data-sol-reveal
-              aria-label="Relatórios em Excel e PDF e importação de planilha"
-              className="grid content-start gap-3 sm:grid-cols-2 lg:grid-cols-3"
-            >
-              {[
-                {
-                  id: "excel",
-                  titulo: "Relatório em Excel",
-                  texto: "Baixa a planilha com todos os pedidos e itens.",
-                  Icone: FileSpreadsheet,
-                  acao: () => void exportar(),
-                  desligado: ocupado || solicitacoes.length === 0,
-                  mostra: true,
-                },
-                {
-                  id: "pdf",
-                  titulo: "Relatório em PDF",
-                  texto:
-                    "Pedidos, itens, prazos e conferência, pronto para imprimir.",
-                  Icone: ClipboardList,
-                  acao: () => void gerarPdf(),
-                  desligado: ocupado || solicitacoes.length === 0,
-                  mostra: true,
-                },
-                {
-                  id: "importar",
-                  titulo: "Importar planilha",
-                  texto:
-                    "Traz a planilha de controle de pedidos para o sistema.",
-                  Icone: Upload,
-                  acao: () => arquivo.current?.click(),
-                  desligado: ocupado,
-                  mostra: podeImportar && podeEditar,
-                },
-              ]
-                .filter((opcao) => opcao.mostra)
-                .map(({ id, titulo, texto, Icone, acao, desligado }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={acao}
-                    disabled={desligado}
-                    data-testid={`solicitacoes-arquivo-${id}`}
-                    className={`${CARTAO} flex min-h-24 items-start gap-3 p-4 text-left transition hover:border-[#176b4d] disabled:cursor-not-allowed disabled:opacity-60`}
-                  >
-                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-emerald-50 text-[#176b4d]">
-                      <Icone className="size-5" aria-hidden="true" />
-                    </span>
-                    <span className="grid gap-1">
-                      <strong className="text-base font-black text-slate-900">
-                        {titulo}
-                      </strong>
-                      <span className="text-sm text-slate-600">{texto}</span>
-                    </span>
-                  </button>
-                ))}
-            </section>
+          {subtela === "relatorio" && (
+            <RelatorioDoPeriodo
+              solicitacoes={solicitacoes}
+              hoje={hoje}
+              ocupado={ocupado}
+              onExcel={(lista, periodo, todas) =>
+                void exportar(lista, periodo, todas)
+              }
+              onPdf={(lista, periodo) => void gerarPdf(lista, periodo)}
+              onImportar={
+                podeImportar && podeEditar
+                  ? () => arquivo.current?.click()
+                  : undefined
+              }
+            />
           )}
 
           {subtela === "nova" && exerce(ator, "solicitante") && (
