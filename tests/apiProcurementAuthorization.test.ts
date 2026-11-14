@@ -32,6 +32,13 @@ test('matriz nominal define visualização, solicitação e compras', () => {
   assert.throws(() => assertProcurementPermission({ name: 'Michele', role: 'solicitante' }, 'dispatch'), /403/);
 });
 
+test('Bruno tem ações gerenciais e os demais não', () => {
+  for (const action of ['comment', 'cancel', 'sign']) {
+    assert.doesNotThrow(() => assertProcurementPermission({ name: 'Bruno', role: 'aprovador' }, action));
+    assert.throws(() => assertProcurementPermission({ name: 'Sérgio', role: 'suprimentos' }, action), /403/);
+  }
+});
+
 test('API rejeita primeira entrega parcial acima da quantidade solicitada', () => {
   assert.match(procurementApi, /quantity_first_delivery.*quantity_requested/is);
   assert.match(procurementApi, /allow_partial.*quantity_first_delivery/is);

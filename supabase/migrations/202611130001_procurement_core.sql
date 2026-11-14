@@ -96,6 +96,26 @@ create table if not exists public.erp_audit_trail (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.erp_request_comments (
+  id uuid primary key default gen_random_uuid(),
+  organization_id text not null default 'renea',
+  request_id uuid not null references public.erp_requests(id),
+  actor_user_id uuid not null,
+  actor_name text not null,
+  body text not null check (char_length(trim(body)) >= 3),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.erp_request_signatures (
+  id uuid primary key default gen_random_uuid(),
+  organization_id text not null default 'renea',
+  request_id uuid not null references public.erp_requests(id),
+  actor_user_id uuid not null,
+  actor_name text not null,
+  signature_type text not null check (signature_type in ('GERENCIA_APROVACAO', 'GERENCIA_CIENCIA')),
+  signed_at timestamptz not null default now()
+);
+
 create index if not exists erp_requests_org_status_idx on public.erp_requests (organization_id, status, updated_at desc);
 create index if not exists erp_requests_requester_idx on public.erp_requests (organization_id, requester_user_id, created_at desc);
 create index if not exists erp_purchase_orders_request_idx on public.erp_purchase_orders (organization_id, request_id);
@@ -200,6 +220,22 @@ begin
       p_payload->>'destination_type', p_payload->>'invoice_number'
     );
     next_status := case when (p_payload->>'quantity_received')::numeric >= current_row.quantity_requested then 'CONCLUIDO_CONCILIADO_NF' else 'APROVADO_EM_TRANSITO' end;
+  elsif p_action = 'comment' then
+    if lower(p_actor->>'actor_name') <> 'bruno' or p_actor->>'actor_role' <> 'aprovador' then raise exception 'Somente Bruno cria observações gerenciais.' using errcode = 'P0003'; end if;
+    if char_length(trim(coalesce(p_payload->>'body', ''))) < 3 then raise exception 'Observação obrigatória.' using errcode = 'P0005'; end if;
+    insert into public.erp_request_comments (organization_id, request_id, actor_user_id, actor_name, body)
+    values (current_row.organization_id, current_row.id, (p_actor->>'actor_user_id')::uuid, p_actor->>'actor_name', trim(p_payload->>'body'));
+    next_status := current_row.status;
+  elsif p_action = 'cancel' then
+    if lower(p_actor->>'actor_name') <> 'bruno' or p_actor->>'actor_role' <> 'aprovador' then raise exception 'Somente Bruno cancela pedidos nesta alçada.' using errcode = 'P0003'; end if;
+    if char_length(trim(coalesce(p_payload->>'reason', ''))) < 5 then raise exception 'Motivo do cancelamento obrigatório.' using errcode = 'P0005'; end if;
+    if current_row.status in ('CONCLUIDO_CONCILIADO_NF', 'CANCELADO') then raise exception 'Estado inválido para cancelamento.' using errcode = 'P0004'; end if;
+    next_status := 'CANCELADO';
+  elsif p_action = 'sign' then
+    if lower(p_actor->>'actor_name') <> 'bruno' or p_actor->>'actor_role' <> 'aprovador' then raise exception 'Somente Bruno assina a solicitação.' using errcode = 'P0003'; end if;
+    insert into public.erp_request_signatures (organization_id, request_id, actor_user_id, actor_name, signature_type)
+    values (current_row.organization_id, current_row.id, (p_actor->>'actor_user_id')::uuid, p_actor->>'actor_name', 'GERENCIA_CIENCIA');
+    next_status := current_row.status;
   else
     raise exception 'Ação de compras inválida.' using errcode = 'P0006';
   end if;

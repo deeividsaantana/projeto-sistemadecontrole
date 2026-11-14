@@ -29,3 +29,11 @@ test('recebimento persiste logística e exige conciliação da NF', () => {
   assert.match(migration, /invoice_number.*destination_type.*quantity_received/is);
   assert.match(migration, /quantity_received.*quantity_requested/is);
 });
+
+test('SC guarda observações e assinaturas sem apagar histórico', () => {
+  assert.match(migration, /erp_request_comments/is);
+  assert.match(migration, /erp_request_signatures/is);
+  assert.match(migration, /p_action = 'comment'/is);
+  assert.match(migration, /p_action = 'cancel'/is);
+  assert.match(migration, /p_action = 'sign'/is);
+});

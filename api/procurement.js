@@ -100,7 +100,7 @@ const listRequests = async (staff, actor, query = {}) => {
 const transitionRequest = async (event, staff, actor) => {
   const body = parseJsonBody(event, 32_000);
   const action = cleanString(body.action, 30);
-  const permissions = { approve: 'approve', receive: 'receive', dispatch: 'dispatch' };
+  const permissions = { approve: 'approve', receive: 'receive', dispatch: 'dispatch', comment: 'comment', cancel: 'cancel', sign: 'sign' };
   if (!permissions[action]) { const error = new Error('Ação de compras inválida.'); error.statusCode = 422; throw error; }
   assertProcurementPermission(actor, permissions[action]);
   const requestId = cleanString(body.request_id, 64);
