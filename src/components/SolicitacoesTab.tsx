@@ -559,8 +559,15 @@ export default function SolicitacoesTab({
       contador: itensComFalta,
       contadorRotulo: "itens com falta",
     },
-    { id: "historico", rotulo: "Histórico", icone: History },
-    { id: "planilha", rotulo: "Planilha", icone: FileSpreadsheet },
+    {
+      grupo: "relatorios",
+      rotulo: "Relatórios",
+      icone: History,
+      abas: [
+        { id: "historico", rotulo: "Histórico", icone: History },
+        { id: "planilha", rotulo: "Planilha", icone: FileSpreadsheet },
+      ],
+    },
   ];
 
   const colunas: ColunaTabela<ComSituacao>[] = [
