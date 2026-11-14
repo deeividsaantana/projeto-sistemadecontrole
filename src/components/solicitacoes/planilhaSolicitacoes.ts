@@ -4,6 +4,7 @@
  * na abertura da aba.
  */
 import {
+  addCorporateSummarySheet,
   configureCorporateWorkbook,
   createCorporateWorkbook,
   downloadCorporateWorkbook,
@@ -12,6 +13,7 @@ import {
   styleCorporateWorksheet,
 } from '../../utils/excelCorporate';
 import { formatarDia, situacaoDe, type Solicitacao } from '../../utils/solicitacoes';
+import { movimentoPorDia, resumoDoPeriodo, textoPct } from '../../utils/relatorioSolicitacoes';
 import {
   COLUNAS_IMPORTACAO,
   historicoGeral,
@@ -92,7 +94,13 @@ export const baixarModeloDeImportacao = async () => {
 const VERMELHO = 'FFFEE2E2';
 
 /** Os relatórios gerenciais, a conferência e o histórico num arquivo só, uma aba cada. */
-export const baixarRelatorios = async (sols: readonly Solicitacao[], hoje: string) => {
+export const baixarRelatorios = async (
+  sols: readonly Solicitacao[],
+  hoje: string,
+  periodo?: { from: string; to: string },
+  /** Todos os pedidos, para o "Por dia" contar entregas de pedidos abertos antes do período. */
+  todas: readonly Solicitacao[] = sols,
+) => {
   const livro = await createCorporateWorkbook();
   configureCorporateWorkbook(livro, 'Solicitações, suprimentos e logística');
   const titulo = (aba: ReturnType<typeof livro.addWorksheet>, texto: string, linhas: number) =>
@@ -168,5 +176,39 @@ export const baixarRelatorios = async (sols: readonly Solicitacao[], hoje: strin
   ]));
   titulo(historico, 'Histórico de todos os pedidos', historico.rowCount - 3);
 
-  await downloadCorporateWorkbook(livro, `relatorios-solicitacoes-${hoje}.xlsx`);
+  // Resumo em porcentagem, igual ao que a tela mostra nas pizzas.
+  const resumo = resumoDoPeriodo(sols, hoje);
+  const porcentagens = livro.addWorksheet('Porcentagens');
+  porcentagens.addRows([[], []]);
+  porcentagens.addRow(['Grupo', 'Parte', 'Quantidade', '%']);
+  ([
+    ['Situação dos pedidos', resumo.porSituacao],
+    ['Pedidos por solicitante', resumo.porSolicitante],
+    ['Pedidos por frente', resumo.porFrente],
+    ['Conferência dos itens', resumo.porConferencia],
+  ] as const).forEach(([grupo, partes]) => partes.forEach(parte => porcentagens.addRow([grupo, parte.nome, parte.quantidade, parte.percentual / 100])));
+  porcentagens.getColumn(4).numFmt = '0%';
+  titulo(porcentagens, 'Resumo em porcentagem', porcentagens.rowCount - 3);
+
+  if (periodo) {
+    const porDia = livro.addWorksheet('Por dia');
+    porDia.addRows([[], []]);
+    porDia.addRow(['Dia', 'Abertos', 'Aprovados', 'Entregues']);
+    movimentoPorDia(todas, periodo).forEach(ponto => porDia.addRow([formatarDia(ponto.iso), ponto.abertos, ponto.aprovados, ponto.entregues]));
+    titulo(porDia, 'Movimento dia a dia', porDia.rowCount - 3);
+  }
+
+  addCorporateSummarySheet(livro, 'Relatório de solicitações e compras', [
+    ['Período', periodo ? `${formatarDia(periodo.from)} a ${formatarDia(periodo.to)}` : `Posição em ${formatarDia(hoje)}`],
+    ['Pedidos', resumo.pedidos],
+    ['Itens', resumo.itens],
+    ['Entregues', `${resumo.entregues} (${textoPct(resumo.pctEntregues)})`],
+    ['Em atraso', `${resumo.emAtraso} (${textoPct(resumo.pctEmAtraso)})`],
+    ['Cancelados', resumo.cancelados],
+    ['Itens recebidos por completo', textoPct(resumo.pctItensRecebidos)],
+    ['Dias até chegar (média)', resumo.diasAteEntrega ?? '—'],
+    ['Valor aprovado (R$)', resumo.valorAprovado],
+  ]);
+
+  await downloadCorporateWorkbook(livro, periodo ? `relatorios-solicitacoes-${periodo.from}-a-${periodo.to}.xlsx` : `relatorios-solicitacoes-${hoje}.xlsx`);
 };

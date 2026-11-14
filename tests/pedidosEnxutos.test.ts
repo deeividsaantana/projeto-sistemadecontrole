@@ -17,7 +17,7 @@ test('Pedidos: sem botão "Mostrar mais", todos os cards na tela', () => {
 test('Pedidos: Excel, PDF e Importar só dentro de Relatórios', () => {
   const topo = fonte.slice(fonte.indexOf('actions={'), fonte.indexOf('faixa={'));
   assert.doesNotMatch(topo, /exportar\(|gerarPdf|arquivo\.current/);
-  assert.match(fonte, /id: "arquivos", rotulo: "Excel, PDF e importar"/);
+  assert.match(fonte, /id: "relatorio",\s+rotulo: "Relatório do período"/);
 });
 
 test('Pedidos: Filtros abre e fecha no lugar, sem trocar de tela', () => {
