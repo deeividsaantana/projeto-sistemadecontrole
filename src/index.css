@@ -322,7 +322,7 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; text-wrap: bal
 }
 
 /* Solicitação de Contratação: o documento é impresso numa janela só dele
-   (DocumentoContratacao.imprimir); aqui só fica visível apesar da regra acima. */
+   (FolhaContratacao, imprimir); aqui só fica visível apesar da regra acima. */
 @media print {
   .ct-imprimir, .ct-imprimir * { visibility: visible !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }

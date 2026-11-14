@@ -39,8 +39,7 @@ import {
   type PessoaContratacao,
   type SituacaoContratacao,
 } from '../services/contratacaoApi';
-import { FormularioNovaContratacao } from './contratacao/FormularioNovaContratacao';
-import { DocumentoContratacao } from './contratacao/DocumentoContratacao';
+import { FolhaContratacao } from './contratacao/FolhaContratacao';
 import { LinhaDeEtapas, SeloSituacaoContratacao } from './contratacao/SeloSituacaoContratacao';
 import { dataBr, dataHoraBr } from './contratacao/formatos';
 
@@ -310,9 +309,9 @@ export default function ContratacaoTab({ noLink = false }: Props) {
       );
     }
     if (!me) return null;
-    if (aberto) return <DocumentoContratacao pedido={aberto} leitor={me} onVoltar={() => setAbertoId(null)} onAtualizado={() => void carregar(true)} />;
+    if (aberto) return <FolhaContratacao key={`${aberto.id}-${aberto.version}`} pedido={aberto} leitor={me} onVoltar={() => setAbertoId(null)} onAtualizado={() => void carregar(true)} />;
     if (subtela === 'nova') {
-      return <FormularioNovaContratacao nome={me.nome} onCriado={pedido => { void carregar(true).then(() => setAbertoId(pedido.id)); setAviso(`Pedido ${pedido.request_number} enviado ao RH.`); window.setTimeout(() => setAviso(''), 6000); }} />;
+      return <FolhaContratacao leitor={me} onCriado={pedido => { void carregar(true).then(() => setAbertoId(pedido.id)); setAviso(`Pedido ${pedido.request_number} enviado ao RH.`); window.setTimeout(() => setAviso(''), 6000); }} />;
     }
     if (subtela === 'fila') {
       return fila.length === 0
