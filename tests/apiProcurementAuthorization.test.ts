@@ -22,6 +22,16 @@ test('suprimentos mantém alçada de cotação e reagendamento', () => {
   assert.throws(() => assertProcurementPermission({ name: 'Thiago', role: 'solicitante' }, 'reschedule'), /403/);
 });
 
+test('matriz nominal define visualização, solicitação e compras', () => {
+  assert.doesNotThrow(() => assertProcurementPermission({ name: 'Lucas' }, 'view'));
+  assert.doesNotThrow(() => assertProcurementPermission({ name: 'Deivid' }, 'view'));
+  assert.doesNotThrow(() => assertProcurementPermission({ name: 'Michele' }, 'request'));
+  assert.doesNotThrow(() => assertProcurementPermission({ name: 'Sérgio' }, 'dispatch'));
+  assert.doesNotThrow(() => assertProcurementPermission({ name: 'Bruno' }, 'comment'));
+  assert.throws(() => assertProcurementPermission({ name: 'Lucas' }, 'request'), /403/);
+  assert.throws(() => assertProcurementPermission({ name: 'Michele' }, 'dispatch'), /403/);
+});
+
 test('API rejeita primeira entrega parcial acima da quantidade solicitada', () => {
   assert.match(procurementApi, /quantity_first_delivery.*quantity_requested/is);
   assert.match(procurementApi, /allow_partial.*quantity_first_delivery/is);

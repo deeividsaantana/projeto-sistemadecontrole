@@ -4,8 +4,9 @@ const normalize = value => String(value || '')
   .toLowerCase()
   .trim();
 
-const REQUESTERS = new Set(['jose augusto', 'thiago', 'alvaro', 'jose augusto mineiro']);
-const BUYERS = new Set(['cassia', 'sergio']);
+const REQUESTERS = new Set(['michele']);
+const BUYERS = new Set(['sergio']);
+const VIEWERS = new Set(['lucas', 'deivid']);
 
 export const procurementActorFromStaff = staff => {
   const name = String(staff?.name || staff?.email || '').trim();
@@ -17,6 +18,8 @@ export const procurementActorFromStaff = staff => {
       ? 'suprimentos'
       : REQUESTERS.has(normalized)
         ? 'solicitante'
+        : VIEWERS.has(normalized)
+          ? 'visualizador'
         : String(staff?.role || ''));
   return { id: staff?.uid || staff?.sub, name, role };
 };
@@ -31,7 +34,9 @@ const deny = (message) => {
 export const assertProcurementPermission = (actor, action) => {
   const role = String(actor?.role || '');
   const name = normalize(actor?.name);
-  const allowed = action === 'approve'
+  const allowed = action === 'view'
+    ? ['visualizador', 'solicitante', 'suprimentos', 'aprovador', 'dev'].includes(role)
+    : action === 'approve'
     ? role === 'aprovador' && name === 'bruno'
     : action === 'receive'
       ? role === 'recebedor'
@@ -39,6 +44,8 @@ export const assertProcurementPermission = (actor, action) => {
         ? role === 'suprimentos'
         : action === 'request'
           ? role === 'solicitante'
+          : action === 'comment' || action === 'cancel' || action === 'sign'
+            ? role === 'aprovador' && name === 'bruno'
           : false;
   if (!allowed) throw deny(`Ação '${action}' não autorizada para este usuário.`);
   return actor;

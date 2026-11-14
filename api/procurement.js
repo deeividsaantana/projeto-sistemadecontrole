@@ -86,6 +86,7 @@ const createRequest = async (event, staff, actor) => {
 };
 
 const listRequests = async (staff, actor, query = {}) => {
+  assertProcurementPermission(actor, 'view');
   const client = getSupabaseAdmin();
   let request = client.from('erp_requests').select('*, erp_request_items(*)').eq('organization_id', staff.organizationId).order('created_at', { ascending: false }).limit(200);
   if (actor.role === 'solicitante') request = request.eq('requester_user_id', staff.uid);
