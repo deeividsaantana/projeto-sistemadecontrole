@@ -13,6 +13,7 @@ import { handler as usageTelemetry } from '../api/usage-telemetry.js';
 import { handler as cleanupCloudData } from '../api/cleanup-cloud-data.js';
 import { handler as procurement } from '../api/procurement.js';
 import { handler as procurementSheet } from '../api/procurement-sheet.js';
+import { handler as contratacao } from '../api/contratacao.js';
 import { syncProcurementSpreadsheet } from './procurementSpreadsheetSyncJob.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -48,6 +49,7 @@ for (const prefix of ['/api', '/.netlify/functions']) {
   app.all(`${prefix}/usage-telemetry`, toExpressHandler(usageTelemetry));
   app.all(`${prefix}/procurement`, toExpressHandler(procurement));
   app.get(`${prefix}/procurement-sheet`, toExpressHandler(procurementSheet));
+  app.all(`${prefix}/contratacao`, toExpressHandler(contratacao));
 }
 
 // Não existe cron nativo no plano gratuito: um pinger externo gratuito (cron-job.org,

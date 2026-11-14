@@ -17,6 +17,7 @@ import ManutencaoTab from '../src/components/ManutencaoTab';
 import ColaboradoresTab from '../src/components/ColaboradoresTab';
 import DiarioObraTab from '../src/components/DiarioObraTab';
 import { SolicitacoesPreview } from './solicitacoesPreview';
+import ContratacaoTab from '../src/components/ContratacaoTab';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
 import { DesktopTopBar } from '../src/app/shell/DesktopTopBar';
 import { MeuPerfilModal } from '../src/components/perfil/MeuPerfilModal';
@@ -539,6 +540,7 @@ const screens: Record<string, React.ReactNode> = {
     />
   ),
   solicitacoes: <SolicitacoesPreview />,
+  contratacao: <ContratacaoTab />,
   'diario-obra': (
     <DiarioObraTab
       diarios={fx.diariosChuva}

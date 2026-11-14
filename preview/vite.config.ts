@@ -14,6 +14,7 @@ export default defineConfig({
     dedupe: ['react', 'react-dom', '@gsap/react', 'gsap'],
     alias: [
       { find: /^\.\.\/services\/masterDataApi$/, replacement: path.resolve(import.meta.dirname, 'masterDataApiStub.ts') },
+      { find: /^\.\.(\/\.\.)?\/services\/contratacaoApi$/, replacement: path.resolve(import.meta.dirname, 'contratacaoApiStub.ts') },
     ],
   },
   server: { port: 4300, host: '0.0.0.0' },

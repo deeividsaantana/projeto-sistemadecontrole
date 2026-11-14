@@ -111,6 +111,7 @@ const QuadroFrota = lazy(() => import('./components/quadroFrota/QuadroFrota'));
 const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
 const SolicitacoesTab = lazy(() => import('./components/SolicitacoesTab'));
+const ContratacaoTab = lazy(() => import('./components/ContratacaoTab'));
 const PluviometroTab = lazy(() => import('./components/PluviometroTab'));
 const ProgramacaoTerraplanagem = lazy(() => import('./components/ProgramacaoTerraplanagem'));
 const EstacasTab = lazy(() => import('./components/EstacasTab'));
@@ -4501,6 +4502,8 @@ export default function App() {
                 onExcluir={handleExcluirSolicitacao}
               />
             )}
+
+            {activeTab === 'contratacao' && <ContratacaoTab />}
 
             {activeTab === 'pluviometro' && (
               <PluviometroTab

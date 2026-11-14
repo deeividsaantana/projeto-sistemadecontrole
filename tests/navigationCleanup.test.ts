@@ -43,15 +43,17 @@ test('ROLE_ACCESS cleanup', async (suite) => {
     });
   });
 
-  await suite.test('leitura should have access to dashboard, relatorios and presenca-publica', () => {
-    assert.deepStrictEqual(ROLE_ACCESS.leitura, ['dashboard', 'presenca-publica']);
+  await suite.test('leitura should have access to dashboard, contratacao and presenca-publica', () => {
+    // 14/11/2026: qualquer login pede contratação; o servidor filtra o resto.
+    assert.deepStrictEqual(ROLE_ACCESS.leitura, ['dashboard', 'contratacao', 'presenca-publica']);
   });
 });
 
 test('ALL_NAVIGATION_ITEMS cleanup', async (suite) => {
   // 11: a Programação ganhou aba própria, sem voltar a criar subtelas legadas.
-  await suite.test('should contain exactly 10 items from PRIMARY_MODULE_IDS', () => {
-    assert.strictEqual(ALL_NAVIGATION_ITEMS.length, 11, `Expected 11 items, got ${ALL_NAVIGATION_ITEMS.length}`);
+  // 12: Solicitação de Contratação (14/11/2026).
+  await suite.test('should contain exactly 12 items from PRIMARY_MODULE_IDS', () => {
+    assert.strictEqual(ALL_NAVIGATION_ITEMS.length, 12, `Expected 12 items, got ${ALL_NAVIGATION_ITEMS.length}`);
   });
 
   await suite.test('should contain only primary module IDs', () => {

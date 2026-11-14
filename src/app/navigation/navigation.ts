@@ -9,6 +9,7 @@ import {
   Activity,
   Users,
   ShoppingCart,
+  FileSignature,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -53,6 +54,7 @@ export const NAVIGATION_GROUPS = [
     label: 'Pessoas',
     items: [
       { id: 'presenca', label: 'Presença e Controle', icon: Users },
+      { id: 'contratacao', label: 'Solicitação de Contratação', icon: FileSignature },
     ],
   },
   {
@@ -82,6 +84,10 @@ export const PRIMARY_MODULE_IDS = [
   'lancamentos',
   'colaboradores',
   'presenca',
+  // Solicitação de Contratação assinável (14/11/2026): quem pede assina, o RH
+  // assina e o gerente assina. Quem assina o quê é conferido no servidor
+  // (api/contratacao.js), não pelo perfil do menu.
+  'contratacao',
   // Cadastros ficou sem caminho na limpeza de 2026-09-24: o atalho dentro de
   // Administração levava a uma aba que nenhum perfil tinha em ROLE_ACCESS, e
   // o App devolvia a pessoa ao Painel. Voltou ao menu lateral como aba
@@ -131,6 +137,7 @@ const SIDEBAR_GROUP_LABELS: Record<string, string> = {
 // com o menu mais estreito.
 const SIDEBAR_ITEM_LABELS: Record<string, string> = {
   'controle-equipamentos': 'Controle de Frotas',
+  contratacao: 'Contratação',
 };
 
 export const SIDEBAR_NAVIGATION_GROUPS = NAVIGATION_GROUPS
@@ -161,7 +168,8 @@ export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
   // Operador lança no dia a dia, mas não altera a base mestre (mesma regra
   // de antes da limpeza do menu).
   operador: [...PRIMARY_MODULE_IDS.filter(id => id !== 'cadastros'), PRESENCA_PUBLICA],
-  leitura: ['dashboard', PRESENCA_PUBLICA],
+  // Qualquer login pode pedir contratação; o que vê lá dentro o servidor filtra.
+  leitura: ['dashboard', 'contratacao', PRESENCA_PUBLICA],
 };
 
 /**
