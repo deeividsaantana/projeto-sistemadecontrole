@@ -207,6 +207,7 @@ import './apiProcurementAuthorization.test';
 import './sql/procurementSchema.test';
 import './procurementEngineering.test';
 import './procurementKpis.test';
+import './procurementSpreadsheetSync.test';
 import './campoComErro.test';
 import './nomeDaPessoa.test';
 import './perfilAvatar.test';
