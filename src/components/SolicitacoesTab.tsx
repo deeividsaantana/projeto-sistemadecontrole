@@ -65,6 +65,7 @@ import { SeloSituacao } from "./solicitacoes/SeloSituacao";
 import { SeloItem } from "./solicitacoes/SeloItem";
 import { CartaoCompraCompacto } from "./solicitacoes/CartaoCompraCompacto";
 import { AvatarPessoa, dataHora } from "./solicitacoes/AvatarPessoa";
+import { PlanilhaCompras } from "./solicitacoes/PlanilhaCompras";
 
 type Subtela =
   | "pedidos"
@@ -72,7 +73,8 @@ type Subtela =
   | "filtros"
   | "aprovacao"
   | "conferencia"
-  | "historico";
+  | "historico"
+  | "planilha";
 
 interface SolicitacoesTabProps {
   solicitacoes: Solicitacao[];
@@ -558,6 +560,7 @@ export default function SolicitacoesTab({
       contadorRotulo: "itens com falta",
     },
     { id: "historico", rotulo: "Histórico", icone: History },
+    { id: "planilha", rotulo: "Planilha", icone: FileSpreadsheet },
   ];
 
   const colunas: ColunaTabela<ComSituacao>[] = [
@@ -1424,6 +1427,7 @@ export default function SolicitacoesTab({
               />
             </div>
           )}
+          {subtela === "planilha" && <PlanilhaCompras />}
 
           {subtela === "nova" && exerce(ator, "solicitante") && (
             <NovaSolicitacao
