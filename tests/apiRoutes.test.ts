@@ -16,9 +16,18 @@ test('o app chama a API em /api/ e não no endereço antigo', () => {
 test('o servidor da Render atende /api/ e mantém o endereço antigo', () => {
   const server = read('server/index.js');
   assert.match(server, /for \(const prefix of \['\/api', '\/\.netlify\/functions'\]\)/);
-  for (const route of ['public-presenca', 'master-data', 'usage-telemetry']) {
+  for (const route of ['public-presenca', 'master-data', 'usage-telemetry', 'procurement']) {
     assert.match(server, new RegExp(`\\$\\{prefix\\}/${route}`), route);
   }
+});
+
+test('a API de compras usa a função transacional e nunca aceita papel do body', () => {
+  const route = read('api/procurement.js');
+  assert.match(route, /create_erp_request/);
+  assert.match(route, /staff\.uid/);
+  assert.match(route, /staff\.organizationId/);
+  assert.doesNotMatch(route, /body\.role/);
+  assert.doesNotMatch(route, /body\.requester_user_id/);
 });
 
 test('adaptador Supabase representa documento ausente sem ler id de null', () => {

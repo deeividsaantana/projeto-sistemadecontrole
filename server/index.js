@@ -11,6 +11,7 @@ import { handler as publicPresenca } from '../api/public-presenca.js';
 import { handler as masterData } from '../api/master-data.js';
 import { handler as usageTelemetry } from '../api/usage-telemetry.js';
 import { handler as cleanupCloudData } from '../api/cleanup-cloud-data.js';
+import { handler as procurement } from '../api/procurement.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, '..', 'dist');
@@ -43,6 +44,7 @@ for (const prefix of ['/api', '/.netlify/functions']) {
 
   app.all(`${prefix}/master-data`, toExpressHandler(masterData));
   app.all(`${prefix}/usage-telemetry`, toExpressHandler(usageTelemetry));
+  app.all(`${prefix}/procurement`, toExpressHandler(procurement));
 }
 
 // Não existe cron nativo no plano gratuito: um pinger externo gratuito (cron-job.org,

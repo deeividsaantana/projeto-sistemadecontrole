@@ -86,6 +86,45 @@ create index if not exists erp_purchase_orders_request_idx on public.erp_purchas
 create index if not exists erp_logistics_due_idx on public.erp_logistics_tracking (organization_id, promised_end, status);
 create index if not exists erp_audit_entity_idx on public.erp_audit_trail (organization_id, entity_type, entity_id, created_at desc);
 
+create or replace function public.create_erp_request(p_request jsonb, p_audit jsonb)
+returns public.erp_requests
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  inserted public.erp_requests;
+begin
+  insert into public.erp_requests (
+    organization_id, request_number, requester_user_id, requester_name,
+    requester_role, work_front, stake_application, item_type,
+    technical_description, quantity_requested, unit, desired_deadline,
+    allow_partial, engineering_drawing_ref
+  ) values (
+    p_request->>'organization_id', p_request->>'request_number',
+    (p_request->>'requester_user_id')::uuid, p_request->>'requester_name',
+    p_request->>'requester_role', p_request->>'work_front',
+    p_request->>'stake_application', p_request->>'item_type',
+    p_request->>'technical_description', (p_request->>'quantity_requested')::numeric,
+    p_request->>'unit', (p_request->>'desired_deadline')::date,
+    (p_request->>'allow_partial')::boolean, nullif(p_request->>'engineering_drawing_ref', '')
+  ) returning * into inserted;
+
+  insert into public.erp_audit_trail (
+    organization_id, entity_type, entity_id, action, actor_user_id,
+    actor_name, actor_role, after_state, metadata
+  ) values (
+    p_audit->>'organization_id', 'request', inserted.id, 'REQUEST_CREATED',
+    (p_audit->>'actor_user_id')::uuid, p_audit->>'actor_name',
+    p_audit->>'actor_role', to_jsonb(inserted), coalesce(p_audit->'metadata', '{}'::jsonb)
+  );
+  return inserted;
+end;
+$$;
+
+revoke all on function public.create_erp_request(jsonb, jsonb) from public, anon, authenticated;
+grant execute on function public.create_erp_request(jsonb, jsonb) to service_role;
+
 create or replace function public.block_erp_audit_mutation()
 returns trigger
 language plpgsql

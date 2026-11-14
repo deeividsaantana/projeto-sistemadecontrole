@@ -16,3 +16,10 @@ test('auditoria de compras é append-only e bloqueia update/delete', () => {
   assert.match(migration, /erp_audit_trail.*append-only|append-only.*erp_audit_trail/is);
   assert.match(migration, /raise exception .*audit|auditoria.*imut[aá]vel/is);
 });
+
+test('criação de solicitação e auditoria ocorrem na mesma função SQL', () => {
+  assert.match(migration, /create or replace function public\.create_erp_request/is);
+  assert.match(migration, /insert into public\.erp_requests/is);
+  assert.match(migration, /insert into public\.erp_audit_trail/is);
+  assert.match(migration, /returns public\.erp_requests/is);
+});

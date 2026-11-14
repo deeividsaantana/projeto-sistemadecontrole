@@ -4,6 +4,23 @@ const normalize = value => String(value || '')
   .toLowerCase()
   .trim();
 
+const REQUESTERS = new Set(['jose augusto', 'thiago', 'alvaro', 'jose augusto mineiro']);
+const BUYERS = new Set(['cassia', 'sergio']);
+
+export const procurementActorFromStaff = staff => {
+  const name = String(staff?.name || staff?.email || '').trim();
+  const normalized = normalize(name);
+  const suppliedRole = String(staff?.procurementRole || '').trim();
+  const role = suppliedRole || (normalized === 'bruno'
+    ? 'aprovador'
+    : BUYERS.has(normalized)
+      ? 'suprimentos'
+      : REQUESTERS.has(normalized)
+        ? 'solicitante'
+        : String(staff?.role || ''));
+  return { id: staff?.uid || staff?.sub, name, role };
+};
+
 const deny = (message) => {
   const error = new Error(`[ERRO DE GOVERNANÇA 403 - ALÇADA EXCLUSIVA]: ${message}`);
   error.statusCode = 403;
