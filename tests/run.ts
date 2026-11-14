@@ -205,6 +205,7 @@ import './padraoErp.test';
 import './solicitacoes.test';
 import './apiProcurementAuthorization.test';
 import './sql/procurementSchema.test';
+import './procurementEngineering.test';
 import './campoComErro.test';
 import './nomeDaPessoa.test';
 import './perfilAvatar.test';
