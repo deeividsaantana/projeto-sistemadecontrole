@@ -23,3 +23,9 @@ test('criação de solicitação e auditoria ocorrem na mesma função SQL', () 
   assert.match(migration, /insert into public\.erp_audit_trail/is);
   assert.match(migration, /returns public\.erp_requests/is);
 });
+
+test('recebimento persiste logística e exige conciliação da NF', () => {
+  assert.match(migration, /insert into public\.erp_logistics_tracking/is);
+  assert.match(migration, /invoice_number.*destination_type.*quantity_received/is);
+  assert.match(migration, /quantity_received.*quantity_requested/is);
+});

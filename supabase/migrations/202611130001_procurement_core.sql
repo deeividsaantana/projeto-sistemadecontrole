@@ -187,6 +187,18 @@ begin
     if p_actor->>'actor_role' <> 'recebedor' then raise exception 'Somente Recepção/Campo recebe.' using errcode = 'P0003'; end if;
     if current_row.status <> 'APROVADO_EM_TRANSITO' then raise exception 'Estado inválido para recebimento.' using errcode = 'P0004'; end if;
     if coalesce(p_payload->>'invoice_number', '') = '' or coalesce(p_payload->>'destination_type', '') = '' then raise exception 'NF e destino são obrigatórios.' using errcode = 'P0005'; end if;
+    if coalesce((p_payload->>'quantity_received')::numeric, 0) <= 0 then raise exception 'Quantidade recebida deve ser maior que zero.' using errcode = 'P0005'; end if;
+    if coalesce(p_payload->>'purchase_order_id', '') = '' or coalesce(p_payload->>'promised_start', '') = '' or coalesce(p_payload->>'promised_end', '') = '' then raise exception 'Pedido de compra e prazo logístico são obrigatórios.' using errcode = 'P0005'; end if;
+    insert into public.erp_logistics_tracking (
+      organization_id, purchase_order_id, status, promised_start, promised_end,
+      received_at, received_quantity, destination_type, invoice_number
+    ) values (
+      current_row.organization_id, (p_payload->>'purchase_order_id')::uuid, 'RECEBIDO',
+      nullif(p_payload->>'promised_start', '')::date,
+      nullif(p_payload->>'promised_end', '')::date,
+      now(), (p_payload->>'quantity_received')::numeric,
+      p_payload->>'destination_type', p_payload->>'invoice_number'
+    );
     next_status := case when (p_payload->>'quantity_received')::numeric >= current_row.quantity_requested then 'CONCLUIDO_CONCILIADO_NF' else 'APROVADO_EM_TRANSITO' end;
   else
     raise exception 'Ação de compras inválida.' using errcode = 'P0006';

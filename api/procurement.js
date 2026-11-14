@@ -28,6 +28,15 @@ const validateRequest = body => {
     if (!UNITS.has(item.unit ?? item.unidade)) errors.push(`item ${index + 1}: unidade inválida.`);
     if (!isoDate(item.desired_deadline ?? item.prazoDesejado)) errors.push(`item ${index + 1}: prazo inválido.`);
     if (typeof (item.allow_partial ?? item.permiteParcial) !== 'boolean') errors.push(`item ${index + 1}: allow_partial obrigatório.`);
+    const partial = item.allow_partial ?? item.permiteParcial;
+    const firstDeliveryRaw = item.quantity_first_delivery ?? item.quantidadePrimeiraEntrega;
+    const firstDelivery = firstDeliveryRaw === null || firstDeliveryRaw === undefined || firstDeliveryRaw === ''
+      ? null
+      : Number(String(firstDeliveryRaw).replace(',', '.'));
+    if (partial && (!(firstDelivery > 0) || !Number.isFinite(firstDelivery) || firstDelivery > quantity)) {
+      errors.push(`item ${index + 1}: a 1ª entrega parcial deve ser maior que zero e não pode exceder a quantidade solicitada.`);
+    }
+    if (!partial && firstDelivery !== null) errors.push(`item ${index + 1}: 1ª entrega só pode ser informada quando a entrega for parcial.`);
   });
   if (errors.length) { const error = new Error(errors.join(' ')); error.statusCode = 422; throw error; }
   return { ...body, items: items.map((item, index) => ({
