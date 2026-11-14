@@ -16,7 +16,7 @@ test('o app chama a API em /api/ e não no endereço antigo', () => {
 test('o servidor da Render atende /api/ e mantém o endereço antigo', () => {
   const server = read('server/index.js');
   assert.match(server, /for \(const prefix of \['\/api', '\/\.netlify\/functions'\]\)/);
-  for (const route of ['public-presenca', 'master-data', 'usage-telemetry', 'procurement']) {
+  for (const route of ['public-presenca', 'master-data', 'usage-telemetry', 'procurement', 'procurement-sheet']) {
     assert.match(server, new RegExp(`\\$\\{prefix\\}/${route}`), route);
   }
 });
