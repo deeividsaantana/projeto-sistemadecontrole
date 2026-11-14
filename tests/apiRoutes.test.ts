@@ -24,6 +24,7 @@ test('o servidor da Render atende /api/ e mantém o endereço antigo', () => {
 test('a API de compras usa a função transacional e nunca aceita papel do body', () => {
   const route = read('api/procurement.js');
   assert.match(route, /create_erp_request/);
+  assert.match(route, /Array\.isArray\(body\.items\)/);
   assert.match(route, /staff\.uid/);
   assert.match(route, /staff\.organizationId/);
   assert.doesNotMatch(route, /body\.role/);

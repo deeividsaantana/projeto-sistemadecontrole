@@ -5,7 +5,7 @@ import test from 'node:test';
 const migration = fs.readFileSync('supabase/migrations/202611130001_procurement_core.sql', 'utf8');
 
 test('schema de compras tem tabelas canônicas e constraints de quantidade', () => {
-  for (const tabela of ['erp_requests', 'erp_purchase_orders', 'erp_logistics_tracking', 'erp_audit_trail']) {
+  for (const tabela of ['erp_requests', 'erp_request_items', 'erp_purchase_orders', 'erp_logistics_tracking', 'erp_audit_trail']) {
     assert.match(migration, new RegExp(`create table if not exists public\\.${tabela}`));
   }
   assert.match(migration, /quantity_requested numeric\([^)]*\) not null check \(quantity_requested > 0\)/i);

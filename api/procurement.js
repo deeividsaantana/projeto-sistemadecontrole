@@ -14,19 +14,33 @@ const TYPES = new Set(['Material', 'Serviço']);
 const isoDate = value => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
 
 const validateRequest = body => {
-  const quantity = Number(String(body.quantity_requested ?? '').replace(',', '.'));
+  const items = Array.isArray(body.items) ? body.items : [body];
   const errors = [];
   if (!/^SOL-\d{4}-\d{4,}$/.test(String(body.request_number || ''))) errors.push('request_number inválido.');
   if (!String(body.work_front || '').trim()) errors.push('work_front obrigatório.');
   if (!String(body.stake_application || '').trim()) errors.push('stake_application obrigatório.');
-  if (!TYPES.has(body.item_type)) errors.push('item_type inválido.');
-  if (String(body.technical_description || '').trim().length < 3) errors.push('technical_description obrigatório.');
-  if (!(quantity > 0) || !Number.isFinite(quantity)) errors.push('quantity_requested deve ser maior que zero.');
-  if (!UNITS.has(body.unit)) errors.push('unit inválida.');
-  if (!isoDate(body.desired_deadline)) errors.push('desired_deadline inválido.');
-  if (typeof body.allow_partial !== 'boolean') errors.push('allow_partial obrigatório.');
+  if (!items.length) errors.push('Inclua pelo menos um item.');
+  items.forEach((item, index) => {
+    const quantity = Number(String(item.quantity_requested ?? item.quantity ?? '').replace(',', '.'));
+    if (!TYPES.has(item.item_type ?? item.tipo)) errors.push(`item ${index + 1}: item_type inválido.`);
+    if (String(item.technical_description ?? item.descricao ?? '').trim().length < 3) errors.push(`item ${index + 1}: descrição obrigatória.`);
+    if (!(quantity > 0) || !Number.isFinite(quantity)) errors.push(`item ${index + 1}: quantidade inválida.`);
+    if (!UNITS.has(item.unit ?? item.unidade)) errors.push(`item ${index + 1}: unidade inválida.`);
+    if (!isoDate(item.desired_deadline ?? item.prazoDesejado)) errors.push(`item ${index + 1}: prazo inválido.`);
+    if (typeof (item.allow_partial ?? item.permiteParcial) !== 'boolean') errors.push(`item ${index + 1}: allow_partial obrigatório.`);
+  });
   if (errors.length) { const error = new Error(errors.join(' ')); error.statusCode = 422; throw error; }
-  return { ...body, quantity_requested: quantity };
+  return { ...body, items: items.map((item, index) => ({
+    item_number: index + 1,
+    item_type: item.item_type ?? item.tipo,
+    technical_description: item.technical_description ?? item.descricao,
+    quantity_requested: Number(String(item.quantity_requested ?? item.quantity ?? '').replace(',', '.')),
+    unit: item.unit ?? item.unidade,
+    desired_deadline: item.desired_deadline ?? item.prazoDesejado,
+    allow_partial: item.allow_partial ?? item.permiteParcial,
+    quantity_first_delivery: item.quantity_first_delivery ?? item.quantidadePrimeiraEntrega ?? null,
+    engineering_drawing_ref: item.engineering_drawing_ref ?? '',
+  })) };
 };
 
 const createRequest = async (event, staff, actor) => {
@@ -48,6 +62,7 @@ const createRequest = async (event, staff, actor) => {
     desired_deadline: body.desired_deadline,
     allow_partial: body.allow_partial,
     engineering_drawing_ref: cleanString(body.engineering_drawing_ref, 240),
+    items: body.items,
   };
   const audit = {
     organization_id: staff.organizationId,

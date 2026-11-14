@@ -24,6 +24,22 @@ create table if not exists public.erp_requests (
   unique (organization_id, request_number)
 );
 
+create table if not exists public.erp_request_items (
+  id uuid primary key default gen_random_uuid(),
+  request_id uuid not null references public.erp_requests(id) on delete restrict,
+  item_number integer not null check (item_number > 0),
+  item_type text not null check (item_type in ('Material', 'Serviço')),
+  technical_description text not null,
+  quantity_requested numeric(18,3) not null check (quantity_requested > 0),
+  unit text not null,
+  desired_deadline date not null,
+  allow_partial boolean not null,
+  quantity_first_delivery numeric(18,3) check (quantity_first_delivery is null or quantity_first_delivery > 0),
+  engineering_drawing_ref text,
+  unique (request_id, item_number),
+  check (quantity_first_delivery is null or quantity_first_delivery <= quantity_requested)
+);
+
 create table if not exists public.erp_purchase_orders (
   id uuid primary key default gen_random_uuid(),
   organization_id text not null default 'renea',
@@ -83,6 +99,7 @@ create table if not exists public.erp_audit_trail (
 create index if not exists erp_requests_org_status_idx on public.erp_requests (organization_id, status, updated_at desc);
 create index if not exists erp_requests_requester_idx on public.erp_requests (organization_id, requester_user_id, created_at desc);
 create index if not exists erp_purchase_orders_request_idx on public.erp_purchase_orders (organization_id, request_id);
+create index if not exists erp_request_items_request_idx on public.erp_request_items (request_id, item_number);
 create index if not exists erp_logistics_due_idx on public.erp_logistics_tracking (organization_id, promised_end, status);
 create index if not exists erp_audit_entity_idx on public.erp_audit_trail (organization_id, entity_type, entity_id, created_at desc);
 
@@ -117,6 +134,17 @@ begin
     p_audit->>'organization_id', 'request', inserted.id, 'REQUEST_CREATED',
     (p_audit->>'actor_user_id')::uuid, p_audit->>'actor_name',
     p_audit->>'actor_role', to_jsonb(inserted), coalesce(p_audit->'metadata', '{}'::jsonb)
+  );
+  insert into public.erp_request_items (
+    request_id, item_number, item_type, technical_description, quantity_requested,
+    unit, desired_deadline, allow_partial, quantity_first_delivery, engineering_drawing_ref
+  )
+  select inserted.id, item_number, item_type, technical_description, quantity_requested,
+    unit, desired_deadline, allow_partial, quantity_first_delivery, nullif(engineering_drawing_ref, '')
+  from jsonb_to_recordset(coalesce(p_request->'items', '[]'::jsonb)) as items(
+    item_number integer, item_type text, technical_description text,
+    quantity_requested numeric, unit text, desired_deadline date,
+    allow_partial boolean, quantity_first_delivery numeric, engineering_drawing_ref text
   );
   return inserted;
 end;
