@@ -71,12 +71,39 @@ const listRequests = async (staff, actor, query = {}) => {
   return jsonResponse(200, { success: true, data: data || [] });
 };
 
+const transitionRequest = async (event, staff, actor) => {
+  const body = parseJsonBody(event, 32_000);
+  const action = cleanString(body.action, 30);
+  const permissions = { approve: 'approve', receive: 'receive', dispatch: 'dispatch' };
+  if (!permissions[action]) { const error = new Error('Ação de compras inválida.'); error.statusCode = 422; throw error; }
+  assertProcurementPermission(actor, permissions[action]);
+  const requestId = cleanString(body.request_id, 64);
+  const version = Number(body.version);
+  if (!requestId || !Number.isInteger(version) || version < 1) { const error = new Error('request_id e version são obrigatórios.'); error.statusCode = 422; throw error; }
+  const actorPayload = { actor_user_id: staff.uid, actor_name: staff.name, actor_role: actor.role };
+  const { data, error } = await getSupabaseAdmin().rpc('transition_erp_request', {
+    p_request_id: requestId,
+    p_expected_version: version,
+    p_action: action,
+    p_actor: actorPayload,
+    p_payload: body.payload && typeof body.payload === 'object' ? body.payload : {},
+  });
+  if (error) {
+    if (String(error.code) === 'P0001') error.statusCode = 409;
+    else if (String(error.code) === 'P0003') error.statusCode = 403;
+    else if (String(error.code) === 'P0005' || String(error.code) === 'P0004') error.statusCode = 422;
+    throw error;
+  }
+  return jsonResponse(200, { success: true, data });
+};
+
 export const handler = async event => {
   try {
-    assertHttpMethod(event, ['GET', 'POST']);
+    assertHttpMethod(event, ['GET', 'POST', 'PATCH']);
     const staff = await requireSupabaseUser(event);
     const actor = procurementActorFromStaff(staff);
     if (event.httpMethod === 'POST') return await createRequest(event, staff, actor);
+    if (event.httpMethod === 'PATCH') return await transitionRequest(event, staff, actor);
     return await listRequests(staff, actor, event.queryStringParameters);
   } catch (error) {
     return functionErrorResponse(error);

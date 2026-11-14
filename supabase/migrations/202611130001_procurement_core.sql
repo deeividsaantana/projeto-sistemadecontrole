@@ -125,6 +125,55 @@ $$;
 revoke all on function public.create_erp_request(jsonb, jsonb) from public, anon, authenticated;
 grant execute on function public.create_erp_request(jsonb, jsonb) to service_role;
 
+create or replace function public.transition_erp_request(
+  p_request_id uuid,
+  p_expected_version integer,
+  p_action text,
+  p_actor jsonb,
+  p_payload jsonb default '{}'::jsonb
+)
+returns public.erp_requests
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_row public.erp_requests;
+  before_row public.erp_requests;
+  next_status text;
+begin
+  select * into current_row from public.erp_requests where id = p_request_id for update;
+  if not found then raise exception 'Solicitação não encontrada.' using errcode = 'P0002'; end if;
+  before_row := current_row;
+  if current_row.version <> p_expected_version then raise exception 'Conflito de versão. Recarregue a solicitação.' using errcode = 'P0001'; end if;
+
+  if p_action = 'approve' then
+    if lower(p_actor->>'actor_name') <> 'bruno' or p_actor->>'actor_role' <> 'aprovador' then raise exception 'Aprovação exclusiva de Bruno.' using errcode = 'P0003'; end if;
+    if current_row.status <> 'AGUARDANDO_APROVACAO_BRUNO' then raise exception 'Estado inválido para aprovação.' using errcode = 'P0004'; end if;
+    next_status := 'APROVADO_EM_TRANSITO';
+  elsif p_action = 'dispatch' then
+    if p_actor->>'actor_role' <> 'suprimentos' then raise exception 'Somente Suprimentos despacha.' using errcode = 'P0003'; end if;
+    if current_row.status <> 'APROVADO_EM_TRANSITO' then raise exception 'Estado inválido para despacho.' using errcode = 'P0004'; end if;
+    next_status := 'APROVADO_EM_TRANSITO';
+  elsif p_action = 'receive' then
+    if p_actor->>'actor_role' <> 'recebedor' then raise exception 'Somente Recepção/Campo recebe.' using errcode = 'P0003'; end if;
+    if current_row.status <> 'APROVADO_EM_TRANSITO' then raise exception 'Estado inválido para recebimento.' using errcode = 'P0004'; end if;
+    if coalesce(p_payload->>'invoice_number', '') = '' or coalesce(p_payload->>'destination_type', '') = '' then raise exception 'NF e destino são obrigatórios.' using errcode = 'P0005'; end if;
+    next_status := case when (p_payload->>'quantity_received')::numeric >= current_row.quantity_requested then 'CONCLUIDO_CONCILIADO_NF' else 'APROVADO_EM_TRANSITO' end;
+  else
+    raise exception 'Ação de compras inválida.' using errcode = 'P0006';
+  end if;
+
+  update public.erp_requests set status = next_status, version = version + 1, updated_at = now() where id = current_row.id returning * into current_row;
+  insert into public.erp_audit_trail (organization_id, entity_type, entity_id, action, actor_user_id, actor_name, actor_role, before_state, after_state, metadata)
+  values (current_row.organization_id, 'request', current_row.id, upper(p_action), (p_actor->>'actor_user_id')::uuid, p_actor->>'actor_name', p_actor->>'actor_role', to_jsonb(before_row), to_jsonb(current_row), coalesce(p_payload, '{}'::jsonb));
+  return current_row;
+end;
+$$;
+
+revoke all on function public.transition_erp_request(uuid, integer, text, jsonb, jsonb) from public, anon, authenticated;
+grant execute on function public.transition_erp_request(uuid, integer, text, jsonb, jsonb) to service_role;
+
 create or replace function public.block_erp_audit_mutation()
 returns trigger
 language plpgsql

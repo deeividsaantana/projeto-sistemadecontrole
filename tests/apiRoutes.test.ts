@@ -30,6 +30,18 @@ test('a API de compras usa a função transacional e nunca aceita papel do body'
   assert.doesNotMatch(route, /body\.requester_user_id/);
 });
 
+test('transições de compras usam PATCH, versão esperada e função SQL autorizada', () => {
+  const route = read('api/procurement.js');
+  const migration = read('supabase/migrations/202611130001_procurement_core.sql');
+  assert.match(route, /event\.httpMethod === 'PATCH'/);
+  assert.match(route, /p_expected_version/);
+  assert.match(route, /transition_erp_request/);
+  assert.match(migration, /create or replace function public\.transition_erp_request/is);
+  assert.match(migration, /version <> p_expected_version/is);
+  assert.match(migration, /Aprovação exclusiva de Bruno/is);
+  assert.match(migration, /Somente Recepção\/Campo recebe/is);
+});
+
 test('adaptador Supabase representa documento ausente sem ler id de null', () => {
   const source = read('api/_shared/supabase-admin.js');
   assert.match(source, /id:\s*row\?\.id/);
