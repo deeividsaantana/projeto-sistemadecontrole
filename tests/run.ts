@@ -148,6 +148,7 @@ import './modalViewport.test';
 import './pageHeaderVisibility.test';
 import './initialSeedCleanup.test';
 import './reservaArmazenamento.test';
+import './copiaSoDoQueMudou.test';
 import './publicPresenceTeamNames.test';
 import './editarEquipeFiltro.test';
 import './avancoEstacas.test';

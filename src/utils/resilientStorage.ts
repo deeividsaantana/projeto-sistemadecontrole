@@ -71,6 +71,25 @@ interface MirroredValue {
   emReserva?: boolean;
 }
 
+/** Valor que a cópia de recuperação já tem, guardado só na memória da aba. */
+export interface CopiaFeita {
+  value: string;
+  emReserva: boolean;
+}
+
+/**
+ * Só o que mudou desde a última cópia. A cópia roda a cada 10 s e a cada
+ * lançamento que não coube; antes ela relia, conferia e regravava as ~15 MB
+ * de dados toda vez, mesmo sem nada novo, e a tela travava no celular.
+ */
+export const registrosQueMudaram = (
+  registros: readonly MirroredValue[],
+  jaCopiados: ReadonlyMap<string, CopiaFeita>,
+): MirroredValue[] => registros.filter(registro => {
+  const anterior = jaCopiados.get(registro.key);
+  return !anterior || anterior.value !== registro.value || anterior.emReserva !== Boolean(registro.emReserva);
+});
+
 /** O que a aba guarda em memória quando o armazenamento local enche. */
 export type ReservaArmazenamento = Map<string, string | null>;
 
@@ -84,14 +103,17 @@ export const registrosDoEspelho = (
   ler: (chave: string) => string | null,
   reserva: ReservaArmazenamento | undefined,
   updatedAt: string,
+  jaCopiados?: ReadonlyMap<string, CopiaFeita>,
 ): MirroredValue[] => {
   const chaves = new Set(chavesNoDisco.filter(chave => chave.startsWith(KEY_PREFIX)));
   reserva?.forEach((valor, chave) => { if (valor !== null && chave.startsWith(KEY_PREFIX)) chaves.add(chave); });
   const registros: MirroredValue[] = [];
   chaves.forEach(key => {
     const value = ler(key);
-    // Nunca troca a última cópia íntegra por um JSON quebrado.
-    if (value === null || !isReneaStoredValueValid(key, value)) return;
+    if (value === null) return;
+    // Nunca troca a última cópia íntegra por um JSON quebrado. Valor igual ao
+    // que já foi copiado foi conferido naquela vez: não precisa ler de novo.
+    if (jaCopiados?.get(key)?.value !== value && !isReneaStoredValueValid(key, value)) return;
     registros.push({ key, value, updatedAt, emReserva: Boolean(reserva?.has(key)) });
   });
   return registros;
@@ -182,13 +204,18 @@ export const commitStorageBatch = (
 
 export const isReneaJsonArrayStorageKey = (key: string) => JSON_ARRAY_STORAGE_KEYS.has(key);
 
+/** Se o valor já lido tem o formato que a chave guarda (lista ou objeto). */
+export const reneaParsedValueHasShape = (key: string, parsed: unknown): boolean => {
+  if (isReneaJsonArrayStorageKey(key)) return Array.isArray(parsed);
+  if (JSON_OBJECT_STORAGE_KEYS.has(key)) return Boolean(parsed) && typeof parsed === 'object' && !Array.isArray(parsed);
+  return true;
+};
+
 export const isReneaStoredValueValid = (key: string, value: string | null): boolean => {
   if (value === null) return false;
   if (!isReneaJsonArrayStorageKey(key) && !JSON_OBJECT_STORAGE_KEYS.has(key)) return true;
   try {
-    const parsed = JSON.parse(value);
-    if (isReneaJsonArrayStorageKey(key)) return Array.isArray(parsed);
-    return Boolean(parsed) && typeof parsed === 'object' && !Array.isArray(parsed);
+    return reneaParsedValueHasShape(key, JSON.parse(value));
   } catch {
     return false;
   }
@@ -224,6 +251,9 @@ const requestResult = <T,>(request: IDBRequest<T>) => new Promise<T>((resolve, r
   request.onerror = () => reject(request.error || new Error('Falha no armazenamento de recuperação.'));
 });
 
+const copiasFeitas = new Map<string, CopiaFeita>();
+let conferirReservaAntiga = true;
+
 export const mirrorReneaLocalStorage = async (reserva?: ReservaArmazenamento) => {
   try {
     const database = await openRecoveryDatabase();
@@ -234,20 +264,28 @@ export const mirrorReneaLocalStorage = async (reserva?: ReservaArmazenamento) =>
       const key = localStorage.key(index);
       if (key) chavesNoDisco.push(key);
     }
-    const registros = registrosDoEspelho(chavesNoDisco, chave => localStorage.getItem(chave), reserva, new Date().toISOString());
-    registros.forEach(registro => store.put(registro));
+    const registros = registrosDoEspelho(chavesNoDisco, chave => localStorage.getItem(chave), reserva, new Date().toISOString(), copiasFeitas);
+    const mudaram = registrosQueMudaram(registros, copiasFeitas);
+    mudaram.forEach(registro => store.put(registro));
     // Uma chave que saiu da reserva e foi apagada não pode voltar no próximo F5.
-    const atuais = new Set(registros.map(registro => registro.key));
-    const antigos = await requestResult(store.getAll()) as MirroredValue[];
-    antigos.forEach(registro => {
-      if (registro.emReserva && !atuais.has(registro.key)) store.delete(registro.key);
-    });
+    // Ler a cópia inteira só é preciso na primeira vez e enquanto houver reserva.
+    const usaReserva = registros.some(registro => registro.emReserva);
+    if (conferirReservaAntiga || usaReserva) {
+      const atuais = new Set(registros.map(registro => registro.key));
+      const antigos = await requestResult(store.getAll()) as MirroredValue[];
+      antigos.forEach(registro => {
+        if (registro.emReserva && !atuais.has(registro.key)) store.delete(registro.key);
+      });
+    }
     await new Promise<void>((resolve, reject) => {
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error || new Error('Falha ao concluir a cópia local.'));
       transaction.onabort = () => reject(transaction.error || new Error('A cópia local foi interrompida.'));
     });
     database.close();
+    mudaram.forEach(registro => copiasFeitas.set(registro.key, { value: registro.value, emReserva: Boolean(registro.emReserva) }));
+    // Na próxima, só confere a reserva antiga se ainda havia reserva agora.
+    conferirReservaAntiga = usaReserva;
   } catch (error) {
     console.warn('A cópia de recuperação local não pôde ser atualizada:', error);
   }
