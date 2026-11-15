@@ -24,3 +24,7 @@ services:
         sync: false
       - key: VITE_SUPABASE_ORGANIZATION_ID
         value: renea
+      # Link de compartilhamento da planilha de compras (OneDrive/SharePoint).
+      # Sem ele a sincronização de 3 em 3 horas não liga.
+      - key: PROCUREMENT_SPREADSHEET_URL
+        sync: false
