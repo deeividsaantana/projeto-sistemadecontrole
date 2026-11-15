@@ -11,7 +11,7 @@ import {
   styleCorporateWorksheet,
 } from '../../utils/excelCorporate';
 import { formatarData } from '../../utils/formato';
-import { ROTULO_SITUACAO, type ResumoAtividade } from '../../utils/programacao';
+import { ROTULO_SITUACAO, avancoGeral, avancoPorFrente, curvaS, previstoGeral, type ResumoAtividade } from '../../utils/programacao';
 import { OBRA } from '../../config/obra';
 
 const arredondar = (valor: number) => Math.round(valor * 10) / 10;
@@ -86,4 +86,100 @@ export async function baixarPdfProgramacao(resumos: readonly ResumoAtividade[], 
     }),
     fileName: `programacao-terraplanagem-${dia}.pdf`,
   });
+}
+
+/** Linha do relatório de avanço: previsto x feito em percentual. */
+const previstoDa = (resumo: ResumoAtividade) =>
+  resumo.item.quantidadePlanejada > 0 ? Math.min(100, (resumo.previsto / resumo.item.quantidadePlanejada) * 100) : 0;
+const pct = (valor: number) => `${Math.round(valor)}%`;
+const pontos = (valor: number) => `${valor > 0 ? '+' : ''}${Math.round(valor)} pts`;
+
+const resumoDoAvanco = (resumos: readonly ResumoAtividade[]) => {
+  const feito = avancoGeral(resumos);
+  const previsto = previstoGeral(resumos);
+  return [
+    { label: 'Feito', value: pct(feito) },
+    { label: 'Previsto até ontem', value: pct(previsto) },
+    { label: 'Desvio', value: pontos(feito - previsto) },
+    { label: 'Atrasadas', value: resumos.filter(resumo => resumo.situacao === 'atrasada').length },
+  ];
+};
+
+const COLUNAS_FRENTE = [['frente', 'Frente'], ['atividades', 'Atividades'], ['atrasadas', 'Atrasadas'], ['concluidas', 'Concluídas'], ['previsto', 'Previsto'], ['feito', 'Feito'], ['desvio', 'Desvio']] as const;
+const linhasPorFrente = (resumos: readonly ResumoAtividade[]) => avancoPorFrente(resumos).map(frente => ({
+  frente: frente.frente,
+  atividades: frente.atividades,
+  atrasadas: frente.atrasadas,
+  concluidas: frente.concluidas,
+  previsto: pct(frente.previsto),
+  feito: pct(frente.realizado),
+  desvio: pontos(frente.realizado - frente.previsto),
+}));
+
+const COLUNAS_ATIVIDADE = [['servico', 'Serviço'], ['responsavel', 'Encarregado'], ['periodo', 'Período'], ['quantidade', 'Total'], ['realizado', 'Feito'], ['previsto', 'Previsto'], ['avanco', 'Avanço'], ['situacao', 'Situação']] as const;
+const linhaAvancoAtividade = (resumo: ResumoAtividade) => ({
+  frente: resumo.item.frente || 'Sem frente',
+  servico: resumo.item.servicoDescricao,
+  responsavel: resumo.item.responsavel || resumo.item.equipeNome || '',
+  periodo: `${formatarData(resumo.item.dataInicio)} a ${formatarData(resumo.item.dataFim)}`,
+  quantidade: `${arredondar(resumo.item.quantidadePlanejada)} ${resumo.item.unidade}`,
+  realizado: `${arredondar(resumo.realizado)} ${resumo.item.unidade}`,
+  previsto: pct(previstoDa(resumo)),
+  avanco: pct(resumo.percentual),
+  situacao: ROTULO_SITUACAO[resumo.situacao],
+});
+
+/** Relatório por avanço em PDF: resumo, tabela por frente e as atividades de cada frente. */
+export async function baixarPdfAvanco(resumos: readonly ResumoAtividade[], filtros: string[], emitidoPor: string, dia: string) {
+  const { generateUniversalPdfReport } = await import('../../utils/universalPdfReport');
+  const atividades = resumos.filter(resumo => resumo.situacao !== 'cancelada').map(linhaAvancoAtividade);
+  const frentes = [...new Set(atividades.map(linha => linha.frente))].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
+  await generateUniversalPdfReport({
+    title: 'Relatório de avanço físico',
+    subtitle: 'Terraplanagem: previsto x feito por frente e atividade',
+    work: OBRA.nome,
+    period: `Emitido em ${formatarData(dia)} (previsto até o dia anterior)`,
+    issuedBy: emitidoPor,
+    orientation: 'landscape',
+    filters: filtros,
+    summary: resumoDoAvanco(resumos),
+    columns: COLUNAS_FRENTE.map(([dataKey, header]) => ({ dataKey, header })),
+    rows: linhasPorFrente(resumos),
+    sections: frentes.map(frente => ({
+      title: frente,
+      columns: COLUNAS_ATIVIDADE.map(([dataKey, header]) => ({ dataKey, header })),
+      rows: atividades.filter(linha => linha.frente === frente),
+    })),
+    fileName: `avanco-terraplanagem-${dia}.pdf`,
+  });
+}
+
+/** Relatório por avanço em Excel: por frente, por atividade e a curva S dia a dia. */
+export async function baixarExcelAvanco(resumos: readonly ResumoAtividade[], producao: readonly RegistroProducao[], filtros: string[], dia: string) {
+  const livro = await createCorporateWorkbook();
+  configureCorporateWorkbook(livro, 'Relatório de avanço físico');
+
+  const porFrente = livro.addWorksheet('Avanço por frente');
+  porFrente.addRow(['']);
+  porFrente.addRow(['']);
+  porFrente.addRow(COLUNAS_FRENTE.map(([, titulo]) => titulo));
+  const frentes = linhasPorFrente(resumos);
+  frentes.forEach(linha => porFrente.addRow(COLUNAS_FRENTE.map(([chave]) => linha[chave])));
+  const geral = resumoDoAvanco(resumos);
+  porFrente.addRow(['Total', resumos.filter(r => r.situacao !== 'cancelada').length, geral[3].value, '', geral[1].value, geral[0].value, geral[2].value]);
+  styleCorporateWorksheet(porFrente, { title: `Avanço físico · ${OBRA.nome}`, filters: filtros, headerRow: 3, lastColumn: COLUNAS_FRENTE.length, freezeRows: 3, recordCount: frentes.length, autoFit: true });
+
+  const porAtividade = livro.addWorksheet('Avanço por atividade');
+  porAtividade.addRow(['Frente', ...COLUNAS_ATIVIDADE.map(([, titulo]) => titulo)]);
+  const atividades = resumos.filter(resumo => resumo.situacao !== 'cancelada').map(linhaAvancoAtividade);
+  atividades.forEach(linha => porAtividade.addRow([linha.frente, ...COLUNAS_ATIVIDADE.map(([chave]) => linha[chave])]));
+  styleCorporateWorksheet(porAtividade, { title: 'Avanço por atividade', headerRow: 1, lastColumn: COLUNAS_ATIVIDADE.length + 1, freezeRows: 1, recordCount: atividades.length, autoFit: true });
+
+  const curva = livro.addWorksheet('Curva S');
+  curva.addRow(['Dia', 'Previsto acumulado (%)', 'Feito acumulado (%)']);
+  const pontosCurva = curvaS(resumos, producao, dia);
+  pontosCurva.forEach(ponto => curva.addRow([formatarData(ponto.dia), arredondar(ponto.previsto), ponto.realizado === undefined ? '' : arredondar(ponto.realizado)]));
+  styleCorporateWorksheet(curva, { title: 'Curva S', headerRow: 1, lastColumn: 3, freezeRows: 1, recordCount: pontosCurva.length, autoFit: true });
+
+  await downloadCorporateWorkbook(livro, `avanco-terraplanagem-${dia}.xlsx`);
 }

@@ -157,6 +157,17 @@ export const avancoGeral = (resumos: readonly ResumoAtividade[]) => {
   return validos.reduce((total, resumo) => total + resumo.dias * Math.min(100, resumo.percentual), 0) / peso;
 };
 
+/** Quanto já deveria estar feito até ontem (%), com o mesmo peso por dias do avanço geral. */
+export const previstoGeral = (resumos: readonly ResumoAtividade[]) => {
+  const validos = resumos.filter(resumo => resumo.situacao !== 'cancelada');
+  const peso = validos.reduce((total, resumo) => total + resumo.dias, 0);
+  if (!peso) return 0;
+  return validos.reduce((total, resumo) => {
+    const quantidade = Number(resumo.item.quantidadePlanejada) || 0;
+    return total + resumo.dias * (quantidade > 0 ? Math.min(1, resumo.previsto / quantidade) : 0);
+  }, 0) / peso * 100;
+};
+
 const numeroCurto = (valor: number) => valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
 const diaCurto = (dia: string) => `${dia.slice(8, 10)}/${dia.slice(5, 7)}`;
 const SEMANA = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
@@ -179,4 +190,97 @@ export const textoDoDia = (resumos: readonly ResumoAtividade[], dia: string) => 
     }),
   ].join('\n'));
   return [titulo, ...blocos].join('\n');
+};
+
+export interface PontoCurva {
+  dia: string;
+  /** Percentual previsto acumulado (0 a 100). */
+  previsto: number;
+  /** Percentual realizado acumulado; ausente nos dias depois de hoje. */
+  realizado?: number;
+}
+
+/**
+ * Curva S do avanço físico, como na planilha: cada atividade pesa pelos dias
+ * de trabalho dela. O previsto anda dia a dia pelo cronograma; o realizado
+ * soma a produção lançada até o dia (só até hoje: o futuro não tem realizado).
+ */
+export const curvaS = (
+  resumos: readonly ResumoAtividade[],
+  producao: readonly RegistroProducao[],
+  hoje: string,
+): PontoCurva[] => {
+  const validos = resumos.filter(resumo => resumo.situacao !== 'cancelada' && resumo.item.quantidadePlanejada > 0);
+  if (!validos.length) return [];
+  const inicio = validos.reduce((menor, { item }) => (item.dataInicio < menor ? item.dataInicio : menor), validos[0].item.dataInicio);
+  const fim = validos.reduce((maior, { item }) => (item.dataFim > maior ? item.dataFim : maior), validos[0].item.dataFim);
+  const peso = validos.reduce((total, resumo) => total + resumo.dias, 0);
+  const porAtividade = validos.map(resumo => ({
+    resumo,
+    registros: producaoDaAtividade(resumo.item, producao).map(registro => ({ data: registro.data, quantidade: Number(registro.quantidade) || 0 })),
+  }));
+  const pontos: PontoCurva[] = [];
+  for (let dia = inicio; dia <= fim && pontos.length < 400; dia = somarDias(dia, 1)) {
+    let previsto = 0;
+    let realizado = 0;
+    for (const { resumo, registros } of porAtividade) {
+      const { item, dias } = resumo;
+      const ate = dia < item.dataFim ? dia : item.dataFim;
+      const feitosNoPlano = ate < item.dataInicio ? 0 : diasDeTrabalho(item.dataInicio, ate);
+      previsto += dias * Math.min(1, feitosNoPlano / dias);
+      const feito = registros.filter(registro => registro.data <= dia).reduce((total, registro) => total + registro.quantidade, 0);
+      realizado += dias * Math.min(1, feito / item.quantidadePlanejada);
+    }
+    pontos.push({ dia, previsto: (previsto / peso) * 100, realizado: dia <= hoje ? (realizado / peso) * 100 : undefined });
+  }
+  return pontos;
+};
+
+export interface AvancoDaFrente {
+  frente: string;
+  atividades: number;
+  atrasadas: number;
+  concluidas: number;
+  /** Percentual previsto até ontem e realizado, ponderados pelos dias. */
+  previsto: number;
+  realizado: number;
+}
+
+/** Avanço de cada frente, para o gráfico de barras e o relatório por avanço. */
+export const avancoPorFrente = (resumos: readonly ResumoAtividade[]): AvancoDaFrente[] => {
+  const grupos = new Map<string, ResumoAtividade[]>();
+  for (const resumo of resumos) {
+    if (resumo.situacao === 'cancelada') continue;
+    const frente = resumo.item.frente || 'Sem frente';
+    grupos.set(frente, [...(grupos.get(frente) ?? []), resumo]);
+  }
+  return [...grupos.entries()]
+    .map(([frente, lista]) => ({
+      frente,
+      atividades: lista.length,
+      atrasadas: lista.filter(resumo => resumo.situacao === 'atrasada').length,
+      concluidas: lista.filter(resumo => resumo.situacao === 'concluida').length,
+      previsto: previstoGeral(lista),
+      realizado: avancoGeral(lista),
+    }))
+    .sort((a, b) => a.frente.localeCompare(b.frente, 'pt-BR', { numeric: true }));
+};
+
+/** Produção lançada por dia, em uma unidade (metros por padrão), nos últimos `dias` dias até hoje. */
+export const producaoPorDia = (
+  resumos: readonly ResumoAtividade[],
+  producao: readonly RegistroProducao[],
+  hoje: string,
+  dias = 14,
+  unidade = 'M',
+) => {
+  const ids = new Set(resumos.filter(resumo => resumo.item.unidade === unidade).map(resumo => resumo.item.id));
+  const doGrupo = resumos.filter(resumo => ids.has(resumo.item.id));
+  return Array.from({ length: dias }, (_, indice) => somarDias(hoje, indice - dias + 1)).map(dia => ({
+    dia,
+    feito: doGrupo.reduce((total, resumo) => total + producaoDaAtividade(resumo.item, producao)
+      .filter(registro => registro.data === dia)
+      .reduce((soma, registro) => soma + (Number(registro.quantidade) || 0), 0), 0),
+    meta: ehDomingo(dia) ? 0 : doGrupo.filter(resumo => trabalhaNoDia(resumo.item, dia)).reduce((total, resumo) => total + resumo.meta, 0),
+  }));
 };
