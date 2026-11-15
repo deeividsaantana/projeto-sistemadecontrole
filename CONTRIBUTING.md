@@ -65,6 +65,7 @@ prints, tokens ou `.env`. O `.gitignore` já barra esses itens, e o teste
 
 - [ ] **Pergunta obrigatória:** uma pessoa cansada e sem facilidade com aplicativos consegue cadastrar, lançar e consultar nesta tela sem travar?
 - [ ] A aba usa o molde `TelaCheia` (`src/shared/ui/TelaCheia.tsx`): 100% da largura, toda a altura abaixo da barra do topo, cabeçalho e filtros fixos, área de dados que rola por dentro e rodapé fixo com total e paginação. Sem botão de "tela cheia" e sem `max-w-[...]` no contêiner da aba. No celular a página rola normalmente, na mesma ordem.
+- [ ] Se a aba lança alguma coisa, segue o padrão de lançamento do Combustível: o lançamento ocupa a área inteira da aba (`Modal` com `lancamento` ou folha marcada com `data-lancamento`), **N** abre um novo (`useAtalhoNovo`), **Ctrl+S** salva, **Esc** fecha, e a aba tem a subaba **Relatórios**.
 - [ ] Subtelas só com `AbasDaTela` (`src/shared/ui/AbasDaTela.tsx`) no `abas` do `PageHeader`; com muitas subtelas, abas agrupadas. Nada de menu lateral interno ou chips no lugar de abas.
 - [ ] O visual bate com o Painel de Controle: `PageHeader` com título curto e a ação principal à direita, cartões `rounded-2xl border-slate-200`, paleta `#176b4d`, `#f26a2e` e `#718087` (como cor de letra, `#5b6870` no lugar do cinza e `#c2410c` no lugar do laranja, que dão 4,5:1), e foco com borda sólida verde-escura de 2 px (`--renea-focus`). Letra nunca menor que 12 px. Detalhes em `docs/superpowers/CHECKLIST_REDESIGN_ABAS.md`.
 - [ ] Entrada com GSAP pelos helpers comuns (`RouteMotion`, `useEntradaDeLista`), respeitando `prefers-reduced-motion`.
@@ -100,6 +101,7 @@ Parte das regras acima é conferida pela máquina, e o PR não fica verde sem el
 | Trava | Onde roda | O que reprova |
 | --- | --- | --- |
 | `tests/padraoAbas.test.ts` | `npm run verify` e CI | Aba sem `PageHeader`, sem GSAP, sem `prefers-reduced-motion` ou com cor hex fora da paleta; aba do menu sem tela no `App.tsx`; aba principal sem permissão; tela `*Tab.tsx` que nenhum arquivo abre. |
+| `tests/padraoLancamento.test.ts` | `npm run verify` e CI | Aba que lança sem tela cheia, sem N, sem Ctrl+S ou sem a subaba Relatórios. |
 | `tests/repoHygiene.test.ts` | `npm run verify` e CI | Zip, log, `tmp/`, `artifacts/`, `netlify/` ou `.env` versionados; teste fora de `tests/run.ts`. |
 | `scripts/check-pr-checklist.mjs` | CI (`Checklist do PR`) | PR sem a seção `## Checklist` toda marcada; PR que cria ou altera tela sem a seção `### Se mexeu em tela` toda marcada. |
 | `scripts/check-bundle-size.mjs` | `npm run verify` e CI | Carregamento inicial acima de 600 kB; Excel, PDF, canvas, Storage ou cargas de planilha no carregamento inicial; pedaço de uma aba acima de 300 kB. |
