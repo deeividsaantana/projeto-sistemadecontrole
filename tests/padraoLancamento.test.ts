@@ -29,8 +29,6 @@ const ABAS_COM_LANCAMENTO: Record<string, readonly string[]> = {
 };
 
 const PENDENCIAS: Record<string, readonly Regra[]> = {
-  programacao: ['atalhoNovo', 'relatorios'],
-  pluviometro: ['telaCheia', 'relatorios'],
   presenca: ['telaCheia', 'atalhoNovo', 'ctrlS'],
   contratacao: ['telaCheia', 'atalhoNovo', 'ctrlS', 'relatorios'],
 };
