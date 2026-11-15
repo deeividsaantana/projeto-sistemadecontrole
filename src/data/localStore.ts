@@ -1,7 +1,7 @@
 import {
   commitStorageBatch,
-  isReneaStoredValueValid,
   parseReneaStoredJson,
+  reneaParsedValueHasShape,
   type StorageBatchEntry,
 } from '../utils/resilientStorage';
 
@@ -24,12 +24,10 @@ export const writeStorageValue = (
 
 export const parseStoredJson = <T,>(rawValue: string | null, storageKey: string, fallback: T): T => {
   if (!rawValue) return fallback;
-  if (!isReneaStoredValueValid(storageKey, rawValue)) {
-    console.error(`O dado local ${storageKey} esta corrompido e foi preservado para recuperacao.`);
-    return fallback;
-  }
+  // Uma leitura só: antes o texto era lido duas vezes (conferir e usar), e as
+  // tabelas grandes passam de 5 MB.
   const parsed = parseReneaStoredJson<T | null>(rawValue, null);
-  if (parsed !== null) return parsed;
+  if (parsed !== null && reneaParsedValueHasShape(storageKey, parsed)) return parsed;
   console.error(`O dado local ${storageKey} esta corrompido e foi preservado para recuperacao.`);
   return fallback;
 };
