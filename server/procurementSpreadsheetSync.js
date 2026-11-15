@@ -17,25 +17,48 @@ const rowsFrom = (sheet, headers, firstDataRow = 3) => {
   }).filter(row => Object.values(row).some(value => text(value)));
 };
 
+// Cabeçalho tolerante: ignora maiúsculas, acentos, espaços repetidos e "N°"/"Nº".
+const chave = value => text(value).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[°º]/g, 'o').replace(/\s+/g, ' ').toLowerCase();
+const campo = (row, ...nomes) => {
+  const alvo = nomes.map(chave);
+  const encontrado = Object.keys(row).find(nome => alvo.includes(chave(nome)));
+  return encontrado === undefined ? null : row[encontrado];
+};
+// Todas as abas: linha 1 título, linha 2 cabeçalho, dados a partir da linha 3.
+const COLUNAS = {
+  Prioridade: {
+    prioridade: ['Prioridade'], data: ['Data'], pedido: ['N° do pedido', 'Pedido'], solicitante: ['Solicitante'],
+    item: ['Item'], unidade: ['Unidade'], quantidade: ['Quantidade'], fim: ['Previsão de entrega', 'Previsão'],
+    observacao: ['Observação'], status: ['Situação', 'Status'],
+  },
+  Substituição: {
+    data: ['Data'], solicitante: ['Solicitante'], quantidade: ['Quantidade'], unidade: ['Unidade'],
+    produto: ['Produto'], frente: ['Frente'], trocado: ['Trocado', 'Trocado em'],
+  },
+};
+const DATAS = new Set(['data', 'fim', 'trocado']);
+const porCabecalho = (linhas, colunas) => linhas.map(row => Object.fromEntries(Object.entries(colunas).map(([nome, cabecalhos]) => {
+  const valor = campo(row, ...cabecalhos);
+  return [nome, valor instanceof Date && DATAS.has(nome) ? isoDate(valor) : valor];
+})));
+
 export const parseProcurementWorkbook = async buffer => {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
   const sheets = Object.fromEntries(workbook.worksheets.map(sheet => {
     const name = sheet.name.trim();
-    if (name === 'Prioridade') return [name, rowsFrom(sheet, ['prioridade', 'data', 'pedido', 'solicitante', 'item', 'unidade', 'quantidade', 'inicio', 'fim', 'observacao', 'status'], 2)];
-    if (name === 'Substituição') return [name, rowsFrom(sheet, ['data', 'solicitante', 'quantidade', 'unidade', 'produto', 'frente', 'trocado'], 3)];
-    return [name, rowsFrom(sheet)];
+    return [name, COLUNAS[name] ? porCabecalho(rowsFrom(sheet), COLUNAS[name]) : rowsFrom(sheet)];
   }));
   const requests = (sheets['Solicitações'] || []).map(row => ({
     source: 'Solicitações',
-    request_date: isoDate(row['Data']),
-    source_request_number: text(row['N° do pedido']),
-    requester_name: text(row['Solicitante']),
-    item_description: text(row['Item']),
-    unit: text(row['Unidade']),
-    quantity_requested: number(row['Quantidade']),
-    source_purchase_order: text(row['Solicitação de compra SC  (N°)']),
-    delivery_deadline: isoDate(row['previsão de entrega']),
+    request_date: isoDate(campo(row, 'Data')),
+    source_request_number: text(campo(row, 'N° do pedido', 'Pedido')),
+    requester_name: text(campo(row, 'Solicitante')),
+    item_description: text(campo(row, 'Item')),
+    unit: text(campo(row, 'Unidade')),
+    quantity_requested: number(campo(row, 'Quantidade')),
+    source_purchase_order: text(campo(row, 'Solicitação de compra SC (N°)', 'SC')),
+    delivery_deadline: isoDate(campo(row, 'previsão de entrega')),
   }));
   return {
     sheets: Object.keys(sheets),
@@ -56,8 +79,21 @@ export const linkDeCompartilhamentoOneDrive = url => `https://api.onedrive.com/v
 // .xlsx é um zip: começa com "PK". O OneDrive às vezes manda como application/octet-stream.
 const ehPlanilha = (contentType, bytes) => contentType.includes('spreadsheetml.sheet') || (bytes[0] === 0x50 && bytes[1] === 0x4b);
 
+// Google Planilhas: link de compartilhamento → exportação oficial em .xlsx.
+export const linkDeExportacaoGoogle = url => {
+  const id = /docs\.google\.com\/spreadsheets\/d\/([\w-]+)/.exec(url)?.[1];
+  return id ? `https://docs.google.com/spreadsheets/d/${id}/export?format=xlsx` : null;
+};
+
 export const downloadProcurementWorkbook = async (url = process.env.PROCUREMENT_SPREADSHEET_URL, fetcher = fetch) => {
   if (!url) throw new Error('PROCUREMENT_SPREADSHEET_URL não configurada.');
+  const google = linkDeExportacaoGoogle(url);
+  if (google) {
+    const response = await fetcher(google, { headers: { 'User-Agent': 'RENEA-ERP/1.0' }, redirect: 'follow' });
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (response.ok && ehPlanilha(response.headers.get('content-type') || '', bytes)) return bytes;
+    throw new Error(`Google Planilhas não entregou a planilha (HTTP ${response.status}). Confira se o compartilhamento está como "Qualquer pessoa com o link: Leitor".`);
+  }
   const pedir = endereco => fetcher(endereco, { headers: { 'User-Agent': 'RENEA-ERP/1.0' }, redirect: 'follow' });
   const tentativas = [
     () => comDownload(url),
