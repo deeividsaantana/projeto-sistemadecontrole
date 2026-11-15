@@ -34,7 +34,7 @@ begin
       jsonb_build_object('id', 'exc-ab-0', 'tabela', 'abastecimentos', 'registroId', 'ab-0', 'excluidoEm', '2026-11-01T00:00:00.000Z', 'atualizadoEm', '2026-11-01T00:00:00.000Z'))
   ));
 
-  select payload, record_count into v_payload, v_count from public.erp_snapshots where organization_id = v_org;
+  select coalesce(public.erp_montar_bloco(organization_id, payload), payload), record_count into v_payload, v_count from public.erp_snapshots where organization_id = v_org;
   if v_payload ?| array['materiaisCadastro', 'materiaisMovimentos', 'materiaisPrevistos', 'ticketsJazida'] then
     raise exception 'cenário 1: coleção removida ficou no bloco';
   end if;
@@ -55,7 +55,7 @@ begin
     'materiaisMovimentos', jsonb_build_object('upsert', jsonb_build_array(
       jsonb_build_object('id', 'mov-1', 'quantidade', 5, 'atualizadoEm', '2026-11-10T11:00:00.000Z'))),
     'abastecimentos', jsonb_build_object('upsert', jsonb_build_array(jsonb_build_object('id', 'ab-2', 'litros', 20)))));
-  select payload into v_payload from public.erp_snapshots where organization_id = v_org;
+  select public.erp_montar_bloco(organization_id, payload) into v_payload from public.erp_snapshots where organization_id = v_org;
   if v_payload ? 'materiaisMovimentos' then raise exception 'cenário 2: movimento voltou ao bloco'; end if;
   if jsonb_array_length(v_payload -> 'abastecimentos') <> 2 then raise exception 'cenário 2: abastecimento não entrou'; end if;
   select registro into v_registro from public.erp_colecoes_removidas where organization_id = v_org and colecao = 'materiaisMovimentos' and id = 'mov-1';
@@ -75,7 +75,7 @@ begin
     || jsonb_build_object('ticketsJazida', jsonb_build_array(jsonb_build_object('id', 'tk-2', 'placa', 'XYZ')))
     || jsonb_build_object('exclusoes', (v_payload -> 'exclusoes') || jsonb_build_array(
       jsonb_build_object('id', 'exc-tk-9', 'tabela', 'ticketsJazida', 'registroId', 'tk-9', 'excluidoEm', '2026-11-02T00:00:00.000Z'))));
-  select payload, record_count into v_payload, v_count from public.erp_snapshots where organization_id = v_org;
+  select coalesce(public.erp_montar_bloco(organization_id, payload), payload), record_count into v_payload, v_count from public.erp_snapshots where organization_id = v_org;
   if v_payload ? 'ticketsJazida' then raise exception 'cenário 4: tickets voltaram ao bloco'; end if;
   if jsonb_array_length(v_payload -> 'exclusoes') <> 1 then raise exception 'cenário 4: marca de jazida ficou no bloco'; end if;
   if v_count <> 3 then raise exception 'cenário 4: contagem % (esperado 3)', v_count; end if;

@@ -13,6 +13,28 @@ select set_config('request.jwt.claim.sub', :'usuario', true);
 select set_config('t.org_a', :'org_a', true);
 select set_config('t.org_b', :'org_b', true);
 
+-- A partir de 202611150003 os lançamentos moram em erp_registros: a
+-- organização B fica no bloco (gatilho desligado só nas operações dela) e a A
+-- é lida já montada.
+create function pg_temp.gatilho_separa(p_ligado boolean) returns void language plpgsql as $f$
+begin
+  if exists (select 1 from pg_trigger where tgname = 'erp_snapshots_zz_separa_colecoes') then
+    execute format('alter table public.erp_snapshots %s trigger erp_snapshots_zz_separa_colecoes', case when p_ligado then 'enable' else 'disable' end);
+  end if;
+end;
+$f$;
+
+create function pg_temp.bloco(p_org text) returns jsonb language plpgsql as $f$
+declare v jsonb;
+begin
+  select payload into v from public.erp_snapshots where organization_id = p_org;
+  if to_regprocedure('public.erp_montar_bloco(text,jsonb)') is not null then
+    execute 'select public.erp_montar_bloco($1, $2)' into v using p_org, v;
+  end if;
+  return v;
+end;
+$f$;
+
 do $$
 declare
   v_a text := current_setting('t.org_a');
@@ -51,15 +73,19 @@ declare
   v_passo integer := 0;
 begin
   insert into public.erp_snapshots (organization_id, version, updated_at, updated_by, record_count, payload)
-  values
-    (v_a, gen_random_uuid(), clock_timestamp(), auth.uid(), 9, v_bloco),
-    (v_b, gen_random_uuid(), clock_timestamp(), auth.uid(), 9, v_bloco);
+  values (v_a, gen_random_uuid(), clock_timestamp(), auth.uid(), 9, v_bloco);
+  perform pg_temp.gatilho_separa(false);
+  insert into public.erp_snapshots (organization_id, version, updated_at, updated_by, record_count, payload)
+  values (v_b, gen_random_uuid(), clock_timestamp(), auth.uid(), 9, v_bloco);
+  perform pg_temp.gatilho_separa(true);
 
   foreach v_m in array v_mudancas loop
     v_passo := v_passo + 1;
     select * into v_ra from public.apply_erp_snapshot_changes(v_a, v_m);
+    perform pg_temp.gatilho_separa(false);
     select * into v_rb from public.apply_erp_snapshot_changes_antiga(v_b, v_m);
-    select payload, record_count into v_pa, v_ca from public.erp_snapshots where organization_id = v_a;
+    perform pg_temp.gatilho_separa(true);
+    select pg_temp.bloco(v_a), record_count into v_pa, v_ca from public.erp_snapshots where organization_id = v_a;
     select payload, record_count into v_pb, v_cb from public.erp_snapshots where organization_id = v_b;
     -- Entre registros novos da mesma chamada, a antiga não tinha ordem certa
     -- (saíam na ordem da junção). Compara cada tabela como conjunto.

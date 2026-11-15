@@ -57,16 +57,45 @@ export const getSupabaseConnectionStatus = async (): Promise<CloudConnectionStat
   };
 };
 
-export const downloadSupabaseBackup = async (): Promise<CloudDownloadResult> => {
+const funcaoAusente = (error: unknown) => {
+  const texto = `${(error as { code?: unknown })?.code ?? ''} ${(error as { message?: unknown })?.message ?? ''}`;
+  return texto.includes('PGRST202') || texto.includes('apply_erp_snapshot_changes') || texto.includes('CLOUD_SNAPSHOT_MISSING');
+};
+
+// Fica falso na sessão se o banco ainda não tiver ler_erp_snapshot: aí lê o
+// bloco direto, como antes.
+let leituraMontadaDisponivel = true;
+
+/**
+ * O bloco da obra com os lançamentos que moram em linhas próprias
+ * (erp_registros, migração 202611150003) já montados de volta, no mesmo
+ * formato de sempre.
+ */
+const lerBlocoDaNuvem = async (organizationId: string): Promise<SnapshotRow | null> => {
   const client = getSupabaseClient();
-  const organizationId = resolveSupabaseClientConfig().organizationId;
+  if (leituraMontadaDisponivel) {
+    const { data, error } = await client.rpc('ler_erp_snapshot', { p_organization_id: organizationId });
+    if (!error) {
+      const linha = (Array.isArray(data) ? data[0] : data) as SnapshotRow | undefined;
+      return linha ?? null;
+    }
+    // Só a falta da função (banco ainda sem a migração) volta ao jeito antigo.
+    if (String((error as { code?: unknown }).code ?? '') !== 'PGRST202') throw normalizeSupabaseError(error);
+    leituraMontadaDisponivel = false;
+  }
   const { data, error } = await client
     .from('erp_snapshots')
     .select('payload, updated_at, record_count')
     .eq('organization_id', organizationId)
     .maybeSingle<SnapshotRow>();
-
   if (error) throw normalizeSupabaseError(error);
+  return data;
+};
+
+export const downloadSupabaseBackup = async (): Promise<CloudDownloadResult> => {
+  const organizationId = resolveSupabaseClientConfig().organizationId;
+  const data = await lerBlocoDaNuvem(organizationId);
+
   if (!data) return { data: null, source: 'none', updatedAt: '', totalRecords: 0 };
   // O próximo envio compara com esta versão e manda só o que mudou.
   void guardarAssinaturas(organizationId, capturarAssinaturas(data.payload, data.updated_at));
@@ -107,10 +136,6 @@ const publishSnapshot = async (
 // mudança: aí todo envio vai inteiro, como antes.
 let envioPorMudancaDisponivel = true;
 
-const funcaoAusente = (error: unknown) => {
-  const texto = `${(error as { code?: unknown })?.code ?? ''} ${(error as { message?: unknown })?.message ?? ''}`;
-  return texto.includes('PGRST202') || texto.includes('apply_erp_snapshot_changes') || texto.includes('CLOUD_SNAPSHOT_MISSING');
-};
 
 const mesmaVersao = (a: string, b: string) => Boolean(a) && Boolean(b) && (a === b || Date.parse(a) === Date.parse(b));
 
