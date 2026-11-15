@@ -167,12 +167,27 @@ export default function FormCravacao({ hoje, controle, obras, responsavel, pedid
 
   const lotes = controle.lotes;
 
+  // Padrão de lançamento (15/11/2026): Ctrl+S salva, Esc fecha.
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    const teclar = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        formRef.current?.requestSubmit();
+      } else if (event.key === 'Escape' && !event.defaultPrevented && !document.querySelector('[role="dialog"], [role="alertdialog"]')) {
+        onCancelar();
+      }
+    };
+    document.addEventListener('keydown', teclar);
+    return () => document.removeEventListener('keydown', teclar);
+  }, [onCancelar]);
+
   const nomeNaConferencia = editando ? nomeDaEstaca(editando) : estacaId === NOVA ? nome.trim() : nome;
   const estacaOk = Boolean(frenteEscolhida && nomeNaConferencia);
   const medidasOk = numeros.comprimento > 0 && numeros.cravado > 0 && numeros.cravado + numeros.perda <= numeros.comprimento + 0.001;
 
   return (
-    <form data-estacas-reveal onSubmit={event => salvar(event, !editando)} className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_21rem]" aria-label={editando ? 'Corrigir cravação' : 'Lançar cravação'} noValidate>
+    <form ref={formRef} data-estacas-reveal data-lancamento="" onSubmit={event => salvar(event, !editando)} className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_21rem]" aria-label={editando ? 'Corrigir cravação' : 'Lançar cravação'} noValidate>
       <div className="grid min-w-0 gap-4">
         <Etapa numero={1} titulo={editando ? `Corrigindo ${nomeDaEstaca(editando)}` : 'Qual estaca foi cravada?'} ajuda="A próxima estaca da frente já vem marcada." feita={estacaOk}>
           <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
@@ -248,7 +263,7 @@ export default function FormCravacao({ hoje, controle, obras, responsavel, pedid
         </Etapa>
       </div>
 
-      <Conferencia subtitulo={editando ? 'Correção de uma estaca já cravada.' : 'Confira antes de salvar.'}>
+      <Conferencia subtitulo={editando ? 'Correção de uma estaca já cravada.' : 'Confira antes de salvar. Ctrl+S salva, Esc fecha.'}>
         <dl className="divide-y divide-slate-100">
           <Conferido rotulo="Frente" ok={Boolean(frenteEscolhida)} valor={frenteEscolhida || 'falta'} />
           <Conferido rotulo="Estaca" ok={Boolean(nomeNaConferencia)} valor={nomeNaConferencia || 'falta'} />

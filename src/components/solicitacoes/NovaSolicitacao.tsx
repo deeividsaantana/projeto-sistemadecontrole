@@ -4,7 +4,7 @@
  * enquanto ela digita, antes de enviar.
  */
 import { useEffect, useState, type RefObject } from 'react';
-import { Plus, Send, Trash2 } from 'lucide-react';
+import { Plus, Send, Trash2, X } from 'lucide-react';
 import { Campo, Conferencia, Conferido, Etapa } from '../../shared/ui/Lancamento';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO } from '../cadastros/estilos';
 import { UNIDADES, problemasDoItem, problemasPorCampo, type CampoDoItem, type DadosAbertura, type ItemDigitado } from '../../utils/solicitacoes';
@@ -17,9 +17,11 @@ interface NovaSolicitacaoProps {
   /** Devolve a mensagem de erro, ou null quando salvou. */
   onEnviar: (dados: DadosAbertura) => string | null;
   formRef?: RefObject<HTMLFormElement | null>;
+  /** Fechar o lançamento (o rascunho fica guardado neste aparelho). */
+  onFechar?: () => void;
 }
 
-export function NovaSolicitacao({ solicitante, solicitantesPermitidos, onEnviar, formRef }: NovaSolicitacaoProps) {
+export function NovaSolicitacao({ solicitante, solicitantesPermitidos, onEnviar, formRef, onFechar }: NovaSolicitacaoProps) {
   const [solicitanteSelecionado, setSolicitanteSelecionado] = useState(solicitantesPermitidos.includes(solicitante) ? solicitante : '');
   const [frente, setFrente] = useState('');
   const [estacamento, setEstacamento] = useState('');
@@ -61,7 +63,7 @@ export function NovaSolicitacao({ solicitante, solicitantesPermitidos, onEnviar,
   };
 
   return (
-    <form ref={formRef} onSubmit={event => { event.preventDefault(); enviar(); }} data-testid="solicitacao-nova-form" className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <form ref={formRef} data-lancamento="" onSubmit={event => { event.preventDefault(); enviar(); }} data-testid="solicitacao-nova-form" className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="grid min-w-0 gap-4">
         <Etapa numero={0} titulo="Quem está solicitando" feita={Boolean(solicitanteSelecionado)}>
           <Campo rotulo="Solicitante autorizado" para="sol-solicitante" obrigatorio erro={tentou && !solicitanteSelecionado ? 'Selecione José Augusto, Thiago, Alvaro ou José Augusto Mineiro.' : null}>
@@ -158,6 +160,12 @@ export function NovaSolicitacao({ solicitante, solicitantesPermitidos, onEnviar,
         <button type="submit" className={`${BOTAO_PRIMARIO} w-full`} aria-disabled={!pronto}>
           <Send className="size-4" aria-hidden="true" /> Enviar para Suprimentos
         </button>
+        {onFechar && (
+          <button type="button" onClick={onFechar} className={`${BOTAO_SECUNDARIO} w-full`}>
+            <X className="size-4" aria-hidden="true" /> Fechar
+          </button>
+        )}
+        <p className="text-center text-xs font-semibold text-[#5b6870] max-lg:hidden">Ctrl+S envia · Esc fecha</p>
       </Conferencia>
     </form>
   );

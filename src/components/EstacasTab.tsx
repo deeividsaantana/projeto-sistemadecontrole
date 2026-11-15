@@ -23,6 +23,7 @@ import RelatoriosEstacas from './estacas/RelatoriosEstacas';
 import RecebimentosEstacas from './estacas/RecebimentosEstacas';
 import PlanejarFrente from './estacas/PlanejarFrente';
 import EstacasImportacoesPanel from './EstacasImportacoesPanel';
+import { useAtalhoNovo } from '../shared/hooks/useAtalhoNovo';
 import './estacas/Estacas.css';
 
 type Props = {
@@ -99,6 +100,8 @@ export default function EstacasTab({ controle, obras, onChange, responsavel = 'S
     setAviso(`Importação aplicada: ${novosLotes.length} lote(s) e ${novasCravacoes.length} cravação(ões).`);
   };
 
+  useAtalhoNovo(() => abrirCravacao(), secao !== 'cravar');
+
   const abas = abasEstacas({ faltam: total.faltam, estacas: estacas.length, notasPendentes, lotes: lotes.length });
 
   const escopo = useRef<HTMLElement>(null);
@@ -127,7 +130,8 @@ export default function EstacasTab({ controle, obras, onChange, responsavel = 'S
       idAbaAtiva={idDaAba('estacas', secao)}
       idDados="estacas-dados"
       chaveRolagem={secao}
-      cabecalho={(
+      // Lançando, a folha ocupa a área inteira da aba (padrão do Combustível).
+      cabecalho={secao === 'cravar' ? undefined : (
         <div data-estacas-reveal>
           <PageHeader
             className="estacas-header"
@@ -136,18 +140,15 @@ export default function EstacasTab({ controle, obras, onChange, responsavel = 'S
             abas={<AbasDaTela id="estacas" rotulo="Subtelas de estacas" abas={abas} ativa={secao} onTrocar={escolherSecao} idPainel="estacas-dados" testId="estacas-secao" />}
             actions={(
               <>
-                {/* Na Visão geral o cartão da frente já traz Total previsto; no
-                    lançamento a folha já está aberta e o topo fica limpo. */}
-                {secao !== 'visao' && secao !== 'cravar' && (
+                {/* Na Visão geral o cartão da frente já traz Total previsto. */}
+                {secao !== 'visao' && (
                   <button type="button" onClick={() => setPlanejando({ frente: frenteAtual || undefined })} className={BOTAO_SECUNDARIO}>
                     <Target className="size-5" aria-hidden="true" /> Total previsto
                   </button>
                 )}
-                {secao !== 'cravar' && (
-                  <button type="button" onClick={() => abrirCravacao()} data-testid="estacas-acao-principal" className={`${BOTAO_PRIMARIO} max-sm:order-first px-5`}>
-                    <Hammer className="size-5" aria-hidden="true" /> Lançar cravação
-                  </button>
-                )}
+                <button type="button" onClick={() => abrirCravacao()} data-testid="estacas-acao-principal" className={`${BOTAO_PRIMARIO} max-sm:order-first px-5`}>
+                  <Hammer className="size-5" aria-hidden="true" /> Lançar cravação
+                </button>
               </>
             )}
           />
