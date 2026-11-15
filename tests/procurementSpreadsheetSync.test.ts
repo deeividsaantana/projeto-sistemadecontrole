@@ -90,3 +90,24 @@ test('cabeçalho de Solicitações aceita variação de acento, espaço e maiús
     item_description: 'Cimento', unit: 'saco', quantity_requested: 3, source_purchase_order: '555', delivery_deadline: '2026-11-20',
   });
 });
+
+test('Prioridade e Substituição são lidas pelo cabeçalho da linha 2', async () => {
+  const workbook = new ExcelJS.Workbook();
+  workbook.addWorksheet('Solicitações').addRow(['Título']);
+  const prioridade = workbook.addWorksheet('Prioridade');
+  prioridade.addRow(['Prioridade']);
+  prioridade.addRow(['Prioridade', 'Data', 'N° do pedido', 'Solicitante', 'Item', 'Unidade', 'Quantidade', 'Previsão de entrega', 'Observação', 'Situação']);
+  prioridade.addRow(['1º', new Date('2026-08-13'), 101, 'Lucas', 'Tubos', 'Und.', 12, new Date('2026-09-01'), 'Tirantes', 'Chegaram']);
+  const troca = workbook.addWorksheet('Substituição ');
+  troca.addRow(['Substituição']);
+  troca.addRow(['Data ', 'Solicitante ', 'Quantidade ', 'Unidade ', 'Produto', 'Frente ', 'Trocado ']);
+  troca.addRow([new Date('2026-06-22'), 'Carlos', 1, 'Und', 'Cilindro', 'Marginal', new Date('2026-06-23')]);
+  const result = await parseProcurementWorkbook(await workbook.xlsx.writeBuffer());
+  assert.deepEqual(result.priority[0], {
+    prioridade: '1º', data: '2026-08-13', pedido: 101, solicitante: 'Lucas', item: 'Tubos', unidade: 'Und.',
+    quantidade: 12, fim: '2026-09-01', observacao: 'Tirantes', status: 'Chegaram',
+  });
+  assert.deepEqual(result.substitutions[0], {
+    data: '2026-06-22', solicitante: 'Carlos', quantidade: 1, unidade: 'Und', produto: 'Cilindro', frente: 'Marginal', trocado: '2026-06-23',
+  });
+});

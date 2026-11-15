@@ -17,22 +17,38 @@ const rowsFrom = (sheet, headers, firstDataRow = 3) => {
   }).filter(row => Object.values(row).some(value => text(value)));
 };
 
+// Cabeçalho tolerante: ignora maiúsculas, acentos, espaços repetidos e "N°"/"Nº".
+const chave = value => text(value).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[°º]/g, 'o').replace(/\s+/g, ' ').toLowerCase();
+const campo = (row, ...nomes) => {
+  const alvo = nomes.map(chave);
+  const encontrado = Object.keys(row).find(nome => alvo.includes(chave(nome)));
+  return encontrado === undefined ? null : row[encontrado];
+};
+// Todas as abas: linha 1 título, linha 2 cabeçalho, dados a partir da linha 3.
+const COLUNAS = {
+  Prioridade: {
+    prioridade: ['Prioridade'], data: ['Data'], pedido: ['N° do pedido', 'Pedido'], solicitante: ['Solicitante'],
+    item: ['Item'], unidade: ['Unidade'], quantidade: ['Quantidade'], fim: ['Previsão de entrega', 'Previsão'],
+    observacao: ['Observação'], status: ['Situação', 'Status'],
+  },
+  Substituição: {
+    data: ['Data'], solicitante: ['Solicitante'], quantidade: ['Quantidade'], unidade: ['Unidade'],
+    produto: ['Produto'], frente: ['Frente'], trocado: ['Trocado', 'Trocado em'],
+  },
+};
+const DATAS = new Set(['data', 'fim', 'trocado']);
+const porCabecalho = (linhas, colunas) => linhas.map(row => Object.fromEntries(Object.entries(colunas).map(([nome, cabecalhos]) => {
+  const valor = campo(row, ...cabecalhos);
+  return [nome, valor instanceof Date && DATAS.has(nome) ? isoDate(valor) : valor];
+})));
+
 export const parseProcurementWorkbook = async buffer => {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
   const sheets = Object.fromEntries(workbook.worksheets.map(sheet => {
     const name = sheet.name.trim();
-    if (name === 'Prioridade') return [name, rowsFrom(sheet, ['prioridade', 'data', 'pedido', 'solicitante', 'item', 'unidade', 'quantidade', 'inicio', 'fim', 'observacao', 'status'], 2)];
-    if (name === 'Substituição') return [name, rowsFrom(sheet, ['data', 'solicitante', 'quantidade', 'unidade', 'produto', 'frente', 'trocado'], 3)];
-    return [name, rowsFrom(sheet)];
+    return [name, COLUNAS[name] ? porCabecalho(rowsFrom(sheet), COLUNAS[name]) : rowsFrom(sheet)];
   }));
-  // Cabeçalho tolerante: ignora maiúsculas, acentos, espaços repetidos e "N°"/"Nº".
-  const chave = value => text(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[°º]/g, 'o').replace(/\s+/g, ' ').toLowerCase();
-  const campo = (row, ...nomes) => {
-    const alvo = nomes.map(chave);
-    const encontrado = Object.keys(row).find(nome => alvo.includes(chave(nome)));
-    return encontrado === undefined ? null : row[encontrado];
-  };
   const requests = (sheets['Solicitações'] || []).map(row => ({
     source: 'Solicitações',
     request_date: isoDate(campo(row, 'Data')),
