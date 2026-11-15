@@ -32,3 +32,32 @@ test('sincronização registra a falha no banco quando a planilha não baixa', a
   assert.equal(inserts[0].status, 'FALHA');
   assert.equal(inserts[0].error_message, 'OneDrive fora');
 });
+
+test('download tenta o endereço final e a API do OneDrive quando o link curto não entrega a planilha', async () => {
+  const { downloadProcurementWorkbook, linkDeCompartilhamentoOneDrive } = await import('../server/procurementSpreadsheetSync.js');
+  const link = 'https://1drv.ms/x/c/abc/XYZ?e=1';
+  const pedidos: string[] = [];
+  const resposta = (status: number, tipo: string, corpo: Uint8Array, url = '') => ({
+    ok: status < 400, status, url, headers: { get: () => tipo }, arrayBuffer: async () => corpo.buffer,
+  });
+  const html = new TextEncoder().encode('<html>');
+  const zip = new Uint8Array([0x50, 0x4b, 3, 4]);
+  const fetcher = async (endereco: string) => {
+    pedidos.push(endereco);
+    if (endereco === link) return resposta(200, 'text/html', html, 'https://onedrive.live.com/final?id=1');
+    if (endereco === linkDeCompartilhamentoOneDrive(link)) return resposta(200, 'application/octet-stream', zip);
+    return resposta(200, 'text/html', html);
+  };
+  const bytes = await downloadProcurementWorkbook(link, fetcher as unknown as typeof fetch);
+  assert.deepEqual([...bytes], [...zip]);
+  assert.deepEqual(pedidos, [
+    `${link}&download=1`, link, 'https://onedrive.live.com/final?id=1&download=1', linkDeCompartilhamentoOneDrive(link),
+  ]);
+  assert.match(linkDeCompartilhamentoOneDrive(link), /^https:\/\/api\.onedrive\.com\/v1\.0\/shares\/u![A-Za-z0-9_-]+\/root\/content$/);
+});
+
+test('download explica o compartilhamento quando nenhuma tentativa entrega a planilha', async () => {
+  const { downloadProcurementWorkbook } = await import('../server/procurementSpreadsheetSync.js');
+  const fetcher = async () => ({ ok: false, status: 403, url: '', headers: { get: () => 'text/html' }, arrayBuffer: async () => new ArrayBuffer(0) });
+  await assert.rejects(downloadProcurementWorkbook('https://exemplo/x', fetcher as unknown as typeof fetch), /HTTP 403, 403, 403\)\. Confira se o link está como "Qualquer pessoa/);
+});

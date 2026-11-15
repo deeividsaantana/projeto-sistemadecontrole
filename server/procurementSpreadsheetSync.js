@@ -50,15 +50,31 @@ export const parseProcurementWorkbook = async buffer => {
   };
 };
 
-export const downloadProcurementWorkbook = async (url = process.env.PROCUREMENT_SPREADSHEET_URL) => {
+const comDownload = url => `${url}${url.includes('?') ? '&' : '?'}download=1`;
+// Link de compartilhamento → endereço de download da API do OneDrive ("u!" + base64url do link).
+export const linkDeCompartilhamentoOneDrive = url => `https://api.onedrive.com/v1.0/shares/u!${Buffer.from(url).toString('base64').replace(/=+$/, '').replace(/\//g, '_').replace(/\+/g, '-')}/root/content`;
+// .xlsx é um zip: começa com "PK". O OneDrive às vezes manda como application/octet-stream.
+const ehPlanilha = (contentType, bytes) => contentType.includes('spreadsheetml.sheet') || (bytes[0] === 0x50 && bytes[1] === 0x4b);
+
+export const downloadProcurementWorkbook = async (url = process.env.PROCUREMENT_SPREADSHEET_URL, fetcher = fetch) => {
   if (!url) throw new Error('PROCUREMENT_SPREADSHEET_URL não configurada.');
-  const response = await fetch(`${url}${url.includes('?') ? '&' : '?'}download=1`, {
-    headers: { 'User-Agent': 'RENEA-ERP/1.0' },
-    redirect: 'follow',
-  });
-  const contentType = response.headers.get('content-type') || '';
-  if (!response.ok || !contentType.includes('spreadsheetml.sheet')) {
-    throw new Error(`OneDrive não entregou uma planilha Excel (HTTP ${response.status}).`);
+  const pedir = endereco => fetcher(endereco, { headers: { 'User-Agent': 'RENEA-ERP/1.0' }, redirect: 'follow' });
+  const tentativas = [
+    () => comDownload(url),
+    // Link curto (1drv.ms) perde o download=1 no redirecionamento: abre o link e pede o download no endereço final.
+    async () => comDownload((await pedir(url)).url || url),
+    () => linkDeCompartilhamentoOneDrive(url),
+  ];
+  const respostas = [];
+  for (const tentativa of tentativas) {
+    try {
+      const response = await pedir(await tentativa());
+      const bytes = Buffer.from(await response.arrayBuffer());
+      if (response.ok && ehPlanilha(response.headers.get('content-type') || '', bytes)) return bytes;
+      respostas.push(response.status);
+    } catch (error) {
+      respostas.push(String(error?.message || error));
+    }
   }
-  return Buffer.from(await response.arrayBuffer());
+  throw new Error(`OneDrive não entregou uma planilha Excel (HTTP ${respostas.join(', ')}). Confira se o link está como "Qualquer pessoa com o link pode exibir".`);
 };
