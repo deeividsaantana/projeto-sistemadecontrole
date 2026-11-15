@@ -3,7 +3,8 @@ import { loadJsPdf, loadAutoTable } from './pdfLoader';
 import reneaLogo from '../assets/images/renea_logo_new.png';
 import spmarLogo from '../assets/images/spmar_logo.png';
 
-export type UniversalPdfColumn = { header: string; dataKey: string };
+export type UniversalPdfColumn = { header: string; dataKey: string; align?: 'left' | 'center' | 'right' };
+type Cor = [number, number, number];
 export type UniversalPdfReportOptions = {
   title: string;
   subtitle?: string;
@@ -19,10 +20,16 @@ export type UniversalPdfReportOptions = {
   reportNumber?: string;
   filters?: string[];
   summary?: Array<{ label: string; value: string | number }>;
+  /** Título em cima da tabela principal (quando há gráficos ou seções antes dela). */
+  tableTitle?: string;
   /** Linha de total no fim da tabela principal. */
   totalRow?: object;
   /** Tabelas a mais depois da principal, cada uma com título (ex.: total por equipamento). */
-  sections?: Array<{ title: string; columns: UniversalPdfColumn[]; rows: object[]; totalRow?: object }>;
+  sections?: Array<{ title: string; note?: string; columns: UniversalPdfColumn[]; rows: object[]; totalRow?: object }>;
+  /** Gráficos (PNG) lado a lado depois do resumo; a largura de cada um segue a proporção da imagem. */
+  charts?: Array<{ title: string; dataUrl: string; width: number; height: number }>;
+  /** Cor do texto de uma célula (ex.: atraso em vermelho). */
+  cellColor?: (dataKey: string, value: string) => Cor | undefined;
 };
 
 const imageAsDataUrl = async (url: string) => {
@@ -45,6 +52,8 @@ const linha = (columns: UniversalPdfColumn[], row: object, total = false) => {
   // Na linha de total, a coluna sem valor fica em branco em vez de travessão.
   return Object.fromEntries(columns.map(column => [column.dataKey, total && (record[column.dataKey] ?? '') === '' ? '' : text(record[column.dataKey])]));
 };
+const estilosDasColunas = (columns: UniversalPdfColumn[]) =>
+  Object.fromEntries(columns.filter(column => column.align).map(column => [column.dataKey, { halign: column.align }]));
 const ESTILO_TOTAL = { fillColor: [236, 253, 245] as [number, number, number], textColor: [15, 23, 42] as [number, number, number], fontStyle: 'bold' as const };
 
 export async function generateUniversalPdfReport(options: UniversalPdfReportOptions) {
@@ -100,7 +109,35 @@ export async function generateUniversalPdfReport(options: UniversalPdfReportOpti
     });
     startY += 16;
   }
+  if (options.charts?.length) {
+    const gap = 6;
+    const available = pageWidth - margin * 2 - gap * (options.charts.length - 1);
+    const maxHeight = 72;
+    // Mesma altura para todos; a largura sai da proporção de cada imagem.
+    const sumRatio = options.charts.reduce((total, chart) => total + chart.width / chart.height, 0);
+    const height = Math.min(maxHeight, available / sumRatio);
+    let x = margin;
+    for (const chart of options.charts) {
+      const width = height * (chart.width / chart.height);
+      doc.setDrawColor(226, 232, 240); doc.setFillColor(255, 255, 255);
+      doc.roundedRect(x, startY, width, height + 9, 1.5, 1.5, 'FD');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(15, 23, 42);
+      doc.text(chart.title, x + 3, startY + 5);
+      try { doc.addImage(chart.dataUrl, 'PNG', x + 2, startY + 7.5, width - 4, height - 1, undefined, 'FAST'); } catch { /* gráfico opcional */ }
+      x += width + gap;
+    }
+    startY += height + 14;
+  }
+  const colorir = (data: { section: string; column: { dataKey: string | number }; cell: { raw: unknown; styles: { textColor: unknown; fontStyle: string } } }) => {
+    if (data.section !== 'body' || !options.cellColor) return;
+    const cor = options.cellColor(String(data.column.dataKey), String(data.cell.raw ?? ''));
+    if (cor) { data.cell.styles.textColor = cor; data.cell.styles.fontStyle = 'bold'; }
+  };
 
+  if (options.tableTitle) {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(15, 23, 42); doc.text(options.tableTitle, margin, startY + 2);
+    startY += 5;
+  }
   autoTable(doc, {
     startY,
     margin: { top: headerHeight + 3, right: margin, bottom: 14, left: margin },
@@ -113,6 +150,8 @@ export async function generateUniversalPdfReport(options: UniversalPdfReportOpti
     styles: { font: 'helvetica', fontSize: 6.2, cellPadding: 2, textColor: [30, 41, 59], lineColor: [226, 232, 240], lineWidth: .15, overflow: 'linebreak' },
     headStyles: { fillColor: [15, 118, 110], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' },
     alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: estilosDasColunas(options.columns),
+    didParseCell: colorir,
     didDrawPage: data => { if (data.pageNumber > 1) drawHeader(data.pageNumber); },
   });
 
@@ -121,6 +160,7 @@ export async function generateUniversalPdfReport(options: UniversalPdfReportOpti
     let y = anterior + 8;
     if (y > pageHeight - 40) { doc.addPage(); y = headerHeight + 6; }
     doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(15, 23, 42); doc.text(secao.title, margin, y);
+    if (secao.note) { doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(71, 85, 105); doc.text(secao.note, margin, y + 4); y += 4; }
     autoTable(doc, {
       startY: y + 2,
       margin: { top: headerHeight + 3, right: margin, bottom: 14, left: margin },
@@ -133,6 +173,8 @@ export async function generateUniversalPdfReport(options: UniversalPdfReportOpti
       styles: { font: 'helvetica', fontSize: 6.8, cellPadding: 2, textColor: [30, 41, 59], lineColor: [226, 232, 240], lineWidth: .15, overflow: 'linebreak' },
       headStyles: { fillColor: [15, 118, 110], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: estilosDasColunas(secao.columns),
+      didParseCell: colorir,
     });
   }
 

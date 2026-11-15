@@ -1,4 +1,4 @@
-import { AlertTriangle, CalendarClock, FileSpreadsheet, FileText, Gauge, TrendingUp } from 'lucide-react';
+import { CalendarClock, FileSpreadsheet, FileText, Gauge, TimerOff, TrendingUp } from 'lucide-react';
 import type { RegistroProducao } from '../../types';
 import { CartaoIndicador, GradeIndicadores } from '../../shared/ui/CartaoIndicador';
 import { TabelaPadrao, type ColunaTabela } from '../../shared/ui/TabelaPadrao';
@@ -6,16 +6,23 @@ import { BOTAO_SECUNDARIO } from '../cadastros/estilos';
 import {
   SITUACOES,
   avancoGeral,
-  avancoPorFrente,
   curvaS,
   previstoGeral,
   producaoPorDia,
-  type AvancoDaFrente,
   type ResumoAtividade,
   type SituacaoAtividade,
 } from '../../utils/programacao';
+import {
+  avancoPorServico,
+  comRitmo,
+  terminoDaObra,
+  trechosPorFrente,
+  type AtividadeComRitmo,
+  type AvancoDoServico,
+} from '../../utils/avancoObra';
+import { DiagramaEstacas } from './DiagramaEstacas';
 import { GraficoLinha, Rosca, type FatiaRosca } from './graficos';
-import { diaDaSemana, diaMes, numeroObra } from './visual';
+import { BarraAvanco, diaDaSemana, diaMes, numeroObra } from './visual';
 
 interface Props {
   resumos: readonly ResumoAtividade[];
@@ -23,7 +30,7 @@ interface Props {
   hoje: string;
   exportando: boolean;
   onExportar: (tipo: 'excel' | 'pdf') => void;
-  onEscolherFrente: (frente: string) => void;
+  onAbrirAtividade: (id: string) => void;
 }
 
 // Realizado em verde (traço cheio) e previsto em laranja (tracejado): a cor
@@ -43,7 +50,38 @@ const FATIA_SITUACAO: Record<SituacaoAtividade, string> = {
 const porcento = (valor: number) => `${Math.round(valor)}%`;
 const desvioTexto = (valor: number) => `${valor > 0 ? '+' : ''}${Math.round(valor)} pts`;
 const tomDesvio = (valor: number): 'vermelho' | 'laranja' | 'verde' => (valor <= -5 ? 'vermelho' : valor < 0 ? 'laranja' : 'verde');
-const corDesvio = { vermelho: 'text-rose-700', laranja: 'text-[#c2410c]', verde: 'text-[#176b4d]' };
+const dataCurta = (dia?: string) => (dia ? `${diaMes(dia)}/${dia.slice(2, 4)}` : '—');
+
+/** Folga do término em dias de trabalho: + adiantado, − atrasado. */
+export const textoFolga = (folga?: number) =>
+  folga === undefined ? 'sem ritmo' : folga === 0 ? 'no prazo' : `${folga > 0 ? '+' : '−'}${Math.abs(folga)} ${Math.abs(folga) === 1 ? 'dia' : 'dias'}`;
+const corFolga = (folga?: number) =>
+  folga === undefined ? 'text-[#c2410c]' : folga < 0 ? 'text-rose-700' : 'text-[#176b4d]';
+
+function Folga({ folga }: { folga?: number }) {
+  return <span className={`whitespace-nowrap font-bold tabular-nums ${corFolga(folga)}`}>{textoFolga(folga)}</span>;
+}
+
+function Termino({ projetado, planejado }: { projetado?: string; planejado: string }) {
+  return (
+    <span className="block whitespace-nowrap tabular-nums">
+      <span className="block font-bold text-slate-900">{dataCurta(projetado)}</span>
+      <span className="block text-xs font-semibold text-[#5b6870]">plan. {dataCurta(planejado)}</span>
+    </span>
+  );
+}
+
+function BarraComPrevisto({ feito, previsto }: { feito: number; previsto: number }) {
+  return (
+    <span className="flex min-w-32 items-center gap-2" title={`Feito ${porcento(feito)} · previsto até ontem ${porcento(previsto)}`}>
+      <span className="relative h-2.5 flex-1 rounded-full bg-slate-100" aria-hidden="true">
+        <span className="absolute inset-y-0 left-0 rounded-full bg-[#176b4d]" style={{ width: `${Math.min(100, feito)}%` }} />
+        <span className="absolute -inset-y-1 w-0.5 rounded bg-[#f26a2e]" style={{ left: `calc(${Math.min(100, previsto)}% - 1px)` }} />
+      </span>
+      <span className="w-10 text-right text-xs font-bold tabular-nums text-slate-700">{porcento(feito)}</span>
+    </span>
+  );
+}
 
 /** Unidade com mais atividades (normalmente M), para somar produção sem misturar unidades. */
 const unidadePrincipal = (resumos: readonly ResumoAtividade[]) => {
@@ -52,21 +90,20 @@ const unidadePrincipal = (resumos: readonly ResumoAtividade[]) => {
   return [...contagem.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'M';
 };
 
-const titulo = 'mb-3 text-base font-black text-slate-900';
+const titulo = 'text-base font-black text-slate-900';
+const legenda = 'text-xs font-semibold text-[#5b6870]';
 const cartao = 'min-w-0 rounded-2xl border border-slate-200 bg-white p-4';
 
-/**
- * Avanço físico da obra: curva S (previsto x realizado), quanto já foi feito,
- * como estão as atividades, a produção dos últimos 14 dias e o relatório por
- * frente. Tudo segue os filtros do topo.
- */
-export function AvancoFisico({ resumos, producao, hoje, exportando, onExportar, onEscolherFrente }: Props) {
+export function AvancoFisico({ resumos, producao, hoje, exportando, onExportar, onAbrirAtividade }: Props) {
+  const atividades = comRitmo(resumos, producao, hoje);
   const realizado = avancoGeral(resumos);
   const previsto = previstoGeral(resumos);
   const desvio = realizado - previsto;
-  const atrasadas = resumos.filter(resumo => resumo.situacao === 'atrasada').length;
+  const obra = terminoDaObra(atividades);
+  const foraDoPrazo = atividades.filter(a => a.situacao !== 'concluida' && a.situacao !== 'programada' && (a.ritmo.folga === undefined || a.ritmo.folga < 0)).length;
+  const servicos = avancoPorServico(atividades, hoje);
+  const trechos = trechosPorFrente(atividades);
   const curva = curvaS(resumos, producao, hoje);
-  const frentes = avancoPorFrente(resumos);
   const unidade = unidadePrincipal(resumos);
   const dias = producaoPorDia(resumos, producao, hoje, 14, unidade);
   const marcaHoje = curva.findIndex(ponto => ponto.dia === hoje);
@@ -81,34 +118,58 @@ export function AvancoFisico({ resumos, producao, hoje, exportando, onExportar, 
     .map(opcao => ({ chave: opcao.id, nome: opcao.rotulo, valor: resumos.filter(resumo => resumo.situacao === opcao.id).length, cor: FATIA_SITUACAO[opcao.id] }))
     .filter(fatia => fatia.valor > 0);
 
-  const colunas: ColunaTabela<AvancoDaFrente>[] = [
-    { chave: 'frente', titulo: 'Frente', render: f => <span className="font-bold text-slate-900">{f.frente}</span>, valorOrdenacao: f => f.frente, larguraMinima: 110 },
-    { chave: 'atividades', titulo: 'Atividades', alinhamento: 'direita', render: f => f.atividades, valorOrdenacao: f => f.atividades },
-    { chave: 'atrasadas', titulo: 'Atrasadas', alinhamento: 'direita', render: f => <span className={f.atrasadas ? 'font-bold text-rose-700' : ''}>{f.atrasadas}</span>, valorOrdenacao: f => f.atrasadas },
-    { chave: 'previsto', titulo: 'Previsto', alinhamento: 'direita', render: f => porcento(f.previsto), valorOrdenacao: f => f.previsto },
+  const colunasServico: ColunaTabela<AvancoDoServico>[] = [
     {
-      chave: 'realizado',
-      titulo: 'Feito',
-      render: f => (
-        <span className="relative flex min-w-32 items-center gap-2" title={`Feito ${porcento(f.realizado)} · previsto ${porcento(f.previsto)}`}>
-          <span className="relative h-2.5 flex-1 rounded-full bg-slate-100" aria-hidden="true">
-            <span className="absolute inset-y-0 left-0 rounded-full bg-[#176b4d]" style={{ width: `${Math.min(100, f.realizado)}%` }} />
-            <span className="absolute -inset-y-1 w-0.5 rounded bg-[#f26a2e]" style={{ left: `calc(${Math.min(100, f.previsto)}% - 1px)` }} />
-          </span>
-          <span className="w-10 text-right text-xs font-bold tabular-nums text-slate-700">{porcento(f.realizado)}</span>
+      chave: 'servico',
+      titulo: 'Serviço',
+      render: s => (
+        <span className="block min-w-0">
+          <span className="block font-bold text-slate-900">{s.servico}</span>
+          <span className="block text-xs font-semibold text-[#5b6870]">{s.frentes.length === 1 ? s.frentes[0] : `${s.frentes.length} frentes`}</span>
         </span>
       ),
-      valorOrdenacao: f => f.realizado,
-      valorExportacao: f => porcento(f.realizado),
-      larguraMinima: 160,
+      valorOrdenacao: s => s.servico,
+      valorExportacao: s => s.servico,
+      larguraMinima: 150,
     },
+    { chave: 'executado', titulo: 'Executado', alinhamento: 'direita', render: s => <span className="whitespace-nowrap tabular-nums"><strong className="text-slate-900">{numeroObra(s.executado)}</strong> / {numeroObra(s.quantidade)} {s.unidade.toLowerCase()}</span>, valorOrdenacao: s => s.executado },
+    { chave: 'avanco', titulo: 'Avanço', render: s => <BarraComPrevisto feito={s.percentual} previsto={s.percentualPrevisto} />, valorOrdenacao: s => s.percentual, valorExportacao: s => porcento(s.percentual), larguraMinima: 160 },
+    { chave: 'saldo', titulo: 'Saldo', alinhamento: 'direita', render: s => <span className="whitespace-nowrap tabular-nums">{numeroObra(s.saldo)} {s.unidade.toLowerCase()}</span>, valorOrdenacao: s => s.saldo },
     {
-      chave: 'desvio',
-      titulo: 'Desvio',
+      chave: 'ritmo',
+      titulo: 'Média / meta por dia',
       alinhamento: 'direita',
-      render: f => <span className={`font-bold tabular-nums ${corDesvio[tomDesvio(f.realizado - f.previsto)]}`}>{desvioTexto(f.realizado - f.previsto)}</span>,
-      valorOrdenacao: f => f.realizado - f.previsto,
+      render: s => (s.meta > 0
+        ? <span className="whitespace-nowrap tabular-nums"><strong className={s.mediaDiaria >= s.meta * 0.95 ? 'text-[#176b4d]' : 'text-rose-700'}>{numeroObra(s.mediaDiaria)}</strong> / {numeroObra(s.meta)}</span>
+        : <span className="text-[#5b6870]">—</span>),
+      valorOrdenacao: s => (s.meta > 0 ? s.mediaDiaria / s.meta : -1),
+      valorExportacao: s => `${numeroObra(s.mediaDiaria)} / ${numeroObra(s.meta)}`,
     },
+    { chave: 'termino', titulo: 'Término projetado', render: s => <Termino projetado={s.termino} planejado={s.terminoPlanejado} />, valorOrdenacao: s => s.termino ?? '9999' },
+    { chave: 'folga', titulo: 'Folga', alinhamento: 'direita', render: s => <Folga folga={s.folga} />, valorOrdenacao: s => s.folga ?? -9999, valorExportacao: s => textoFolga(s.folga) },
+  ];
+
+  const colunasAtividade: ColunaTabela<AtividadeComRitmo>[] = [
+    {
+      chave: 'servico',
+      titulo: 'Serviço',
+      render: a => (
+        <span className="block min-w-0">
+          <span className="block font-bold text-slate-900">{a.item.servicoDescricao}</span>
+          <span className="block text-xs font-semibold text-[#5b6870]">{a.item.frente || 'Sem frente'}</span>
+        </span>
+      ),
+      valorOrdenacao: a => `${a.item.frente || ''} ${a.item.servicoDescricao}`,
+      valorExportacao: a => `${a.item.frente || ''} · ${a.item.servicoDescricao}`,
+      larguraMinima: 150,
+    },
+    { chave: 'estacas', titulo: 'Estacas', render: a => <span className="whitespace-nowrap tabular-nums">{a.item.estacaInicial ? `${a.item.estacaInicial} a ${a.item.estacaFinal || '?'}` : '—'}</span>, valorOrdenacao: a => a.ritmo.trecho?.de ?? 0, noCartao: false },
+    { chave: 'executado', titulo: 'Executado', alinhamento: 'direita', render: a => <span className="whitespace-nowrap tabular-nums"><strong className="text-slate-900">{numeroObra(a.realizado)}</strong> / {numeroObra(a.item.quantidadePlanejada)} {a.item.unidade.toLowerCase()}</span>, valorOrdenacao: a => a.realizado },
+    { chave: 'avanco', titulo: 'Avanço', render: a => <BarraAvanco percentual={a.percentual} situacao={a.situacao} />, valorOrdenacao: a => a.percentual, larguraMinima: 130 },
+    { chave: 'media', titulo: 'Média / meta', alinhamento: 'direita', render: a => <span className="whitespace-nowrap tabular-nums">{a.ritmo.diasTrabalhados ? numeroObra(a.ritmo.mediaDiaria) : '—'} / {numeroObra(a.meta)}</span>, valorOrdenacao: a => a.ritmo.desempenho ?? -1 },
+    { chave: 'desempenho', titulo: 'Desempenho', alinhamento: 'direita', render: a => (a.ritmo.desempenho === undefined ? '—' : <span className={`font-bold tabular-nums ${a.ritmo.desempenho >= 95 ? 'text-[#176b4d]' : a.ritmo.desempenho >= 80 ? 'text-[#c2410c]' : 'text-rose-700'}`}>{porcento(a.ritmo.desempenho)}</span>), valorOrdenacao: a => a.ritmo.desempenho ?? -1 },
+    { chave: 'termino', titulo: 'Término', render: a => <Termino projetado={a.ritmo.termino} planejado={a.item.dataFim} />, valorOrdenacao: a => a.ritmo.termino ?? '9999' },
+    { chave: 'folga', titulo: 'Folga', alinhamento: 'direita', render: a => <Folga folga={a.ritmo.folga} />, valorOrdenacao: a => a.ritmo.folga ?? -9999 },
   ];
 
   if (!resumos.length) {
@@ -119,25 +180,34 @@ export function AvancoFisico({ resumos, producao, hoje, exportando, onExportar, 
     );
   }
 
+  const tomTermino = obra?.folga === undefined ? 'laranja' : obra.folga < 0 ? 'vermelho' : 'verde';
+
   return (
     <div className="grid min-w-0 gap-4" data-testid="programacao-avanco">
       <GradeIndicadores rotulo="Resumo do avanço físico">
-        <CartaoIndicador rotulo="Feito" valor={porcento(realizado)} detalhe="Avanço físico da obra" icone={TrendingUp} tom="verde" dados={{ 'data-linha-lista': true }} />
-        <CartaoIndicador rotulo="Previsto até ontem" valor={porcento(previsto)} detalhe="Pelo cronograma" icone={CalendarClock} dados={{ 'data-linha-lista': true }} />
-        <CartaoIndicador rotulo="Desvio" valor={desvioTexto(desvio)} detalhe={desvio < 0 ? 'Abaixo do previsto' : 'No previsto ou à frente'} icone={Gauge} tom={tomDesvio(desvio)} dados={{ 'data-linha-lista': true }} />
-        <CartaoIndicador rotulo="Atrasadas" valor={atrasadas} detalhe={`De ${resumos.length} ${resumos.length === 1 ? 'atividade' : 'atividades'}`} icone={AlertTriangle} tom={atrasadas ? 'vermelho' : 'verde'} dados={{ 'data-linha-lista': true }} />
+        <CartaoIndicador rotulo="Avanço físico" valor={porcento(realizado)} detalhe={`Previsto até ontem: ${porcento(previsto)}`} icone={TrendingUp} tom={tomDesvio(desvio)} dados={{ 'data-linha-lista': true }} />
+        <CartaoIndicador rotulo="Desvio" valor={desvioTexto(desvio)} detalhe={desvio < 0 ? 'Abaixo do cronograma' : 'No cronograma ou à frente'} icone={Gauge} tom={tomDesvio(desvio)} dados={{ 'data-linha-lista': true }} />
+        <CartaoIndicador
+          rotulo="Término projetado"
+          valor={obra?.projetado ? dataCurta(obra.projetado) : 'Sem ritmo'}
+          detalhe={obra ? `Planejado ${dataCurta(obra.planejado)} · ${obra.projetado ? textoFolga(obra.folga) : `${obra.semRitmo} sem produção`}` : undefined}
+          icone={CalendarClock}
+          tom={tomTermino}
+          dados={{ 'data-linha-lista': true }}
+        />
+        <CartaoIndicador rotulo="Fora do prazo" valor={foraDoPrazo} detalhe={`Pelo ritmo atual, de ${atividades.length} ${atividades.length === 1 ? 'atividade' : 'atividades'}`} icone={TimerOff} tom={foraDoPrazo ? 'vermelho' : 'verde'} dados={{ 'data-linha-lista': true }} />
       </GradeIndicadores>
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <section className={cartao} data-linha-lista>
-          <h2 className={titulo}>Curva S: previsto x feito</h2>
+          <h2 className={`${titulo} mb-3`}>Curva S: previsto x executado</h2>
           {curva.length > 1 ? (
             <GraficoLinha
-              titulo="Curva S do avanço físico, previsto e feito, em percentual acumulado"
+              titulo="Curva S do avanço físico, previsto e executado, em percentual acumulado"
               rotulosX={curva.map(ponto => diaMes(ponto.dia))}
               rotulosLongos={curva.map(ponto => `${diaDaSemana(ponto.dia)}, ${diaMes(ponto.dia)}`)}
               series={[
-                { nome: 'Feito', ...REALIZADO, valores: curva.map(ponto => ponto.realizado) },
+                { nome: 'Executado', ...REALIZADO, valores: curva.map(ponto => ponto.realizado) },
                 { nome: 'Previsto', ...PREVISTO, tracejado: true, valores: curva.map(ponto => ponto.previsto) },
               ]}
               formatar={porcento}
@@ -146,18 +216,18 @@ export function AvancoFisico({ resumos, producao, hoje, exportando, onExportar, 
               rotuloMarca="hoje"
               altura={260}
             />
-          ) : <p className="text-sm font-semibold text-[#5b6870]">A curva aparece quando as atividades tiverem mais de um dia.</p>}
+          ) : <p className={legenda}>A curva aparece quando as atividades tiverem mais de um dia.</p>}
         </section>
 
         <section className={cartao} data-linha-lista>
-          <h2 className={titulo}>Avanço físico</h2>
+          <h2 className={`${titulo} mb-3`}>Avanço físico</h2>
           <Rosca
             titulo="Avanço físico"
             fatias={fatiasAvanco}
             centro={(
               <>
                 <span className="text-2xl font-black tabular-nums text-slate-900">{porcento(realizado)}</span>
-                <span className="text-xs font-bold text-[#5b6870]">feito</span>
+                <span className="text-xs font-bold text-[#5b6870]">executado</span>
               </>
             )}
             legendaValor={fatia => porcento(fatia.valor)}
@@ -165,16 +235,37 @@ export function AvancoFisico({ resumos, producao, hoje, exportando, onExportar, 
         </section>
       </div>
 
+      <section className="grid min-w-0 gap-2" data-linha-lista>
+        <div>
+          <h2 className={titulo}>Avanço por serviço</h2>
+          <p className={legenda}>Soma de todas as frentes. Barra verde: executado. Risco laranja: previsto até ontem. Término pelo ritmo médio de cada frente.</p>
+        </div>
+        <TabelaPadrao
+          titulo="Avanço por serviço"
+          linhas={servicos}
+          colunas={colunasServico}
+          idDaLinha={s => s.chave}
+          nomeDoItem={{ um: 'serviço', varios: 'serviços' }}
+          exportar={false}
+          vazio="Nenhum serviço com esses filtros."
+        />
+      </section>
+
+      <section className={cartao} data-linha-lista>
+        <h2 className={`${titulo} mb-3`}>Diagrama linear por estaca</h2>
+        <DiagramaEstacas trechos={trechos} onAbrir={onAbrirAtividade} />
+      </section>
+
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <section className={cartao} data-linha-lista>
-          <h2 className={titulo}>Produção por dia ({unidade.toLowerCase()}), últimos 14 dias</h2>
+          <h2 className={`${titulo} mb-3`}>Produção diária ({unidade.toLowerCase()}) x meta, últimos 14 dias</h2>
           <GraficoLinha
             titulo={`Produção lançada por dia em ${unidade} e meta do dia`}
             rotulosX={dias.map(d => diaMes(d.dia))}
             rotulosLongos={dias.map(d => `${diaDaSemana(d.dia)}, ${diaMes(d.dia)}`)}
             series={[
               // Domingo não é dia de trabalho: a linha pula o dia em vez de cair a zero.
-              { nome: 'Feito', ...REALIZADO, valores: dias.map(d => (d.meta === 0 && d.feito === 0 ? undefined : d.feito)) },
+              { nome: 'Executado', ...REALIZADO, valores: dias.map(d => (d.meta === 0 && d.feito === 0 ? undefined : d.feito)) },
               { nome: 'Meta do dia', ...PREVISTO, tracejado: true, valores: dias.map(d => (d.meta === 0 ? undefined : d.meta)) },
             ]}
             formatar={valor => numeroObra(valor)}
@@ -184,7 +275,7 @@ export function AvancoFisico({ resumos, producao, hoje, exportando, onExportar, 
         </section>
 
         <section className={cartao} data-linha-lista>
-          <h2 className={titulo}>Atividades por situação</h2>
+          <h2 className={`${titulo} mb-3`}>Atividades por situação</h2>
           <Rosca
             titulo="Atividades por situação"
             fatias={fatiasSituacao}
@@ -199,17 +290,15 @@ export function AvancoFisico({ resumos, producao, hoje, exportando, onExportar, 
         </section>
       </div>
 
-      <section className="grid min-w-0 gap-3" data-linha-lista>
+      <section className="grid min-w-0 gap-2" data-linha-lista>
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h2 className="text-base font-black text-slate-900">Relatório de avanço por frente</h2>
-            <p className="text-xs font-semibold text-[#5b6870]">
-              Barra verde: feito. Risco laranja: onde deveria estar até ontem. Toque na frente para filtrar.
-            </p>
+            <h2 className={titulo}>Controle de produção por atividade</h2>
+            <p className={legenda}>Média = executado ÷ dias trabalhados. Desempenho = média ÷ meta. Toque na atividade para abrir.</p>
           </div>
           <div className="flex gap-2">
             <button type="button" onClick={() => onExportar('pdf')} disabled={exportando} className={BOTAO_SECUNDARIO} data-testid="avanco-pdf">
-              <FileText className="size-4 text-rose-700" aria-hidden="true" /> PDF
+              <FileText className="size-4 text-rose-700" aria-hidden="true" /> Relatório PDF
             </button>
             <button type="button" onClick={() => onExportar('excel')} disabled={exportando} className={BOTAO_SECUNDARIO}>
               <FileSpreadsheet className="size-4 text-[#176b4d]" aria-hidden="true" /> Excel
@@ -217,15 +306,15 @@ export function AvancoFisico({ resumos, producao, hoje, exportando, onExportar, 
           </div>
         </div>
         <TabelaPadrao
-          titulo="Avanço por frente"
-          linhas={frentes}
-          colunas={colunas}
-          idDaLinha={f => f.frente}
-          nomeDoItem={{ um: 'frente', varios: 'frentes' }}
-          onAbrirLinha={f => onEscolherFrente(f.frente === 'Sem frente' ? '' : f.frente)}
+          titulo="Controle de produção por atividade"
+          linhas={atividades}
+          colunas={colunasAtividade}
+          idDaLinha={a => a.item.id}
+          nomeDoItem={{ um: 'atividade', varios: 'atividades' }}
+          onAbrirLinha={a => onAbrirAtividade(a.item.id)}
+          ordenacaoInicial={{ chave: 'folga', direcao: 'asc' }}
           exportar={false}
-          vazio="Nenhuma frente com esses filtros."
-          resumo={` · feito ${porcento(realizado)} de ${porcento(previsto)} previsto`}
+          vazio="Nenhuma atividade com esses filtros."
         />
       </section>
     </div>

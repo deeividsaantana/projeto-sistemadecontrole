@@ -11,6 +11,7 @@ import { Modal } from '../shared/ui/Modal';
 import { Campo } from '../shared/ui/Lancamento';
 import { BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO } from './cadastros/estilos';
 import { formatarData } from '../utils/formato';
+import { completarEstacasDaCarga } from '../utils/initialProgramacaoData';
 import {
   SITUACOES,
   avancoGeral,
@@ -43,8 +44,9 @@ const DIAS_NO_QUADRO = 14;
 const ordenarTexto = (lista: Iterable<string>) => [...new Set(lista)].filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
 const abaInicial = (): Aba => (typeof window !== 'undefined' && window.innerWidth < 768 ? 'hoje' : 'quadro');
 
-export default function ProgramacaoTab({ planejamento, producao, servicos, responsavel, podeEditar, onSavePlanejamento, onSaveProducao }: Props) {
+export default function ProgramacaoTab({ planejamento: planejamentoSalvo, producao, servicos, responsavel, podeEditar, onSavePlanejamento, onSaveProducao }: Props) {
   const escopo = useRef<HTMLElement>(null);
+  const planejamento = useMemo(() => planejamentoSalvo.map(completarEstacasDaCarga), [planejamentoSalvo]);
   const hoje = diaLocal();
   const [aba, setAba] = useState<Aba>(abaInicial);
   const [busca, setBusca] = useState('');
@@ -151,11 +153,15 @@ export default function ProgramacaoTab({ planejamento, producao, servicos, respo
     setMenuExportar(false);
     setExportando(true);
     try {
-      const modulo = await import('./programacao/exportarProgramacao');
       if (aba === 'avanco') {
-        if (tipo === 'excel') await modulo.baixarExcelAvanco(filtrados, producao, filtrosAtivos, hoje);
-        else await modulo.baixarPdfAvanco(filtrados, filtrosAtivos, responsavel, hoje);
-      } else if (tipo === 'excel') await modulo.baixarExcelProgramacao(filtrados, producaoFiltrada, filtrosAtivos, hoje);
+        const relatorio = await import('./programacao/relatorioAvanco');
+        if (tipo === 'excel') await relatorio.baixarExcelAvanco(filtrados, producao, filtrosAtivos, responsavel, hoje);
+        else await relatorio.baixarPdfAvanco(filtrados, producao, filtrosAtivos, responsavel, hoje);
+        mostrarAviso(tipo === 'excel' ? 'Relatório de avanço em Excel baixado.' : 'Relatório de avanço em PDF baixado.');
+        return;
+      }
+      const modulo = await import('./programacao/exportarProgramacao');
+      if (tipo === 'excel') await modulo.baixarExcelProgramacao(filtrados, producaoFiltrada, filtrosAtivos, hoje);
       else {
         await modulo.baixarPdfProgramacao(filtrados, filtrosAtivos, [
           { label: 'Atividades', value: filtrados.length },
@@ -275,10 +281,10 @@ export default function ProgramacaoTab({ planejamento, producao, servicos, respo
               testId="programacao-aba"
               abas={[
                 { id: 'hoje', rotulo: 'Dia a dia', curto: 'Dia', icone: CalendarDays },
-                { id: 'quadro', rotulo: 'Quadro', icone: GanttChartSquare, contador: atrasadas, contadorRotulo: 'atrasadas' },
-                { id: 'lista', rotulo: 'Lista', icone: List },
-                { id: 'avanco', rotulo: 'Avanço', icone: PieChart },
-                { id: 'producao', rotulo: 'Produção', icone: ClipboardList },
+                { id: 'quadro', rotulo: 'Cronograma', icone: GanttChartSquare, contador: atrasadas, contadorRotulo: 'atrasadas' },
+                { id: 'lista', rotulo: 'Atividades', icone: List },
+                { id: 'avanco', rotulo: 'Avanço físico', curto: 'Avanço', icone: PieChart },
+                { id: 'producao', rotulo: 'Apontamentos', icone: ClipboardList },
               ]}
             />
           )}
@@ -361,13 +367,13 @@ export default function ProgramacaoTab({ planejamento, producao, servicos, respo
           hoje={hoje}
           exportando={exportando}
           onExportar={tipo => void exportar(tipo)}
-          onEscolherFrente={setFrente}
+          onAbrirAtividade={id => setAberta({ id })}
         />
       )}
 
       {!aberta && aba === 'producao' && (
         <TabelaPadrao
-          titulo="Produção lançada"
+          titulo="Apontamentos de produção"
           linhas={producaoFiltrada}
           colunas={colunasProducao}
           idDaLinha={r => r.id}
