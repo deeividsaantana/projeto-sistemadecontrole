@@ -167,6 +167,7 @@ import './envioSerializado.test';
 import './estadoSalvamento.test';
 import './remocaoMateriaisJazidaBloco.test';
 import './salvamentoLeveSemFila.test';
+import './salvamentoMaisRapido.test';
 import './historicoVersoesNuvem.test';
 import './frotaDataPlanilha.test';
 import './dataLocalHoje.test';
