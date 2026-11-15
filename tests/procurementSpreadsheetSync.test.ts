@@ -18,3 +18,17 @@ test('importador lê Solicitações, Prioridade e Substituição', async () => {
     item_description: 'Tubos', unit: 'Und.', quantity_requested: 12, source_purchase_order: '92995523', delivery_deadline: '2026-09-01',
   });
 });
+
+test('sincronização registra a falha no banco quando a planilha não baixa', async () => {
+  const { syncProcurementSpreadsheet } = await import('../server/procurementSpreadsheetSyncJob.js');
+  const inserts: Array<Record<string, unknown>> = [];
+  // Imita o construtor do Supabase: só tem `then`, não tem `.catch`.
+  const client = { from: () => ({ insert: (row: Record<string, unknown>) => ({ then: (ok: (v: unknown) => unknown) => { inserts.push(row); return Promise.resolve({ error: null }).then(ok); } }) }) };
+  await assert.rejects(
+    syncProcurementSpreadsheet({ client, download: async () => { throw new Error('OneDrive fora'); } }),
+    /OneDrive fora/,
+  );
+  assert.equal(inserts.length, 1);
+  assert.equal(inserts[0].status, 'FALHA');
+  assert.equal(inserts[0].error_message, 'OneDrive fora');
+});

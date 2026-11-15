@@ -7,11 +7,10 @@ const keyFor = row => crypto.createHash('sha256').update(JSON.stringify([
   row.unit, row.quantity_requested, row.source_purchase_order, row.delivery_deadline,
 ])).digest('hex');
 
-export const syncProcurementSpreadsheet = async () => {
+export const syncProcurementSpreadsheet = async ({ client = getSupabaseAdmin(), download = downloadProcurementWorkbook } = {}) => {
   const startedAt = new Date().toISOString();
-  const client = getSupabaseAdmin();
   try {
-    const parsed = await parseProcurementWorkbook(await downloadProcurementWorkbook());
+    const parsed = await parseProcurementWorkbook(await download());
     const rows = parsed.allRows.map(row => ({
       organization_id: 'renea', source_key: keyFor(row), sheet_name: row.source,
       source_request_number: row.source_request_number || row.pedido || row.request_number || null, request_date: row.request_date || row.data || null,
@@ -27,7 +26,12 @@ export const syncProcurementSpreadsheet = async () => {
     await client.from('erp_procurement_sync_runs').insert({ organization_id: 'renea', source: 'sharepoint-public-xlsx', status: 'SUCESSO', rows_seen: rows.length, rows_written: rows.length, started_at: startedAt, finished_at: new Date().toISOString() });
     return { rowsSeen: rows.length, rowsWritten: rows.length };
   } catch (error) {
-    await client.from('erp_procurement_sync_runs').insert({ organization_id: 'renea', source: 'sharepoint-public-xlsx', status: 'FALHA', error_message: String(error?.message || error), started_at: startedAt, finished_at: new Date().toISOString() }).catch(() => {});
+    // O construtor do Supabase só tem `then` (sem `.catch`): o registro da falha precisa de await dentro de try.
+    try {
+      await client.from('erp_procurement_sync_runs').insert({ organization_id: 'renea', source: 'sharepoint-public-xlsx', status: 'FALHA', error_message: String(error?.message || error), started_at: startedAt, finished_at: new Date().toISOString() });
+    } catch {
+      // Sem banco não há onde registrar; o erro original segue abaixo.
+    }
     throw error;
   }
 };
