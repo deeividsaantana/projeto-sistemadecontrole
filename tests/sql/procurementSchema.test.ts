@@ -43,3 +43,17 @@ test('sincronização da planilha é idempotente e auditável', () => {
   assert.match(migration, /unique \(organization_id, source_key\)/is);
   assert.match(migration, /erp_procurement_sync_runs/is);
 });
+
+test('todas as tabelas de compras ficam com RLS e sem acesso direto de anon/authenticated', () => {
+  const rls = fs.readFileSync('supabase/migrations/202611150001_procurement_rls_tabelas_filhas.sql', 'utf8');
+  const todas = [
+    'erp_requests', 'erp_purchase_orders', 'erp_logistics_tracking', 'erp_audit_trail',
+    'erp_request_items', 'erp_request_comments', 'erp_request_signatures',
+    'erp_procurement_sheet_rows', 'erp_procurement_sync_runs',
+  ];
+  const sql = `${migration}\n${rls}`;
+  for (const tabela of todas) {
+    assert.match(sql, new RegExp(`alter table public\\.${tabela} enable row level security`), `${tabela} sem RLS`);
+    assert.match(sql, new RegExp(`revoke all on[^;]*public\\.${tabela}[^;]*from anon, authenticated`, 's'), `${tabela} sem revoke`);
+  }
+});
