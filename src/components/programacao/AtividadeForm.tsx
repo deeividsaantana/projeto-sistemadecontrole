@@ -188,6 +188,7 @@ export function AtividadeForm({ aberto, resumo, producao, hoje, podeEditar, suge
       onSubmit={event => { event.preventDefault(); salvar(); }}
       className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white"
       data-testid="programacao-form"
+      data-lancamento=""
       noValidate
     >
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-3 sm:px-6">

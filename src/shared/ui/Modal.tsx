@@ -14,7 +14,7 @@ interface ModalProps {
   busy?: boolean;
   role?: 'dialog' | 'alertdialog';
   /**
-   * Ação de salvar do diálogo. Liga CTRL+ENTER em qualquer campo e ENTER nos
+   * Ação de salvar do diálogo. Liga CTRL+S e CTRL+ENTER em qualquer campo e ENTER nos
    * campos de uma linha — quem preenche formulário no teclado não precisa
    * procurar o botão com o mouse.
    */
@@ -32,6 +32,13 @@ interface ModalProps {
   telaCheia?: string;
   /** Abre em tela cheia enquanto a pessoa não tiver escolhido outra coisa neste aparelho. */
   telaCheiaPadrao?: boolean;
+  /**
+   * Lançamento (padrão de 15/11/2026, igual ao Lançar do Combustível): ocupa
+   * a área inteira da aba, com o menu lateral e a barra do topo à vista; no
+   * celular, a tela toda. Não fecha com clique fora, para ninguém perder o
+   * que digitou. Ctrl+S salva (vale para todo diálogo com onSubmit).
+   */
+  lancamento?: boolean;
 }
 
 const chaveTelaCheia = (nome: string) => `modal-tela-cheia:${nome}`;
@@ -73,6 +80,7 @@ export function Modal({
   className,
   telaCheia,
   telaCheiaPadrao = false,
+  lancamento = false,
 }: ModalProps) {
   const panelRef = useRef<HTMLElement>(null);
   const [cheia, setCheia] = useState(() => lerTelaCheia(telaCheia, telaCheiaPadrao));
@@ -102,6 +110,13 @@ export function Modal({
       const { onSubmit, onClose } = acoes.current;
       if (event.key === 'Escape' && !busy) {
         onClose();
+        return;
+      }
+      // Ctrl+S salva de qualquer campo, como no Combustível e na Programação,
+      // e nunca abre o "Salvar página" do navegador.
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's' && onSubmit) {
+        event.preventDefault();
+        if (!busy) onSubmit();
         return;
       }
       if (event.key === 'Enter' && onSubmit && !busy) {
@@ -140,6 +155,45 @@ export function Modal({
   }, [busy, initialFocusRef, open]);
 
   if (!open) return null;
+
+  if (lancamento) {
+    return createPortal(
+      <section
+        ref={panelRef}
+        role={role}
+        aria-modal="true"
+        aria-label={typeof title === 'string' ? title : undefined}
+        data-lancamento=""
+        className="renea-lancamento fixed inset-0 z-[110] flex flex-col bg-white lg:absolute lg:z-[60]"
+      >
+        {(title || description) && (
+          <header className="flex shrink-0 items-start gap-3 border-b border-slate-200 px-3 py-3 sm:px-6">
+            <div className="min-w-0 flex-1">
+              {title && <h2 className="truncate text-lg font-black text-slate-900">{title}</h2>}
+              {description && <p className="text-sm text-slate-600">{description}</p>}
+            </div>
+            <button
+              type="button"
+              aria-label="Fechar"
+              disabled={busy}
+              onClick={onClose}
+              className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--renea-focus)"
+            >
+              <X size={20} aria-hidden="true" />
+            </button>
+          </header>
+        )}
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-6 sm:py-4">{children}</div>
+        {footer && (
+          <footer className="flex shrink-0 items-center gap-3 border-t border-slate-200 bg-white px-3 py-3 sm:px-6">
+            {onSubmit && <span className="mr-auto hidden text-xs font-semibold text-[#5b6870] lg:inline">Ctrl+S salva · Esc fecha</span>}
+            <div className="min-w-0 flex-1 lg:flex-none">{footer}</div>
+          </footer>
+        )}
+      </section>,
+      document.getElementById('main-tab-viewport') ?? document.body,
+    );
+  }
 
   return createPortal(
     <div

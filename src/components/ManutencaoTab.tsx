@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { BarChart3, ClipboardCheck, ClipboardList, FileSpreadsheet, History, Plus, Search, Timer, Wrench } from 'lucide-react';
+import { BarChart3, CheckCircle2, ClipboardCheck, ClipboardList, FileSpreadsheet, History, Plus, Search, Timer, Wrench, X } from 'lucide-react';
 import type { ControleEquipamentoDiario, Equipamento, Funcionario, HistoryLog, OrdemServico } from '../types';
 import { historicoDaManutencao } from '../utils/manutencaoHistorico';
 import {
@@ -45,6 +45,7 @@ import {
 } from '../shared/ui';
 import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
 import { TelaCheia } from '../shared/ui/TelaCheia';
+import { useAtalhoNovo } from '../shared/hooks/useAtalhoNovo';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO } from './cadastros/estilos';
 import { Campo, Conferencia, Conferido, Etapa } from '../shared/ui/Lancamento';
 import { ManutencaoHoje } from './manutencao/ManutencaoHoje';
@@ -153,18 +154,7 @@ export default function ManutencaoTab({
   const [avisoExport, setAvisoExport] = useState('');
   const equipamentoFieldRef = useRef<HTMLSelectElement>(null);
 
-  useEffect(() => {
-    const handleShortcut = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      const isTyping = target?.matches('input, textarea, select, [contenteditable="true"]');
-      if (!formAberto && !isTyping && event.key.toLowerCase() === 'n' && !event.ctrlKey && !event.metaKey && podeEditar) {
-        event.preventDefault();
-        abrirNova();
-      }
-    };
-    if (!formAberto) window.addEventListener('keydown', handleShortcut);
-    return () => window.removeEventListener('keydown', handleShortcut);
-  }, [formAberto, podeEditar]);
+  useAtalhoNovo(() => abrirNova(), !formAberto && podeEditar);
 
   /** O que já aconteceu com as ordens — abertura, edição e liberação. */
   const historico = useMemo(() => historicoDaManutencao(historyLogs), [historyLogs]);
@@ -681,13 +671,14 @@ export default function ManutencaoTab({
         open={formAberto}
         title={editando ? `Editar ${editando.numero}` : 'Abrir ordem de serviço'}
         size="xl"
+        lancamento
         onClose={() => setFormAberto(false)}
         onSubmit={salvar}
         initialFocusRef={equipamentoFieldRef}
         footer={(
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button type="button" onClick={() => setFormAberto(false)} className={BOTAO_SECUNDARIO}>Cancelar</button>
-            <button type="button" onClick={salvar} className={BOTAO_PRIMARIO}>Salvar ordem</button>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+            <button type="button" onClick={() => setFormAberto(false)} className={BOTAO_SECUNDARIO}><X className="size-4" aria-hidden="true" />Fechar</button>
+            <button type="button" onClick={salvar} className={`${BOTAO_PRIMARIO} sm:min-w-40`} data-testid="manutencao-salvar"><CheckCircle2 className="size-4" aria-hidden="true" />Salvar ordem</button>
           </div>
         )}
       >
