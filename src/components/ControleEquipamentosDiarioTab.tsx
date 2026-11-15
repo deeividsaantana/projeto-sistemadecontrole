@@ -23,6 +23,7 @@ import {
   Upload,
   Users,
   X,
+  BarChart3,
   Clock3,
   Truck,
   Wrench,
@@ -115,9 +116,9 @@ type ConfirmationState =
   | { kind: 'delete'; ids: string[] }
   | { kind: 'status'; ids: string[]; status: FleetOperationalStatus };
 
-type FleetView = 'today' | 'quadro' | 'equipamentos' | 'operadores' | 'history' | 'registry';
+type FleetView = 'today' | 'quadro' | 'equipamentos' | 'operadores' | 'relatorio' | 'history' | 'registry';
 
-const VISTAS_GUARDAVEIS: readonly FleetView[] = ['quadro', 'equipamentos', 'operadores', 'history', 'registry'];
+const VISTAS_GUARDAVEIS: readonly FleetView[] = ['quadro', 'equipamentos', 'operadores', 'relatorio', 'history', 'registry'];
 
 const CHAVE_VISTA = 'renea_frota_vista';
 const vistaGuardada = (): FleetView => {
@@ -539,6 +540,16 @@ export default function ControleEquipamentosDiarioTab({
     }
   };
   const weeklyReport = useMemo(() => buildWeeklyFleetReport(registros), [registros]);
+  const resumoDoDia = useMemo(() => {
+    const doDia = registros.filter(registro => registro.data === filters.date);
+    return {
+      total: doDia.length,
+      operando: doDia.filter(registro => registro.status === 'Em operação').length,
+      manutencao: doDia.filter(registro => registro.status === 'Em manutenção' || registro.status === 'Aguardando manutenção').length,
+      disponivel: doDia.filter(registro => registro.status === 'Disponível').length,
+      aConfirmar: doDia.filter(registro => registro.status === 'A confirmar').length,
+    };
+  }, [registros, filters.date]);
   const handleWeeklyPdf = async () => {
     if (exporting) return;
     setExporting('weekly-pdf');
@@ -681,12 +692,14 @@ export default function ControleEquipamentosDiarioTab({
       grupo: 'conferencia', rotulo: 'Conferência', curto: 'Conferir', icone: ClipboardCheck, abas: [
         { id: 'equipamentos', rotulo: 'Por equipamento', icone: ClipboardCheck, contador: conferenciaDoDia.equipamentos.missing, contadorRotulo: 'a confirmar' },
         { id: 'operadores', rotulo: 'Por operador', icone: Users, contador: conferenciaDoDia.operadores.missing, contadorRotulo: 'a confirmar' },
+        { id: 'registry', rotulo: 'Cadastro de motoristas', curto: 'Motoristas', icone: Database },
       ],
     },
+    // Relatórios no mesmo padrão das outras abas que lançam (15/11/2026).
     {
-      grupo: 'registros', rotulo: 'Histórico e motoristas', curto: 'Histórico', icone: History, abas: [
-        { id: 'history', rotulo: 'Histórico de lançamentos', curto: 'Histórico', icone: History },
-        { id: 'registry', rotulo: 'Cadastro de motoristas', curto: 'Motoristas', icone: Database },
+      grupo: 'relatorios', rotulo: 'Relatórios', icone: BarChart3, abas: [
+        { id: 'relatorio', rotulo: 'Relatório do dia', curto: 'Do dia', icone: BarChart3 },
+        { id: 'history', rotulo: 'Fechamento por dia', curto: 'Por dia', icone: History },
       ],
     },
   ];
@@ -734,11 +747,6 @@ export default function ControleEquipamentosDiarioTab({
                 <ChevronDown className="size-4 transition duration-300 group-open:rotate-180" aria-hidden="true" />
               </summary>
               <div className="absolute right-0 z-30 mt-2 w-64 min-w-60 space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_40px_-16px_rgba(15,40,31,0.35)]">
-                <p className={ROTULO_GRUPO_MENU}>Exportar</p>
-                <button type="button" disabled={Boolean(exporting)} onClick={() => void handlePdf()} className={ITEM_MENU}><Printer className="size-4" aria-hidden="true" />{exporting === 'pdf' ? 'Gerando PDF…' : 'Relatório do dia em PDF'}</button>
-                <button type="button" disabled={Boolean(exporting)} onClick={() => void handleExcel()} className={ITEM_MENU}><FileSpreadsheet className="size-4" aria-hidden="true" />{exporting === 'excel' ? 'Gerando Excel…' : 'Relatório do dia em Excel'}</button>
-                <button type="button" disabled={Boolean(exporting)} onClick={() => void handleFaltantesPdf()} className={ITEM_MENU} data-testid="frota-faltantes-pdf"><Printer className="size-4" aria-hidden="true" />Faltantes do dia em PDF</button>
-                <hr className="my-1 border-slate-100" />
                 <p className={ROTULO_GRUPO_MENU}>Importar</p>
                 <button type="button" onClick={() => inputRef.current?.click()} className={ITEM_MENU}><Upload className="size-4" aria-hidden="true" />Importar planilha</button>
                 <ImportacaoSge
@@ -807,6 +815,39 @@ export default function ControleEquipamentosDiarioTab({
       {activeView === 'operadores' && <div data-fleet-view className="flex min-h-0 flex-1 flex-col">
         <FleetDriverReference records={registros} date={filters.date} drivers={operationalDrivers} onAddDrivers={onAddOperationalDrivers} onLancar={openNewRecord} onRelacaoChange={relacaoMudou}/>
       </div>}
+      {activeView === 'relatorio' && (
+        <section data-fleet-view className="flex min-h-0 flex-1 flex-col gap-3" aria-labelledby="frota-relatorio-titulo" data-testid="frota-relatorio">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h2 id="frota-relatorio-titulo" className="text-base font-black text-slate-900">Relatório do dia {new Date(`${filters.date}T12:00:00`).toLocaleDateString('pt-BR')}</h2>
+              <p className="text-sm text-[#5b6870]">O dia vem do calendário do topo. Gere o arquivo para mandar ou imprimir.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:flex">
+              <button type="button" disabled={Boolean(exporting) || !resumoDoDia.total} onClick={() => void handlePdf()} className={BOTAO_SECUNDARIO} data-testid="frota-relatorio-pdf"><Printer className="size-4" aria-hidden="true" />{exporting === 'pdf' ? 'Gerando…' : 'PDF'}</button>
+              <button type="button" disabled={Boolean(exporting) || !resumoDoDia.total} onClick={() => void handleExcel()} className={BOTAO_SECUNDARIO} data-testid="frota-relatorio-excel"><FileSpreadsheet className="size-4" aria-hidden="true" />{exporting === 'excel' ? 'Gerando…' : 'Excel'}</button>
+              <button type="button" disabled={Boolean(exporting)} onClick={() => void handleFaltantesPdf()} className={`${BOTAO_SECUNDARIO} col-span-2`} data-testid="frota-faltantes-pdf"><Printer className="size-4" aria-hidden="true" />Faltantes em PDF</button>
+            </div>
+          </div>
+          {resumoDoDia.total ? (
+            <dl className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+              {[
+                { rotulo: 'Lançadas', valor: resumoDoDia.total },
+                { rotulo: 'Em operação', valor: resumoDoDia.operando },
+                { rotulo: 'Em manutenção', valor: resumoDoDia.manutencao },
+                { rotulo: 'Disponíveis', valor: resumoDoDia.disponivel },
+                { rotulo: 'A confirmar', valor: resumoDoDia.aConfirmar },
+              ].map(item => (
+                <div key={item.rotulo} className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                  <dt className="text-sm font-semibold text-[#5b6870]">{item.rotulo}</dt>
+                  <dd className="text-2xl font-black tabular-nums text-slate-900">{item.valor.toLocaleString('pt-BR')}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : (
+            <p className="rounded-2xl border border-slate-200 bg-white px-4 py-6 text-sm text-[#5b6870]">Nenhum lançamento neste dia. Troque o dia no calendário do topo ou aperte N para lançar.</p>
+          )}
+        </section>
+      )}
       {activeView === 'history' && (
         <section data-fleet-view className="flex min-h-0 flex-1 flex-col gap-3" aria-labelledby="frota-historico-titulo">
           <p className="sr-only" id="frota-historico-titulo">Fechamento por dia</p>
