@@ -248,6 +248,14 @@ export default function SolicitacoesTab({
         event.preventDefault();
         novaFormRef.current?.requestSubmit();
       }
+      if (
+        event.key === "Escape" &&
+        subtela === "nova" &&
+        !event.defaultPrevented &&
+        !document.querySelector('[role="dialog"], [role="alertdialog"]')
+      ) {
+        setSubtela("pedidos");
+      }
     };
     document.addEventListener("keydown", teclar);
     return () => document.removeEventListener("keydown", teclar);
@@ -872,7 +880,8 @@ export default function SolicitacoesTab({
       idAbaAtiva={idDaAba("solicitacoes", subtela)}
       idDados="solicitacoes-dados"
       chaveRolagem={`${subtela}-${abertaId ?? ""}`}
-      cabecalho={
+      // Lançando, a folha ocupa a área inteira da aba (padrão do Combustível).
+      cabecalho={subtela === "nova" ? undefined :
         <PageHeader
           eyebrow="Suprimentos"
           title="Solicitações e compras"
@@ -910,7 +919,7 @@ export default function SolicitacoesTab({
           }
           actions={
             <>
-              {exerce(ator, "solicitante") && subtela !== "nova" && (
+              {exerce(ator, "solicitante") && (
                 <button
                   type="button"
                   onClick={() => setSubtela("nova")}
@@ -1402,6 +1411,7 @@ export default function SolicitacoesTab({
           {subtela === "nova" && exerce(ator, "solicitante") && (
             <NovaSolicitacao
               formRef={novaFormRef}
+              onFechar={() => setSubtela("pedidos")}
               solicitante={ator.nome}
               solicitantesPermitidos={pessoas
                 .filter(
