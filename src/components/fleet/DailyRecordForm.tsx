@@ -485,15 +485,15 @@ export default function DailyRecordForm({
         onClose={pedirFechar}
         busy={saving}
         size="xl"
-        telaCheia="frota-lancamento"
-        telaCheiaPadrao
+        lancamento
+        onSubmit={() => formRef.current?.requestSubmit()}
         initialFocusRef={preset?.codigoFuncionario && !preset.prefixo ? prefixFieldRef : employeeCodeFieldRef}
         title={record ? `Editar lançamento · ${record.prefixo}` : 'Registrar situação da frota'}
         description="Quem opera, qual equipamento e a situação. O resto vem do cadastro."
         footer={(
           <div className="flex flex-col gap-2 sm:flex-row-reverse sm:items-center">
             <button type="button" disabled={saving} onClick={() => formRef.current?.requestSubmit()} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#176b4d] px-6 text-sm font-bold text-white transition hover:bg-[#125a40] active:scale-[0.99] disabled:cursor-wait disabled:opacity-60 sm:min-h-11 sm:w-auto"><Save size={17}/>{saving ? 'Salvando lançamento...' : record ? 'Salvar alterações' : 'Confirmar lançamento'}</button>
-            <button type="button" disabled={saving} onClick={pedirFechar} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50 sm:w-auto">Cancelar</button>
+            <button type="button" disabled={saving} onClick={pedirFechar} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50 sm:w-auto">Fechar</button>
           </div>
         )}
       >
@@ -572,7 +572,7 @@ export default function DailyRecordForm({
             </Etapa>
           </div>
 
-          <Conferencia subtitulo="Ctrl + Enter salva · Esc fecha">
+          <Conferencia>
             <dl className="divide-y divide-slate-100">
               <Conferido rotulo="Equipamento" ok={Boolean(form.equipmentId && form.prefix)} valor={form.prefix || 'falta'} />
               <Conferido rotulo="Situação" ok valor={form.operationalStatus} />

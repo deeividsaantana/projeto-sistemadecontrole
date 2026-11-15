@@ -32,7 +32,6 @@ const PENDENCIAS: Record<string, readonly Regra[]> = {
   programacao: ['atalhoNovo', 'relatorios'],
   solicitacoes: ['telaCheia'],
   estacas: ['telaCheia', 'atalhoNovo', 'ctrlS'],
-  frotas: ['telaCheia', 'ctrlS', 'relatorios'],
   pluviometro: ['telaCheia', 'relatorios'],
   presenca: ['telaCheia', 'atalhoNovo', 'ctrlS'],
   contratacao: ['telaCheia', 'atalhoNovo', 'ctrlS', 'relatorios'],

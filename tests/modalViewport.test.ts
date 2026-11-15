@@ -28,10 +28,14 @@ test('digitar num campo do modal não devolve o foco ao primeiro botão', () => 
   assert.match(modalSource, /acoes\.current = \{ onSubmit, onClose \}/);
 });
 
-test('janelas de lançamento da frota abrem em tela cheia e lembram a escolha', () => {
+test('painel do equipamento abre em tela cheia e lembra a escolha', () => {
   assert.match(modalSource, /modal-tela-cheia:\$\{nome\}/);
   assert.match(modalSource, /h-\[100dvh\]/);
-  for (const arquivo of ['src/components/fleet/DailyRecordForm.tsx', 'src/components/quadroFrota/PainelEquipamento.tsx']) {
-    assert.match(readFileSync(arquivo, 'utf8'), /telaCheia="/, arquivo);
-  }
+  assert.match(readFileSync('src/components/quadroFrota/PainelEquipamento.tsx', 'utf8'), /telaCheia="/);
+});
+
+test('lançamento da frota ocupa a área da aba e salva com Ctrl+S', () => {
+  const form = readFileSync('src/components/fleet/DailyRecordForm.tsx', 'utf8');
+  assert.match(form, /^\s*lancamento$/m);
+  assert.match(form, /onSubmit=\{/);
 });
