@@ -3,6 +3,10 @@ import test from 'node:test';
 import type { PlanejamentoItem, RegistroProducao } from '../src/types';
 import {
   avancoGeral,
+  avancoPorFrente,
+  previstoGeral,
+  curvaS,
+  producaoPorDia,
   diasDeTrabalho,
   inicioDaSemana,
   metaDiariaDe,
@@ -88,4 +92,27 @@ test('texto do WhatsApp agrupa por frente e pula domingo', () => {
   assert.match(texto, /\*RAMO 1400\*/);
   assert.match(texto, /GUIA · SILLAME · meta 23 M · est\. 1401\+10 a 1409\+7/);
   assert.match(textoDoDia(resumos, '2026-11-15'), /Nenhum serviço programado/);
+});
+
+test('curva S: previsto anda pelo cronograma, realizado só até hoje', () => {
+  const resumo = resumirAtividade(item(), [lanc('2026-11-13', 157, { planejamentoId: 'a1' })], '2026-11-14');
+  const curva = curvaS([resumo], [lanc('2026-11-13', 157, { planejamentoId: 'a1' })], '2026-11-14');
+  assert.equal(curva[0].dia, '2026-11-12');
+  assert.equal(curva.at(-1)?.dia, '2026-11-19');
+  assert.equal(Math.round(curva.at(-1)!.previsto), 100);
+  assert.equal(curva.find(ponto => ponto.dia === '2026-11-13')?.realizado, 100);
+  assert.equal(curva.find(ponto => ponto.dia === '2026-11-15')?.realizado, undefined, 'futuro sem realizado');
+});
+
+test('avanço por frente e produção por dia', () => {
+  const producao = [lanc('2026-11-13', 44, { planejamentoId: 'a1' })];
+  const resumos = [resumirAtividade(item(), producao, '2026-11-14'), resumirAtividade(item({ id: 'b', frente: 'RAMO 200A', unidade: 'UN', quantidadePlanejada: 1 }), [], '2026-11-14')];
+  const frentes = avancoPorFrente(resumos);
+  assert.deepEqual(frentes.map(frente => frente.frente), ['RAMO 200A', 'RAMO 1400'], 'ordem numérica: 200 antes de 1400');
+  assert.equal(Math.round(frentes[1].realizado), 28);
+  assert.equal(Math.round(frentes[1].previsto), 29, '2 de 7 dias');
+  assert.equal(previstoGeral([resumos[0]]), frentes[1].previsto);
+  assert.equal(previstoGeral([]), 0);
+  const dias = producaoPorDia(resumos, producao, '2026-11-14', 3);
+  assert.deepEqual(dias.map(d => [d.dia, d.feito, d.meta]), [['2026-11-12', 0, 23], ['2026-11-13', 44, 23], ['2026-11-14', 0, 23]]);
 });

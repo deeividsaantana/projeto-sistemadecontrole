@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { CalendarDays, ClipboardList, Download, FileSpreadsheet, FileText, GanttChartSquare, List, MessageCircle, Plus, Search, X } from 'lucide-react';
+import { CalendarDays, ClipboardList, Download, FileSpreadsheet, FileText, GanttChartSquare, List, MessageCircle, PieChart, Plus, Search, X } from 'lucide-react';
 import type { PlanejamentoItem, RegistroProducao, ServicoObra } from '../types';
 import { PageHeader } from '../shared/ui/PageHeader';
 import { TelaCheia } from '../shared/ui/TelaCheia';
@@ -25,6 +25,7 @@ import {
 import { AtividadeForm } from './programacao/AtividadeForm';
 import { CartoesDoDia } from './programacao/CartoesDoDia';
 import { QuadroProgramacao } from './programacao/QuadroProgramacao';
+import { AvancoFisico } from './programacao/AvancoFisico';
 import { BarraAvanco, COR_SITUACAO, SeloSituacao, diaMes, numeroObra } from './programacao/visual';
 
 interface Props {
@@ -37,7 +38,7 @@ interface Props {
   onSaveProducao: (item: RegistroProducao, isNew: boolean) => void;
 }
 
-type Aba = 'hoje' | 'quadro' | 'lista' | 'producao';
+type Aba = 'hoje' | 'quadro' | 'lista' | 'avanco' | 'producao';
 const DIAS_NO_QUADRO = 14;
 const ordenarTexto = (lista: Iterable<string>) => [...new Set(lista)].filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
 const abaInicial = (): Aba => (typeof window !== 'undefined' && window.innerWidth < 768 ? 'hoje' : 'quadro');
@@ -151,7 +152,10 @@ export default function ProgramacaoTab({ planejamento, producao, servicos, respo
     setExportando(true);
     try {
       const modulo = await import('./programacao/exportarProgramacao');
-      if (tipo === 'excel') await modulo.baixarExcelProgramacao(filtrados, producaoFiltrada, filtrosAtivos, hoje);
+      if (aba === 'avanco') {
+        if (tipo === 'excel') await modulo.baixarExcelAvanco(filtrados, producao, filtrosAtivos, hoje);
+        else await modulo.baixarPdfAvanco(filtrados, filtrosAtivos, responsavel, hoje);
+      } else if (tipo === 'excel') await modulo.baixarExcelProgramacao(filtrados, producaoFiltrada, filtrosAtivos, hoje);
       else {
         await modulo.baixarPdfProgramacao(filtrados, filtrosAtivos, [
           { label: 'Atividades', value: filtrados.length },
@@ -237,7 +241,7 @@ export default function ProgramacaoTab({ planejamento, producao, servicos, respo
               </button>
             ))}
           </div>
-          <p className="hidden shrink-0 text-sm font-semibold text-[#5b6870] md:block">
+          <p className={`${aba === 'avanco' ? 'hidden' : 'hidden md:block'} shrink-0 text-sm font-semibold text-[#5b6870]`}>
             Avanço geral <strong className="text-base font-black tabular-nums text-slate-900">{Math.round(avanco)}%</strong>
           </p>
         </div>
@@ -253,7 +257,7 @@ export default function ProgramacaoTab({ planejamento, producao, servicos, respo
       ref={escopo}
       id="programacao-tab"
       rotulo="Programação"
-      longa={aba === 'hoje' && !aberta}
+      longa={(aba === 'hoje' || aba === 'avanco') && !aberta}
       idAbaAtiva={idDaAba('programacao', aba)}
       idDados="programacao-dados"
       chaveRolagem={aba}
@@ -273,6 +277,7 @@ export default function ProgramacaoTab({ planejamento, producao, servicos, respo
                 { id: 'hoje', rotulo: 'Dia a dia', curto: 'Dia', icone: CalendarDays },
                 { id: 'quadro', rotulo: 'Quadro', icone: GanttChartSquare, contador: atrasadas, contadorRotulo: 'atrasadas' },
                 { id: 'lista', rotulo: 'Lista', icone: List },
+                { id: 'avanco', rotulo: 'Avanço', icone: PieChart },
                 { id: 'producao', rotulo: 'Produção', icone: ClipboardList },
               ]}
             />
@@ -287,10 +292,10 @@ export default function ProgramacaoTab({ planejamento, producao, servicos, respo
                 {menuExportar && (
                   <div role="menu" className="absolute right-0 top-12 z-30 grid min-w-56 gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
                     <button type="button" role="menuitem" onClick={() => void exportar('excel')} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm font-bold text-slate-700 hover:bg-slate-50">
-                      <FileSpreadsheet className="size-4 text-[#176b4d]" aria-hidden="true" /> Planilha Excel
+                      <FileSpreadsheet className="size-4 text-[#176b4d]" aria-hidden="true" /> {aba === 'avanco' ? 'Relatório de avanço em Excel' : 'Planilha Excel'}
                     </button>
                     <button type="button" role="menuitem" onClick={() => void exportar('pdf')} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm font-bold text-slate-700 hover:bg-slate-50">
-                      <FileText className="size-4 text-rose-700" aria-hidden="true" /> PDF para imprimir
+                      <FileText className="size-4 text-rose-700" aria-hidden="true" /> {aba === 'avanco' ? 'Relatório de avanço em PDF' : 'PDF para imprimir'}
                     </button>
                     <button type="button" role="menuitem" onClick={() => { setMenuExportar(false); void copiarDia(); }} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm font-bold text-slate-700 hover:bg-slate-50">
                       <MessageCircle className="size-4 text-[#176b4d]" aria-hidden="true" /> Texto do dia para WhatsApp
@@ -346,6 +351,17 @@ export default function ProgramacaoTab({ planejamento, producao, servicos, respo
           testIdLinha="programacao-linha"
           vazio={planejamento.length ? 'Nenhuma atividade com esses filtros.' : 'Nenhuma atividade programada ainda. Toque em "Nova atividade".'}
           resumo={` · avanço geral ${Math.round(avanco)}%`}
+        />
+      )}
+
+      {!aberta && aba === 'avanco' && (
+        <AvancoFisico
+          resumos={filtrados}
+          producao={producao}
+          hoje={hoje}
+          exportando={exportando}
+          onExportar={tipo => void exportar(tipo)}
+          onEscolherFrente={setFrente}
         />
       )}
 
