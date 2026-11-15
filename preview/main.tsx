@@ -15,6 +15,7 @@ import ControleEquipamentosDiarioTab from '../src/components/ControleEquipamento
 import QuadroFrota from '../src/components/quadroFrota/QuadroFrota';
 import ManutencaoTab from '../src/components/ManutencaoTab';
 import ColaboradoresTab from '../src/components/ColaboradoresTab';
+import PluviometroTab from '../src/components/PluviometroTab';
 import DiarioObraTab from '../src/components/DiarioObraTab';
 import { SolicitacoesPreview } from './solicitacoesPreview';
 import ContratacaoTab from '../src/components/ContratacaoTab';
@@ -568,6 +569,7 @@ const screens: Record<string, React.ReactNode> = {
   ),
   solicitacoes: <SolicitacoesPreview />,
   contratacao: <ContratacaoTab />,
+  pluviometro: <PluviometroTab diarios={fx.diariosChuva} obras={fx.obras} responsavel="Deivid Santana" podeEditar onSave={noop} />,
   'diario-obra': (
     <DiarioObraTab
       diarios={fx.diariosChuva}

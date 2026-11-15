@@ -28,6 +28,7 @@ import { CartoesDoDia } from './programacao/CartoesDoDia';
 import { QuadroProgramacao } from './programacao/QuadroProgramacao';
 import { AvancoFisico } from './programacao/AvancoFisico';
 import { BarraAvanco, COR_SITUACAO, SeloSituacao, diaMes, numeroObra } from './programacao/visual';
+import { useAtalhoNovo } from '../shared/hooks/useAtalhoNovo';
 
 interface Props {
   planejamento: PlanejamentoItem[];
@@ -56,6 +57,8 @@ export default function ProgramacaoTab({ planejamento: planejamentoSalvo, produc
   const [dia, setDia] = useState(hoje);
   const [inicioQuadro, setInicioQuadro] = useState(() => inicioDaSemana(hoje));
   const [aberta, setAberta] = useState<{ id: string | null } | null>(null);
+  // N abre uma atividade nova (padrão de lançamento, 15/11/2026).
+  useAtalhoNovo(() => setAberta({ id: null }), podeEditar && !aberta);
   const [lancamentoAberto, setLancamentoAberto] = useState<RegistroProducao | null>(null);
   const [aviso, setAviso] = useState('');
   const [menuExportar, setMenuExportar] = useState(false);
@@ -283,8 +286,13 @@ export default function ProgramacaoTab({ planejamento: planejamentoSalvo, produc
                 { id: 'hoje', rotulo: 'Dia a dia', curto: 'Dia', icone: CalendarDays },
                 { id: 'quadro', rotulo: 'Cronograma', icone: GanttChartSquare, contador: atrasadas, contadorRotulo: 'atrasadas' },
                 { id: 'lista', rotulo: 'Atividades', icone: List },
-                { id: 'avanco', rotulo: 'Avanço físico', curto: 'Avanço', icone: PieChart },
-                { id: 'producao', rotulo: 'Apontamentos', icone: ClipboardList },
+                // Relatórios no mesmo padrão das outras abas que lançam (15/11/2026).
+                {
+                  grupo: 'relatorios', rotulo: 'Relatórios', icone: PieChart, abas: [
+                    { id: 'avanco', rotulo: 'Avanço físico', curto: 'Avanço', icone: PieChart },
+                    { id: 'producao', rotulo: 'Apontamentos', icone: ClipboardList },
+                  ],
+                },
               ]}
             />
           )}

@@ -1,13 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { CloudRain, NotebookPen } from 'lucide-react';
+import { CheckCircle2, CloudRain, NotebookPen, Plus, X } from 'lucide-react';
 import type { CondicaoClimatica, DiarioObra, ObraLocal } from '../types';
 import { AbasDaTela } from '../shared/ui/AbasDaTela';
 import { PageHeader } from '../shared/ui/PageHeader';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import MapaChuva from './MapaChuva';
-import { CAMPO, CARTAO } from './cadastros/estilos';
+import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO } from './cadastros/estilos';
+import { Modal } from '../shared/ui/Modal';
+import { Campo, Etapa } from '../shared/ui/Lancamento';
+import { useAtalhoNovo } from '../shared/hooks/useAtalhoNovo';
 import { mesesComDiario, montarMesDeChuva } from '../utils/mapaChuva';
 
 interface PluviometroTabProps {
@@ -23,13 +26,13 @@ const hoje = new Date();
 
 export default function PluviometroTab({ diarios, obras, responsavel, podeEditar, onSave }: PluviometroTabProps) {
   const escopo = useRef<HTMLElement>(null);
-  const salvarRef = useRef<HTMLButtonElement>(null);
   const meses = useMemo(() => {
     const encontrados = mesesComDiario(diarios);
     return encontrados.length > 0 ? encontrados : [{ ano: hoje.getFullYear(), mes: hoje.getMonth() + 1 }];
   }, [diarios]);
   const [mesSelecionado, setMesSelecionado] = useState(`${meses[0].ano}-${String(meses[0].mes).padStart(2, '0')}`);
   const [aba, setAba] = useState<'resumo' | 'lancamentos'>('resumo');
+  const [aberto, setAberto] = useState(false);
   const [diaSelecionado, setDiaSelecionado] = useState(`${mesSelecionado}-01`);
   const [obraId, setObraId] = useState('');
   const [rascunho, setRascunho] = useState<Partial<DiarioObra>>({});
@@ -38,7 +41,9 @@ export default function PluviometroTab({ diarios, obras, responsavel, podeEditar
     () => diarios.filter(item => item.ativo !== false && item.data.startsWith(mesSelecionado)),
     [diarios, mesSelecionado],
   );
-  const diario = registrosDoMes.find(item => item.data === diaSelecionado && (item.obraId || '') === obraId);
+  // Procura em todos os registros: trocar o dia para outro mês corrige o que
+  // já existe em vez de criar um repetido.
+  const diario = diarios.find(item => item.ativo !== false && item.data === diaSelecionado && (item.obraId || '') === obraId);
   const valor = { ...diario, ...rascunho };
   const resumo = useMemo(() => montarMesDeChuva(diarios, ano, mes), [diarios, ano, mes]);
 
@@ -74,28 +79,21 @@ export default function PluviometroTab({ diarios, obras, responsavel, podeEditar
       atualizadoEm: agora,
     }, !diario);
     setRascunho({});
+    setAberto(false);
   };
 
-  useEffect(() => {
-    const teclar = (event: KeyboardEvent) => {
-      const alvo = event.target as HTMLElement | null;
-      const digitando = alvo?.matches('input, textarea, select, [contenteditable="true"]');
-      if (event.altKey) return;
-      if (event.key.toLowerCase() === 'n' && !digitando && !event.ctrlKey && !event.metaKey) {
-        event.preventDefault();
-        setAba('lancamentos');
-        setDiaSelecionado(`${mesSelecionado}-01`);
-        setObraId('');
-        setRascunho({});
-        window.setTimeout(() => salvarRef.current?.focus(), 0);
-      } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's' && aba === 'lancamentos' && podeEditar) {
-        event.preventDefault();
-        salvar();
-      }
-    };
-    window.addEventListener('keydown', teclar);
-    return () => window.removeEventListener('keydown', teclar);
-  }, [aba, mesSelecionado, podeEditar, salvar]);
+  const abrir = (dia: string, obra = '') => {
+    setDiaSelecionado(dia);
+    setObraId(obra);
+    setRascunho({});
+    setAberto(true);
+  };
+  const diaDeHoje = () => {
+    const agora = new Date();
+    return `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`;
+  };
+  useAtalhoNovo(() => abrir(diaDeHoje()), podeEditar && !aberto);
+
 
   return (
     <TelaCheia
@@ -117,12 +115,16 @@ export default function PluviometroTab({ diarios, obras, responsavel, podeEditar
               idPainel="pluviometro-dados"
               testId="pluviometro-abas"
               abas={[
-                { id: 'resumo', rotulo: 'Resumo mensal', icone: CloudRain },
                 { id: 'lancamentos', rotulo: 'Lançamentos', icone: NotebookPen, contador: registrosDoMes.length, contadorRotulo: 'registros no mês', tom: 'neutro' },
+                // Relatórios no mesmo padrão das outras abas que lançam (15/11/2026).
+                { grupo: 'relatorios', rotulo: 'Relatórios', icone: CloudRain, abas: [
+                  { id: 'resumo', rotulo: 'Resumo mensal', icone: CloudRain },
+                ] },
               ]}
             />
           )}
           actions={(
+            <>
             <label className="flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600">
               <span>Mês e ano</span>
               <select value={mesSelecionado} onChange={event => trocarMes(event.target.value)} className="bg-transparent py-2 text-sm text-slate-900" aria-label="Filtrar mês e ano">
@@ -133,6 +135,12 @@ export default function PluviometroTab({ diarios, obras, responsavel, podeEditar
                 ))}
               </select>
             </label>
+            {podeEditar && (
+              <button type="button" onClick={() => abrir(diaDeHoje())} className={`${BOTAO_PRIMARIO} max-sm:order-first px-5`} data-testid="pluviometro-novo">
+                <Plus className="size-5" aria-hidden="true" /> Novo lançamento
+              </button>
+            )}
+            </>
           )}
         />
       )}
@@ -142,52 +150,71 @@ export default function PluviometroTab({ diarios, obras, responsavel, podeEditar
           <MapaChuva diarios={diarios} responsavel={responsavel} mesSelecionado={{ ano, mes }} ocultarFiltro />
         ) : (
           <section className={`${CARTAO} min-w-0 p-3`}>
-            <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_20rem]">
-              <div>
-                <div className="mb-2 flex items-center justify-between gap-3 border-b border-slate-200 pb-2">
-                  <h2 className="text-base font-black text-slate-900">Lançamentos do mês</h2>
-                  <span className="shrink-0 text-xs font-semibold text-slate-500">{resumo.diasComChuva} com chuva · {resumo.diasSemDiario} sem registro</span>
-                </div>
-                <div className={`${CARTAO} divide-y divide-slate-100`}>
-                  {registrosDoMes.length === 0 && <p className="p-5 text-sm text-slate-600">Nenhum lançamento neste mês.</p>}
-                  {registrosDoMes.sort((a, b) => b.data.localeCompare(a.data)).map(item => (
-                    <button key={item.id} type="button" onClick={() => { setDiaSelecionado(item.data); setObraId(item.obraId || ''); setRascunho({}); }} className="flex min-h-11 w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm hover:bg-emerald-50">
-                      <span className="font-semibold text-slate-800">{new Date(`${item.data}T12:00:00`).toLocaleDateString('pt-BR')}</span>
-                      <span className="text-slate-600">{item.precipitacaoMm ?? 0} mm · {item.climaManha}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className={`${CARTAO} sticky top-2 p-3 shadow-sm`}>
-                <h2 className="text-base font-bold text-slate-900">{diario ? 'Editar lançamento' : 'Novo lançamento'}</h2>
-                <label className="mt-2 block text-xs font-bold text-slate-600">Dia
-                  <input type="date" value={diaSelecionado} onChange={event => { setDiaSelecionado(event.target.value); setRascunho({}); }} className={`${CAMPO} mt-1`} />
-                </label>
-                <label className="mt-2 block text-xs font-bold text-slate-600">Obra
-                  <select value={obraId} onChange={event => { setObraId(event.target.value); setRascunho({}); }} className={`${CAMPO} mt-1`}>
-                    <option value="">Obra geral</option>
-                    {obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
-                  </select>
-                </label>
-                {(['climaManha', 'climaTarde'] as const).map(campo => (
-                  <label key={campo} className="mt-2 block text-xs font-bold text-slate-600">{campo === 'climaManha' ? 'Clima manhã' : 'Clima tarde'}
-                    <select disabled={!podeEditar} value={(valor[campo] as string) || 'Bom'} onChange={event => setRascunho({ ...rascunho, [campo]: event.target.value })} className={`${CAMPO} mt-1 disabled:bg-slate-50`}>
-                      {CLIMAS.map(item => <option key={item}>{item}</option>)}
-                    </select>
-                  </label>
-                ))}
-                <label className="mt-2 block text-xs font-bold text-slate-600">Pluviômetro (mm)
-                  <input disabled={!podeEditar} type="number" min="0" step="0.5" value={valor.precipitacaoMm ?? ''} onChange={event => setRascunho({ ...rascunho, precipitacaoMm: Number(event.target.value) })} className={`${CAMPO} mt-1 disabled:bg-slate-50`} />
-                </label>
-                <label className="mt-2 block text-xs font-bold text-slate-600">Horas paradas por chuva
-                  <input disabled={!podeEditar} type="number" min="0" step="0.5" value={valor.horasParadasClima ?? ''} onChange={event => setRascunho({ ...rascunho, horasParadasClima: Number(event.target.value) })} className={`${CAMPO} mt-1 disabled:bg-slate-50`} />
-                </label>
-                {podeEditar && <button ref={salvarRef} type="button" onClick={salvar} className="mt-4 min-h-11 w-full rounded-lg bg-[#176b4d] px-4 text-sm font-bold text-white hover:opacity-90">{diario ? 'Atualizar lançamento' : 'Registrar lançamento'}</button>}
-              </div>
+            <div className="mb-2 flex items-center justify-between gap-3 border-b border-slate-200 pb-2">
+              <h2 className="text-base font-black text-slate-900">Lançamentos do mês</h2>
+              <span className="shrink-0 text-xs font-semibold text-slate-500">{resumo.diasComChuva} com chuva · {resumo.diasSemDiario} sem registro</span>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {registrosDoMes.length === 0 && <p className="p-5 text-sm text-slate-600">Nenhum lançamento neste mês.{podeEditar ? ' Toque em "Novo lançamento" ou aperte N.' : ''}</p>}
+              {[...registrosDoMes].sort((a, b) => b.data.localeCompare(a.data)).map(item => (
+                <button key={item.id} type="button" onClick={() => abrir(item.data, item.obraId || '')} className="flex min-h-11 w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm hover:bg-emerald-50">
+                  <span className="font-semibold text-slate-800">{new Date(`${item.data}T12:00:00`).toLocaleDateString('pt-BR')}{item.obraId ? ` · ${obras.find(obra => obra.id === item.obraId)?.nome ?? 'Obra'}` : ''}</span>
+                  <span className="text-slate-600">{item.precipitacaoMm ?? 0} mm · {item.climaManha}</span>
+                </button>
+              ))}
             </div>
           </section>
         )}
       </div>
+
+      <Modal
+        open={aberto}
+        lancamento
+        title={diario ? 'Corrigir lançamento do pluviômetro' : 'Novo lançamento do pluviômetro'}
+        description="Dia, chuva e horas paradas. Um registro por dia e obra."
+        onClose={() => setAberto(false)}
+        onSubmit={podeEditar ? salvar : undefined}
+        footer={(
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+            <button type="button" onClick={() => setAberto(false)} className={BOTAO_SECUNDARIO}><X className="size-4" aria-hidden="true" />Fechar</button>
+            {podeEditar && <button type="button" onClick={salvar} className={`${BOTAO_PRIMARIO} sm:min-w-40`} data-testid="pluviometro-salvar"><CheckCircle2 className="size-4" aria-hidden="true" />{diario ? 'Salvar correção' : 'Salvar'}</button>}
+          </div>
+        )}
+      >
+        <fieldset disabled={!podeEditar} className="grid max-w-3xl gap-4">
+          <legend className="sr-only">Dados do dia</legend>
+          <Etapa numero={1} titulo="Qual dia e obra?" feita={Boolean(diaSelecionado)}>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Campo rotulo="Dia" para="pluv-dia" obrigatorio>
+                <input id="pluv-dia" type="date" value={diaSelecionado} onChange={event => { if (event.target.value) { setDiaSelecionado(event.target.value); setRascunho({}); } }} className={CAMPO} />
+              </Campo>
+              <Campo rotulo="Obra" para="pluv-obra">
+                <select id="pluv-obra" value={obraId} onChange={event => { setObraId(event.target.value); setRascunho({}); }} className={CAMPO}>
+                  <option value="">Obra geral</option>
+                  {obras.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                </select>
+              </Campo>
+            </div>
+          </Etapa>
+          <Etapa numero={2} titulo="Como foi o tempo?" ajuda="Pluviômetro em milímetros; em branco quando não mediu." feita={valor.precipitacaoMm !== undefined}>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(['climaManha', 'climaTarde'] as const).map(campo => (
+                <Campo key={campo} rotulo={campo === 'climaManha' ? 'Clima de manhã' : 'Clima à tarde'} para={`pluv-${campo}`}>
+                  <select id={`pluv-${campo}`} value={(valor[campo] as string) || 'Bom'} onChange={event => setRascunho({ ...rascunho, [campo]: event.target.value })} className={CAMPO}>
+                    {CLIMAS.map(item => <option key={item}>{item}</option>)}
+                  </select>
+                </Campo>
+              ))}
+              <Campo rotulo="Pluviômetro (mm)" para="pluv-mm">
+                <input id="pluv-mm" type="number" inputMode="decimal" min="0" step="0.5" value={valor.precipitacaoMm ?? ''} onChange={event => setRascunho({ ...rascunho, precipitacaoMm: event.target.value === '' ? undefined : Number(event.target.value) })} className={CAMPO} />
+              </Campo>
+              <Campo rotulo="Horas paradas por chuva" para="pluv-horas">
+                <input id="pluv-horas" type="number" inputMode="decimal" min="0" step="0.5" value={valor.horasParadasClima ?? ''} onChange={event => setRascunho({ ...rascunho, horasParadasClima: event.target.value === '' ? undefined : Number(event.target.value) })} className={CAMPO} />
+              </Campo>
+            </div>
+          </Etapa>
+        </fieldset>
+      </Modal>
     </TelaCheia>
   );
 }
