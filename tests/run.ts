@@ -216,3 +216,4 @@ import './perfilAvatar.test';
 import './contratacao.test';
 import './programacao.test';
 import './avancoObra.test';
+import './padraoLancamento.test';

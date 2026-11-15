@@ -492,6 +492,8 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; text-wrap: bal
   /* Subtela que é uma tela inteira (TelaCheia dentro da área de dados de
      outra): ocupa só essa área, e a área de dados dela é que rola. */
   .renea-tela-cheia.renea-tela-cheia--embutida { height: auto; min-height: 0; flex: 1 1 0%; }
+  /* Lançamento aberto (Modal com `lancamento`): cobre só a área da aba. */
+  #main-tab-viewport:has(> .renea-lancamento) { position: relative; }
 }
 #main-tab-viewport.renea-viewport--solta > :has(.renea-tela-cheia) { padding: 0; }
 .renea-viewport--solta .renea-tela-cheia {
@@ -1261,4 +1263,13 @@ body,
     font-size: .875rem;
   }
   [role="dialog"] textarea { font-size: .875rem; }
+}
+
+/* Lançamento aberto (Modal com `lancamento`, padrão de 15/11/2026): mora
+   dentro do #main-tab-viewport para cobrir só a área da aba no computador,
+   então escapa das regras antigas de filho direto (respiro, animação). */
+#main-tab-viewport > .renea-lancamento.renea-lancamento {
+  padding: 0;
+  margin: 0;
+  animation: none;
 }

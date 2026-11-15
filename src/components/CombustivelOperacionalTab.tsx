@@ -350,7 +350,7 @@ export default function CombustivelOperacionalTab({
         </p>
         {view !== 'novo' && erro && <p role="alert" className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200" data-testid="combustivel-erro">{erro}</p>}
       </>}>
-      {view === 'novo' && <div data-comb-reveal className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white" data-testid="combustivel-lancar">
+      {view === 'novo' && <div data-comb-reveal data-lancamento="" className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white" data-testid="combustivel-lancar">
         <LancamentoCombustivel
           key={lancamento.chave}
           abastecimentos={ativos}
