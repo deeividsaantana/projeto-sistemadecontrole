@@ -111,3 +111,26 @@ test('Prioridade e Substituição são lidas pelo cabeçalho da linha 2', async 
     data: '2026-06-22', solicitante: 'Carlos', quantidade: 1, unidade: 'Und', produto: 'Cilindro', frente: 'Marginal', trocado: '2026-06-23',
   });
 });
+
+test('data com texto ("OK") não derruba a sincronização; dd/mm/aaaa vira data', async () => {
+  const { dataOuNulo } = await import('../server/procurementSpreadsheetSyncJob.js');
+  assert.equal(dataOuNulo('OK'), null);
+  assert.equal(dataOuNulo(''), null);
+  assert.equal(dataOuNulo(null), null);
+  assert.equal(dataOuNulo('2026-06-19'), '2026-06-19');
+  assert.equal(dataOuNulo('5/9/2026'), '2026-09-05');
+});
+
+test('linhas repetidas e linhas de outras abas ganham chaves diferentes e tipos certos', async () => {
+  const { linhasParaBanco } = await import('../server/procurementSpreadsheetSyncJob.js');
+  const pedido = { source: 'Solicitações', request_date: '2026-06-19', source_request_number: '51', requester_name: 'Naldo', item_description: 'Cabo', unit: 'Und.', quantity_requested: 4, source_purchase_order: '', delivery_deadline: 'OK' };
+  const nota1 = { source: 'Prioridade', prioridade: null, data: null, pedido: null, observacao: 'Pedido 157' };
+  const nota2 = { source: 'Prioridade', prioridade: null, data: null, pedido: null, observacao: 'Pedido 159' };
+  const linhas = linhasParaBanco([pedido, { ...pedido }, nota1, nota2], '2026-11-16T10:00:00.000Z');
+  assert.equal(new Set(linhas.map(l => l.source_key)).size, 4);
+  assert.equal(linhas[1].source_key, `${linhas[0].source_key}-1`);
+  assert.equal(linhas[0].delivery_deadline, null);
+  assert.equal(linhas[0].source_purchase_order, null);
+  assert.equal(linhas[0].quantity_requested, 4);
+  assert.equal(linhas[2].source_request_number, null);
+});
