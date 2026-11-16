@@ -210,7 +210,17 @@ export const pessoaDoUsuario = (
     if (porEmail) return porEmail;
   }
   const nome = normalizar(usuario.nome || '');
-  return nome ? ativas.find(pessoa => normalizar(pessoa.nome) === nome) ?? null : null;
+  if (!nome) return null;
+  const exata = ativas.find(pessoa => normalizar(pessoa.nome) === nome);
+  if (exata) return exata;
+  // Login com sobrenome ("Bruno Luscher") acha a pessoa cadastrada só com o
+  // começo do nome ("Bruno"). Vale o cadastro mais comprido; empate não liga.
+  const comeco = ativas
+    .filter(pessoa => nome.startsWith(`${normalizar(pessoa.nome)} `))
+    .sort((a, b) => normalizar(b.nome).length - normalizar(a.nome).length);
+  if (!comeco.length) return null;
+  const maior = normalizar(comeco[0].nome).length;
+  return comeco.filter(pessoa => normalizar(pessoa.nome).length === maior).length === 1 ? comeco[0] : null;
 };
 
 /** Próximo número do ano: SOL-2026-0001, PC-2026-0001... */

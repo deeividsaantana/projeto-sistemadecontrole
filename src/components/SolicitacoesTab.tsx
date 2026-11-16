@@ -54,6 +54,7 @@ import {
   historicoGeral,
   importarPlanilhaDeControle,
   linhasDeConferencia,
+  sincronizarComPlanilha,
   validarImportacao,
   type LinhaConferencia,
   type ResultadoControle,
@@ -567,6 +568,34 @@ export default function SolicitacoesTab({
     exerce(ator, "solicitante") ||
     exerce(ator, "suprimentos") ||
     exerce(ator, "recebedor");
+
+  // Planilha de compras (Google Planilhas, lida pelo servidor a cada 3h):
+  // ao abrir a aba, o que mudou lá vira card novo ou registro na linha do
+  // tempo. Só depois que os pedidos da nuvem chegaram, para não sobrescrever.
+  const sincronizouPlanilha = useRef(false);
+  const temPedidos = solicitacoes.length > 0;
+  useEffect(() => {
+    if (sincronizouPlanilha.current || !temPedidos || !podeEditar || !podeImportar) return;
+    sincronizouPlanilha.current = true;
+    import("../services/procurementSheetApi")
+      .then(({ loadProcurementSheet }) => loadProcurementSheet())
+      .then(({ rows }) => {
+        if (!rows.length) return;
+        const lida = rows.reduce((maior, row) => (row.source_updated_at ?? "") > maior ? row.source_updated_at ?? "" : maior, "");
+        const { novas, atualizadas } = sincronizarComPlanilha(rows, solicitacoes, lida || new Date().toISOString());
+        if (!novas.length && !atualizadas.length) return;
+        const partes = [
+          novas.length ? `${novas.length} novo(s)` : "",
+          atualizadas.length ? `${atualizadas.length} atualizado(s)` : "",
+        ].filter(Boolean).join(", ");
+        onSalvar([...novas, ...atualizadas], `Planilha de compras: ${partes}.`);
+        setAviso({ tom: "ok", texto: `Planilha: ${partes}.` });
+      })
+      // Sem rede ou sem a planilha: os pedidos seguem como estão.
+      .catch(() => undefined);
+    // Roda uma vez por abertura da aba, quando os pedidos já chegaram.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [temPedidos]);
 
   const subtelas: ItemDasAbas<Subtela>[] = [
     {
