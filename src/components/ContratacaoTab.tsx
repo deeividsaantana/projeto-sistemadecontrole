@@ -24,6 +24,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { CartaoIndicador, PageHeader } from '../shared/ui';
+import { useAtalhoNovo } from '../shared/hooks/useAtalhoNovo';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { AbasDaTela, idDaAba, type ItemDasAbas } from '../shared/ui/AbasDaTela';
 import { TabelaPadrao, type ColunaTabela } from '../shared/ui/TabelaPadrao';
@@ -136,6 +137,8 @@ export default function ContratacaoTab({ noLink = false }: Props) {
       .some(valor => String(valor || '').toLowerCase().includes(termo)))), [pedidos, filtroSituacao, termo]);
 
   const trocar = (proxima: Subtela) => { setAbertoId(null); setSubtela(proxima); };
+  // N abre uma nova solicitação (padrão de lançamento, 15/11/2026).
+  useAtalhoNovo(() => trocar('nova'), Boolean(me) && subtela !== 'nova' && !abertoId);
   const verSituacao = (situacao: SituacaoContratacao | '') => { setFiltroSituacao(situacao); trocar('pedidos'); };
 
   const copiarLink = async () => {
@@ -146,10 +149,13 @@ export default function ContratacaoTab({ noLink = false }: Props) {
   };
 
   const subtelas: ReadonlyArray<ItemDasAbas<Subtela>> = [
-    { id: 'painel', rotulo: 'Painel', icone: LayoutDashboard },
     ...(assina ? [{ id: 'fila' as const, rotulo: 'Minha fila', curto: 'Fila', icone: Inbox, contador: fila.length, contadorRotulo: 'para assinar' }] : []),
     { id: 'pedidos', rotulo: 'Pedidos', icone: ClipboardList, contador: pedidos.length, tom: 'neutro' as const },
-    { id: 'nova', rotulo: 'Nova solicitação', curto: 'Nova', icone: FilePlus2 },
+    // Relatórios no mesmo padrão das outras abas que lançam (15/11/2026). A
+    // Nova solicitação abre pelo botão ou pela tecla N, na área inteira.
+    { grupo: 'relatorios', rotulo: 'Relatórios', icone: LayoutDashboard, abas: [
+      { id: 'painel', rotulo: 'Resumo', icone: LayoutDashboard },
+    ] },
     ...(me?.admin ? [{ id: 'papeis' as const, rotulo: 'Quem assina', curto: 'Papéis', icone: ShieldCheck }] : []),
   ];
 
@@ -311,7 +317,7 @@ export default function ContratacaoTab({ noLink = false }: Props) {
     if (!me) return null;
     if (aberto) return <FolhaContratacao key={`${aberto.id}-${aberto.version}`} pedido={aberto} leitor={me} onVoltar={() => setAbertoId(null)} onAtualizado={() => void carregar(true)} />;
     if (subtela === 'nova') {
-      return <FolhaContratacao leitor={me} onCriado={pedido => { void carregar(true).then(() => setAbertoId(pedido.id)); setAviso(`Pedido ${pedido.request_number} enviado ao RH.`); window.setTimeout(() => setAviso(''), 6000); }} />;
+      return <FolhaContratacao leitor={me} onVoltar={() => trocar('pedidos')} onCriado={pedido => { void carregar(true).then(() => setAbertoId(pedido.id)); setAviso(`Pedido ${pedido.request_number} enviado ao RH.`); window.setTimeout(() => setAviso(''), 6000); }} />;
     }
     if (subtela === 'fila') {
       return fila.length === 0
@@ -337,6 +343,7 @@ export default function ContratacaoTab({ noLink = false }: Props) {
   };
 
   const comTabela = subtela === 'pedidos' && !aberto;
+  const lancando = subtela === 'nova' && !aberto;
   const faixa = comTabela ? (
     <div data-ct-reveal className="flex flex-wrap items-center gap-2">
       <label className="relative min-w-0 flex-1 sm:max-w-sm">
@@ -360,10 +367,11 @@ export default function ContratacaoTab({ noLink = false }: Props) {
       id="contratacao-tab"
       rotulo="Solicitação de contratação"
       longa={!comTabela}
-      idAbaAtiva={idDaAba('contratacao', subtela)}
+      idAbaAtiva={lancando ? undefined : idDaAba('contratacao', subtela)}
       idDados="contratacao-dados"
       chaveRolagem={`${subtela}-${abertoId ?? ''}`}
-      cabecalho={
+      // Lançando, a folha ocupa a área inteira da aba (padrão do Combustível).
+      cabecalho={lancando ? undefined :
         <PageHeader
           eyebrow="Pessoas"
           title="Contratação"
@@ -380,11 +388,9 @@ export default function ContratacaoTab({ noLink = false }: Props) {
                   <Link2 className="size-4" aria-hidden="true" /> <span className="hidden sm:inline">Copiar link</span>
                 </button>
               )}
-              {subtela !== 'nova' && (
-                <button type="button" onClick={() => trocar('nova')} className={BOTAO_PRIMARIO} data-testid="contratacao-nova">
-                  <FilePlus2 className="size-4" aria-hidden="true" /> <span className="sm:hidden">Nova</span><span className="hidden sm:inline">Nova solicitação</span>
-                </button>
-              )}
+              <button type="button" onClick={() => trocar('nova')} className={BOTAO_PRIMARIO} data-testid="contratacao-nova">
+                <FilePlus2 className="size-4" aria-hidden="true" /> <span className="sm:hidden">Nova</span><span className="hidden sm:inline">Nova solicitação</span>
+              </button>
             </>
           }
         />

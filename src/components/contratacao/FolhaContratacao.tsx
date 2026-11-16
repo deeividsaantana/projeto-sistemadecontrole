@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, Printer } from 'lucide-react';
 import logoCliente from '../../assets/images/logo-renea-dark.svg';
 import { CLIENTE, PRODUTO } from '../../config/marca';
@@ -127,6 +127,22 @@ export function FolhaContratacao({ leitor, pedido, onVoltar, onCriado, onAtualiz
     setPainel('assinar');
   };
 
+  // Folha nova segue o padrão de lançamento: Ctrl+S leva à assinatura e Esc
+  // fecha (a assinatura continua sendo um passo à parte, nunca automática).
+  useEffect(() => {
+    if (!novo) return undefined;
+    const teclar = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        if (!painel && !ocupado) abrirAssinatura();
+      } else if (event.key === 'Escape' && !painel && !event.defaultPrevented && !document.querySelector('[role="dialog"], [role="alertdialog"]')) {
+        onVoltar?.();
+      }
+    };
+    document.addEventListener('keydown', teclar);
+    return () => document.removeEventListener('keydown', teclar);
+  });
+
   const assinar = async (assinatura: AssinaturaEnviada) => {
     setOcupado(true);
     setFalha('');
@@ -206,9 +222,9 @@ export function FolhaContratacao({ leitor, pedido, onVoltar, onCriado, onAtualiz
   };
 
   return (
-    <div className="mx-auto w-full max-w-[860px] space-y-4" data-testid="folha-contratacao">
+    <div className="mx-auto w-full max-w-[860px] space-y-4" data-testid="folha-contratacao" data-lancamento={novo ? '' : undefined}>
       <div className="ct-sem-papel flex flex-wrap items-center gap-2.5 print:hidden">
-        {onVoltar && <button type="button" onClick={onVoltar} className={BOTAO_SECUNDARIO}><ArrowLeft className="size-4" aria-hidden="true" /> Voltar</button>}
+        {onVoltar && <button type="button" onClick={onVoltar} className={BOTAO_SECUNDARIO}><ArrowLeft className="size-4" aria-hidden="true" /> {novo ? 'Fechar' : 'Voltar'}</button>}
         <span className={`inline-flex min-h-11 items-center gap-2.5 rounded-xl border px-3 text-sm font-semibold ${totalAssinado === 3 ? 'border-[#176b4d] text-[#176b4d]' : 'border-slate-200 bg-white text-slate-700'}`}>
           <span className="inline-flex gap-1" aria-hidden="true">
             {[0, 1, 2].map(indice => <i key={indice} className={`h-1.5 w-5 rounded-sm ${indice < totalAssinado ? 'bg-[#176b4d]' : 'bg-slate-200'}`} />)}

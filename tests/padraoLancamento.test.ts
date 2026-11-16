@@ -25,13 +25,10 @@ const ABAS_COM_LANCAMENTO: Record<string, readonly string[]> = {
   frotas: ['ControleEquipamentosDiarioTab.tsx', 'fleet/DailyRecordForm.tsx'],
   pluviometro: ['PluviometroTab.tsx'],
   presenca: ['ControlePresencaTab.tsx'],
-  contratacao: ['ContratacaoTab.tsx'],
+  contratacao: ['ContratacaoTab.tsx', 'contratacao/FolhaContratacao.tsx'],
 };
 
-const PENDENCIAS: Record<string, readonly Regra[]> = {
-  presenca: ['telaCheia', 'atalhoNovo', 'ctrlS'],
-  contratacao: ['telaCheia', 'atalhoNovo', 'ctrlS', 'relatorios'],
-};
+const PENDENCIAS: Record<string, readonly Regra[]> = {};
 
 const components = new URL('../src/components/', import.meta.url);
 

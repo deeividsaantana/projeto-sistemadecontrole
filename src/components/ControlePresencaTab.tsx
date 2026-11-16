@@ -60,6 +60,7 @@ import reneaLogo from '../assets/images/logo-renea-dark.svg';
 import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import { baixarPlanilhaEquipes } from '../utils/exportarEquipesExcel';
 import { generateUniversalPdfReport } from '../utils/universalPdfReport';
+import { useAtalhoNovo } from '../shared/hooks/useAtalhoNovo';
 import type {
   Empresa,
   Funcionario,
@@ -339,7 +340,7 @@ export default function ControlePresencaTab({
     dashboardSearch.trim() !== '',
   ].filter(Boolean).length;
 
-  const abrirLancamento = (grupoId: string) => {
+  const abrirLancamento = (grupoId: string, data = referenceDate) => {
     // A lista já vem com o que a equipe tem hoje: quem estiver apontado no dia
     // aparece com a situação atual, para o lançamento ser correção e não
     // recomeço.
@@ -353,8 +354,10 @@ export default function ControlePresencaTab({
       if (atual) inicial[id] = { funcionarioId: id, status: atual.status, observacao: atual.observacao };
     });
     setSituacoesLancadas(inicial);
-    setLancamento({ grupoId, data: referenceDate, observacaoDia: '' });
+    setLancamento(atual => ({ grupoId, data, observacaoDia: atual?.observacaoDia ?? '' }));
   };
+  // N abre o lançamento de presença (padrão de lançamento, 15/11/2026).
+  useAtalhoNovo(() => abrirLancamento(''), Boolean(onLancarPresencaManual) && !lancamento);
 
   const limparFiltrosPainel = () => {
     setDashboardCompany('todas');
@@ -1813,54 +1816,68 @@ export default function ControlePresencaTab({
 
       {lancamento && onLancarPresencaManual && (() => {
         const grupo = safeGroups.find(item => item.id === lancamento.grupoId);
-        if (!grupo) return null;
-        const pessoas = (grupo.funcionarioIds || [])
+        const pessoas = (grupo?.funcionarioIds || [])
           .map(id => employeeById.get(id))
           .filter((pessoa): pessoa is Funcionario => Boolean(pessoa));
         const conferidos = pessoas.filter(pessoa => situacoesLancadas[pessoa.id]?.status).length;
+        const lancar = () => {
+          if (!grupo || conferidos === 0) return;
+          onLancarPresencaManual(
+            grupo,
+            lancamento.data,
+            Object.values(situacoesLancadas).filter(item => item.status),
+            lancamento.observacaoDia,
+          );
+          setFeedback(`Presença de ${grupo.nome} lançada pelo painel.`);
+          setLancamento(null);
+        };
 
         return (
           <Modal
             open
             size="lg"
-            title={`Lançar presença · ${grupo.nome}`}
+            lancamento
+            title={grupo ? `Lançar presença · ${grupo.nome}` : 'Lançar presença'}
+            description="Escolha a equipe e o dia, e toque na situação de cada pessoa."
             onClose={() => setLancamento(null)}
+            onSubmit={lancar}
             footer={(
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <span className="text-xs font-bold text-slate-500">
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                <span className="mr-auto text-xs font-bold text-slate-500">
                   {conferidos} de {pessoas.length} conferido(s)
                 </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setLancamento(null)}
-                    className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    disabled={conferidos === 0}
-                    onClick={() => {
-                      onLancarPresencaManual(
-                        grupo,
-                        lancamento.data,
-                        Object.values(situacoesLancadas).filter(item => item.status),
-                        lancamento.observacaoDia,
-                      );
-                      setFeedback(`Presença de ${grupo.nome} lançada pelo painel.`);
-                      setLancamento(null);
-                    }}
-                    className="min-h-11 rounded-lg bg-[#176b4d] px-4 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50"
-                  >
-                    Lançar presença
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setLancamento(null)}
+                  className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                >
+                  Fechar
+                </button>
+                <button
+                  type="button"
+                  disabled={!grupo || conferidos === 0}
+                  onClick={lancar}
+                  className="min-h-11 rounded-lg bg-[#176b4d] px-5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50"
+                  data-testid="presenca-lancar-salvar"
+                >
+                  Lançar presença
+                </button>
               </div>
             )}
           >
-            <div className="space-y-3">
-              <div className="grid gap-2 sm:grid-cols-2">
+            <div className="max-w-4xl space-y-3">
+              <div className="grid gap-2 sm:grid-cols-3">
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-bold text-slate-500">Equipe</span>
+                  <select
+                    value={lancamento.grupoId}
+                    onChange={event => abrirLancamento(event.target.value, lancamento.data)}
+                    className={FIELD}
+                  >
+                    <option value="">Escolha a equipe</option>
+                    {safeGroups.filter(item => item.status !== 'inativo').map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                  </select>
+                </label>
                 <label className="block space-y-1.5">
                   <span className="text-xs font-bold text-slate-500">Dia</span>
                   <input
@@ -1887,6 +1904,8 @@ export default function ControlePresencaTab({
                 corrige as situações escolhidas e não duplica ninguém.
               </p>
 
+              {!grupo && <p className="rounded-lg border border-slate-200 bg-white px-3 py-4 text-sm text-slate-600">Escolha a equipe para ver as pessoas.</p>}
+              {grupo && pessoas.length === 0 && <p className="rounded-lg border border-slate-200 bg-white px-3 py-4 text-sm text-slate-600">Esta equipe ainda não tem pessoas. Monte a equipe na subaba Equipes.</p>}
               <ul className="space-y-2">
                 {pessoas.map(pessoa => {
                   const atual = situacoesLancadas[pessoa.id]?.status;
