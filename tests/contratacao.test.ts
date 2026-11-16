@@ -2,69 +2,83 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import {
-  assinaturasVisiveis,
+  cpfValido,
+  etapaPendente,
+  nomeDaEtapa,
   pedidoVisivel,
   podeDecidir,
+  tokenValido,
   validarFormulario,
 } from '../api/_shared/contratacao-regras.js';
 import { handler } from '../api/contratacao.js';
 import { substituirClienteSupabase } from '../api/_shared/supabase-admin.js';
+import { getContratacaoTokenFromUrl, isContratacaoLinkUrl } from '../src/app/routing/publicRoutes';
 
 const SOL = '00000000-0000-0000-0000-000000000002';
 const RH = '00000000-0000-0000-0000-000000000003';
-const GER = '00000000-0000-0000-0000-000000000004';
+const BRUNO = '00000000-0000-0000-0000-000000000004';
 const AUX = '00000000-0000-0000-0000-000000000005';
+const MARCELO = '00000000-0000-0000-0000-000000000006';
+const TOKEN = 'a'.repeat(64);
 const leitor = (userId: string, papeis: string[] = [], admin = false) => ({ userId, nome: 'X', admin, papeis });
 
 const formOk = {
-  data: '2026-11-14', prioridade: 'Alta', motivo: 'aumento', tipo: 'efetivo', posicao: 'Pedreiro',
-  quantidade: '2', requisitante: 'Thiago', area: 'Obra 3', itens: ['alojamento', 'celular'],
+  data: '2026-11-16', candidato: 'João Pereira', cpf: '529.982.247-25', inicio: '2026-12-01', prioridade: 'Alta', motivo: 'aumento',
+  tipo: 'efetivo', posicao: 'Pedreiro', quantidade: '1', requisitante: 'Giulia', area: 'Obra 3', itens: ['alojamento', 'celular'],
 };
 
-test('formulário: campos obrigatórios e "nenhum item" exclusivo', () => {
+test('formulário: candidato, CPF e início obrigatórios; "nenhum item" exclusivo', () => {
   const vazio = validarFormulario({});
-  for (const campo of ['data', 'prioridade', 'motivo', 'tipo', 'posicao', 'quantidade', 'requisitante', 'area', 'itens']) {
+  for (const campo of ['data', 'candidato', 'cpf', 'inicio', 'prioridade', 'motivo', 'tipo', 'posicao', 'quantidade', 'requisitante', 'area', 'itens']) {
     assert.ok(vazio.erros[campo], `falta o erro de ${campo}`);
   }
   const ok = validarFormulario({ ...formOk, itens: ['celular', 'nenhum', 'inventado'] });
   assert.deepEqual(ok.erros, {});
+  assert.equal(ok.formulario.cpf, '52998224725');
   assert.deepEqual(ok.formulario.itens, ['nenhum']);
-  assert.equal(ok.formulario.quantidade, 2);
+  assert.ok(validarFormulario({ ...formOk, cpf: '529.982.247-24' }).erros.cpf);
   assert.ok(validarFormulario({ ...formOk, motivo: 'outro' }).erros.motivoOutro);
-  assert.ok(validarFormulario({ ...formOk, data: '2026-02-30' }).erros.data);
-  assert.ok(validarFormulario({ ...formOk, quantidade: '1.5' }).erros.quantidade);
+  assert.ok(validarFormulario({ ...formOk, inicio: '2026-02-30' }).erros.inicio);
+  assert.equal(cpfValido('111.111.111-11'), false);
 });
 
-const pedido = (status: string, extra = {}) => ({ id: 'p1', requester_user_id: SOL, status, rejected_stage: null, ...extra });
-const assinaturas = [
-  { stage: 'solicitante', signer_user_id: SOL, image_data: 'data:image/png;base64,S' },
-  { stage: 'rh', signer_user_id: RH, image_data: 'data:image/png;base64,R' },
-];
+const pedido = (status: string, etapa: number | null, extra = {}) => ({ id: 'p1', requester_user_id: SOL, status, etapa_atual: etapa, rejected_stage: null, ...extra });
+const deBruno = { stage: 'gerente_1', signer_user_id: BRUNO };
 
-test('filas rígidas: gerente não vê o que ainda está no RH; quem não tem papel só vê o seu', () => {
-  assert.equal(pedidoVisivel(pedido('aguardando_rh'), leitor(GER, ['gerente'])), false);
-  assert.equal(pedidoVisivel(pedido('aguardando_gerente'), leitor(GER, ['gerente'])), true);
-  assert.equal(pedidoVisivel(pedido('recusada', { rejected_stage: 'rh' }), leitor(GER, ['gerente'])), false);
-  assert.equal(pedidoVisivel(pedido('aguardando_rh'), leitor(RH, ['rh'])), true);
-  assert.equal(pedidoVisivel(pedido('aguardando_rh'), leitor('outro')), false);
-  assert.equal(pedidoVisivel(pedido('aguardando_rh'), leitor(SOL)), true);
-  assert.equal(pedidoVisivel(pedido('aguardando_rh'), leitor(AUX, ['auxiliar'])), true);
+test('ordem rígida: 1º gerente, 2º gerente, RH; ninguém pula etapa', () => {
+  assert.equal(etapaPendente(pedido('etapa_1', 1)), 'gerente_1');
+  assert.equal(etapaPendente(pedido('etapa_3', 3)), 'rh');
+  assert.equal(etapaPendente(pedido('concluido', null)), null);
+  assert.equal(podeDecidir(pedido('etapa_1', 1), [], leitor(BRUNO, ['gerente_1'])), true);
+  assert.equal(podeDecidir(pedido('etapa_1', 1), [], leitor(MARCELO, ['gerente_2'])), false);
+  assert.equal(podeDecidir(pedido('etapa_1', 1), [], leitor(RH, ['rh'])), false);
+  assert.equal(podeDecidir(pedido('etapa_2', 2), [deBruno], leitor(MARCELO, ['gerente_2'])), true);
+  assert.equal(podeDecidir(pedido('etapa_2', 2), [deBruno], leitor(BRUNO, ['gerente_1', 'gerente_2'])), false, 'quem já assinou não assina outra etapa');
+  assert.equal(podeDecidir(pedido('concluido', null), [], leitor(RH, ['rh'])), false);
+  assert.equal(podeDecidir(pedido('etapa_1', 1), [], leitor(AUX, ['auxiliar'])), false);
 });
 
-test('assinatura de etapa à frente aparece só como "assinado", sem o traço', () => {
-  const doSolicitante = assinaturasVisiveis(pedido('aguardando_gerente'), assinaturas, leitor(SOL));
-  assert.equal(doSolicitante.find(a => a.stage === 'solicitante')?.image_data, 'data:image/png;base64,S');
-  assert.equal(doSolicitante.find(a => a.stage === 'rh')?.image_data, null);
-  assert.equal(assinaturasVisiveis(pedido('aguardando_gerente'), assinaturas, leitor(GER, ['gerente']))[1].image_data, 'data:image/png;base64,R');
-  assert.equal(assinaturasVisiveis(pedido('aprovada'), assinaturas, leitor(SOL))[1].image_data, 'data:image/png;base64,R');
+test('selos mostram quem assina: "Bruno Luscher (Gerente)" e "RH"', () => {
+  assert.equal(nomeDaEtapa('gerente_1', { gerente_1: ['Bruno Luscher'] }), 'Bruno Luscher (Gerente)');
+  assert.equal(nomeDaEtapa('gerente_2', {}), 'Marcelo Suegama (Gerente)');
+  assert.equal(nomeDaEtapa('rh', { rh: ['Lucas'] }), 'RH');
 });
 
-test('só quem tem o papel da etapa decide, e nunca assina duas etapas', () => {
-  assert.equal(podeDecidir(pedido('aguardando_rh'), assinaturas.slice(0, 1), leitor(RH, ['rh'])), true);
-  assert.equal(podeDecidir(pedido('aguardando_rh'), assinaturas.slice(0, 1), leitor(GER, ['gerente'])), false);
-  assert.equal(podeDecidir(pedido('aguardando_gerente'), assinaturas, leitor(RH, ['rh', 'gerente'])), false);
-  assert.equal(podeDecidir(pedido('aguardando_gerente'), assinaturas, leitor(AUX, ['auxiliar'])), false);
-  assert.equal(podeDecidir(pedido('aprovada'), assinaturas, leitor(GER, ['gerente'])), false);
+test('quem vê: quem abriu, admin e quem tem papel; o resto não', () => {
+  assert.equal(pedidoVisivel(pedido('etapa_1', 1), leitor(MARCELO, ['gerente_2'])), true);
+  assert.equal(pedidoVisivel(pedido('etapa_1', 1), leitor(SOL)), true);
+  assert.equal(pedidoVisivel(pedido('etapa_1', 1), leitor('outro')), false);
+  assert.equal(pedidoVisivel(pedido('etapa_1', 1), leitor('admin', [], true)), true);
+});
+
+test('link individual: rota e token', () => {
+  assert.equal(getContratacaoTokenFromUrl({ pathname: `/contratacao-link/${TOKEN}`, search: '' }), TOKEN);
+  assert.equal(isContratacaoLinkUrl({ pathname: `/contratacao-link/${TOKEN}`, search: '' }), true);
+  assert.equal(isContratacaoLinkUrl({ pathname: '/contratacao', search: '' }), true);
+  assert.equal(isContratacaoLinkUrl({ pathname: '/contratacao-link/', search: '' }), false);
+  assert.equal(tokenValido(TOKEN), true);
+  assert.equal(tokenValido('x'.repeat(64)), false);
+  assert.equal(tokenValido(`${TOKEN}0`), false);
 });
 
 /** Supabase falso: guarda as chamadas de rpc e devolve linhas por tabela. */
@@ -74,6 +88,7 @@ const clienteFalso = (tabelas: Record<string, unknown[]>, usuario = { id: SOL, e
     const resultado = { data: linhas, error: null };
     const builder: Record<string, unknown> = {};
     for (const metodo of ['select', 'eq', 'order', 'limit', 'in']) builder[metodo] = () => builder;
+    builder.eq = (coluna: string, valor: unknown) => (coluna === 'link_token' ? consulta(linhas.filter(linha => (linha as Record<string, unknown>).link_token === valor)) : builder);
     builder.maybeSingle = () => Promise.resolve({ data: linhas[0] ?? null, error: null });
     builder.then = (ok: (valor: unknown) => unknown) => Promise.resolve(resultado).then(ok);
     return builder;
@@ -82,53 +97,108 @@ const clienteFalso = (tabelas: Record<string, unknown[]>, usuario = { id: SOL, e
     chamadas,
     auth: { getUser: async () => ({ data: { user: { ...usuario, app_metadata: {} } }, error: null }) },
     from: (tabela: string) => consulta(tabela === 'organization_members' ? [{ organization_id: 'renea', role: 'editor' }] : tabelas[tabela] ?? []),
-    rpc: async (nome: string, args: Record<string, unknown>) => { chamadas.push({ nome, args }); return { data: { id: 'novo', status: 'aguardando_rh' }, error: null }; },
+    rpc: async (nome: string, args: Record<string, unknown>) => { chamadas.push({ nome, args }); return { data: { id: 'novo', status: 'etapa_1', link_token: TOKEN, client_key: 'segredo' }, error: null }; },
   };
 };
 const evento = (method: string, body?: unknown) => ({ httpMethod: method, headers: { authorization: 'Bearer token' }, body: body ? JSON.stringify(body) : '' });
 
-test('API: quem assina é o login da sessão, nunca o nome do corpo', async () => {
+test('API: quem abre é o login da sessão; a resposta traz o link e nunca a chave de envio', async () => {
   const cliente = clienteFalso({});
   substituirClienteSupabase(cliente);
   try {
-    const resposta = await handler(evento('POST', { action: 'criar', form: formOk, signature: { method: 'digitado' }, client_key: 'chave-123456789', p_actor: { user_id: RH } }));
+    const resposta = await handler(evento('POST', { action: 'criar', form: formOk, client_key: 'chave-123456789', p_actor: { user_id: RH } }));
     assert.equal(resposta.statusCode, 201);
     const { args } = cliente.chamadas[0];
     assert.deepEqual(args.p_actor, { user_id: SOL, name: 'Thiago' });
+    assert.equal('p_signature' in args, false, 'quem abre não assina mais');
     assert.match(String(args.p_form_hash), /^[0-9a-f]{64}$/);
-    const ruim = await handler(evento('POST', { action: 'criar', form: {}, signature: { method: 'digitado' }, client_key: 'chave-123456789' }));
+    const corpo = JSON.parse(resposta.body);
+    assert.equal(corpo.data.link_token, TOKEN);
+    assert.equal(corpo.data.client_key, undefined);
+    const ruim = await handler(evento('POST', { action: 'criar', form: {}, client_key: 'chave-123456789' }));
     assert.equal(ruim.statusCode, 422);
-    const semDesenho = await handler(evento('POST', { action: 'criar', form: formOk, signature: { method: 'desenho', image_data: 'javascript:x' }, client_key: 'chave-123456789' }));
-    assert.equal(semDesenho.statusCode, 422);
   } finally {
     substituirClienteSupabase(null);
   }
 });
 
-test('API: a lista sai filtrada pelo papel de quem pediu', async () => {
-  const pedidos = [pedido('aguardando_rh', { id: 'a' }), pedido('aguardando_gerente', { id: 'b' }), pedido('aguardando_rh', { id: 'c', requester_user_id: RH })];
-  const cliente = clienteFalso({ erp_hiring_requests: pedidos, erp_hiring_roles: [{ role: 'gerente' }], erp_hiring_signatures: [], erp_hiring_audit: [] }, { id: GER, email: 'g@x', user_metadata: { full_name: 'Gerente' } });
+const pedidoDoBanco = (status: string, etapa: number | null) => ({ ...pedido(status, etapa), link_token: TOKEN, client_key: 'segredo', form: { candidato: 'João', cpf: '52998224725' } });
+
+test('API: link concluído responde só "expirado", sem dados do candidato', async () => {
+  substituirClienteSupabase(clienteFalso({ erp_hiring_requests: [pedidoDoBanco('concluido', null)], erp_hiring_roles: [{ role: 'rh' }] }));
+  try {
+    const resposta = await handler({ ...evento('GET'), queryStringParameters: { token: TOKEN } });
+    assert.equal(resposta.statusCode, 200);
+    assert.doesNotMatch(resposta.body, /João|52998224725/);
+    assert.equal(JSON.parse(resposta.body).data.expirado, 'concluido');
+  } finally {
+    substituirClienteSupabase(null);
+  }
+});
+
+test('API: link aberto exige papel e não aceita token torto', async () => {
+  substituirClienteSupabase(clienteFalso({ erp_hiring_requests: [pedidoDoBanco('etapa_1', 1)], erp_hiring_roles: [] }, { id: 'f0000000-0000-0000-0000-000000000009', email: 'o@x', user_metadata: { full_name: 'Outro' } }));
+  try {
+    const semPapel = await handler({ ...evento('GET'), queryStringParameters: { token: TOKEN } });
+    assert.equal(semPapel.statusCode, 403);
+    const torto = await handler({ ...evento('GET'), queryStringParameters: { token: '../x' } });
+    assert.equal(torto.statusCode, 404);
+  } finally {
+    substituirClienteSupabase(null);
+  }
+  substituirClienteSupabase(clienteFalso({ erp_hiring_requests: [pedidoDoBanco('etapa_1', 1)], erp_hiring_roles: [{ role: 'gerente_2', user_name: 'Marcelo Suegama' }], erp_hiring_signatures: [], erp_hiring_audit: [] }));
+  try {
+    const comPapel = await handler({ ...evento('GET'), queryStringParameters: { token: TOKEN } });
+    const corpo = JSON.parse(comPapel.body);
+    assert.equal(comPapel.statusCode, 200);
+    assert.equal(corpo.data.request.link_token, TOKEN);
+    assert.equal(corpo.data.request.client_key, undefined);
+  } finally {
+    substituirClienteSupabase(null);
+  }
+});
+
+test('API: assinar pelo link confere o token do pedido; a etapa o banco confere', async () => {
+  const cliente = clienteFalso({ erp_hiring_requests: [pedidoDoBanco('etapa_1', 1)] });
   substituirClienteSupabase(cliente);
   try {
-    const resposta = await handler(evento('GET'));
-    const corpo = JSON.parse(resposta.body);
-    assert.deepEqual(corpo.data.requests.map((item: { id: string }) => item.id), ['b']);
+    const outro = await handler(evento('POST', { action: 'decidir', request_id: '11111111-1111-4111-8111-111111111111', version: 1, decision: 'aprovar', signature: { method: 'digitado' }, token: TOKEN }));
+    assert.equal(outro.statusCode, 404, 'token de outro pedido');
+    assert.equal(cliente.chamadas.length, 0);
+  } finally {
+    substituirClienteSupabase(null);
+  }
+});
+
+test('API: a lista não entrega o link de pedido encerrado', async () => {
+  const pedidos = [{ ...pedidoDoBanco('etapa_2', 2), id: 'a' }, { ...pedidoDoBanco('concluido', null), id: 'b' }, { ...pedidoDoBanco('etapa_1', 1), id: 'c', requester_user_id: RH }];
+  const cliente = clienteFalso({ erp_hiring_requests: pedidos, erp_hiring_roles: [], erp_hiring_signatures: [], erp_hiring_audit: [] });
+  substituirClienteSupabase(cliente);
+  try {
+    const corpo = JSON.parse((await handler(evento('GET'))).body);
+    assert.deepEqual(corpo.data.requests.map((item: { id: string }) => item.id), ['a', 'b'], 'sem papel: só os próprios');
+    assert.equal(corpo.data.requests[0].link_token, TOKEN);
+    assert.equal(corpo.data.requests[1].link_token, null);
     assert.equal(corpo.data.people, undefined, 'só o administrador recebe a lista de pessoas');
   } finally {
     substituirClienteSupabase(null);
   }
 });
 
-test('banco confere sequência, papel, separação de funções e auditoria só cresce', () => {
-  const sql = fs.readFileSync('supabase/migrations/202611140001_solicitacao_contratacao.sql', 'utf8');
-  assert.match(sql, /Esta etapa é de %\. Você não pode assinar por ela/);
+test('banco: ordem das 3 assinaturas, hash por assinatura, link e travas de acesso', () => {
+  const sql = fs.readFileSync('supabase/migrations/202611160001_contratacao_link_tres_assinaturas.sql', 'utf8');
+  assert.match(sql, /case v_request\.etapa_atual when 1 then 'gerente_1' when 2 then 'gerente_2' when 3 then 'rh' end/);
+  assert.match(sql, /Aguardando assinatura prioritária de: %/);
   assert.match(sql, /Quem já assinou uma etapa deste pedido não assina outra/);
   assert.match(sql, /v_request\.version <> p_expected_version/);
-  assert.match(sql, /before update or delete on public\.erp_hiring_audit/);
-  assert.match(sql, /before update or delete on public\.erp_hiring_signatures/);
+  assert.match(sql, /status = 'concluido', etapa_atual = null, concluded_at = v_now/);
+  assert.match(sql, /hash_validacao/);
+  assert.match(sql, /erp_hiring_requests_link_token_idx/);
   assert.match(sql, /m\.role = 'admin'/);
   for (const tabela of ['erp_hiring_roles', 'erp_hiring_requests', 'erp_hiring_signatures', 'erp_hiring_audit']) {
     assert.match(sql, new RegExp(`alter table public\\.${tabela} enable row level security`));
   }
   assert.match(sql, /revoke all on public\.erp_hiring_roles, public\.erp_hiring_requests, public\.erp_hiring_signatures, public\.erp_hiring_audit from public, anon, authenticated/);
+  const antigo = fs.readFileSync('supabase/migrations/202611140001_solicitacao_contratacao.sql', 'utf8');
+  assert.match(antigo, /before update or delete on public\.erp_hiring_signatures/, 'assinatura continua imutável');
 });

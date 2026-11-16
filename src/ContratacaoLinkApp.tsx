@@ -11,15 +11,19 @@ import {
 } from './auth/authService';
 import { AmbienteCliente, MarcaProduto } from './shared/ui/MarcaProduto';
 import { ScreenLoadingFallback } from './shared/components/feedback/ScreenLoadingFallback';
+import { getContratacaoTokenFromUrl } from './app/routing/publicRoutes';
 
 const ContratacaoTab = lazy(() => import('./components/ContratacaoTab'));
+const ContratacaoPeloLink = lazy(() => import('./components/contratacao/ContratacaoPeloLink').then(modulo => ({ default: modulo.ContratacaoPeloLink })));
 
 /**
- * Link de Solicitação de Contratação, no jeito do link de presença: abre leve,
- * sem carregar o ERP inteiro, e pede o login de cada pessoa. O que cada um vê
- * e assina vem do servidor, pelo login.
+ * Links de Solicitação de Contratação, no jeito do link de presença: abrem
+ * leves, sem carregar o ERP inteiro, e pedem o login de cada pessoa. Depois
+ * do login a pessoa continua no mesmo endereço, então cai direto no pedido.
+ * /contratacao-link/<token> abre um pedido só; /contratacao abre a aba.
  */
 export default function ContratacaoLinkApp() {
+  const token = getContratacaoTokenFromUrl();
   const [usuario, setUsuario] = useState<SupabaseAuthUser | null | undefined>(undefined);
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -60,7 +64,7 @@ export default function ContratacaoLinkApp() {
         showPassword={mostrarSenha}
         isAuthenticating={entrando}
         loginError={erro}
-        loginNotice={aviso || 'Entre para pedir ou assinar uma contratação.'}
+        loginNotice={aviso || (token ? 'Entre com seu login para ver e assinar esta solicitação de contratação.' : 'Entre para pedir ou assinar uma contratação.')}
         onUsernameChange={setEmail}
         onPasswordChange={setSenha}
         onTogglePasswordVisibility={() => setMostrarSenha(atual => !atual)}
@@ -86,7 +90,7 @@ export default function ContratacaoLinkApp() {
       </header>
       <main id="main-tab-viewport" tabIndex={-1} className="w-full p-[var(--renea-respiro)] print:p-0">
         <Suspense fallback={<ScreenLoadingFallback />}>
-          <ContratacaoTab noLink />
+          {token ? <ContratacaoPeloLink token={token} /> : <ContratacaoTab />}
         </Suspense>
       </main>
     </div>

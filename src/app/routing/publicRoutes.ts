@@ -24,8 +24,15 @@ export const isPublicLinkUrl = (location?: PublicLocation) => {
   return Boolean(getPresenceTokenFromUrl(resolvedLocation));
 };
 
-/** Link da Solicitação de Contratação: abre leve, como o de presença, mas pede login. */
+/** Token do link individual de um pedido: /contratacao-link/<token>. */
+export const getContratacaoTokenFromUrl = (location?: PublicLocation) => {
+  const resolvedLocation = getLocation(location);
+  const match = resolvedLocation?.pathname.match(/^\/contratacao-link\/([^/?#]+)\/?$/);
+  return match ? decodeURIComponent(match[1]) : '';
+};
+
+/** Links da Solicitação de Contratação: abrem leves, como o de presença, mas pedem login. */
 export const isContratacaoLinkUrl = (location?: PublicLocation) => {
   const resolvedLocation = getLocation(location);
-  return Boolean(resolvedLocation && /^\/contratacao\/?$/.test(resolvedLocation.pathname));
+  return Boolean(resolvedLocation && (/^\/contratacao\/?$/.test(resolvedLocation.pathname) || getContratacaoTokenFromUrl(resolvedLocation)));
 };
