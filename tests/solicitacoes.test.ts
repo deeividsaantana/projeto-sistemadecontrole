@@ -7,6 +7,7 @@ import {
   acoesDisponiveis,
   aplicarAcao,
   estaEmAtraso,
+  exerce,
   faltaEspecificacao,
   paraEsquemaJson,
   pessoaDoUsuario,
@@ -27,7 +28,9 @@ import {
   relatorioLogistico,
   relatorioPorSolicitante,
   relatorioSuprimentos,
+  sincronizarComPlanilha,
   validarImportacao,
+  type LinhaDoEspelho,
 } from '../src/utils/solicitacoesPlanilha';
 
 const thiago: Ator = { nome: 'Thiago', papel: 'solicitante' };
@@ -337,4 +340,72 @@ test('nuvem: o mesmo pedido mexido em dois aparelhos não perde lançamento da l
   assert.equal(sol.reagendamentos.length, 1);
   assert.equal(sol.itens[0].conferencias?.length, 1);
   assert.equal(sol.eventos.length, new Set(sol.eventos.map(evento => `${evento.data}${evento.acao}`)).size, 'sem repetir');
+});
+
+const espelho = (pedido: string, item: string, extra: Record<string, unknown> = {}): LinhaDoEspelho => ({
+  sheet_name: 'Solicitações',
+  raw_data: { source: 'Solicitações', request_date: '2026-11-10', source_request_number: pedido, requester_name: 'Thiago', item_description: item, unit: 'Und.', quantity_requested: 4, source_purchase_order: '', delivery_deadline: '', ...extra },
+});
+const LIDA = '2026-11-16T19:39:53.940Z';
+
+test('planilha sincronizada: pedido novo vira card e o que mudou entra na linha do tempo', () => {
+  const primeira = sincronizarComPlanilha([espelho('700', 'Enxada'), espelho('701', 'Pá')], [], LIDA);
+  assert.equal(primeira.novas.length, 2);
+  assert.equal(primeira.atualizadas.length, 0);
+  const [p700, p701] = primeira.novas;
+  assert.equal(p700.id, 'controle-pedido-700');
+  assert.equal(p700.etapa, 'Pendente Suprimentos');
+
+  // Nada mudou: não grava nada (abrir a aba de novo não repete registro).
+  const igual = sincronizarComPlanilha([espelho('700', 'Enxada'), espelho('701', 'Pá')], primeira.novas, LIDA);
+  assert.deepEqual(igual, { novas: [], atualizadas: [] });
+
+  // Na planilha: 700 ganhou SC e previsão, 701 recebeu OK, entrou prioridade e um pedido novo.
+  const linhas: LinhaDoEspelho[] = [
+    espelho('700', 'Enxada', { source_purchase_order: '93050001', delivery_deadline: '2026-11-25' }),
+    espelho('701', 'Pá', { delivery_deadline: 'OK' }),
+    espelho('702', 'Arame'),
+    { sheet_name: 'Prioridade', raw_data: { prioridade: '1º', data: '2026-11-10', pedido: 700 } },
+  ];
+  const depois = sincronizarComPlanilha(linhas, [p700, p701], LIDA);
+  assert.deepEqual(depois.novas.map(sol => sol.id), ['controle-pedido-702']);
+  const a700 = depois.atualizadas.find(sol => sol.id === p700.id)!;
+  assert.equal(a700.etapa, 'Em Cotação');
+  assert.equal(a700.numeroSc, '93050001');
+  assert.equal(a700.prioridade, 1);
+  assert.equal(a700.janelaFim, '2026-11-25');
+  const ultimo = a700.eventos[a700.eventos.length - 1];
+  assert.equal(ultimo.usuario, 'Planilha de compras');
+  assert.equal(ultimo.data, LIDA);
+  assert.match(ultimo.detalhe ?? '', /SC 93050001.*prioridade 1º.*25\/11\/2026/);
+  const a701 = depois.atualizadas.find(sol => sol.id === p701.id)!;
+  assert.equal(a701.etapa, 'Entregue');
+  assert.equal(a701.itens[0].quantidadeRecebida, 4);
+
+  // Pedido que já andou no sistema (aprovação, entrega...) não é mexido pela planilha.
+  const andou = { ...p700, etapa: 'Aguardando Aprovação' as const };
+  assert.equal(sincronizarComPlanilha(linhas, [andou, p701], LIDA).atualizadas.some(sol => sol.id === p700.id), false);
+  // Pedido aberto no próprio sistema não vira cópia nem é alterado.
+  const doSistema = { ...p700, origem: 'sistema' as const };
+  assert.equal(sincronizarComPlanilha(linhas, [doSistema, p701], LIDA).atualizadas.some(sol => sol.id === p700.id), false);
+  // Leitura sem a aba Prioridade não tira a prioridade de ninguém.
+  const semAba = sincronizarComPlanilha(linhas.slice(0, 3), [a700], LIDA);
+  assert.equal(semAba.atualizadas.some(sol => sol.id === p700.id), false);
+  // Planilha vazia (falha na leitura) não apaga nem cria nada.
+  assert.deepEqual(sincronizarComPlanilha([], [p700], LIDA), { novas: [], atualizadas: [] });
+});
+
+test('login com sobrenome acha a pessoa cadastrada só com o primeiro nome', () => {
+  const pessoas = [
+    { id: '1', nome: 'Bruno', papel: 'aprovador' as const, ativo: true },
+    { id: '2', nome: 'José Augusto', papel: 'solicitante' as const, ativo: true },
+    { id: '3', nome: 'José Augusto Mineiro', papel: 'solicitante' as const, ativo: true },
+  ];
+  assert.equal(pessoaDoUsuario(pessoas, { nome: 'Bruno Luscher' })?.nome, 'Bruno');
+  assert.equal(pessoaDoUsuario(pessoas, { nome: 'José Augusto Mineiro' })?.id, '3');
+  assert.equal(pessoaDoUsuario(pessoas, { nome: 'José Augusto Mineiro Silva' })?.id, '3', 'vale o cadastro mais comprido');
+  assert.equal(pessoaDoUsuario(pessoas, { nome: 'José Augusto Lima' })?.id, '2');
+  assert.equal(pessoaDoUsuario(pessoas, { nome: 'Brunoso' }), null, 'só nome inteiro, não pedaço de palavra');
+  const doLogin = pessoaDoUsuario(pessoas, { nome: 'Bruno Luscher' })!;
+  assert.equal(exerce({ nome: doLogin.nome, papel: doLogin.papel }, 'aprovador'), true, 'Bruno consegue aprovar com o login de nome completo');
 });

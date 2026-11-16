@@ -14,7 +14,9 @@ export const handler = async event => {
     if (sheet) query = query.eq('sheet_name', sheet);
     const { data, error } = await query;
     if (error) throw error;
-    return jsonResponse(200, { success: true, data: data || [] });
+    // Última leitura da planilha, para a tela dizer quando foi e se deu certo.
+    const { data: runs } = await getSupabaseAdmin().from('erp_procurement_sync_runs').select('status, error_message, finished_at').eq('organization_id', staff.organizationId).order('started_at', { ascending: false }).limit(1);
+    return jsonResponse(200, { success: true, data: data || [], lastRun: runs?.[0] || null });
   } catch (error) {
     return functionErrorResponse(error);
   }

@@ -431,3 +431,114 @@ export const linhasDeConferencia = (sols: readonly Solicitacao[]): LinhaConferen
 export const historicoGeral = (sols: readonly Solicitacao[]) => sols
   .flatMap(sol => sol.eventos.map((evento, indice) => ({ id: `${sol.id}-${indice}`, sol, ...evento })))
   .sort((a, b) => b.data.localeCompare(a.data));
+
+// ---------------------------------------------------------------------------
+// Planilha sincronizada (Google Planilhas → banco a cada 3h) → cards dos pedidos
+
+/** Linha do espelho da planilha no banco (erp_procurement_sheet_rows). */
+export interface LinhaDoEspelho {
+  sheet_name: string;
+  raw_data?: Record<string, unknown> | null;
+  source_updated_at?: string | null;
+}
+
+/** Quem aparece na linha do tempo quando a mudança veio da planilha. */
+export const QUEM_SINCRONIZA = 'Planilha de compras';
+
+const CABECALHO_DO_ESPELHO: Record<string, string> = {
+  request_date: 'Data',
+  source_request_number: 'N° do pedido',
+  requester_name: 'Solicitante',
+  item_description: 'Item',
+  unit: 'Unidade',
+  quantity_requested: 'Quantidade',
+  source_purchase_order: 'Solicitação de compra SC (N°)',
+  delivery_deadline: 'Previsão de entrega',
+};
+
+/** O espelho do banco no mesmo formato de quando a pessoa sobe o arquivo. */
+export const abasDoEspelho = (linhas: readonly LinhaDoEspelho[]): AbaLida[] => {
+  const da = (aba: string) => linhas.filter(linha => linha.sheet_name === aba && linha.raw_data);
+  return [
+    {
+      nome: 'Solicitações',
+      linhas: da('Solicitações').map((linha, indice) => ({
+        linha: indice + 3,
+        valores: Object.fromEntries(Object.entries(CABECALHO_DO_ESPELHO).map(([campo, nome]) => [nome, linha.raw_data?.[campo] ?? ''])),
+      })),
+    },
+    {
+      // Mesma ordem da aba: prioridade, data, nº do pedido.
+      nome: 'Prioridade',
+      linhas: da('Prioridade').map((linha, indice) => ({
+        linha: indice + 3,
+        valores: { prioridade: linha.raw_data?.prioridade ?? '', data: linha.raw_data?.data ?? '', pedido: linha.raw_data?.pedido ?? '' },
+      })),
+    },
+  ];
+};
+
+export interface ResultadoSincronizacao {
+  novas: Solicitacao[];
+  atualizadas: Solicitacao[];
+}
+
+/**
+ * Leva a planilha sincronizada para os cards. Pedido novo na planilha vira
+ * card; pedido que já veio da planilha e ainda está na fila ou em cotação
+ * recebe o que mudou lá (SC, "OK" na entrega, prioridade, previsão), com um
+ * registro na linha do tempo. Pedido que já andou no sistema (aprovação,
+ * a caminho, entregue, cancelado) não é mexido: o sistema manda nele.
+ * `agora` deve ser a hora da leitura da planilha, para dois aparelhos que
+ * sincronizam juntos gravarem o mesmo registro (a nuvem não repete).
+ */
+export const sincronizarComPlanilha = (
+  linhas: readonly LinhaDoEspelho[],
+  existentes: readonly Solicitacao[],
+  agora: string,
+): ResultadoSincronizacao => {
+  const abas = abasDoEspelho(linhas);
+  if (!abas[0].linhas.length) return { novas: [], atualizadas: [] };
+  const { novas } = importarPlanilhaDeControle(abas, existentes, QUEM_SINCRONIZA, agora);
+  const { novas: retrato } = importarPlanilhaDeControle(abas, [], QUEM_SINCRONIZA, agora);
+  const porId = new Map(existentes.map(sol => [sol.id, sol]));
+  // Sem a aba Prioridade na leitura, não dá para dizer que alguém saiu dela.
+  const leuPrioridade = abas[1].linhas.length > 0;
+  const atualizadas: Solicitacao[] = [];
+  for (const planilha of retrato) {
+    const atual = porId.get(planilha.id);
+    if (!atual || atual.origem !== 'planilha-controle') continue;
+    if (atual.etapa !== 'Pendente Suprimentos' && atual.etapa !== 'Em Cotação') continue;
+    const mudou: string[] = [];
+    let novo: Solicitacao = { ...atual };
+    if (planilha.numeroSc && planilha.numeroSc !== atual.numeroSc) {
+      novo = { ...novo, numeroSc: planilha.numeroSc, etapa: 'Em Cotação' };
+      mudou.push(`SC ${planilha.numeroSc}`);
+    }
+    if (planilha.etapa === 'Entregue') {
+      novo = {
+        ...novo,
+        etapa: 'Entregue',
+        statusLogistico: 'Chegou ao Local',
+        itens: novo.itens.map(item => ({ ...item, quantidadeRecebida: item.quantidadeRecebida ?? item.quantidade })),
+      };
+      mudou.push('planilha marcou OK na entrega');
+    }
+    if (leuPrioridade && planilha.prioridade !== atual.prioridade) {
+      const { prioridade: _antiga, ...semPrioridade } = novo;
+      novo = planilha.prioridade ? { ...semPrioridade, prioridade: planilha.prioridade } : semPrioridade;
+      mudou.push(planilha.prioridade ? `prioridade ${planilha.prioridade}º` : 'saiu da lista de prioridade');
+    }
+    if (planilha.janelaFim && planilha.janelaFim !== atual.janelaFim) {
+      novo = { ...novo, janelaFim: planilha.janelaFim };
+      mudou.push(`previsão de entrega ${planilha.janelaFim.split('-').reverse().join('/')}`);
+    }
+    if (!mudou.length) continue;
+    atualizadas.push({
+      ...novo,
+      eventos: [...atual.eventos, { data: agora, usuario: QUEM_SINCRONIZA, acao: 'Atualizado pela planilha', detalhe: mudou.join(' · ') }],
+      atualizadoEm: agora,
+    });
+  }
+  return { novas, atualizadas };
+};
