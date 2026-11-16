@@ -52,8 +52,9 @@ test('ROLE_ACCESS cleanup', async (suite) => {
 test('ALL_NAVIGATION_ITEMS cleanup', async (suite) => {
   // 11: a Programação ganhou aba própria, sem voltar a criar subtelas legadas.
   // 12: Solicitação de Contratação (14/11/2026).
-  await suite.test('should contain exactly 12 items from PRIMARY_MODULE_IDS', () => {
-    assert.strictEqual(ALL_NAVIGATION_ITEMS.length, 12, `Expected 12 items, got ${ALL_NAVIGATION_ITEMS.length}`);
+  // 13: painel Dev de acessos (16/11/2026), que só abre para o dev.
+  await suite.test('should contain exactly 13 items from PRIMARY_MODULE_IDS', () => {
+    assert.strictEqual(ALL_NAVIGATION_ITEMS.length, 13, `Expected 13 items, got ${ALL_NAVIGATION_ITEMS.length}`);
   });
 
   await suite.test('should contain only primary module IDs', () => {

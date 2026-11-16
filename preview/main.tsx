@@ -19,6 +19,7 @@ import PluviometroTab from '../src/components/PluviometroTab';
 import DiarioObraTab from '../src/components/DiarioObraTab';
 import { SolicitacoesPreview } from './solicitacoesPreview';
 import ContratacaoTab from '../src/components/ContratacaoTab';
+import DevTab from '../src/components/DevTab';
 import ProgramacaoTab from '../src/components/ProgramacaoTab';
 import { INITIAL_PROGRAMACAO } from '../src/utils/initialProgramacaoData';
 import { DesktopSidebar } from '../src/app/shell/DesktopSidebar';
@@ -569,6 +570,7 @@ const screens: Record<string, React.ReactNode> = {
   ),
   solicitacoes: <SolicitacoesPreview />,
   contratacao: <ContratacaoTab />,
+  dev: <DevTab />,
   pluviometro: <PluviometroTab diarios={fx.diariosChuva} obras={fx.obras} responsavel="Deivid Santana" podeEditar onSave={noop} />,
   'diario-obra': (
     <DiarioObraTab

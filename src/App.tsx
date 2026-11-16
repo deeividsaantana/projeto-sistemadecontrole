@@ -110,6 +110,7 @@ const ControleEquipamentosDiarioTab = lazy(() => import('./components/ControleEq
 const QuadroFrota = lazy(() => import('./components/quadroFrota/QuadroFrota'));
 const ManutencaoTab = lazy(() => import('./components/ManutencaoTab'));
 const ColaboradoresTab = lazy(() => import('./components/ColaboradoresTab'));
+const DevTab = lazy(() => import('./components/DevTab'));
 const SolicitacoesTab = lazy(() => import('./components/SolicitacoesTab'));
 const ContratacaoTab = lazy(() => import('./components/ContratacaoTab'));
 const PluviometroTab = lazy(() => import('./components/PluviometroTab'));
@@ -196,7 +197,6 @@ import { recordTabUsage } from './usageTelemetry';
 import {
   ALL_NAVIGATION_ITEMS,
   SIDEBAR_NAVIGATION_GROUPS,
-  ROLE_ACCESS,
   destinoDaAba,
   roleFromMembership,
   type UserRole,
@@ -212,7 +212,9 @@ import { nomeDaPessoa } from './auth/nomeDaPessoa';
 import { NotificationCenter } from './app/shell/NotificationCenter';
 import { PesquisaGlobal } from './app/shell/PesquisaGlobal';
 import { alertasDoSistema } from './utils/alertas';
-import { pode } from './utils/permissoes';
+import { abasLiberadas, podeComRegras } from './utils/regrasDeAcesso';
+import type { Capacidade } from './utils/permissoes';
+import { carregarMeuAcesso, type MeuAcesso } from './supabase/regrasDeAcesso';
 import {
   alertasVisiveis,
   carregarPreferencias,
@@ -436,6 +438,14 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   // Começa no menor perfil; o real vem da associação na organização (abaixo).
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>('leitura');
+  // Regras de aba da própria pessoa e se ela é dev (painel Dev, 16/11/2026).
+  const [meuAcesso, setMeuAcesso] = useState<MeuAcesso>({ ehDev: false, regras: {} });
+  const allowedTabs = useMemo(
+    () => abasLiberadas(currentUserRole, meuAcesso.regras, meuAcesso.ehDev),
+    [currentUserRole, meuAcesso],
+  );
+  const pode = (_perfil: UserRole, modulo: string, capacidade: Capacidade) =>
+    podeComRegras(currentUserRole, modulo, capacidade, meuAcesso.regras);
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(true);
@@ -475,9 +485,9 @@ export default function App() {
     abaJaNoEndereco.current = true;
     if (url.href === window.location.href) return;
     // A primeira tela e a troca forçada pelo perfil não viram um passo do voltar.
-    const substituir = primeira || !anterior || !ROLE_ACCESS[currentUserRole].includes(anterior);
+    const substituir = primeira || !anterior || !allowedTabs.includes(anterior);
     window.history[substituir ? 'replaceState' : 'pushState'](null, '', url);
-  }, [activeTab, isLoggedIn, currentUserRole]);
+  }, [activeTab, isLoggedIn, currentUserRole, allowedTabs]);
   useEffect(() => {
     const voltar = () => setActiveTab(getInitialTabFromUrl());
     window.addEventListener('popstate', voltar);
@@ -660,10 +670,10 @@ export default function App() {
 
   useEffect(() => {
     // Endereço antigo guardado (F5, favorito) abre a tela onde o dado mora hoje.
-    if (isLoggedIn && !ROLE_ACCESS[currentUserRole].includes(activeTab)) {
-      setActiveTab(destinoDaAba(activeTab, ROLE_ACCESS[currentUserRole]) || 'dashboard');
+    if (isLoggedIn && !allowedTabs.includes(activeTab)) {
+      setActiveTab(destinoDaAba(activeTab, allowedTabs) || 'dashboard');
     }
-  }, [activeTab, currentUserRole, isLoggedIn]);
+  }, [activeTab, allowedTabs, isLoggedIn]);
 
   // Hydrate states from localstorage on mount
   useEffect(() => {
@@ -949,6 +959,8 @@ export default function App() {
         return;
       }
       setCurrentUserRole(roleFromMembership(membership.role, user.app_metadata?.role));
+      // Antes de entrar, para o endereço ?tab=dev não cair no Painel.
+      setMeuAcesso(await carregarMeuAcesso(user.uid));
       setCurrentUser(user);
       setIsLoggedIn(true);
     } catch (error) {
@@ -3594,8 +3606,8 @@ export default function App() {
   // app) ou de tela que o perfil não abre fica fora do sino (M6, M7).
   const alertasDoSino = useMemo(
     () => alertasVisiveis(alertasSistema, preferenciasNotificacao)
-      .filter(alerta => destinoDaAba(alerta.tab, ROLE_ACCESS[currentUserRole]) !== null),
-    [alertasSistema, preferenciasNotificacao, currentUserRole],
+      .filter(alerta => destinoDaAba(alerta.tab, allowedTabs) !== null),
+    [alertasSistema, preferenciasNotificacao, allowedTabs],
   );
 
   const handleSaveFrente = (frente: FrenteServico, isNew: boolean, onError?: (error: Error) => void) => {
@@ -4154,7 +4166,6 @@ export default function App() {
   };
 
   const normalizedMenuSearch = menuSearch.trim().toLocaleLowerCase('pt-BR');
-  const allowedTabs = ROLE_ACCESS[currentUserRole];
   const filteredNavigationGroups = SIDEBAR_NAVIGATION_GROUPS
     .map(group => ({
       ...group,
@@ -4164,7 +4175,7 @@ export default function App() {
     .filter(group => group.items.length > 0);
 
   // Função comum: um hook aqui, depois dos retornos antecipados, derrubava o app ao entrar.
-  const podeAbrir = (tab: string) => destinoDaAba(tab, ROLE_ACCESS[currentUserRole]) !== null;
+  const podeAbrir = (tab: string) => destinoDaAba(tab, allowedTabs) !== null;
 
   const verOrdensDaMaquina = (prefixo: string) => { navigateTo('manutencao'); setPedidoManutencao(atual => ({ prefixo, vez: atual.vez + 1 })); };
   const verMaquinaNoQuadro = (prefixo: string) => { navigateTo('controle-equipamentos'); setPedidoFrota(atual => ({ prefixo, vez: atual.vez + 1 })); };
@@ -4504,6 +4515,7 @@ export default function App() {
             )}
 
             {activeTab === 'contratacao' && <ContratacaoTab />}
+            {activeTab === 'dev' && allowedTabs.includes('dev') && <DevTab />}
 
             {activeTab === 'pluviometro' && (
               <PluviometroTab
