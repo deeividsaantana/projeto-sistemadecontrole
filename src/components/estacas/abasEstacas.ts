@@ -1,4 +1,4 @@
-import { FileBarChart, FileSpreadsheet, Hammer, LayoutDashboard, ListOrdered, PackageCheck } from 'lucide-react';
+import { FileBarChart, FileSpreadsheet, LayoutDashboard, ListOrdered, PackageCheck } from 'lucide-react';
 import type { ItemDasAbas } from '../../shared/ui/AbasDaTela';
 
 /** Subtela aberta no Controle de Estacas. */
@@ -17,14 +17,15 @@ interface Numeros {
 
 /**
  * Subtelas de Estacas como abas no topo (AbasDaTela). A primeira linha tem só
- * o que se usa todo dia: ver como está, lançar e a lista. Relatórios, notas
+ * o que se usa todo dia: ver como está e a lista. Lançar não é aba: é o botão
+ * "Lançar cravação" do topo (e a tecla N), um só no sistema todo (pedido de
+ * 16/11/2026), e abre a folha que ocupa a área inteira da aba. Relatórios, notas
  * recebidas e planilha ficam num grupo só, que abre a segunda linha. O selo
  * laranja diz o que pede atenção (estacas que faltam, notas a conferir); o
  * cinza, só quantas há.
  */
 export const abasEstacas = ({ faltam, estacas, notasPendentes, lotes }: Numeros): ItemDasAbas<SecaoEstacas>[] => [
   { id: 'visao', rotulo: 'Visão geral', curto: 'Visão', icone: LayoutDashboard, contador: faltam, contadorRotulo: 'faltam cravar' },
-  { id: 'cravar', rotulo: 'Lançar cravação', curto: 'Lançar', icone: Hammer },
   { id: 'estacas', rotulo: 'Estacas', icone: ListOrdered, contador: estacas, contadorRotulo: 'estacas', tom: 'neutro' },
   {
     grupo: 'documentos',

@@ -511,6 +511,60 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; text-wrap: bal
   .renea-tela-cheia__dados--longa { margin: -2px; padding: 2px 2px 1rem; }
 }
 
+/* Cabeçalho na barra do topo (pedido de 16/11/2026). No computador, o
+   cabeçalho da aba (subtelas, título e ação principal) sobe para a faixa da
+   barra do topo, no lugar do "Projeto atual", e a aba inteira sobe junto
+   para usar o máximo da tela. A barra fica transparente e deixa o clique
+   passar, menos no lado direito (salvamento, sino e pessoa), que o
+   cabeçalho não cobre: --renea-topo-direita é a largura dele, medida pelo
+   DesktopTopBar. O Painel não tem cabeçalho à vista
+   (renea-page-header--vazio) e segue mostrando o projeto atual. Até
+   1023 px a barra do topo some e o cabeçalho fica na própria aba. */
+@media (min-width: 1024px) {
+  .erp-workspace:has(> .erp-topbar):has(.renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header:not(.renea-page-header--vazio)) > .erp-topbar {
+    background: transparent;
+    pointer-events: none;
+  }
+  .erp-workspace:has(> .erp-topbar):has(.renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header:not(.renea-page-header--vazio)) > .erp-topbar .erp-topbar__project { display: none; }
+  .erp-workspace > .erp-topbar .erp-topbar__actions { pointer-events: auto; }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz:has(> .renea-tela-cheia__topo .renea-page-header:not(.renea-page-header--vazio)) {
+    margin-top: calc(-1 * (var(--renea-topo) + var(--renea-respiro)));
+    height: calc(100dvh - var(--renea-respiro));
+  }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo:has(.renea-page-header:not(.renea-page-header--vazio)) {
+    display: flex;
+    min-height: var(--renea-topo);
+    flex-direction: column;
+    justify-content: center;
+    gap: .5rem;
+    --renea-topo-reserva: calc(var(--renea-topo-direita, 20rem) + 2.25rem - var(--renea-respiro));
+  }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header {
+    padding-block: 0;
+    row-gap: .5rem;
+  }
+  /* Tudo cabe: abas e ações na barra, antes do canto direito. */
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header[data-linha="uma"] {
+    padding-right: var(--renea-topo-reserva);
+  }
+  /* Não cabe (PageHeader mede): as abas ficam na barra e as ações descem
+     para a linha de baixo, na largura toda e encostadas à direita. */
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header[data-linha="duas"] > .renea-page-header__copy,
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header[data-linha="duas"] .renea-abas-da-tela > .renea-abas:first-child {
+    max-width: calc(100% - var(--renea-topo-reserva));
+  }
+  /* A segunda linha das abas agrupadas já fica abaixo da barra: usa a
+     largura toda. */
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header[data-linha="duas"] > .renea-page-header__abas {
+    flex-basis: 100%;
+  }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header[data-linha="duas"] > .renea-page-actions {
+    width: 100%;
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
+}
+
 /* Cabeçalho com subtelas: título curto, abas logo ao lado e a ação
    principal encostada à direita, numa linha só quando couber. Quando não
    cabe, as ações descem para a linha de baixo, ainda à direita. No celular
