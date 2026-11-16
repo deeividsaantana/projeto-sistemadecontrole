@@ -34,13 +34,13 @@ export const intervaloDaAba = (aba: AbaHistorico): { dataInicio: string; dataFim
 /** As colunas da planilha FORNECIMENTO DIESEL, na ordem dela, e duas a mais que o app guarda. */
 export type ColunaHistorico = 'data' | 'prefixo' | 'descricao' | 'km' | 'horimetro' | 'litros' | 'hora' | 'comboio' | 'combustivel' | 'empresa' | 'bombaInicial' | 'bombaFinal' | 'responsavel' | 'observacao';
 
-export const COLUNAS_HISTORICO: ReadonlyArray<{ id: ColunaHistorico; rotulo: string; padrao: boolean; fixa?: boolean; ordenavel?: boolean }> = [
-  { id: 'data', rotulo: 'Data', padrao: true, fixa: true, ordenavel: true },
-  { id: 'prefixo', rotulo: 'Prefixo', padrao: true, fixa: true, ordenavel: true },
+export const COLUNAS_HISTORICO: ReadonlyArray<{ id: ColunaHistorico; rotulo: string; padrao: boolean; ordenavel?: boolean }> = [
+  { id: 'data', rotulo: 'Data', padrao: true, ordenavel: true },
+  { id: 'prefixo', rotulo: 'Prefixo', padrao: true, ordenavel: true },
   { id: 'descricao', rotulo: 'Descrição do equipamento', padrao: true },
   { id: 'km', rotulo: 'KM inicial', padrao: true, ordenavel: true },
   { id: 'horimetro', rotulo: 'Horímetro', padrao: true, ordenavel: true },
-  { id: 'litros', rotulo: 'Litros', padrao: true, fixa: true, ordenavel: true },
+  { id: 'litros', rotulo: 'Litros', padrao: true, ordenavel: true },
   { id: 'hora', rotulo: 'Hora', padrao: false },
   { id: 'comboio', rotulo: 'Comboio', padrao: false, ordenavel: true },
   { id: 'combustivel', rotulo: 'Tipo de combustível', padrao: true },
@@ -51,21 +51,12 @@ export const COLUNAS_HISTORICO: ReadonlyArray<{ id: ColunaHistorico; rotulo: str
   { id: 'observacao', rotulo: 'Observação', padrao: false },
 ];
 
-export const COLUNAS_PADRAO = COLUNAS_HISTORICO.filter(item => item.padrao).map(item => item.id);
-
-/** Lê as colunas guardadas no aparelho; as fixas sempre aparecem e nada desconhecido entra. */
-export const colunasValidas = (guardadas: unknown): ColunaHistorico[] => {
-  if (!Array.isArray(guardadas)) return [...COLUNAS_PADRAO];
-  const escolhidas = new Set(guardadas.filter((item): item is string => typeof item === 'string'));
-  return COLUNAS_HISTORICO.filter(item => item.fixa || escolhidas.has(item.id)).map(item => item.id);
-};
-
 export type ColunaOrdem = 'data' | 'prefixo' | 'empresa' | 'comboio' | 'litros' | 'horimetro' | 'km';
 export interface OrdemHistorico { coluna: ColunaOrdem; direcao: 'asc' | 'desc' }
 /** Como na planilha: do primeiro lançamento do mês para o último. */
 export const ORDEM_PADRAO: OrdemHistorico = { coluna: 'data', direcao: 'asc' };
 
-/** Nomes que a tela resolve pelo cadastro; a ordem e o agrupamento usam os mesmos. */
+/** Nomes que a tela resolve pelo cadastro; a ordem usa os mesmos. */
 export interface NomesHistorico {
   prefixo: (item: Abastecimento) => string;
   empresa: (item: Abastecimento) => string;
@@ -100,43 +91,4 @@ export const ordenarHistorico = (itens: readonly Abastecimento[], ordem: OrdemHi
 export const proximaOrdem = (atual: OrdemHistorico, coluna: ColunaOrdem): OrdemHistorico => {
   if (atual.coluna === coluna) return { coluna, direcao: atual.direcao === 'asc' ? 'desc' : 'asc' };
   return { coluna, direcao: ['data', 'prefixo', 'empresa', 'comboio'].includes(coluna) ? 'asc' : 'desc' };
-};
-
-export type AgrupamentoHistorico = 'nenhum' | 'dia' | 'maquina' | 'comboio' | 'empresa';
-
-export const AGRUPAMENTOS_HISTORICO: ReadonlyArray<{ id: AgrupamentoHistorico; rotulo: string }> = [
-  { id: 'nenhum', rotulo: 'Sem grupo' },
-  { id: 'dia', rotulo: 'Por dia' },
-  { id: 'maquina', rotulo: 'Por máquina' },
-  { id: 'comboio', rotulo: 'Por comboio' },
-  { id: 'empresa', rotulo: 'Por empresa' },
-];
-
-export interface GrupoHistorico {
-  chave: string;
-  rotulo: string;
-  litros: number;
-  itens: Abastecimento[];
-}
-
-/** Junta os itens já ordenados, mantendo a ordem em que cada grupo aparece pela primeira vez. */
-export const agruparHistorico = (itens: readonly Abastecimento[], agrupamento: AgrupamentoHistorico, nomes: NomesHistorico): GrupoHistorico[] => {
-  if (agrupamento === 'nenhum') {
-    return [{ chave: 'todos', rotulo: '', litros: itens.reduce((soma, item) => soma + Number(item.quantidadeLitros || 0), 0), itens: [...itens] }];
-  }
-  const rotuloDe = (item: Abastecimento) => {
-    if (agrupamento === 'dia') return item.data || 'Sem data';
-    if (agrupamento === 'maquina') return nomes.prefixo(item) || 'Sem prefixo';
-    if (agrupamento === 'comboio') return nomes.comboio(item) || 'Sem comboio';
-    return nomes.empresa(item) || 'Sem empresa';
-  };
-  const grupos = new Map<string, GrupoHistorico>();
-  itens.forEach(item => {
-    const rotulo = rotuloDe(item);
-    const grupo = grupos.get(rotulo) || { chave: rotulo, rotulo, litros: 0, itens: [] };
-    grupo.litros += Number(item.quantidadeLitros || 0);
-    grupo.itens.push(item);
-    grupos.set(rotulo, grupo);
-  });
-  return [...grupos.values()].map(grupo => ({ ...grupo, litros: Math.round(grupo.litros * 10) / 10 }));
 };

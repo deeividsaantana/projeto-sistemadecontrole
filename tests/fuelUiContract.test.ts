@@ -16,7 +16,7 @@ test('lançamentos e consumo por máquina usam a TabelaPadrao, sem lista fingind
     assert.doesNotMatch(fonte, /<table\b|role="rowgroup"|<tr[^>]*onClick/);
     assert.doesNotMatch(fonte, /<aside\b|<h3\b/, 'nada de complementary aninhado nem h3 sem h2');
   }
-  for (const recurso of [/grupos=\{/, /selecao=\{/, /onTrocarData\(selecionadosLista\)/, /onExcluir\(selecionadosLista\)/, /rodapeInicio=/, /porPagina=\{preferencias\.tamanhoPagina\}/, /refArea=\{listaRef\}/]) {
+  for (const recurso of [/selecao=\{/, /onTrocarData\(selecionadosLista\)/, /onExcluir\(selecionadosLista\)/, /rodapeInicio=/, /porPagina=\{preferencias\.tamanhoPagina\}/, /refArea=\{listaRef\}/]) {
     assert.match(historicoSource, recurso, `Lançamentos perdeu ${recurso}`);
   }
 });

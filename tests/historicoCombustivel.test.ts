@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  ABA_TUDO, abasDoHistorico, agruparHistorico, colunasValidas, COLUNAS_PADRAO, intervaloDaAba, ordenarHistorico, proximaOrdem, ORDEM_PADRAO,
+  ABA_TUDO, abasDoHistorico, intervaloDaAba, ordenarHistorico, proximaOrdem, ORDEM_PADRAO,
 } from '../src/modules/frota/historicoCombustivel';
 import type { Abastecimento } from '../src/types';
 
@@ -34,21 +34,4 @@ test('ordena por coluna, com prefixo em ordem natural e empate do mais recente',
   assert.deepEqual(proximaOrdem(ORDEM_PADRAO, 'data'), { coluna: 'data', direcao: 'desc' });
   assert.deepEqual(proximaOrdem(ORDEM_PADRAO, 'prefixo'), { coluna: 'prefixo', direcao: 'asc' });
   assert.deepEqual(proximaOrdem(ORDEM_PADRAO, 'litros'), { coluna: 'litros', direcao: 'desc' });
-});
-
-test('agrupa com subtotal e mantém a ordem da lista', () => {
-  const lista = [
-    item({ id: '1', data: '2026-10-11', quantidadeLitros: 40.25 }),
-    item({ id: '2', data: '2026-10-10', comboioId: '' }),
-    item({ id: '3', data: '2026-10-11', quantidadeLitros: 10 }),
-  ];
-  const porDia = agruparHistorico(lista, 'dia', nomes);
-  assert.deepEqual(porDia.map(g => [g.rotulo, g.litros, g.itens.length]), [['2026-10-11', 50.3, 2], ['2026-10-10', 100, 1]]);
-  assert.deepEqual(agruparHistorico(lista, 'comboio', nomes).map(g => g.rotulo), ['Comboio 01', 'Sem comboio']);
-  assert.equal(agruparHistorico(lista, 'nenhum', nomes)[0].itens.length, 3);
-});
-
-test('colunas guardadas: fixas sempre, desconhecidas fora, lixo volta ao padrão', () => {
-  assert.deepEqual(colunasValidas(['observacao', 'xyz']), ['data', 'prefixo', 'litros', 'observacao']);
-  assert.deepEqual(colunasValidas('quebrado'), COLUNAS_PADRAO);
 });
