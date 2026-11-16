@@ -3,6 +3,7 @@
  * grandes, frente, operador, motivo e observação. Grava o lançamento do dia no
  * mesmo formato do Controle de Frotas.
  *
+ * Abre em tela cheia, no padrão de lançamento: Ctrl+S salva, Esc fecha.
  * Teclas, fora de campo de texto: O operando, M manutenção, P parado.
  * Shift+Enter salva e abre a próxima máquina da tela.
  */
@@ -11,8 +12,8 @@ import { ArrowRight, Check, PauseCircle, PlayCircle, Wrench } from 'lucide-react
 import type { StatusControleEquipamentoDiario } from '../../types';
 import { CANTEIROS, SITUACOES_EDITAVEIS, rascunhoDoCartao, type CartaoFrota, type EdicaoQuadro, type RascunhoQuadro } from '../../modules/frota/quadroFrota';
 import { Modal } from '../../shared/ui';
-import { DesenhoMaquina } from './DesenhoMaquina';
 import { TOM, numero } from './CartaoEquipamento';
+import { ROTULO_GRUPO } from '../../modules/frota/quadroFrota';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO, ROTULO } from '../cadastros/estilos';
 
 const RAPIDAS: ReadonlyArray<{ status: StatusControleEquipamentoDiario; rotulo: string; tecla: string; Icone: typeof PlayCircle; ligado: string }> = [
@@ -97,59 +98,53 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, canteiros = 
   const emManutencao = edicao?.status ? EM_MANUTENCAO.has(edicao.status) : false;
   // Atalho só para quem já está em manutenção no que está gravado (não no rascunho).
   const botaoOrdens = onVerOrdens && cartao?.grupo === 'manutencao'
-    ? <button type="button" onClick={onVerOrdens} className={`${BOTAO_SECUNDARIO} w-full`} data-testid="quadro-ver-ordens">Ver ordens de serviço na Manutenção</button>
+    ? <button type="button" onClick={onVerOrdens} className={BOTAO_SECUNDARIO} data-testid="quadro-ver-ordens">Ver ordens de serviço na Manutenção</button>
     : null;
   const tom = cartao ? TOM[cartao.grupo] : TOM['sem-lancamento'];
 
   const rodape = cartao && (podeEditar ? (
     <div className="grid gap-2">
       {erro && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800 ring-1 ring-inset ring-rose-200">{erro}</p>}
-      <div className="flex gap-2">
-        <button type="button" onClick={() => salvar(false)} className={`${BOTAO_PRIMARIO} flex-1`} data-testid="quadro-salvar">
-          <Check className="size-5" aria-hidden="true" />
-          Salvar
-        </button>
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <button type="button" onClick={onFechar} className={BOTAO_SECUNDARIO}>Fechar</button>
         {temProximo && (
-          <button type="button" onClick={() => salvar(true)} className={`${BOTAO_SECUNDARIO} flex-1`} data-testid="quadro-salvar-proximo">
+          <button type="button" onClick={() => salvar(true)} className={BOTAO_SECUNDARIO} data-testid="quadro-salvar-proximo">
             Salvar e próxima
             <ArrowRight className="size-4" aria-hidden="true" />
           </button>
         )}
-      </div>
-      {botaoOrdens}
-      <button type="button" onClick={onAbrirControle} className="min-h-11 text-sm font-semibold text-slate-500 underline-offset-4 hover:text-[#176b4d] hover:underline">
-        Ver horários e histórico no Controle de Frotas
-      </button>
-      {podeRemover && (
-        <button type="button" onClick={onRemover} className="min-h-9 text-xs font-semibold text-rose-600 underline-offset-4 hover:text-rose-700 hover:underline" data-testid="quadro-remover-cartao">
-          Remover esta máquina do quadro
+        <button type="button" onClick={() => salvar(false)} className={`${BOTAO_PRIMARIO} px-6`} data-testid="quadro-salvar">
+          <Check className="size-5" aria-hidden="true" />
+          Salvar
         </button>
-      )}
+      </div>
     </div>
   ) : (
-    <>
-      <button type="button" onClick={onAbrirControle} className={`${BOTAO_PRIMARIO} w-full`}>Abrir no Controle de Frotas</button>
-      {botaoOrdens}
-    </>
+    <div className="flex justify-end">
+      <button type="button" onClick={onFechar} className={BOTAO_SECUNDARIO}>Fechar</button>
+    </div>
   ));
 
   return (
     <Modal
       open={Boolean(cartao)}
       onClose={onFechar}
-      size="lg"
-      telaCheia="quadro-frota-painel"
+      lancamento
+      onSubmit={podeEditar ? () => salvar(false) : undefined}
       title={cartao ? `${cartao.prefixo} · ${cartao.modelo}` : ''}
       description={cartao ? `${cartao.tipo}${cartao.horimetro ? ` · ${numero(cartao.horimetro)} h` : ''}` : undefined}
       footer={rodape}
     >
       {cartao && edicao && (
         <div className="space-y-5" data-testid="quadro-painel">
-          <div className={`relative grid h-40 place-items-center overflow-hidden rounded-2xl bg-gradient-to-b ${tom.fundo} ring-1 ring-slate-200`}>
-            <span className={`absolute inset-x-0 top-0 h-1.5 ${tom.faixa}`} aria-hidden="true" />
-            {cartao.foto
-              ? <img src={cartao.foto} alt={`Foto do ${cartao.prefixo}`} className="h-full w-full object-contain" />
-              : <DesenhoMaquina tipo={cartao.silhueta} className="h-28 w-48 drop-shadow-[0_10px_10px_rgba(15,40,31,0.15)]" />}
+          <div className="flex flex-wrap items-center gap-3">
+            {cartao.foto && <img src={cartao.foto} alt={`Foto do ${cartao.prefixo}`} className="size-14 rounded-xl object-cover ring-1 ring-slate-200" />}
+            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-bold ring-1 ring-inset ${tom.etiqueta}`}>
+              <span className={`size-2 rounded-full ${tom.ponto}`} aria-hidden="true" />
+              {ROTULO_GRUPO[cartao.grupo]}{cartao.status && cartao.grupo !== 'sem-lancamento' && cartao.status !== ROTULO_GRUPO[cartao.grupo] ? ` · ${cartao.status}` : ''}
+            </span>
+            <span className="text-sm text-slate-600">Canteiro: <strong className="text-slate-900">{cartao.canteiro}</strong></span>
+            {cartao.frente && <span className="text-sm text-slate-600">Frente: <strong className="text-slate-900">{cartao.frente}</strong></span>}
           </div>
 
           {cartao.grupo === 'sem-lancamento' && (
@@ -164,10 +159,11 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, canteiros = 
           )}
 
           {podeEditar ? (
-            <>
+            <div className="grid gap-5 lg:grid-cols-2 lg:gap-8">
+              <div className="space-y-5">
               <fieldset>
                 <legend className={ROTULO}>Situação</legend>
-                <div className="mt-2 grid grid-cols-3 gap-2 sm:max-w-sm">
+                <div className="mt-2 grid grid-cols-3 gap-2">
                   {RAPIDAS.map(item => {
                     const ligado = edicao.status === item.status;
                     return (
@@ -223,6 +219,9 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, canteiros = 
                 </div>
                 <span className="mt-1 block text-xs text-slate-500">O canteiro fica guardado para os próximos dias.</span>
               </fieldset>
+              </div>
+
+              <div className="space-y-5">
 
               <label className="block">
                 <span className={ROTULO}>Frente</span>
@@ -251,9 +250,22 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, canteiros = 
 
               <label className="block">
                 <span className={ROTULO}>Observação</span>
-                <textarea value={edicao.observacao} onChange={event => mudar({ observacao: event.target.value })} rows={2} className={`${CAMPO} mt-1.5 py-2.5`} data-testid="quadro-observacao" />
+                <textarea value={edicao.observacao} onChange={event => mudar({ observacao: event.target.value })} rows={3} className={`${CAMPO} mt-1.5 py-2.5`} data-testid="quadro-observacao" />
               </label>
-            </>
+
+              <div className="flex flex-col items-start gap-1 border-t border-slate-100 pt-3">
+                {botaoOrdens}
+                <button type="button" onClick={onAbrirControle} className={`min-h-11 text-sm font-semibold text-[#176b4d] underline-offset-4 hover:underline ${FOCO}`}>
+                  Ver horários e histórico no Controle de Frotas
+                </button>
+                {podeRemover && (
+                  <button type="button" onClick={onRemover} className={`min-h-11 text-sm font-semibold text-rose-700 underline-offset-4 hover:underline ${FOCO}`} data-testid="quadro-remover-cartao">
+                    Remover esta máquina do quadro
+                  </button>
+                )}
+              </div>
+              </div>
+            </div>
           ) : (
             <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
               {[
@@ -271,6 +283,12 @@ export function PainelEquipamento({ cartao, podeEditar, temProximo, canteiros = 
                 </div>
               ))}
             </dl>
+          )}
+          {!podeEditar && (
+            <div className="flex flex-col items-start gap-2">
+              <button type="button" onClick={onAbrirControle} className={`${BOTAO_PRIMARIO} px-5`}>Abrir no Controle de Frotas</button>
+              {botaoOrdens}
+            </div>
           )}
         </div>
       )}
