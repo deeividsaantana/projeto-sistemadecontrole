@@ -1,6 +1,8 @@
-// Solicitação de Contratação assinável: lista filtrada por papel, abertura com
-// assinatura do solicitante, assinatura/recusa de RH e gerente e papéis.
-// Quem é quem vem da sessão (token do Supabase), nunca do corpo do pedido.
+// Solicitação de Contratação assinável (fluxo de 16/11/2026): lista, abertura
+// (só dados; o banco gera o link individual), leitura pelo link
+// /contratacao-link/<token>, assinatura em ordem rígida (1ª gerente -> 2ª
+// gerente -> RH) e papéis. Quem é quem vem da sessão (token do Supabase),
+// nunca do corpo do pedido; quem pode assinar a etapa atual o banco confere.
 import crypto from 'node:crypto';
 import {
   cleanString,
@@ -12,9 +14,11 @@ import {
 } from './_shared/supabase-admin.js';
 import { assertHttpMethod, httpError } from './_shared/api-security.js';
 import {
-  assinaturasVisiveis,
+  ETAPAS,
+  emAberto,
   formularioCanonico,
   pedidoVisivel,
+  tokenValido,
   validarFormulario,
 } from './_shared/contratacao-regras.js';
 
@@ -45,6 +49,59 @@ export const leitorDaSessao = async (client, staff) => {
   return { userId: staff.uid, nome: staff.name, admin: staff.role === 'admin', papeis: (data || []).map(linha => linha.role) };
 };
 
+const COLUNAS_ASSINATURA = 'id, request_id, stage, signer_user_id, signer_name, signer_cargo, method, image_data, form_hash, signed_at, hash_validacao';
+const COLUNAS_AUDITORIA = 'request_id, actor_name, action, from_status, to_status, details, created_at';
+
+/** O link só sai enquanto o pedido corre; encerrado, o token nem vai para a tela. */
+const montarPedido = (pedido, assinaturas, auditoria) => {
+  const { client_key: _chave, link_token: token, ...resto } = pedido;
+  return {
+    ...resto,
+    link_token: emAberto(pedido.status) ? token : null,
+    signatures: assinaturas.filter(item => item.request_id === pedido.id),
+    history: auditoria.filter(item => item.request_id === pedido.id),
+  };
+};
+
+/** Nomes de quem assina cada etapa, para os selos "1. Bruno (Gerente)". */
+const titularesDaEmpresa = async (client, staff) => {
+  const { data, error } = await client.from('erp_hiring_roles').select('role, user_name')
+    .eq('organization_id', staff.organizationId).in('role', ETAPAS);
+  if (error) throw error;
+  return Object.fromEntries(ETAPAS.map(etapa => [etapa, (data || []).filter(linha => linha.role === etapa).map(linha => linha.user_name)]));
+};
+
+/**
+ * Link individual. Login obrigatório (a sessão já foi conferida). Encerrado:
+ * responde só "expirado", sem nenhum dado do candidato. Em aberto: só quem
+ * abriu, o administrador e quem tem papel na contratação veem o pedido.
+ */
+const abrirPeloLink = async (client, staff, leitor, token) => {
+  if (!tokenValido(token)) throw httpError('Link inválido. Confira se copiou o link inteiro.', 404);
+  const { data: pedido, error } = await client.from('erp_hiring_requests').select('*')
+    .eq('organization_id', staff.organizationId).eq('link_token', token).maybeSingle();
+  if (error) throw error;
+  if (!pedido) throw httpError('Link inválido. Confira se copiou o link inteiro.', 404);
+  if (!emAberto(pedido.status)) {
+    return jsonResponse(200, { success: true, data: { me: leitor, expirado: pedido.status === 'recusada' ? 'recusada' : 'concluido' } });
+  }
+  if (!pedidoVisivel(pedido, leitor)) {
+    throw httpError('Seu login não participa desta solicitação. Peça ao administrador para marcar você em "Quem assina".', 403);
+  }
+  const [respAssinaturas, respAuditoria, titulares] = await Promise.all([
+    client.from('erp_hiring_signatures').select(COLUNAS_ASSINATURA).eq('request_id', pedido.id),
+    client.from('erp_hiring_audit').select(COLUNAS_AUDITORIA).eq('request_id', pedido.id).order('created_at', { ascending: true }),
+    titularesDaEmpresa(client, staff),
+  ]);
+  if (respAssinaturas.error) throw respAssinaturas.error;
+  if (respAuditoria.error) throw respAuditoria.error;
+  return jsonResponse(200, { success: true, data: {
+    me: leitor,
+    titulares,
+    request: montarPedido(pedido, respAssinaturas.data || [], respAuditoria.data || []),
+  } });
+};
+
 const listar = async (client, staff, leitor) => {
   const { data: pedidos, error } = await client.from('erp_hiring_requests').select('*')
     .eq('organization_id', staff.organizationId).order('created_at', { ascending: false }).limit(500);
@@ -55,19 +112,16 @@ const listar = async (client, staff, leitor) => {
   let auditoria = [];
   if (ids.length) {
     const [respAssinaturas, respAuditoria] = await Promise.all([
-      client.from('erp_hiring_signatures').select('*').in('request_id', ids),
-      client.from('erp_hiring_audit').select('request_id, actor_name, action, from_status, to_status, details, created_at').in('request_id', ids).order('created_at', { ascending: true }),
+      client.from('erp_hiring_signatures').select(COLUNAS_ASSINATURA).in('request_id', ids),
+      client.from('erp_hiring_audit').select(COLUNAS_AUDITORIA).in('request_id', ids).order('created_at', { ascending: true }),
     ]);
     if (respAssinaturas.error) throw respAssinaturas.error;
     if (respAuditoria.error) throw respAuditoria.error;
     assinaturas = respAssinaturas.data || [];
     auditoria = respAuditoria.data || [];
   }
-  const resultado = visiveis.map(pedido => ({
-    ...pedido,
-    signatures: assinaturasVisiveis(pedido, assinaturas.filter(item => item.request_id === pedido.id), leitor),
-    history: auditoria.filter(item => item.request_id === pedido.id),
-  }));
+  const resultado = visiveis.map(pedido => montarPedido(pedido, assinaturas, auditoria));
+  const titulares = await titularesDaEmpresa(client, staff);
   let pessoas;
   if (leitor.admin) {
     const [membros, papeis] = await Promise.all([
@@ -89,24 +143,22 @@ const listar = async (client, staff, leitor) => {
       };
     }).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
   }
-  return jsonResponse(200, { success: true, data: { me: leitor, requests: resultado, people: pessoas } });
+  return jsonResponse(200, { success: true, data: { me: leitor, requests: resultado, people: pessoas, titulares } });
 };
 
 const criar = async (client, staff, corpo) => {
   const { formulario, erros } = validarFormulario(corpo.form);
   if (Object.keys(erros).length) throw httpError(Object.values(erros)[0], 422, { fields: erros });
-  const assinatura = assinaturaDoCorpo(corpo.signature);
   const hash = crypto.createHash('sha256').update(formularioCanonico(formulario)).digest('hex');
   const { data, error } = await client.rpc('create_erp_hiring_request', {
     p_organization_id: staff.organizationId,
     p_actor: { user_id: staff.uid, name: staff.name },
     p_form: formulario,
     p_form_hash: hash,
-    p_signature: assinatura,
     p_client_key: cleanString(corpo.client_key, 80),
   });
   if (error) throw erroDoBanco(error);
-  return jsonResponse(201, { success: true, data });
+  return jsonResponse(201, { success: true, data: montarPedido(data, [], []) });
 };
 
 const decidir = async (client, staff, corpo) => {
@@ -117,6 +169,16 @@ const decidir = async (client, staff, corpo) => {
   if (!decisao) throw httpError('Decisão inválida.', 422);
   const motivo = cleanString(corpo.reason, 1000);
   if (decisao === 'recusar' && motivo.length < 3) throw httpError('Escreva o motivo da recusa.', 422);
+  // Pelo link, o token tem que ser o deste pedido e o pedido tem que estar
+  // em aberto. Quem é o aprovador da etapa atual o banco confere sempre.
+  if (corpo.token !== undefined) {
+    if (!tokenValido(corpo.token)) throw httpError('Link inválido.', 404);
+    const { data: doLink, error: erroLink } = await client.from('erp_hiring_requests').select('id, status')
+      .eq('organization_id', staff.organizationId).eq('link_token', corpo.token).maybeSingle();
+    if (erroLink) throw erroLink;
+    if (!doLink || doLink.id !== id) throw httpError('Link inválido.', 404);
+    if (!emAberto(doLink.status)) throw httpError('Este link expirou. A solicitação já foi encerrada.', 410);
+  }
   const { data, error } = await client.rpc('sign_erp_hiring_request', {
     p_organization_id: staff.organizationId,
     p_request_id: id,
@@ -133,7 +195,7 @@ const decidir = async (client, staff, corpo) => {
 const definirPapel = async (client, staff, corpo) => {
   const id = String(corpo.user_id || '');
   if (!UUID.test(id)) throw httpError('Pessoa inválida.', 422);
-  if (!['rh', 'gerente', 'auxiliar'].includes(corpo.role)) throw httpError('Papel inválido.', 422);
+  if (!['gerente_1', 'gerente_2', 'rh', 'auxiliar'].includes(corpo.role)) throw httpError('Papel inválido.', 422);
   const { error } = await client.rpc('set_erp_hiring_role', {
     p_organization_id: staff.organizationId,
     p_actor: { user_id: staff.uid, name: staff.name },
@@ -150,7 +212,12 @@ export const handler = async event => {
     const metodo = assertHttpMethod(event, ['GET', 'POST']);
     const staff = await requireSupabaseUser(event);
     const client = getSupabaseAdmin();
-    if (metodo === 'GET') return await listar(client, staff, await leitorDaSessao(client, staff));
+    if (metodo === 'GET') {
+      const leitor = await leitorDaSessao(client, staff);
+      const token = event.queryStringParameters?.token;
+      if (token !== undefined) return await abrirPeloLink(client, staff, leitor, String(token));
+      return await listar(client, staff, leitor);
+    }
     const corpo = parseJsonBody(event, 400_000);
     if (corpo.action === 'criar') return await criar(client, staff, corpo);
     if (corpo.action === 'decidir') return await decidir(client, staff, corpo);

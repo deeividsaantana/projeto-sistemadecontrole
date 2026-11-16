@@ -3,6 +3,10 @@ import { supabaseAuth as auth } from '../auth/supabaseAuth';
 /** Formulário do documento SGR-FRH-21-373-01-000-000-0008 (regras em api/_shared/contratacao-regras.js). */
 export interface FormularioContratacao {
   data: string;
+  /** Candidato (16/11/2026). Pedidos antigos não têm: a tela mostra "—". */
+  candidato?: string;
+  cpf?: string;
+  inicio?: string;
   prioridade: string;
   motivo: string;
   motivoOutro: string;
@@ -18,21 +22,24 @@ export interface FormularioContratacao {
   comentarios: string;
 }
 
-export type Etapa = 'solicitante' | 'rh' | 'gerente';
-export type SituacaoContratacao = 'aguardando_rh' | 'aguardando_gerente' | 'aprovada' | 'recusada';
-export type PapelContratacao = 'rh' | 'gerente' | 'auxiliar';
+export type Etapa = 'gerente_1' | 'gerente_2' | 'rh';
+export type SituacaoContratacao = 'etapa_1' | 'etapa_2' | 'etapa_3' | 'concluido' | 'recusada';
+export type PapelContratacao = Etapa | 'auxiliar';
+/** Nomes marcados em "Quem assina" para cada etapa. */
+export type Titulares = Partial<Record<Etapa, string[]>>;
 
 export interface AssinaturaContratacao {
   id: string;
-  stage: Etapa;
+  /** 'solicitante' só aparece em pedidos do fluxo antigo (antes de 16/11/2026). */
+  stage: Etapa | 'solicitante' | 'gerente';
   signer_user_id: string;
   signer_name: string;
+  signer_cargo: string | null;
+  hash_validacao: string | null;
   method: 'desenho' | 'digitado';
   image_data: string | null;
   form_hash: string;
   signed_at: string;
-  /** Assinatura de etapa à frente de quem vê: só nome e hora. */
-  oculta?: boolean;
 }
 
 export interface EventoContratacao {
@@ -40,7 +47,7 @@ export interface EventoContratacao {
   action: string;
   from_status: string | null;
   to_status: string | null;
-  details: { reason?: string; method?: string };
+  details: { reason?: string; method?: string; cargo?: string; hash_validacao?: string };
   created_at: string;
 }
 
@@ -52,7 +59,11 @@ export interface PedidoContratacao {
   form: FormularioContratacao;
   form_hash: string;
   status: SituacaoContratacao;
-  rejected_stage: 'rh' | 'gerente' | null;
+  etapa_atual: 1 | 2 | 3 | null;
+  /** Só vem enquanto o pedido está em aberto; encerrado, o link expirou. */
+  link_token: string | null;
+  concluded_at: string | null;
+  rejected_stage: Etapa | 'gerente' | null;
   rejection_reason: string | null;
   version: number;
   created_at: string;
@@ -79,7 +90,13 @@ export interface DadosContratacao {
   me: Leitor;
   requests: PedidoContratacao[];
   people?: PessoaContratacao[];
+  titulares: Titulares;
 }
+
+/** Resposta do link individual: o pedido, ou só o aviso de expirado. */
+export type DadosDoLink =
+  | { me: Leitor; expirado: 'concluido' | 'recusada' }
+  | { me: Leitor; titulares: Titulares; request: PedidoContratacao; expirado?: undefined };
 
 export interface AssinaturaEnviada {
   method: 'desenho' | 'digitado';
@@ -88,10 +105,10 @@ export interface AssinaturaEnviada {
 
 interface Envelope<T> { success: boolean; data?: T; message?: string }
 
-const chamar = async <T>(init: RequestInit = {}): Promise<T> => {
+const chamar = async <T>(init: RequestInit = {}, busca = ''): Promise<T> => {
   const usuario = auth.currentUser;
   if (!usuario) throw new Error('Entre com seu login para continuar.');
-  const resposta = await fetch('/api/contratacao', {
+  const resposta = await fetch(`/api/contratacao${busca}`, {
     ...init,
     headers: { Authorization: `Bearer ${await usuario.getIdToken()}`, 'Content-Type': 'application/json', Accept: 'application/json' },
     cache: 'no-store',
@@ -103,11 +120,17 @@ const chamar = async <T>(init: RequestInit = {}): Promise<T> => {
 
 export const carregarContratacoes = () => chamar<DadosContratacao>({ method: 'GET' });
 
-export const criarContratacao = (form: FormularioContratacao, signature: AssinaturaEnviada, clientKey: string) =>
-  chamar<PedidoContratacao>({ method: 'POST', body: JSON.stringify({ action: 'criar', form, signature, client_key: clientKey }) });
+export const carregarPeloLink = (token: string) => chamar<DadosDoLink>({ method: 'GET' }, `?token=${encodeURIComponent(token)}`);
 
-export const decidirContratacao = (pedido: Pick<PedidoContratacao, 'id' | 'version'>, decisao: 'aprovar' | 'recusar', signature?: AssinaturaEnviada, reason?: string) =>
-  chamar<PedidoContratacao>({ method: 'POST', body: JSON.stringify({ action: 'decidir', request_id: pedido.id, version: pedido.version, decision: decisao, signature, reason }) });
+export const criarContratacao = (form: FormularioContratacao, clientKey: string) =>
+  chamar<PedidoContratacao>({ method: 'POST', body: JSON.stringify({ action: 'criar', form, client_key: clientKey }) });
+
+/** Pelo link, o token vai junto e o servidor confere que é deste pedido. */
+export const decidirContratacao = (pedido: Pick<PedidoContratacao, 'id' | 'version'>, decisao: 'aprovar' | 'recusar', signature?: AssinaturaEnviada, reason?: string, token?: string) =>
+  chamar<PedidoContratacao>({ method: 'POST', body: JSON.stringify({ action: 'decidir', request_id: pedido.id, version: pedido.version, decision: decisao, signature, reason, token }) });
+
+/** Endereço do link individual de um pedido. */
+export const linkDoPedido = (token: string) => `${window.location.origin}/contratacao-link/${token}`;
 
 export const definirPapelContratacao = (userId: string, role: PapelContratacao, active: boolean) =>
   chamar<void>({ method: 'POST', body: JSON.stringify({ action: 'papel', user_id: userId, role, active }) });

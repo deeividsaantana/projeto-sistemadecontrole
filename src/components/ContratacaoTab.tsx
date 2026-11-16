@@ -1,10 +1,10 @@
 /**
  * Solicitação de Contratação assinável (SGR-FRH-21-373-01-000-000-0008).
- * Fluxo rígido: quem pede assina → RH assina → gerente de contrato assina →
- * aprovada. Cada login vê só o que o papel dele permite e só assina a sua
- * etapa; a tela apenas mostra, quem decide é o servidor (api/contratacao.js)
- * e o banco (sign_erp_hiring_request). O mesmo componente abre dentro do ERP
- * e no link /contratacao, que pede login.
+ * Fluxo (16/11/2026): o auxiliar preenche e salva; o sistema gera um link só
+ * daquele pedido (/contratacao-link/<token>), que passa por 3 assinaturas em
+ * ordem: 1º gerente → 2º gerente → RH. Na 3ª o pedido conclui, o link expira
+ * e o documento assinado fica para baixar aqui. A tela apenas mostra; quem
+ * decide é o servidor (api/contratacao.js) e o banco (sign_erp_hiring_request).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
@@ -14,14 +14,15 @@ import {
   ClipboardList,
   Clock,
   FilePlus2,
+  Download,
   Inbox,
   LayoutDashboard,
   Link2,
+  PenLine,
   Search,
   Settings2,
   ShieldCheck,
   UserCheck,
-  XCircle,
 } from 'lucide-react';
 import { CartaoIndicador, PageHeader } from '../shared/ui';
 import { useAtalhoNovo } from '../shared/hooks/useAtalhoNovo';
@@ -29,10 +30,11 @@ import { TelaCheia } from '../shared/ui/TelaCheia';
 import { AbasDaTela, idDaAba, type ItemDasAbas } from '../shared/ui/AbasDaTela';
 import { TabelaPadrao, type ColunaTabela } from '../shared/ui/TabelaPadrao';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CAMPO_SELECT, CARTAO } from './cadastros/estilos';
-import { NOME_DA_ETAPA, PAPEIS, SITUACOES, etapaPendente, podeDecidir } from '../../api/_shared/contratacao-regras.js';
+import { ETAPAS, PAPEIS, SITUACOES, emAberto, etapaPendente, nomeDaEtapa, podeDecidir } from '../../api/_shared/contratacao-regras.js';
 import {
   carregarContratacoes,
   definirPapelContratacao,
+  linkDoPedido,
   type DadosContratacao,
   type Etapa,
   type PapelContratacao,
@@ -41,7 +43,7 @@ import {
   type SituacaoContratacao,
 } from '../services/contratacaoApi';
 import { FolhaContratacao } from './contratacao/FolhaContratacao';
-import { LinhaDeEtapas, SeloSituacaoContratacao } from './contratacao/SeloSituacaoContratacao';
+import { LinhaDeEtapas, SelosDasEtapas, SeloSituacaoContratacao } from './contratacao/SeloSituacaoContratacao';
 import { dataBr, dataHoraBr } from './contratacao/formatos';
 
 type Subtela = 'painel' | 'fila' | 'pedidos' | 'nova' | 'papeis';
@@ -66,18 +68,14 @@ const lerBlocos = (): Bloco[] => {
 const PAINEL = `renea-card ${CARTAO} p-4 sm:p-5`;
 const diasDesde = (iso: string) => Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000));
 
-interface Props {
-  /** No link /contratacao a tela vem sem o menu do ERP. */
-  noLink?: boolean;
-}
-
-export default function ContratacaoTab({ noLink = false }: Props) {
+export default function ContratacaoTab() {
   const escopo = useRef<HTMLElement>(null);
   const [dados, setDados] = useState<DadosContratacao | null>(null);
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [subtela, setSubtela] = useState<Subtela>('painel');
   const [abertoId, setAbertoId] = useState<string | null>(null);
+  const [baixarAoAbrir, setBaixarAoAbrir] = useState(false);
   const [busca, setBusca] = useState('');
   const [filtroSituacao, setFiltroSituacao] = useState<SituacaoContratacao | ''>('');
   const [blocos, setBlocos] = useState<Bloco[]>(lerBlocos);
@@ -123,30 +121,33 @@ export default function ContratacaoTab({ noLink = false }: Props) {
 
   const me = dados?.me;
   const pedidos = useMemo(() => dados?.requests ?? [], [dados]);
-  const assina = Boolean(me && (me.papeis.includes('rh') || me.papeis.includes('gerente')));
+  const titulares = useMemo(() => dados?.titulares ?? {}, [dados]);
+  const assina = Boolean(me && (ETAPAS as string[]).some(etapa => me.papeis.includes(etapa as PapelContratacao)));
   const fila = useMemo(() => (me ? pedidos.filter(pedido => podeDecidir(pedido, pedido.signatures, me)) : []), [pedidos, me]);
   const aberto = pedidos.find(pedido => pedido.id === abertoId) ?? null;
   const contagem = useMemo(() => {
-    const total = { aguardando_rh: 0, aguardando_gerente: 0, aprovada: 0, recusada: 0 } as Record<SituacaoContratacao, number>;
-    pedidos.forEach(pedido => { total[pedido.status] += 1; });
+    const total = { etapa_1: 0, etapa_2: 0, etapa_3: 0, concluido: 0, recusada: 0 } as Record<SituacaoContratacao, number>;
+    pedidos.forEach(pedido => { if (pedido.status in total) total[pedido.status] += 1; });
     return total;
   }, [pedidos]);
   const termo = busca.trim().toLowerCase();
   const filtrados = useMemo(() => pedidos.filter(pedido => (!filtroSituacao || pedido.status === filtroSituacao)
-    && (!termo || [pedido.request_number, pedido.form.posicao, pedido.form.area, pedido.requester_name, pedido.form.requisitante]
+    && (!termo || [pedido.request_number, pedido.form.candidato, pedido.form.posicao, pedido.form.area, pedido.requester_name, pedido.form.requisitante]
       .some(valor => String(valor || '').toLowerCase().includes(termo)))), [pedidos, filtroSituacao, termo]);
 
-  const trocar = (proxima: Subtela) => { setAbertoId(null); setSubtela(proxima); };
+  const trocar = (proxima: Subtela) => { setAbertoId(null); setBaixarAoAbrir(false); setSubtela(proxima); };
   // N abre uma nova solicitação (padrão de lançamento, 15/11/2026).
   useAtalhoNovo(() => trocar('nova'), Boolean(me) && subtela !== 'nova' && !abertoId);
   const verSituacao = (situacao: SituacaoContratacao | '') => { setFiltroSituacao(situacao); trocar('pedidos'); };
 
-  const copiarLink = async () => {
-    const link = `${window.location.origin}/contratacao`;
-    try { await navigator.clipboard.writeText(link); setAviso('Link copiado. Quem abrir entra com o próprio login.'); }
+  const copiarLink = async (pedido: PedidoContratacao) => {
+    if (!pedido.link_token) return;
+    const link = linkDoPedido(pedido.link_token);
+    try { await navigator.clipboard.writeText(link); setAviso(`Link do pedido ${pedido.request_number} copiado. Quem abrir entra com o próprio login.`); }
     catch { setAviso(`Copie o link: ${link}`); }
-    window.setTimeout(() => setAviso(''), 5000);
+    window.setTimeout(() => setAviso(''), 6000);
   };
+  const baixar = (pedido: PedidoContratacao) => { setBaixarAoAbrir(true); setAbertoId(pedido.id); };
 
   const subtelas: ReadonlyArray<ItemDasAbas<Subtela>> = [
     ...(assina ? [{ id: 'fila' as const, rotulo: 'Minha fila', curto: 'Fila', icone: Inbox, contador: fila.length, contadorRotulo: 'para assinar' }] : []),
@@ -160,16 +161,29 @@ export default function ContratacaoTab({ noLink = false }: Props) {
   ];
 
   const colunas: ColunaTabela<PedidoContratacao>[] = [
-    { chave: 'numero', titulo: 'N°', render: p => <strong className="tabular-nums">{p.request_number}</strong>, valorOrdenacao: p => p.request_number, larguraMinima: 130 },
-    { chave: 'data', titulo: 'Data', render: p => dataBr(p.form.data), valorOrdenacao: p => p.form.data, larguraMinima: 100 },
-    { chave: 'posicao', titulo: 'Posição', render: p => `${p.form.posicao} (${p.form.quantidade})`, valorOrdenacao: p => p.form.posicao, larguraMinima: 180 },
-    { chave: 'area', titulo: 'Área/Obra', render: p => p.form.area, valorOrdenacao: p => p.form.area, larguraMinima: 160 },
-    { chave: 'solicitante', titulo: 'Solicitante', render: p => p.requester_name, valorOrdenacao: p => p.requester_name, larguraMinima: 150 },
-    { chave: 'prioridade', titulo: 'Prioridade', render: p => p.form.prioridade, valorOrdenacao: p => ['Alta', 'Média', 'Baixa'].indexOf(p.form.prioridade), larguraMinima: 100 },
-    { chave: 'situacao', titulo: 'Situação', render: p => <SeloSituacaoContratacao situacao={p.status} />, valorOrdenacao: p => p.status, valorExportacao: p => SITUACOES[p.status], larguraMinima: 150 },
+    { chave: 'numero', titulo: 'N°', render: p => <strong className="tabular-nums">{p.request_number}</strong>, valorOrdenacao: p => p.request_number, larguraMinima: 150 },
+    { chave: 'candidato', titulo: 'Candidato', render: p => p.form.candidato || '—', valorOrdenacao: p => p.form.candidato || '', larguraMinima: 180 },
+    { chave: 'posicao', titulo: 'Cargo', render: p => p.form.posicao, valorOrdenacao: p => p.form.posicao, larguraMinima: 150 },
+    { chave: 'area', titulo: 'Frente/Setor', render: p => p.form.area, valorOrdenacao: p => p.form.area, larguraMinima: 140 },
+    { chave: 'situacao', titulo: 'Assinaturas', render: p => (p.status === 'concluido' || p.status === 'recusada' ? <SeloSituacaoContratacao situacao={p.status} /> : <SelosDasEtapas pedido={p} titulares={titulares} />), valorOrdenacao: p => p.status, valorExportacao: p => SITUACOES[p.status] ?? p.status, larguraMinima: 300 },
+    { chave: 'acoes', titulo: 'Ações', valorExportacao: () => '', larguraMinima: 280, render: p => (
+      // Copiar Link só com o pedido correndo; Baixar só depois da 3ª assinatura.
+      <span className="flex flex-wrap gap-2" onClick={evento => evento.stopPropagation()} onKeyDown={evento => evento.stopPropagation()}>
+        {emAberto(p.status) && p.link_token && (
+          <button type="button" onClick={() => void copiarLink(p)} className={BOTAO_SECUNDARIO} data-testid="copiar-link-pedido">
+            <Link2 className="size-4" aria-hidden="true" /> Copiar Link
+          </button>
+        )}
+        {p.status === 'concluido' && (
+          <button type="button" onClick={() => baixar(p)} className={BOTAO_SECUNDARIO} data-testid="baixar-pedido">
+            <Download className="size-4" aria-hidden="true" /> Baixar documento assinado
+          </button>
+        )}
+      </span>
+    ) },
   ];
 
-  const quemFalta = pedidos.filter(pedido => etapaPendente(pedido.status));
+  const quemFalta = pedidos.filter(pedido => etapaPendente(pedido));
   const porArea = Object.entries(pedidos.reduce<Record<string, number>>((acc, pedido) => {
     const area = pedido.form.area || 'Sem área';
     acc[area] = (acc[area] ?? 0) + 1;
@@ -199,10 +213,10 @@ export default function ContratacaoTab({ noLink = false }: Props) {
       )}
       {ver('indicadores') && (
         <div data-ct-reveal className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <CartaoIndicador rotulo="Aguardando RH" valor={contagem.aguardando_rh} detalhe="esperando a 2ª assinatura" icone={Clock} tom={contagem.aguardando_rh ? 'laranja' : 'neutro'} onClick={() => verSituacao('aguardando_rh')} />
-          <CartaoIndicador rotulo="Aguardando gerente" valor={contagem.aguardando_gerente} detalhe="esperando a 3ª assinatura" icone={UserCheck} tom={contagem.aguardando_gerente ? 'laranja' : 'neutro'} onClick={() => verSituacao('aguardando_gerente')} />
-          <CartaoIndicador rotulo="Aprovadas" valor={contagem.aprovada} detalhe="com as 3 assinaturas" icone={CheckCircle2} tom="verde" onClick={() => verSituacao('aprovada')} />
-          <CartaoIndicador rotulo="Recusadas" valor={contagem.recusada} detalhe="pelo RH ou gerente" icone={XCircle} tom={contagem.recusada ? 'vermelho' : 'neutro'} onClick={() => verSituacao('recusada')} />
+          <CartaoIndicador rotulo={`Com ${nomeDaEtapa('gerente_1', titulares)}`} valor={contagem.etapa_1} detalhe="1ª assinatura" icone={Clock} tom={contagem.etapa_1 ? 'laranja' : 'neutro'} onClick={() => verSituacao('etapa_1')} />
+          <CartaoIndicador rotulo={`Com ${nomeDaEtapa('gerente_2', titulares)}`} valor={contagem.etapa_2} detalhe="2ª assinatura" icone={PenLine} tom={contagem.etapa_2 ? 'laranja' : 'neutro'} onClick={() => verSituacao('etapa_2')} />
+          <CartaoIndicador rotulo="Com o RH" valor={contagem.etapa_3} detalhe="3ª assinatura" icone={UserCheck} tom={contagem.etapa_3 ? 'laranja' : 'neutro'} onClick={() => verSituacao('etapa_3')} />
+          <CartaoIndicador rotulo="Concluídas" valor={contagem.concluido} detalhe={`com as 3 assinaturas${contagem.recusada ? ` · ${contagem.recusada} recusada${contagem.recusada > 1 ? 's' : ''}` : ''}`} icone={CheckCircle2} tom="verde" onClick={() => verSituacao('concluido')} />
         </div>
       )}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,.85fr)]">
@@ -214,14 +228,14 @@ export default function ContratacaoTab({ noLink = false }: Props) {
             ) : (
               <ul className="mt-4 space-y-2">
                 {quemFalta.slice(0, 8).map(pedido => {
-                  const etapa = etapaPendente(pedido.status) as Etapa;
+                  const etapa = etapaPendente(pedido) as Etapa;
                   const dias = diasDesde(pedido.updated_at);
                   return (
                     <li key={pedido.id}>
                       <button type="button" onClick={() => setAbertoId(pedido.id)} className="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 p-3 text-left text-sm transition hover:border-emerald-400">
-                        <span className="min-w-0"><strong className="tabular-nums text-slate-900">{pedido.request_number}</strong> · {pedido.form.posicao} · <span className="text-[#5b6870]">{pedido.form.area}</span></span>
+                        <span className="min-w-0"><strong className="tabular-nums text-slate-900">{pedido.request_number}</strong> · {pedido.form.candidato || pedido.form.posicao} · <span className="text-[#5b6870]">{pedido.form.posicao}</span></span>
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${dias >= 3 ? 'bg-rose-50 text-rose-800' : 'bg-amber-50 text-amber-800'}`}>
-                          Falta {NOME_DA_ETAPA[etapa]} · {dias === 0 ? 'hoje' : `há ${dias} dia${dias > 1 ? 's' : ''}`}
+                          Falta {nomeDaEtapa(etapa, titulares)} · {dias === 0 ? 'hoje' : `há ${dias} dia${dias > 1 ? 's' : ''}`}
                         </span>
                       </button>
                     </li>
@@ -276,7 +290,7 @@ export default function ContratacaoTab({ noLink = false }: Props) {
                   <button type="button" onClick={() => setAbertoId(pedido.id)} className="flex w-full flex-wrap gap-x-2 py-2 text-left text-sm text-slate-700 hover:text-emerald-800">
                     <span className="tabular-nums text-[#5b6870]">{dataHoraBr(evento.created_at)}</span>
                     <strong className="text-slate-900">{pedido.request_number}</strong>
-                    <span>{evento.actor_name} · {evento.to_status ? SITUACOES[evento.to_status as SituacaoContratacao] : ''}</span>
+                    <span>{evento.actor_name} · {evento.to_status ? SITUACOES[evento.to_status as SituacaoContratacao] ?? evento.to_status : ''}</span>
                   </button>
                 </li>
               ))}
@@ -297,9 +311,9 @@ export default function ContratacaoTab({ noLink = false }: Props) {
           <strong className="tabular-nums text-slate-900">{pedido.request_number}</strong>
           <SeloSituacaoContratacao situacao={pedido.status} />
         </span>
-        <span className="mt-1 block text-base font-bold text-slate-900">{pedido.form.posicao} · {pedido.form.quantidade} vaga{Number(pedido.form.quantidade) > 1 ? 's' : ''}</span>
+        <span className="mt-1 block text-base font-bold text-slate-900">{pedido.form.candidato || '—'} · {pedido.form.posicao}</span>
         <span className="block text-sm text-[#5b6870]">{pedido.form.area} · pedido por {pedido.requester_name} em {dataBr(pedido.form.data)} · prioridade {pedido.form.prioridade}</span>
-        <span className="mt-3 block"><LinhaDeEtapas pedido={pedido} compacta /></span>
+        <span className="mt-3 block"><LinhaDeEtapas pedido={pedido} titulares={titulares} compacta /></span>
       </button>
     </li>
   );
@@ -315,9 +329,22 @@ export default function ContratacaoTab({ noLink = false }: Props) {
       );
     }
     if (!me) return null;
-    if (aberto) return <FolhaContratacao key={`${aberto.id}-${aberto.version}`} pedido={aberto} leitor={me} onVoltar={() => setAbertoId(null)} onAtualizado={() => void carregar(true)} />;
+    if (aberto) {
+      return (
+        <FolhaContratacao
+          key={`${aberto.id}-${aberto.version}`}
+          pedido={aberto}
+          leitor={me}
+          titulares={titulares}
+          baixarAoAbrir={baixarAoAbrir}
+          onCopiarLink={() => void copiarLink(aberto)}
+          onVoltar={() => { setAbertoId(null); setBaixarAoAbrir(false); }}
+          onAtualizado={() => void carregar(true)}
+        />
+      );
+    }
     if (subtela === 'nova') {
-      return <FolhaContratacao leitor={me} onVoltar={() => trocar('pedidos')} onCriado={pedido => { void carregar(true).then(() => setAbertoId(pedido.id)); setAviso(`Pedido ${pedido.request_number} enviado ao RH.`); window.setTimeout(() => setAviso(''), 6000); }} />;
+      return <FolhaContratacao leitor={me} titulares={titulares} onVoltar={() => trocar('pedidos')} onCriado={pedido => { void carregar(true).then(() => setAbertoId(pedido.id)); setAviso(`Pedido ${pedido.request_number} salvo e link gerado. Use "Copiar Link" e mande para a 1ª assinatura.`); window.setTimeout(() => setAviso(''), 8000); }} />;
     }
     if (subtela === 'fila') {
       return fila.length === 0
@@ -334,7 +361,7 @@ export default function ContratacaoTab({ noLink = false }: Props) {
           nomeDoItem={{ um: 'pedido', varios: 'pedidos' }}
           ordenacaoInicial={{ chave: 'numero', direcao: 'desc' }}
           onAbrirLinha={p => setAbertoId(p.id)}
-          vazio={pedidos.length === 0 ? 'Nenhuma solicitação ainda. Use "Nova solicitação" para pedir uma contratação.' : 'Nenhum pedido com esses filtros.'}
+          vazio={pedidos.length === 0 ? 'Nenhuma solicitação ainda. Use "+ Nova Solicitação" para pedir uma contratação.' : 'Nenhum pedido com esses filtros.'}
         />
       );
     }
@@ -349,7 +376,7 @@ export default function ContratacaoTab({ noLink = false }: Props) {
       <label className="relative min-w-0 flex-1 sm:max-w-sm">
         <span className="sr-only">Buscar pedido</span>
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#5b6870]" aria-hidden="true" />
-        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por número, posição, área ou pessoa" className={`${CAMPO} pl-9`} />
+        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por número, candidato, cargo ou frente" className={`${CAMPO} pl-9`} />
       </label>
       <label className="w-full sm:w-56">
         <span className="sr-only">Situação</span>
@@ -383,13 +410,8 @@ export default function ContratacaoTab({ noLink = false }: Props) {
                   <Settings2 className="size-4" aria-hidden="true" /> Personalizar
                 </button>
               )}
-              {!noLink && (
-                <button type="button" onClick={() => void copiarLink()} className={BOTAO_SECUNDARIO} title="Copiar o link para quem vai pedir ou assinar">
-                  <Link2 className="size-4" aria-hidden="true" /> <span className="hidden sm:inline">Copiar link</span>
-                </button>
-              )}
               <button type="button" onClick={() => trocar('nova')} className={BOTAO_PRIMARIO} data-testid="contratacao-nova">
-                <FilePlus2 className="size-4" aria-hidden="true" /> <span className="sm:hidden">Nova</span><span className="hidden sm:inline">Nova solicitação</span>
+                <FilePlus2 className="size-4" aria-hidden="true" /> <span className="sm:hidden">Nova</span><span className="hidden sm:inline">Nova Solicitação</span>
               </button>
             </>
           }
@@ -442,7 +464,7 @@ function PapeisContratacao({ pessoas, onMudou }: { pessoas: PessoaContratacao[];
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       <p data-ct-reveal className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
-        Qualquer pessoa com login pode pedir. Aqui você marca quem assina como <strong>RH</strong>, quem assina como <strong>gerente de contrato</strong> e quem é <strong>auxiliar</strong> (vê tudo, não assina). A mesma pessoa nunca assina duas etapas do mesmo pedido.
+        Qualquer pessoa com login pode pedir. Aqui você marca quem faz a <strong>1ª assinatura</strong> (gerente, ex.: Bruno), a <strong>2ª assinatura</strong> (gerente, ex.: Marcelo Suegama) e a <strong>3ª assinatura</strong> (RH), e quem é <strong>auxiliar</strong> (vê tudo, não assina). 1ª e 2ª têm uma pessoa só cada. A mesma pessoa nunca assina duas etapas do mesmo pedido.
       </p>
       {falha && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{falha}</p>}
       <TabelaPadrao titulo="Quem assina a contratação" linhas={pessoas} colunas={colunas} idDaLinha={p => p.user_id} nomeDoItem={{ um: 'pessoa', varios: 'pessoas' }} ordenacaoInicial={{ chave: 'nome', direcao: 'asc' }} />
