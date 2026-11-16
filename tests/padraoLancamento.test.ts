@@ -57,3 +57,8 @@ for (const [aba, arquivos] of Object.entries(ABAS_COM_LANCAMENTO)) {
 test('a lista de pendências de lançamento só cita abas conhecidas', () => {
   assert.deepEqual(Object.keys(PENDENCIAS).filter(aba => !(aba in ABAS_COM_LANCAMENTO)), []);
 });
+
+test('lançamento aberto esconde o menu lateral e a barra do topo (tela cheia de verdade)', () => {
+  const css = readFileSync(new URL('../src/index.css', import.meta.url), 'utf8');
+  assert.match(css, /body:has\(\[data-lancamento\]\) :is\(\.erp-sidebar, \.erp-topbar, #mobile-header\) \{ display: none !important; \}/);
+});

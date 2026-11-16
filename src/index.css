@@ -1273,3 +1273,9 @@ body,
   margin: 0;
   animation: none;
 }
+
+/* Tela cheia de verdade (16/11/2026, pedido do Deivid): enquanto há um
+   lançamento aberto, somem o menu lateral e a barra do topo e o lançamento
+   ocupa a tela inteira, no computador e no celular. Esc ou Fechar volta. */
+body:has([data-lancamento]) :is(.erp-sidebar, .erp-topbar, #mobile-header) { display: none !important; }
+body:has([data-lancamento]) #main-tab-viewport { --renea-topo: 0px; }
