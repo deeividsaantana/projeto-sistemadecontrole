@@ -33,11 +33,10 @@ test('os avisos de conferência ficam na faixa de filtros, não num bloco à par
   assert.match(filtros, /data-testid="frota-conferencia"/);
 });
 
-test('a Situação do dia abre com os cartões de resumo e a tabela logo abaixo', () => {
+test('a Situação do dia vai direto aos canteiros e à tabela, sem a linha de cartões de resumo (pedido de 16/11/2026)', () => {
   const aba = ler('src/components/ControleEquipamentosDiarioTab.tsx');
-  assert.match(aba, /frota-resumo-visualizacao/);
-  assert.match(aba, /Em manutenção/);
-  assert.match(aba, /A confirmar/);
+  assert.doesNotMatch(aba, /frota-resumo-visualizacao/);
+  assert.match(aba, /frota-faixa-canteiros/);
 });
 
 test('a tabela do dia tem uma linha por lançamento e aprova na própria coluna', () => {

@@ -543,26 +543,32 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; text-wrap: bal
     padding-block: 0;
     row-gap: .5rem;
   }
-  /* Tudo cabe: abas e ações na barra, antes do canto direito. */
-  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header[data-linha="uma"] {
+  /* Sempre uma linha só (PageHeader, useLinhaDoTopo): abas e ações lado a
+     lado, antes do canto direito da barra. Quando não cabe, o PageHeader
+     aperta em passos (data-aperto). */
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header {
+    flex-wrap: nowrap;
+    align-items: center;
     padding-right: var(--renea-topo-reserva);
   }
-  /* Não cabe (PageHeader mede): as abas ficam na barra e as ações descem
-     para a linha de baixo, na largura toda e encostadas à direita. */
-  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header[data-linha="duas"] > .renea-page-header__copy,
-  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header[data-linha="duas"] .renea-abas-da-tela > .renea-abas:first-child {
-    max-width: calc(100% - var(--renea-topo-reserva));
-  }
-  /* A segunda linha das abas agrupadas já fica abaixo da barra: usa a
-     largura toda. */
-  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header[data-linha="duas"] > .renea-page-header__abas {
-    flex-basis: 100%;
-  }
-  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header[data-linha="duas"] > .renea-page-actions {
-    width: 100%;
-    flex-basis: 100%;
-    justify-content: flex-end;
-  }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header > .renea-page-header__abas { flex: 0 0 auto; }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header > .renea-page-actions { flex: 0 0 auto; flex-wrap: nowrap; margin-left: auto; }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header .renea-abas-da-tela { flex-direction: row; align-items: center; gap: .5rem; }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header .renea-abas { width: auto; max-width: none; flex: 0 0 auto; flex-wrap: nowrap; overflow: visible; }
+  /* Passo 1: some o nome de quem entrou (a foto continua e abre o perfil). */
+  :root[data-topo-apertado] .erp-topbar__user strong { display: none; }
+  /* Passo 2: abas sem ícone; botões secundários só com o ícone (o nome
+     segue para o leitor de tela). */
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header:is([data-aperto="2"], [data-aperto="3"], [data-aperto="4"]) .renea-abas svg { display: none; }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header:is([data-aperto="2"], [data-aperto="3"], [data-aperto="4"]) .renea-page-actions :is(button, summary):not([class*="bg-[#176b4d]"]):has(svg) { gap: .25rem; padding-inline: .6rem; font-size: 0; }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header:is([data-aperto="2"], [data-aperto="3"], [data-aperto="4"]) .renea-page-actions kbd { display: none; }
+  /* Passo 3: nome curto das abas e dos botões que têm um ("Novo"). */
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header:is([data-aperto="3"], [data-aperto="4"]) .renea-abas [class~="sm:hidden"] { display: inline; }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header:is([data-aperto="3"], [data-aperto="4"]) .renea-abas [class~="sm:inline"] { display: none; }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header:is([data-aperto="3"], [data-aperto="4"]) .renea-page-actions [class~="max-sm:hidden"] { display: none; }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header:is([data-aperto="3"], [data-aperto="4"]) .renea-page-actions [class~="sm:hidden"] { display: inline; }
+  /* Passo 4 (último recurso): as abas rolam de lado na própria faixa. */
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header[data-aperto="4"] > .renea-page-header__abas { flex: 0 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: thin; mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent); }
 }
 
 /* Cabeçalho com subtelas: título curto, abas logo ao lado e a ação

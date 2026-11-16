@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { cn } from './styles';
 import { useDentroDaTelaCheia } from './TelaCheia';
 
@@ -28,14 +28,14 @@ interface PageHeaderProps {
  */
 export function PageHeader({ title, description, actions, abas, className, compact = true, tituloOculto = false }: PageHeaderProps) {
   const Titulo = useDentroDaTelaCheia() ? 'h2' : 'h1';
-  const linha = useLinhaDoTopo(Boolean(actions));
+  const linhaDoTopo = useLinhaDoTopo();
   // Sem subtelas, o lado esquerdo ficaria vazio: o título aparece, como no
   // Painel de Controle. Com subtelas, as abas já dizem onde a pessoa está.
   const escondeTitulo = tituloOculto || (compact && Boolean(abas));
   // Nada à vista (Painel): a barra do topo segue mostrando o projeto atual.
   const vazio = escondeTitulo && !abas && !actions;
   return (
-    <header ref={linha.ref} data-linha={linha.valor} className={cn('renea-page-header', escondeTitulo ? 'renea-page-header--compact' : undefined, abas ? 'renea-page-header--com-abas' : undefined, vazio ? 'renea-page-header--vazio' : undefined, className)}>
+    <header ref={linhaDoTopo} className={cn('renea-page-header', escondeTitulo ? 'renea-page-header--compact' : undefined, abas ? 'renea-page-header--com-abas' : undefined, vazio ? 'renea-page-header--vazio' : undefined, className)}>
       <div className="renea-page-header__copy">
         <span className={escondeTitulo ? 'sr-only' : undefined}>
           <Titulo>{title}</Titulo>
@@ -48,47 +48,60 @@ export function PageHeader({ title, description, actions, abas, className, compa
   );
 }
 
-/** Largura natural (sem quebrar linha) de um pedaço do cabeçalho. */
-function larguraNatural(elemento: HTMLElement | null) {
-  if (!elemento) return 0;
-  const { width, maxWidth } = elemento.style;
-  elemento.style.width = 'max-content';
-  elemento.style.maxWidth = 'none';
-  const medida = elemento.getBoundingClientRect().width;
-  elemento.style.width = width;
-  elemento.style.maxWidth = maxWidth;
-  return medida;
+/**
+ * O que passa por cima do recuo da direita (onde ficam o sino e a pessoa) não
+ * conta como transbordo para o scrollWidth, então a conta é feita à mão.
+ */
+function cabe(cabecalho: HTMLElement) {
+  const limite = cabecalho.getBoundingClientRect().right - (parseFloat(getComputedStyle(cabecalho).paddingRight) || 0);
+  const fim = Math.max(...Array.from(cabecalho.children, filho => filho.getBoundingClientRect().right));
+  return fim <= limite + 1;
 }
 
+/** Passos de aperto, do mais leve ao último recurso (index.css, "Cabeçalho na barra do topo"). */
+const APERTOS = 4;
+
 /**
- * No computador o cabeçalho sobe para a barra do topo (index.css,
- * "Cabeçalho na barra do topo"). Se abas e ações cabem ao lado do canto
- * direito da barra (salvamento, sino e pessoa), fica tudo numa linha
- * ("uma"). Senão as abas ficam na barra e as ações descem para a linha de
- * baixo, encostadas à direita ("duas"). A conta usa a largura natural de
- * cada parte, então o resultado não fica trocando de um para o outro.
+ * No computador o cabeçalho sobe para a barra do topo e fica sempre numa
+ * linha só (pedido de 16/11/2026). Quando não cabe ao lado do canto direito
+ * da barra (salvamento, sino e pessoa), aperta aos poucos e para no primeiro
+ * passo que cabe: 1 esconde o nome da pessoa (fica a foto); 2 tira os ícones
+ * das abas e deixa só o ícone nos botões secundários; 3 usa o nome curto das
+ * abas; 4 as abas rolam de lado dentro da própria faixa. A conta parte sempre
+ * do passo 0, então o resultado não fica trocando sozinho.
  */
-function useLinhaDoTopo(temAcoes: boolean) {
+function useLinhaDoTopo() {
   const ref = useRef<HTMLElement>(null);
-  const [valor, setValor] = useState<'uma' | 'duas'>('uma');
 
   useLayoutEffect(() => {
     const cabecalho = ref.current;
-    if (!cabecalho || !temAcoes || typeof ResizeObserver === 'undefined') return;
+    const raiz = document.documentElement;
+    const barra = document.querySelector<HTMLElement>('.erp-workspace > .erp-topbar');
+    const subiu = Boolean(cabecalho && barra && cabecalho.closest('.renea-tela-cheia--raiz > .renea-tela-cheia__topo'))
+      && window.matchMedia('(min-width: 1024px)').matches
+      && !cabecalho?.classList.contains('renea-page-header--vazio');
+    if (!cabecalho || !barra || !subiu) {
+      cabecalho?.removeAttribute('data-aperto');
+      return;
+    }
+    const acoesDaBarra = barra.querySelector<HTMLElement>('.erp-topbar__actions');
     const medir = () => {
-      const direita = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--renea-topo-direita')) || 0;
-      const inicio = cabecalho.querySelector<HTMLElement>(':scope > .renea-page-header__abas')
-        ?? cabecalho.querySelector<HTMLElement>(':scope > .renea-page-header__copy :is(h1, h2)');
-      const acoes = cabecalho.querySelector<HTMLElement>(':scope > .renea-page-actions');
-      // 36 px: o vão entre as partes e o respiro antes do canto direito.
-      const precisa = larguraNatural(inicio) + larguraNatural(acoes) + direita + 36;
-      setValor(precisa <= cabecalho.getBoundingClientRect().width ? 'uma' : 'duas');
+      for (let passo = 0; passo <= APERTOS; passo += 1) {
+        cabecalho.dataset.aperto = String(passo);
+        if (passo >= 1) raiz.dataset.topoApertado = '';
+        else delete raiz.dataset.topoApertado;
+        if (acoesDaBarra) raiz.style.setProperty('--renea-topo-direita', `${Math.ceil(acoesDaBarra.getBoundingClientRect().width)}px`);
+        if (cabe(cabecalho)) return;
+      }
     };
     medir();
-    const observador = new ResizeObserver(medir);
-    observador.observe(cabecalho);
-    return () => observador.disconnect();
-  }, [temAcoes]);
+    const observador = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => medir());
+    observador?.observe(cabecalho);
+    return () => {
+      observador?.disconnect();
+      delete raiz.dataset.topoApertado;
+    };
+  });
 
-  return { ref, valor: temAcoes ? valor : 'uma' };
+  return ref;
 }

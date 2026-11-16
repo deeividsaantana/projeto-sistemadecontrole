@@ -24,9 +24,6 @@ import {
   Users,
   X,
   BarChart3,
-  Clock3,
-  Truck,
-  Wrench,
 } from 'lucide-react';
 import type {
   ControleEquipamentoDiario,
@@ -777,20 +774,6 @@ export default function ControleEquipamentosDiarioTab({
       faixa={aviso || undefined}
     >
       {activeView === 'today' && <div data-fleet-view className="flex min-h-0 flex-1 flex-col gap-3">
-        <section aria-label="Resumo do dia" className="flex shrink-0 flex-wrap items-center gap-2" data-testid="frota-resumo-visualizacao">
-          {[
-            { rotulo: 'Total da frota', valor: viewModel.metrics.total, tom: 'text-slate-950', Icone: Truck, cor: 'text-slate-500' },
-            { rotulo: 'Em operação', valor: viewModel.metrics.operating, tom: 'text-emerald-700', Icone: Truck, cor: 'text-emerald-600' },
-            { rotulo: 'Em manutenção', valor: viewModel.metrics.maintenance + viewModel.metrics.waitingMaintenance, tom: 'text-rose-700', Icone: Wrench, cor: 'text-rose-600' },
-            { rotulo: 'A confirmar', valor: viewModel.metrics.pending, tom: 'text-amber-700', Icone: Clock3, cor: 'text-amber-600' },
-          ].map(({ rotulo, valor, tom, Icone, cor }) => (
-            <p key={rotulo} className={`${CARTAO} flex min-h-11 items-center gap-2 px-3 text-sm font-semibold text-slate-600`}>
-              <Icone className={`size-4 ${cor}`} aria-hidden="true" />
-              {rotulo}
-              <span className={`font-mono text-lg font-bold tabular-nums ${tom}`}>{valor}</span>
-            </p>
-          ))}
-        </section>
         <nav aria-label="Canteiros do dia" className="flex shrink-0 flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2" data-testid="frota-faixa-canteiros">
           <span className="px-2 text-xs font-bold text-[#5b6870]">Canteiro</span>
           <button type="button" aria-pressed={!filters.location} onClick={() => updateFilter('location', '')} className={`${BOTAO_SECUNDARIO} min-h-9 px-3 text-sm ${!filters.location ? 'border-[#176b4d] text-[#176b4d]' : ''}`}>Todos</button>
