@@ -562,7 +562,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
       <FilterBar label="Filtros de cadastros" className="rounded-2xl border border-slate-200 bg-white p-3">
         <div className="w-full space-y-2">
           <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
-            <div className="relative min-w-0 basis-full sm:min-w-56 sm:flex-1 sm:basis-auto">
+            <div className="relative min-w-0 basis-full sm:min-w-40 sm:flex-1 sm:basis-auto">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
               <input
                 ref={buscaRef}
@@ -575,7 +575,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
               />
             </div>
             {comSituacao && (
-              <div role="radiogroup" aria-label="Situação" className="grid grid-cols-3 overflow-hidden max-sm:basis-full rounded-xl border border-slate-200 bg-white text-sm font-semibold">
+              <div role="radiogroup" aria-label="Situação" className="grid shrink-0 grid-cols-3 overflow-hidden max-sm:basis-full rounded-xl border border-slate-200 bg-white text-sm font-semibold">
                 {([
                   ['ativos', 'Ativos', contagem.ativos],
                   ['inativos', 'Inativos', contagem.inativos],
@@ -609,7 +609,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
             {filtrosDoTipo.length > 0 && (
               <div className={`${filtrosAbertos ? 'flex' : 'hidden'} shrink-0 items-center gap-2 sm:contents`}>
                 {filtrosDoTipo.map(filtro => (
-                  <label key={filtro.id} className="min-w-0 sm:w-44">
+                  <label key={filtro.id} className="min-w-0 sm:w-44 sm:min-w-24">
                     <span className="sr-only">{filtro.label}</span>
                     <select
                       value={filtros[filtro.id] || ''}

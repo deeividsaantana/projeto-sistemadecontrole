@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { nomeDaPessoa } from '../../auth/nomeDaPessoa';
 import { Avatar } from '../../shared/ui';
 import type { MeuAvatar } from '../perfil/usePerfis';
@@ -65,7 +65,22 @@ export function DesktopTopBar({
 }: DesktopTopBarProps) {
   const salvamento = salvamentoRecebido ?? descreverSalvamento({ online: true, conectado: isCloudConnected, enviando: false, pendente: false, falhasSeguidas: 0 });
   const headerRef = useRef<HTMLElement>(null);
+  const acoesRef = useRef<HTMLDivElement>(null);
   const logoutBtnRef = useRef<HTMLButtonElement>(null);
+
+  // O cabeçalho da aba sobe para esta faixa (index.css, "Cabeçalho na barra
+  // do topo") e precisa saber quanto o lado direito (salvamento, sino,
+  // pessoa) ocupa para não passar por baixo dele.
+  useEffect(() => {
+    const acoes = acoesRef.current;
+    if (!acoes || typeof ResizeObserver === 'undefined') return;
+    const raiz = document.documentElement;
+    const medir = () => raiz.style.setProperty('--renea-topo-direita', `${Math.ceil(acoes.getBoundingClientRect().width)}px`);
+    medir();
+    const observador = new ResizeObserver(medir);
+    observador.observe(acoes);
+    return () => observador.disconnect();
+  }, []);
   const userName = meuAvatar?.nome || nomeDaPessoa(currentUser);
 
   useGSAP(() => {
@@ -108,7 +123,7 @@ export function DesktopTopBar({
         </span>
       </div>
 
-      <div className="erp-topbar__actions">
+      <div ref={acoesRef} className="erp-topbar__actions">
         <div
           className="erp-topbar__status"
           role="status"

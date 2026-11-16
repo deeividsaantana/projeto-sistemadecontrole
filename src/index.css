@@ -511,6 +511,66 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; text-wrap: bal
   .renea-tela-cheia__dados--longa { margin: -2px; padding: 2px 2px 1rem; }
 }
 
+/* Cabeçalho na barra do topo (pedido de 16/11/2026). No computador, o
+   cabeçalho da aba (subtelas, título e ação principal) sobe para a faixa da
+   barra do topo, no lugar do "Projeto atual", e a aba inteira sobe junto
+   para usar o máximo da tela. A barra fica transparente e deixa o clique
+   passar, menos no lado direito (salvamento, sino e pessoa), que o
+   cabeçalho não cobre: --renea-topo-direita é a largura dele, medida pelo
+   DesktopTopBar. O Painel não tem cabeçalho à vista
+   (renea-page-header--vazio) e segue mostrando o projeto atual. Até
+   1023 px a barra do topo some e o cabeçalho fica na própria aba. */
+@media (min-width: 1024px) {
+  .erp-workspace:has(> .erp-topbar):has(.renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header:not(.renea-page-header--vazio)) > .erp-topbar {
+    background: transparent;
+    pointer-events: none;
+  }
+  .erp-workspace:has(> .erp-topbar):has(.renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header:not(.renea-page-header--vazio)) > .erp-topbar .erp-topbar__project { display: none; }
+  .erp-workspace > .erp-topbar .erp-topbar__actions { pointer-events: auto; }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz:has(> .renea-tela-cheia__topo .renea-page-header:not(.renea-page-header--vazio)) {
+    margin-top: calc(-1 * (var(--renea-topo) + var(--renea-respiro)));
+    height: calc(100dvh - var(--renea-respiro));
+  }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo:has(.renea-page-header:not(.renea-page-header--vazio)) {
+    display: flex;
+    min-height: var(--renea-topo);
+    flex-direction: column;
+    justify-content: center;
+    gap: .5rem;
+    --renea-topo-reserva: calc(var(--renea-topo-direita, 20rem) + 2.25rem - var(--renea-respiro));
+  }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header {
+    padding-block: 0;
+    row-gap: .5rem;
+  }
+  /* Sempre uma linha só (PageHeader, useLinhaDoTopo): abas e ações lado a
+     lado, antes do canto direito da barra. Quando não cabe, o PageHeader
+     aperta em passos (data-aperto). */
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header {
+    flex-wrap: nowrap;
+    align-items: center;
+    padding-right: var(--renea-topo-reserva);
+  }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header > .renea-page-header__abas { flex: 0 0 auto; }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header > .renea-page-actions { flex: 0 0 auto; flex-wrap: nowrap; margin-left: auto; }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header .renea-abas-da-tela { flex-direction: row; align-items: center; gap: .5rem; }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header .renea-abas { width: auto; max-width: none; flex: 0 0 auto; flex-wrap: nowrap; overflow: visible; }
+  /* Passo 1: some o nome de quem entrou (a foto continua e abre o perfil). */
+  :root[data-topo-apertado] .erp-topbar__user strong { display: none; }
+  /* Passo 2: abas sem ícone; botões secundários só com o ícone (o nome
+     segue para o leitor de tela). */
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header:is([data-aperto="2"], [data-aperto="3"], [data-aperto="4"]) .renea-abas svg { display: none; }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header:is([data-aperto="2"], [data-aperto="3"], [data-aperto="4"]) .renea-page-actions :is(button, summary):not([class*="bg-[#176b4d]"]):has(svg) { gap: .25rem; padding-inline: .6rem; font-size: 0; }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header:is([data-aperto="2"], [data-aperto="3"], [data-aperto="4"]) .renea-page-actions kbd { display: none; }
+  /* Passo 3: nome curto das abas e dos botões que têm um ("Novo"). */
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header:is([data-aperto="3"], [data-aperto="4"]) .renea-abas [class~="sm:hidden"] { display: inline; }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header:is([data-aperto="3"], [data-aperto="4"]) .renea-abas [class~="sm:inline"] { display: none; }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header:is([data-aperto="3"], [data-aperto="4"]) .renea-page-actions [class~="max-sm:hidden"] { display: none; }
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header:is([data-aperto="3"], [data-aperto="4"]) .renea-page-actions [class~="sm:hidden"] { display: inline; }
+  /* Passo 4 (último recurso): as abas rolam de lado na própria faixa. */
+  .erp-workspace:has(> .erp-topbar) #main-tab-viewport .renea-tela-cheia--raiz > .renea-tela-cheia__topo .renea-page-header[data-aperto="4"] > .renea-page-header__abas { flex: 0 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: thin; mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent); }
+}
+
 /* Cabeçalho com subtelas: título curto, abas logo ao lado e a ação
    principal encostada à direita, numa linha só quando couber. Quando não
    cabe, as ações descem para a linha de baixo, ainda à direita. No celular

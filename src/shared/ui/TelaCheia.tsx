@@ -9,7 +9,10 @@ import { cn } from './styles';
  *
  * De cima para baixo, no computador (1024 px ou mais):
  * 1. cabeçalho fixo: o PageHeader da aba (título curto, abas ao lado com
- *    AbasDaTela e a ação principal à direita);
+ *    AbasDaTela e a ação principal à direita). Ele sobe para a faixa da
+ *    barra do topo, no lugar do "Projeto atual" (pedido de 16/11/2026), e o
+ *    resto da aba sobe junto; só o Painel, sem cabeçalho à vista, mantém o
+ *    projeto atual;
  * 2. faixa fixa opcional: busca, filtros, contadores e avisos;
  * 3. área de dados: ocupa o resto (`flex-1 min-h-0`) e rola por dentro. Um
  *    filho com `h-full` ou `flex-1 min-h-0` (tabela, lista com rodapé) ocupa
@@ -76,7 +79,7 @@ export function TelaCheia({
 
   return (
     <section ref={ref} id={id} aria-label={rotulo} data-testid={testId} data-tela-cheia=""
-      className={cn('renea-tela-cheia flex w-full min-w-0 max-w-none flex-col gap-2 lg:gap-3', embutida && 'renea-tela-cheia--embutida', className)}>
+      className={cn('renea-tela-cheia flex w-full min-w-0 max-w-none flex-col gap-2 lg:gap-3', embutida ? 'renea-tela-cheia--embutida' : 'renea-tela-cheia--raiz', className)}>
       {cabecalho && <div className="renea-tela-cheia__topo shrink-0">{cabecalho}</div>}
       {faixa && <div className="renea-tela-cheia__faixa shrink-0">{faixa}</div>}
       <div

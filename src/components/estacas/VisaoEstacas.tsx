@@ -60,7 +60,6 @@ export default function VisaoEstacas({ hoje, estacas, frentes, frenteAtual, onFr
         <p className="mx-auto mt-1 max-w-md text-sm text-slate-600">Comece dizendo quantas estacas a frente precisa. Depois é só marcar cada uma quando for cravada.</p>
         <div className="mt-5 flex flex-wrap justify-center gap-2">
           <button type="button" onClick={() => onPlanejar()} className={BOTAO_PRIMARIO}><Target className="size-5" aria-hidden="true" /> Informar quantas estacas</button>
-          <button type="button" onClick={() => onCravar()} className={BOTAO_SECUNDARIO}><Hammer className="size-5" aria-hidden="true" /> Lançar uma cravação</button>
         </div>
       </section>
     );
@@ -111,7 +110,6 @@ export default function VisaoEstacas({ hoje, estacas, frentes, frenteAtual, onFr
             </div>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => onPlanejar(frente.frente)} className={BOTAO_SECUNDARIO}><Target className="size-5" aria-hidden="true" /> Total previsto</button>
-              <button type="button" onClick={() => onCravar(frente.proxima, frente.frente)} className={BOTAO_PRIMARIO}><Hammer className="size-5" aria-hidden="true" /> {frente.proxima ? `Cravar ${nomeDaEstaca(frente.proxima)}` : 'Lançar cravação'}</button>
             </div>
           </div>
 
@@ -164,7 +162,7 @@ export default function VisaoEstacas({ hoje, estacas, frentes, frenteAtual, onFr
               </div>
               {estaCravada(escolhida)
                 ? <button type="button" onClick={() => onEditar(escolhida)} className={BOTAO_SECUNDARIO}><Pencil className="size-5" aria-hidden="true" /> Corrigir</button>
-                : <button type="button" onClick={() => onCravar(escolhida, frente.frente)} className={BOTAO_PRIMARIO}><Hammer className="size-5" aria-hidden="true" /> Lançar cravação</button>}
+                : <button type="button" onClick={() => onCravar(escolhida, frente.frente)} className={BOTAO_PRIMARIO}><Hammer className="size-5" aria-hidden="true" /> Cravar esta estaca</button>}
             </div>
           )}
         </section>

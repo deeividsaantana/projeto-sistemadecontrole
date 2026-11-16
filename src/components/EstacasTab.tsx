@@ -127,7 +127,8 @@ export default function EstacasTab({ controle, obras, onChange, responsavel = 'S
       testId="estacas-tab"
       rotulo="Controle de Estacas"
       longa={longa}
-      idAbaAtiva={idDaAba('estacas', secao)}
+      // Lançando não há aba aberta: a folha é aberta pelo botão do topo.
+      idAbaAtiva={secao === 'cravar' ? undefined : idDaAba('estacas', secao)}
       idDados="estacas-dados"
       chaveRolagem={secao}
       // Lançando, a folha ocupa a área inteira da aba (padrão do Combustível).
