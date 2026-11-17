@@ -181,7 +181,6 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
   const frentesAtivas = useMemo(() => frentes.filter(item => item.ativo !== false && item.situacao !== 'Concluída').map(item => item.nome), [frentes]);
   const opcoesFrente = useMemo(() => Array.from(new Set([...frentesAtivas, ...cartoes.map(item => item.frente)])).filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR')), [cartoes, frentesAtivas]);
   const opcoesTipo = useMemo(() => Array.from(new Set(cartoes.map(item => item.tipo))).sort((a, b) => a.localeCompare(b, 'pt-BR')), [cartoes]);
-  const opcoesMarca = useMemo(() => Array.from(new Set(cartoes.map(item => item.marca).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')), [cartoes]);
   const operadores = useMemo(() => Array.from(new Set(motoristas.filter(item => item.ativo !== false).map(item => item.nome.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')), [motoristas]);
   const etiquetas = etiquetasDosFiltros(filtros);
 
@@ -320,7 +319,7 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
   const porcento = indicadores.total ? Math.round((lancadas / indicadores.total) * 100) : 0;
   const colunasVisiveis = filtros.grupo ? [filtros.grupo] : COLUNAS;
   const modeloGrade = { gridTemplateColumns: `9.5rem repeat(${colunasVisiveis.length}, minmax(0, 1fr))` };
-  const filtrosExtras = [filtros.frente, filtros.marca, filtros.operador, filtros.horimetro, filtros.foto].filter(Boolean).length + (ordem !== 'prefixo' ? 1 : 0);
+  const filtrosExtras = [filtros.tipo, filtros.frente, filtros.operador].filter(Boolean).length + (ordem !== 'prefixo' ? 1 : 0);
 
   return (
     <div ref={escopo} id="quadro-frota-tab" data-testid="quadro-frota-tab" className="space-y-3">
@@ -366,15 +365,11 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
             <input ref={buscaRef} value={buscaTexto} onChange={event => setBuscaTexto(event.target.value)} placeholder="Buscar prefixo, modelo ou operador" className={`${CAMPO} pl-9`} data-testid="quadro-busca" />
           </label>
-          <div className="grid grid-cols-2 gap-2 lg:flex lg:shrink-0">
+          <div className="grid grid-cols-1 gap-2 lg:flex lg:shrink-0">
             <select value={filtros.canteiro} onChange={event => mudar({ canteiro: event.target.value })} aria-label="Canteiro" className={`${CAMPO} lg:w-44`} data-testid="quadro-filtro-canteiro">
               <option value="">Todos os canteiros</option>
               {canteiros.map(nome => <option key={nome} value={nome}>{nome} ({contagemCanteiro.get(nome) || 0})</option>)}
               {(contagemCanteiro.get(SEM_CANTEIRO) || 0) > 0 && <option value={SEM_CANTEIRO}>{SEM_CANTEIRO} ({contagemCanteiro.get(SEM_CANTEIRO)})</option>}
-            </select>
-            <select value={filtros.tipo} onChange={event => mudar({ tipo: event.target.value })} aria-label="Tipo" className={`${CAMPO} lg:w-44`}>
-              <option value="">Todos os tipos</option>
-              {opcoesTipo.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
             </select>
           </div>
           <div className="flex flex-wrap gap-2 lg:shrink-0 lg:flex-nowrap">
@@ -404,29 +399,19 @@ export default function QuadroFrota({ equipamentos, registros, gruposEquipe, aba
           </div>
         </div>
         {maisFiltros && (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6" data-testid="quadro-painel-filtros">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4" data-testid="quadro-painel-filtros">
+            <select value={filtros.tipo} onChange={event => mudar({ tipo: event.target.value })} aria-label="Tipo" className={CAMPO}>
+              <option value="">Todos os tipos</option>
+              {opcoesTipo.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+            </select>
             <select value={filtros.frente} onChange={event => mudar({ frente: event.target.value })} aria-label="Frente" className={CAMPO}>
               <option value="">Todas as frentes</option>
               {opcoesFrente.map(frente => <option key={frente} value={frente}>{frente}</option>)}
-            </select>
-            <select value={filtros.marca} onChange={event => mudar({ marca: event.target.value })} aria-label="Marca" className={CAMPO}>
-              <option value="">Todas as marcas</option>
-              {opcoesMarca.map(marca => <option key={marca} value={marca}>{marca}</option>)}
             </select>
             <select value={filtros.operador} onChange={event => mudar({ operador: event.target.value as FiltrosQuadro['operador'] })} aria-label="Operador" className={CAMPO}>
               <option value="">Com e sem operador</option>
               <option value="com">Com operador</option>
               <option value="sem">Sem operador</option>
-            </select>
-            <select value={filtros.horimetro} onChange={event => mudar({ horimetro: event.target.value as FiltrosQuadro['horimetro'] })} aria-label="Horímetro" className={CAMPO}>
-              <option value="">Com e sem horímetro</option>
-              <option value="com">Com horímetro</option>
-              <option value="sem">Sem horímetro</option>
-            </select>
-            <select value={filtros.foto} onChange={event => mudar({ foto: event.target.value as FiltrosQuadro['foto'] })} aria-label="Foto" className={CAMPO}>
-              <option value="">Com e sem foto</option>
-              <option value="com">Com foto</option>
-              <option value="sem">Sem foto</option>
             </select>
             <label className="relative">
               <span className="sr-only">Ordenar por</span>

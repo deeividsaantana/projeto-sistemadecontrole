@@ -561,14 +561,14 @@ export default function CadastrosTab(props: CadastrosTabProps) {
     <div data-cadastros-reveal className="space-y-2">
       <FilterBar label="Filtros de cadastros" className="rounded-2xl border border-slate-200 bg-white p-3">
         <div className="w-full space-y-2">
-          <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
-            <div className="relative min-w-0 basis-full sm:min-w-40 sm:flex-1 sm:basis-auto">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-0 basis-full sm:min-w-56 sm:flex-1 sm:basis-auto">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
               <input
                 ref={buscaRef}
                 type="search"
                 aria-label="Buscar cadastros"
-                placeholder={`Buscar em ${categoriaAtual.label.toLowerCase()}`}
+                placeholder="Buscar"
                 value={busca}
                 onChange={event => setBusca(event.target.value)}
                 className={`${CAMPO} pl-11`}
@@ -599,31 +599,13 @@ export default function CadastrosTab(props: CadastrosTabProps) {
               <button
                 type="button"
                 aria-expanded={filtrosAbertos}
+                aria-controls="cadastros-filtros-extras"
                 onClick={() => setFiltrosAbertos(atual => !atual)}
-                className={`${BOTAO_SECUNDARIO} flex-1 sm:hidden`}
+                className={`${BOTAO_SECUNDARIO} max-sm:flex-1 ${filtrosAtivos.length > 0 ? 'border-[#f26a2e]/60' : ''}`}
               >
                 <SlidersHorizontal className="size-5" aria-hidden="true" />
                 {filtrosAtivos.length > 0 ? `Filtros · ${filtrosAtivos.length}` : 'Filtros'}
               </button>
-            )}
-            {filtrosDoTipo.length > 0 && (
-              <div className={`${filtrosAbertos ? 'flex' : 'hidden'} shrink-0 items-center gap-2 sm:contents`}>
-                {filtrosDoTipo.map(filtro => (
-                  <label key={filtro.id} className="min-w-0 sm:w-44 sm:min-w-24">
-                    <span className="sr-only">{filtro.label}</span>
-                    <select
-                      value={filtros[filtro.id] || ''}
-                      onChange={event => setFiltros(atual => ({ ...atual, [filtro.id]: event.target.value }))}
-                      className={`${CAMPO} cursor-pointer ${filtros[filtro.id] ? 'border-[#f26a2e]/60 bg-orange-50/40' : ''}`}
-                    >
-                      <option value="">{filtro.label}: todos</option>
-                      {opcoesDoFiltro(todasAsLinhas, filtro.id).map(opcao => (
-                        <option key={opcao.valor} value={opcao.valor}>{`${opcao.valor} (${opcao.total})`}</option>
-                      ))}
-                    </select>
-                  </label>
-                ))}
-              </div>
             )}
             {categoria === 'funcionarios' && (
               <button
@@ -638,6 +620,26 @@ export default function CadastrosTab(props: CadastrosTabProps) {
               </button>
             )}
           </div>
+
+          {filtrosDoTipo.length > 0 && filtrosAbertos && (
+            <div id="cadastros-filtros-extras" className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {filtrosDoTipo.map(filtro => (
+                <label key={filtro.id} className="min-w-0">
+                  <span className="sr-only">{filtro.label}</span>
+                  <select
+                    value={filtros[filtro.id] || ''}
+                    onChange={event => setFiltros(atual => ({ ...atual, [filtro.id]: event.target.value }))}
+                    className={`${CAMPO} cursor-pointer ${filtros[filtro.id] ? 'border-[#f26a2e]/60 bg-orange-50/40' : ''}`}
+                  >
+                    <option value="">{filtro.label}: todos</option>
+                    {opcoesDoFiltro(todasAsLinhas, filtro.id).map(opcao => (
+                      <option key={opcao.valor} value={opcao.valor}>{`${opcao.valor} (${opcao.total})`}</option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+          )}
 
           {(filtrosAtivos.length > 0 || temConsulta) && (
             <div className="flex flex-wrap items-center gap-2">
@@ -727,7 +729,7 @@ export default function CadastrosTab(props: CadastrosTabProps) {
               </div>}
               <input ref={arquivoRef} type="file" accept=".xlsx,.xlsm,.csv,.tsv" onChange={importarArquivo} className="hidden" />
               {podeEditar && (
-                <button type="button" data-testid="cadastro-acao-principal" onClick={abrirNovo} className={`${BOTAO_PRIMARIO} max-sm:order-first px-5`}>
+                <button type="button" data-testid="cadastro-acao-principal" onClick={abrirNovo} className={`${BOTAO_PRIMARIO} max-sm:order-first max-sm:min-w-0 px-5`}>
                   <Plus className="size-5" aria-hidden="true" />
                   {categoriaAtual.acaoNovo}
                   <kbd className="hidden rounded-md bg-white/15 px-1.5 font-mono text-xs xl:inline">N</kbd>

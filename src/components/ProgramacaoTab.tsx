@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { CalendarDays, ClipboardList, Download, FileSpreadsheet, FileText, GanttChartSquare, List, MessageCircle, PieChart, Plus, Search, X } from 'lucide-react';
+import { CalendarDays, ClipboardList, Download, FileSpreadsheet, FileText, GanttChartSquare, List, MessageCircle, PieChart, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
 import type { PlanejamentoItem, RegistroProducao, ServicoObra } from '../types';
 import { PageHeader } from '../shared/ui/PageHeader';
 import { TelaCheia } from '../shared/ui/TelaCheia';
@@ -51,6 +51,7 @@ export default function ProgramacaoTab({ planejamento: planejamentoSalvo, produc
   const hoje = diaLocal();
   const [aba, setAba] = useState<Aba>(abaInicial);
   const [busca, setBusca] = useState('');
+  const [verFiltros, setVerFiltros] = useState(false);
   const [frente, setFrente] = useState('');
   const [encarregado, setEncarregado] = useState('');
   const [situacao, setSituacao] = useState<SituacaoAtividade | ''>('');
@@ -208,22 +209,18 @@ export default function ProgramacaoTab({ planejamento: planejamentoSalvo, produc
         <label className="relative min-w-0 basis-full sm:min-w-48 sm:flex-1 sm:basis-auto">
           <span className="sr-only">Buscar na programação</span>
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#5b6870]" aria-hidden="true" />
-          <input value={busca} onChange={event => setBusca(event.target.value)} placeholder="Buscar serviço, frente, encarregado ou equipamento" className={`${CAMPO} pl-9`} />
+          <input value={busca} onChange={event => setBusca(event.target.value)} placeholder="Buscar serviço ou frente" className={`${CAMPO} pl-9`} />
         </label>
-        <label className="min-w-0 flex-1 sm:flex-none">
-          <span className="sr-only">Frente</span>
-          <select value={frente} onChange={event => setFrente(event.target.value)} className={`${CAMPO} sm:w-44`}>
-            <option value="">Todas as frentes</option>
-            {frentes.map(valor => <option key={valor}>{valor}</option>)}
-          </select>
-        </label>
-        <label className="min-w-0 flex-1 sm:flex-none">
-          <span className="sr-only">Encarregado</span>
-          <select value={encarregado} onChange={event => setEncarregado(event.target.value)} className={`${CAMPO} sm:w-48`}>
-            <option value="">Todos os encarregados</option>
-            {encarregados.map(valor => <option key={valor}>{valor}</option>)}
-          </select>
-        </label>
+        <button
+          type="button"
+          aria-expanded={verFiltros}
+          aria-controls="programacao-filtros-extras"
+          onClick={() => setVerFiltros(atual => !atual)}
+          className={`${BOTAO_SECUNDARIO} max-sm:flex-1 ${frente || encarregado ? 'border-[#f26a2e]/60' : ''}`}
+        >
+          <SlidersHorizontal className="size-4" aria-hidden="true" />
+          {[frente, encarregado].filter(Boolean).length > 0 ? `Filtros · ${[frente, encarregado].filter(Boolean).length}` : 'Filtros'}
+        </button>
         {filtrosAtivos.length > 0 && (
           <button type="button" onClick={limpar} className={BOTAO_SECUNDARIO}>
             <X className="size-4" aria-hidden="true" />
@@ -231,13 +228,31 @@ export default function ProgramacaoTab({ planejamento: planejamentoSalvo, produc
           </button>
         )}
       </div>
+      {(verFiltros || frente || encarregado) && (
+        <div id="programacao-filtros-extras" className="grid gap-2 sm:grid-cols-2 lg:max-w-xl">
+        <label className="min-w-0">
+          <span className="sr-only">Frente</span>
+          <select value={frente} onChange={event => setFrente(event.target.value)} className={CAMPO}>
+            <option value="">Todas as frentes</option>
+            {frentes.map(valor => <option key={valor}>{valor}</option>)}
+          </select>
+        </label>
+        <label className="min-w-0">
+          <span className="sr-only">Encarregado</span>
+          <select value={encarregado} onChange={event => setEncarregado(event.target.value)} className={CAMPO}>
+            <option value="">Todos os encarregados</option>
+            {encarregados.map(valor => <option key={valor}>{valor}</option>)}
+          </select>
+        </label>
+        </div>
+      )}
       {aba !== 'producao' && (
         <div className="flex items-center gap-2">
           <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-0.5" role="group" aria-label="Filtrar pela situação">
             <button type="button" aria-pressed={situacao === ''} onClick={() => setSituacao('')} className={`shrink-0 rounded-full border px-3 py-1.5 text-sm font-bold ${situacao === '' ? 'border-[#176b4d] bg-[#176b4d] text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-400'}`}>
               Todas <span className="tabular-nums opacity-80">{semSituacao.length - (contagem.find(opcao => opcao.id === 'cancelada')?.total ?? 0)}</span>
             </button>
-            {contagem.filter(opcao => opcao.total > 0 || opcao.id !== 'cancelada').map(opcao => (
+            {contagem.filter(opcao => opcao.total > 0 || situacao === opcao.id).map(opcao => (
               <button
                 key={opcao.id}
                 type="button"
