@@ -39,7 +39,7 @@ test('A10: todo cartão do Painel leva a uma tela que existe', () => {
 });
 
 test('M6: alerta do sino só aparece com tela para resolver, conforme o perfil', () => {
-  assert.match(app, /alertasVisiveis\(alertasSistema, preferenciasNotificacao\)\s*\.filter\(alerta => destinoDaAba\(alerta\.tab, ROLE_ACCESS\[currentUserRole\]\) !== null\)/);
+  assert.match(app, /alertasVisiveis\(alertasSistema, preferenciasNotificacao\)\s*\.filter\(alerta => destinoDaAba\(alerta\.tab, allowedTabs\) !== null\)/);
   // Alertas de telas que saíram do app (FVS, documentos, treinamentos…) não têm destino.
   for (const [, tab] of ler('src/utils/pendencias.ts').matchAll(/tab: '([^']+)'/g)) {
     if (['fvs', 'nao-conformidades', 'inspecoes', 'documentos', 'dds-treinamentos', 'medicoes', 'ocorrencias'].includes(tab)) {

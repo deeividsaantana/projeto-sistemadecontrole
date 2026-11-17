@@ -10,6 +10,7 @@ import {
   Users,
   ShoppingCart,
   FileSignature,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -61,6 +62,7 @@ export const NAVIGATION_GROUPS = [
     label: 'Administração',
     items: [
       { id: 'cadastros', label: 'Cadastros', icon: FolderPlus },
+      { id: 'dev', label: 'Dev', icon: ShieldCheck },
     ],
   },
 ] as const;
@@ -93,6 +95,10 @@ export const PRIMARY_MODULE_IDS = [
   // o App devolvia a pessoa ao Painel. Voltou ao menu lateral como aba
   // própria.
   'cadastros',
+  // Painel Dev de acessos (16/11/2026): é teto do administrador, mas só abre
+  // para quem o banco marca como dev (erp_dev_owners). Quem decide é
+  // abasLiberadas em src/utils/regrasDeAcesso.ts, e a API confere de novo.
+  'dev',
 ] as const;
 
 const SIDEBAR_MODULE_IDS = new Set<string>(PRIMARY_MODULE_IDS);
@@ -164,10 +170,10 @@ const PRESENCA_PUBLICA = 'presenca-publica';
 
 export const ROLE_ACCESS: Record<UserRole, readonly string[]> = {
   admin: [...PRIMARY_MODULE_IDS, PRESENCA_PUBLICA],
-  gestor: [...PRIMARY_MODULE_IDS, PRESENCA_PUBLICA],
+  gestor: [...PRIMARY_MODULE_IDS.filter(id => id !== 'dev'), PRESENCA_PUBLICA],
   // Operador lança no dia a dia, mas não altera a base mestre (mesma regra
   // de antes da limpeza do menu).
-  operador: [...PRIMARY_MODULE_IDS.filter(id => id !== 'cadastros'), PRESENCA_PUBLICA],
+  operador: [...PRIMARY_MODULE_IDS.filter(id => id !== 'cadastros' && id !== 'dev'), PRESENCA_PUBLICA],
   // Qualquer login pode pedir contratação; o que vê lá dentro o servidor filtra.
   leitura: ['dashboard', 'contratacao', PRESENCA_PUBLICA],
 };
