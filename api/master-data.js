@@ -74,7 +74,7 @@ const createImportChunks = rows => {
   return chunks;
 };
 
-const getRequestContext = async event => {
+export const getRequestContext = async event => {
   const staff = await requireStaffUser(event);
   const role = normalizeStaffRole(staff.role);
   const organizationId = safeId(
@@ -240,7 +240,7 @@ const listUsers = async (event, context) => {
   return jsonResponse(200, { success: true, data: { users } });
 };
 
-const createUser = async (body, context) => {
+export const createUser = async (body, context) => {
   assertAdministrator(context);
   const email = cleanString(body.email, 320).toLowerCase();
   const fullName = cleanString(body.fullName, 240);
@@ -292,7 +292,7 @@ const createUser = async (body, context) => {
   return jsonResponse(201, { success: true, data: { uid: user.uid, email, fullName, role, ...profile } });
 };
 
-const updateUser = async (body, context) => {
+export const updateUser = async (body, context) => {
   assertAdministrator(context);
   const uid = safeId(body.uid, 'Usuário');
   const role = sanitizeUserRole(body.role);
