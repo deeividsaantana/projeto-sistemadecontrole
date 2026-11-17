@@ -358,7 +358,7 @@ test('planilha sincronizada: pedido novo vira card e o que mudou entra na linha 
 
   // Nada mudou: não grava nada (abrir a aba de novo não repete registro).
   const igual = sincronizarComPlanilha([espelho('700', 'Enxada'), espelho('701', 'Pá')], primeira.novas, LIDA);
-  assert.deepEqual(igual, { novas: [], atualizadas: [] });
+  assert.deepEqual(igual, { novas: [], atualizadas: [], envios: [] });
 
   // Na planilha: 700 ganhou SC e previsão, 701 recebeu OK, entrou prioridade e um pedido novo.
   const linhas: LinhaDoEspelho[] = [
@@ -377,14 +377,19 @@ test('planilha sincronizada: pedido novo vira card e o que mudou entra na linha 
   const ultimo = a700.eventos[a700.eventos.length - 1];
   assert.equal(ultimo.usuario, 'Planilha de compras');
   assert.equal(ultimo.data, LIDA);
-  assert.match(ultimo.detalhe ?? '', /SC 93050001.*prioridade 1º.*25\/11\/2026/);
+  assert.match(ultimo.detalhe ?? '', /SC 93050001.*25\/11\/2026.*prioridade 1º/);
   const a701 = depois.atualizadas.find(sol => sol.id === p701.id)!;
   assert.equal(a701.etapa, 'Entregue');
   assert.equal(a701.itens[0].quantidadeRecebida, 4);
 
-  // Pedido que já andou no sistema (aprovação, entrega...) não é mexido pela planilha.
-  const andou = { ...p700, etapa: 'Aguardando Aprovação' as const };
-  assert.equal(sincronizarComPlanilha(linhas, [andou, p701], LIDA).atualizadas.some(sol => sol.id === p700.id), false);
+  // Pedido que já andou no sistema: a planilha só preenche o que está vazio, sem mudar a etapa.
+  const andou = { ...p700, etapa: 'Aguardando Aprovação' as const, janelaFim: '2026-11-22' };
+  const doAndou = sincronizarComPlanilha(linhas, [andou, p701], LIDA);
+  const andouDepois = doAndou.atualizadas.find(sol => sol.id === p700.id)!;
+  assert.equal(andouDepois.etapa, 'Aguardando Aprovação');
+  assert.equal(andouDepois.numeroSc, '93050001');
+  assert.equal(andouDepois.janelaFim, '2026-11-22', 'a data do site fica e vai para a planilha');
+  assert.deepEqual(doAndou.envios.find(envio => envio.solId === p700.id)?.linhas, [{ pedido: '700', item: 'Enxada', previsao: '2026-11-22' }]);
   // Pedido aberto no próprio sistema não vira cópia nem é alterado.
   const doSistema = { ...p700, origem: 'sistema' as const };
   assert.equal(sincronizarComPlanilha(linhas, [doSistema, p701], LIDA).atualizadas.some(sol => sol.id === p700.id), false);
@@ -392,7 +397,7 @@ test('planilha sincronizada: pedido novo vira card e o que mudou entra na linha 
   const semAba = sincronizarComPlanilha(linhas.slice(0, 3), [a700], LIDA);
   assert.equal(semAba.atualizadas.some(sol => sol.id === p700.id), false);
   // Planilha vazia (falha na leitura) não apaga nem cria nada.
-  assert.deepEqual(sincronizarComPlanilha([], [p700], LIDA), { novas: [], atualizadas: [] });
+  assert.deepEqual(sincronizarComPlanilha([], [p700], LIDA), { novas: [], atualizadas: [], envios: [] });
 });
 
 test('login com sobrenome acha a pessoa cadastrada só com o primeiro nome', () => {

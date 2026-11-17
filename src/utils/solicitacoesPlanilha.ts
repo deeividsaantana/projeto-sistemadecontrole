@@ -355,7 +355,9 @@ export const importarPlanilhaDeControle = (
   const numerosUsados = new Set(existentes.map(sol => sol.numero));
   for (const [pedido, linhas] of [...grupos.entries()].sort((a, b) => a[0] - b[0])) {
     const id = `controle-pedido-${pedido}`;
-    if (existentes.some(sol => sol.id === id)) { jaImportados.push(pedido); continue; }
+    // Linha com "Código do site" é de um pedido aberto no site: o card já existe.
+    const doSite = numeroDoCodigo(linhas.map(linha => textoDe(valorDe(linha.valores, /^codigo do site/))).find(Boolean));
+    if (existentes.some(sol => sol.id === id || (doSite && sol.numero === doSite))) { jaImportados.push(pedido); continue; }
     const primeira = linhas[0].valores;
     const abertaEm = paraData(valorDe(primeira, /^data/)) || agora.slice(0, 10);
     const ano = Number(abertaEm.slice(0, 4));
@@ -366,6 +368,7 @@ export const importarPlanilhaDeControle = (
     const previsoes = linhas.map(linha => valorDe(linha.valores, /^previsao/));
     const datasPrevistas = previsoes.map(paraData).filter(Boolean).sort();
     const tudoOk = previsoes.length > 0 && previsoes.every(valor => normalizar(valor) === 'ok');
+    const cancelado = previsoes.length > 0 && previsoes.every(valor => normalizar(valor) === 'cancelado');
     const itens = linhas.map((linha, indice) => {
       const quantidade = Number(textoDe(valorDe(linha.valores, /^quantidade/)).replace(',', '.')) || 0;
       const okDaLinha = normalizar(valorDe(linha.valores, /^previsao/)) === 'ok';
@@ -391,7 +394,8 @@ export const importarPlanilhaDeControle = (
       frente: 'Não informada na planilha',
       itens,
       // Com SC aberta, Suprimentos já está tratando o pedido (Em Cotação).
-      etapa: tudoOk ? 'Entregue' : scs.length ? 'Em Cotação' : 'Pendente Suprimentos',
+      etapa: tudoOk ? 'Entregue' : cancelado ? 'Cancelado' : scs.length ? 'Em Cotação' : 'Pendente Suprimentos',
+      ...(cancelado ? { canceladaMotivo: 'Cancelado na planilha' } : {}),
       statusAprovacao: 'Pendente',
       statusLogistico: tudoOk ? 'Chegou ao Local' : 'Aguardando Envio',
       ...(scs.length ? { numeroSc: scs.join(', ') } : {}),
@@ -433,7 +437,7 @@ export const historicoGeral = (sols: readonly Solicitacao[]) => sols
   .sort((a, b) => b.data.localeCompare(a.data));
 
 // ---------------------------------------------------------------------------
-// Planilha sincronizada (Google Planilhas → banco a cada 3h) → cards dos pedidos
+// Planilha sincronizada (Google Planilhas ↔ banco ↔ cards dos pedidos)
 
 /** Linha do espelho da planilha no banco (erp_procurement_sheet_rows). */
 export interface LinhaDoEspelho {
@@ -454,6 +458,7 @@ const CABECALHO_DO_ESPELHO: Record<string, string> = {
   quantity_requested: 'Quantidade',
   source_purchase_order: 'Solicitação de compra SC (N°)',
   delivery_deadline: 'Previsão de entrega',
+  site_code: 'Código do site',
 };
 
 /** O espelho do banco no mesmo formato de quando a pessoa sobe o arquivo. */
@@ -478,19 +483,128 @@ export const abasDoEspelho = (linhas: readonly LinhaDoEspelho[]): AbaLida[] => {
   ];
 };
 
+/** "SOL-2026-0005/1" → "SOL-2026-0005". */
+const numeroDoCodigo = (codigo?: string) => (codigo ? codigo.split('/')[0].trim() : '');
+
+const OK = 'OK';
+const CANCELADO = 'Cancelado';
+
+/** O que a planilha mostra de um pedido: a SC e a coluna Previsão de entrega ("OK", "Cancelado" ou a data). */
+export interface EstadoNaPlanilha { sc: string; previsao: string }
+
+export const estadoNoSite = (sol: Solicitacao): EstadoNaPlanilha => ({
+  sc: sol.numeroSc ?? '',
+  previsao: sol.etapa === 'Entregue' ? OK : sol.etapa === 'Cancelado' ? CANCELADO : sol.janelaFim ?? '',
+});
+
+interface LinhaDaAba { pedido: string; item: string; sc: string; previsao: string; codigo: string }
+
+const previsaoDaLinha = (valor: unknown) => {
+  const texto = normalizar(valor);
+  return texto === 'ok' ? OK : texto === 'cancelado' ? CANCELADO : paraData(valor);
+};
+
+const linhasDaAba = (linhas: readonly LinhaDoEspelho[]): LinhaDaAba[] => linhas
+  .filter(linha => linha.sheet_name === 'Solicitações' && linha.raw_data)
+  .map(({ raw_data: raw }) => ({
+    pedido: textoDe(raw?.source_request_number),
+    item: textoDe(raw?.item_description),
+    sc: textoDe(raw?.source_purchase_order),
+    previsao: previsaoDaLinha(raw?.delivery_deadline),
+    codigo: textoDe(raw?.site_code),
+  }));
+
+/** Mesma regra da importação: SCs diferentes juntas; previsão = OK/Cancelado se todas, senão a data mais tarde. */
+export const estadoDasLinhas = (linhas: readonly Pick<LinhaDaAba, 'sc' | 'previsao'>[]): EstadoNaPlanilha => {
+  const previsoes = linhas.map(linha => linha.previsao);
+  const datas = previsoes.filter(valor => valor && valor !== OK && valor !== CANCELADO).sort();
+  return {
+    sc: [...new Set(linhas.map(linha => linha.sc).filter(Boolean))].join(', '),
+    previsao: previsoes.length && previsoes.every(valor => valor === OK) ? OK
+      : previsoes.length && previsoes.every(valor => valor === CANCELADO) ? CANCELADO
+        : datas[datas.length - 1] ?? '',
+  };
+};
+
+/** Linhas da planilha de cada card: pelo "Código do site" (aberto no site) ou pelo N° do pedido (veio da planilha). */
+const linhasPorCartao = (linhas: readonly LinhaDaAba[], existentes: readonly Solicitacao[]) => {
+  const porNumero = new Map(existentes.map(sol => [sol.numero, sol.id]));
+  const daPlanilha = new Set(existentes.filter(sol => sol.origem === 'planilha-controle').map(sol => sol.id));
+  const grupos = new Map<string, LinhaDaAba[]>();
+  for (const linha of linhas) {
+    const id = linha.codigo ? porNumero.get(numeroDoCodigo(linha.codigo)) : `controle-pedido-${Number(linha.pedido)}`;
+    if (!id || (!linha.codigo && !daPlanilha.has(id))) continue;
+    grupos.set(id, [...(grupos.get(id) ?? []), linha]);
+  }
+  return grupos;
+};
+
+/** Linha que o site manda para a planilha (scripts/google-planilha-compras.gs). */
+export interface LinhaParaPlanilha {
+  /** Pedido aberto no site: "SOL-2026-0005/1" (card/item). */
+  codigo?: string;
+  /** Pedido que nasceu na planilha: N° do pedido + Item acham a linha. */
+  pedido?: string;
+  item: string;
+  sc?: string;
+  previsao?: string;
+  /** Só para linha que ainda não está na planilha. */
+  nova?: { data: string; solicitante: string; unidade: string; quantidade: number };
+}
+
+export interface EnvioParaPlanilha {
+  solId: string;
+  /** Primeira vez do pedido na planilha. */
+  nova: boolean;
+  linhas: LinhaParaPlanilha[];
+  /** Como a planilha fica depois do envio: vira a base do card. */
+  estado: EstadoNaPlanilha;
+}
+
 export interface ResultadoSincronizacao {
   novas: Solicitacao[];
   atualizadas: Solicitacao[];
+  envios: EnvioParaPlanilha[];
 }
 
+type Decisao = 'igual' | 'receber' | 'enviar';
 /**
- * Leva a planilha sincronizada para os cards. Pedido novo na planilha vira
- * card; pedido que já veio da planilha e ainda está na fila ou em cotação
- * recebe o que mudou lá (SC, "OK" na entrega, prioridade, previsão), com um
- * registro na linha do tempo. Pedido que já andou no sistema (aprovação,
- * a caminho, entregue, cancelado) não é mexido: o sistema manda nele.
- * `agora` deve ser a hora da leitura da planilha, para dois aparelhos que
- * sincronizam juntos gravarem o mesmo registro (a nuvem não repete).
+ * Quem mudou desde a última vez que os dois combinaram (a base)? Planilha
+ * mudou: vale a planilha (também quando os dois mudaram). Só o site mudou:
+ * vai para a planilha. Vazio nunca apaga o outro lado: célula vazia na
+ * planilha recebe o do site, campo vazio no site recebe o da planilha.
+ */
+const decidir = (planilha: string, site: string, base: string | undefined, semBase: Decisao): Decisao => {
+  if (planilha === site) return 'igual';
+  if (!planilha) return 'enviar';
+  if (!site) return 'receber';
+  if (base === undefined) return semBase;
+  return planilha !== base ? 'receber' : 'enviar';
+};
+
+const prioridadesDoEspelho = (linhas: readonly LinhaDoEspelho[]) => {
+  const mapa = new Map<number, number>();
+  for (const { sheet_name: aba, raw_data: raw } of linhas) {
+    if (aba !== 'Prioridade' || !raw) continue;
+    const ordem = Number(textoDe(raw.prioridade).replace(/\D/g, ''));
+    const pedido = Number(textoDe(raw.pedido));
+    if (ordem > 0 && pedido > 0 && !mapa.has(pedido)) mapa.set(pedido, ordem);
+  }
+  return mapa;
+};
+
+const FINAIS = new Set(['Entregue', 'Cancelado']);
+
+/**
+ * Site e planilha de compras nos dois sentidos. Pedido novo na planilha vira
+ * card; pedido aberto no site vai para a planilha (uma linha por item, com o
+ * "Código do site"). Nos que estão nos dois lados, SC e previsão de entrega
+ * ("OK" = entregue, "Cancelado") seguem quem mudou por último (ver `decidir`);
+ * a prioridade só vem da planilha. Card entregue ou cancelado no site não
+ * volta atrás pela planilha. Sem base (cards de antes), vale a regra antiga:
+ * pedido da planilha ainda na fila ou em cotação recebe a planilha; o resto
+ * manda o que o site tem. `agora` deve ser a hora da leitura da planilha,
+ * para dois aparelhos que sincronizam juntos gravarem o mesmo registro.
  */
 export const sincronizarComPlanilha = (
   linhas: readonly LinhaDoEspelho[],
@@ -498,47 +612,114 @@ export const sincronizarComPlanilha = (
   agora: string,
 ): ResultadoSincronizacao => {
   const abas = abasDoEspelho(linhas);
-  if (!abas[0].linhas.length) return { novas: [], atualizadas: [] };
+  if (!abas[0].linhas.length) return { novas: [], atualizadas: [], envios: [] };
   const { novas } = importarPlanilhaDeControle(abas, existentes, QUEM_SINCRONIZA, agora);
-  const { novas: retrato } = importarPlanilhaDeControle(abas, [], QUEM_SINCRONIZA, agora);
-  const porId = new Map(existentes.map(sol => [sol.id, sol]));
+  const grupos = linhasPorCartao(linhasDaAba(linhas), existentes);
   // Sem a aba Prioridade na leitura, não dá para dizer que alguém saiu dela.
   const leuPrioridade = abas[1].linhas.length > 0;
+  const prioridades = prioridadesDoEspelho(linhas);
   const atualizadas: Solicitacao[] = [];
-  for (const planilha of retrato) {
-    const atual = porId.get(planilha.id);
-    if (!atual || atual.origem !== 'planilha-controle') continue;
-    if (atual.etapa !== 'Pendente Suprimentos' && atual.etapa !== 'Em Cotação') continue;
-    const mudou: string[] = [];
+  const envios: EnvioParaPlanilha[] = [];
+
+  for (const atual of existentes) {
+    const daPlanilha = grupos.get(atual.id);
+    const doSite = atual.origem !== 'planilha-controle';
+    if (!daPlanilha) {
+      // Aberto no site e ainda fora da planilha: entra, uma linha por item.
+      // Já entregue ou cancelado antes de chegar à planilha (testes antigos) fica de fora.
+      if (!doSite || FINAIS.has(atual.etapa)) continue;
+      const estado = estadoNoSite(atual);
+      envios.push({
+        solId: atual.id,
+        nova: true,
+        estado,
+        linhas: atual.itens.map(item => ({
+          codigo: `${atual.numero}/${item.itemId}`,
+          item: item.descricao,
+          ...(estado.sc ? { sc: estado.sc } : {}),
+          ...(estado.previsao ? { previsao: estado.previsao } : {}),
+          nova: { data: atual.abertaEm.slice(0, 10), solicitante: atual.solicitante, unidade: item.unidade, quantidade: item.quantidade },
+        })),
+      });
+      continue;
+    }
+
+    const planilha = estadoDasLinhas(daPlanilha);
+    const site = estadoNoSite(atual);
+    const final = FINAIS.has(atual.etapa);
+    const semBase: Decisao = !doSite && (atual.etapa === 'Pendente Suprimentos' || atual.etapa === 'Em Cotação') ? 'receber' : 'enviar';
+    const sc = decidir(planilha.sc, site.sc, atual.planilha?.sc, semBase);
+    const previsaoBruta = decidir(planilha.previsao, site.previsao, atual.planilha?.previsao, semBase);
+    // Entregue ou cancelado no site não desfaz pela planilha: o site corrige a planilha.
+    const previsao = final && previsaoBruta === 'receber' ? 'enviar' : previsaoBruta;
+
     let novo: Solicitacao = { ...atual };
-    if (planilha.numeroSc && planilha.numeroSc !== atual.numeroSc) {
-      novo = { ...novo, numeroSc: planilha.numeroSc, etapa: 'Em Cotação' };
-      mudou.push(`SC ${planilha.numeroSc}`);
+    const mudou: string[] = [];
+    if (sc === 'receber') {
+      novo = { ...novo, numeroSc: planilha.sc, ...(novo.etapa === 'Pendente Suprimentos' ? { etapa: 'Em Cotação' as const } : {}) };
+      mudou.push(`SC ${planilha.sc}`);
     }
-    if (planilha.etapa === 'Entregue') {
-      novo = {
-        ...novo,
-        etapa: 'Entregue',
-        statusLogistico: 'Chegou ao Local',
-        itens: novo.itens.map(item => ({ ...item, quantidadeRecebida: item.quantidadeRecebida ?? item.quantidade })),
-      };
-      mudou.push('planilha marcou OK na entrega');
+    if (previsao === 'receber') {
+      if (planilha.previsao === OK) {
+        novo = {
+          ...novo,
+          etapa: 'Entregue',
+          statusLogistico: 'Chegou ao Local',
+          itens: novo.itens.map(item => ({ ...item, quantidadeRecebida: item.quantidadeRecebida ?? item.quantidade })),
+        };
+        mudou.push('planilha marcou OK na entrega');
+      } else if (planilha.previsao === CANCELADO) {
+        novo = { ...novo, etapa: 'Cancelado', canceladaMotivo: 'Cancelado na planilha' };
+        mudou.push('cancelado na planilha');
+      } else {
+        novo = { ...novo, janelaFim: planilha.previsao };
+        mudou.push(`previsão de entrega ${planilha.previsao.split('-').reverse().join('/')}`);
+      }
     }
-    if (leuPrioridade && planilha.prioridade !== atual.prioridade) {
+    const pedido = Number(daPlanilha[0].pedido);
+    if (leuPrioridade && !final && (prioridades.get(pedido) ?? null) !== (atual.prioridade ?? null)) {
       const { prioridade: _antiga, ...semPrioridade } = novo;
-      novo = planilha.prioridade ? { ...semPrioridade, prioridade: planilha.prioridade } : semPrioridade;
-      mudou.push(planilha.prioridade ? `prioridade ${planilha.prioridade}º` : 'saiu da lista de prioridade');
+      const nova = prioridades.get(pedido);
+      novo = nova ? { ...semPrioridade, prioridade: nova } : semPrioridade;
+      mudou.push(nova ? `prioridade ${nova}º` : 'saiu da lista de prioridade');
     }
-    if (planilha.janelaFim && planilha.janelaFim !== atual.janelaFim) {
-      novo = { ...novo, janelaFim: planilha.janelaFim };
-      mudou.push(`previsão de entrega ${planilha.janelaFim.split('-').reverse().join('/')}`);
+
+    const depois = estadoNoSite(novo);
+    if (mudou.length) {
+      atualizadas.push({
+        ...novo,
+        // O que vai para a planilha ainda não chegou lá: a base fica com o valor de lá.
+        planilha: { sc: sc === 'enviar' ? planilha.sc : depois.sc, previsao: previsao === 'enviar' ? planilha.previsao : depois.previsao },
+        eventos: [...atual.eventos, { data: agora, usuario: QUEM_SINCRONIZA, acao: 'Atualizado pela planilha', detalhe: mudou.join(' · ') }],
+        atualizadoEm: agora,
+      });
     }
-    if (!mudou.length) continue;
-    atualizadas.push({
-      ...novo,
-      eventos: [...atual.eventos, { data: agora, usuario: QUEM_SINCRONIZA, acao: 'Atualizado pela planilha', detalhe: mudou.join(' · ') }],
-      atualizadoEm: agora,
+
+    if (sc !== 'enviar' && previsao !== 'enviar') continue;
+    const linhasDoEnvio = daPlanilha.flatMap(linha => {
+      const enviaPrevisao = previsao === 'enviar'
+        // Data nova não tira o "OK" de um item que já chegou.
+        && !(linha.previsao === OK && depois.previsao !== OK && depois.previsao !== CANCELADO);
+      if (sc !== 'enviar' && !enviaPrevisao) return [];
+      return [{
+        ...(linha.codigo ? { codigo: linha.codigo } : { pedido: linha.pedido }),
+        item: linha.item,
+        ...(sc === 'enviar' ? { sc: depois.sc } : {}),
+        ...(enviaPrevisao ? { previsao: depois.previsao } : {}),
+      }];
     });
+    if (linhasDoEnvio.length) envios.push({ solId: atual.id, nova: false, linhas: linhasDoEnvio, estado: depois });
   }
-  return { novas, atualizadas };
+  return { novas, atualizadas, envios };
+};
+
+/**
+ * Antes de gravar uma mudança feita no site: card ligado à planilha e sem base
+ * ganha como base o que a planilha mostra agora. Assim a mudança do site conta
+ * como a mais nova e vai para a planilha, em vez de ser desfeita por ela.
+ */
+export const comBaseDaPlanilha = (sol: Solicitacao, existentes: readonly Solicitacao[], linhas: readonly LinhaDoEspelho[]): Solicitacao => {
+  if (sol.planilha) return sol;
+  const daPlanilha = linhasPorCartao(linhasDaAba(linhas), existentes.some(outra => outra.id === sol.id) ? existentes : [...existentes, sol]).get(sol.id);
+  return daPlanilha ? { ...sol, planilha: estadoDasLinhas(daPlanilha) } : sol;
 };

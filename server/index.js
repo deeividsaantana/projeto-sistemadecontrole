@@ -15,7 +15,7 @@ import { handler as procurement } from '../api/procurement.js';
 import { handler as procurementSheet } from '../api/procurement-sheet.js';
 import { handler as contratacao } from '../api/contratacao.js';
 import { handler as devAcessos } from '../api/dev-acessos.js';
-import { syncProcurementSpreadsheet } from './procurementSpreadsheetSyncJob.js';
+import { sincronizarUmaVez } from './procurementSpreadsheetSyncJob.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, '..', 'dist');
@@ -49,7 +49,7 @@ for (const prefix of ['/api', '/.netlify/functions']) {
   app.all(`${prefix}/master-data`, toExpressHandler(masterData));
   app.all(`${prefix}/usage-telemetry`, toExpressHandler(usageTelemetry));
   app.all(`${prefix}/procurement`, toExpressHandler(procurement));
-  app.get(`${prefix}/procurement-sheet`, toExpressHandler(procurementSheet));
+  app.all(`${prefix}/procurement-sheet`, toExpressHandler(procurementSheet));
   app.all(`${prefix}/contratacao`, toExpressHandler(contratacao));
   app.all(`${prefix}/dev-acessos`, toExpressHandler(devAcessos));
 }
@@ -100,7 +100,7 @@ app.listen(port, () => {
   console.log(`RENEA ERP no ar em http://localhost:${port}`);
   if (process.env.PROCUREMENT_SPREADSHEET_URL) {
     const everyThreeHours = 3 * 60 * 60 * 1000;
-    void syncProcurementSpreadsheet().catch(error => console.error('Sincronização da planilha de compras falhou:', error));
-    setInterval(() => void syncProcurementSpreadsheet().catch(error => console.error('Sincronização da planilha de compras falhou:', error)), everyThreeHours).unref();
+    void sincronizarUmaVez().catch(error => console.error('Sincronização da planilha de compras falhou:', error));
+    setInterval(() => void sincronizarUmaVez().catch(error => console.error('Sincronização da planilha de compras falhou:', error)), everyThreeHours).unref();
   }
 });
