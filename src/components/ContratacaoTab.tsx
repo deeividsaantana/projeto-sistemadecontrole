@@ -1,9 +1,11 @@
 /**
- * Solicitação de Contratação assinável (SGR-FRH-21-373-01-000-000-0008).
- * Fluxo (16/11/2026): o auxiliar preenche e salva; o sistema gera um link só
- * daquele pedido (/contratacao-link/<token>), que passa por 3 assinaturas em
- * ordem: 1º gerente → 2º gerente → RH. Na 3ª o pedido conclui, o link expira
- * e o documento assinado fica para baixar aqui. A tela apenas mostra; quem
+ * Solicitações de RH assináveis: contratação (SGR-FRH-21-373-01-000-000-0008),
+ * promoção ("Solicitação de cargo e salário") e desligamento ("Check list de
+ * desligamento"). Quem pede escolhe o tipo, preenche e salva; o sistema gera
+ * um link só daquele pedido (/contratacao-link/<token>), que passa por 3
+ * assinaturas em ordem (17/11/2026): 1ª RH → 2ª gerente (Bruno) → 3ª gerente
+ * (Marcelo). Na 3ª o pedido conclui, o link expira e o documento assinado
+ * fica para baixar aqui. A tela apenas mostra; quem
  * decide é o servidor (api/contratacao.js) e o banco (sign_erp_hiring_request).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -30,7 +32,7 @@ import { TelaCheia } from '../shared/ui/TelaCheia';
 import { AbasDaTela, idDaAba, type ItemDasAbas } from '../shared/ui/AbasDaTela';
 import { TabelaPadrao, type ColunaTabela } from '../shared/ui/TabelaPadrao';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CAMPO_SELECT, CARTAO } from './cadastros/estilos';
-import { ETAPAS, PAPEIS, SITUACOES, emAberto, etapaPendente, nomeDaEtapa, podeDecidir } from '../../api/_shared/contratacao-regras.js';
+import { ETAPAS, PAPEIS, SITUACOES, SOLICITACOES, emAberto, etapaPendente, nomeDaEtapa, podeDecidir, resumoDoPedido } from '../../api/_shared/contratacao-regras.js';
 import {
   carregarContratacoes,
   definirPapelContratacao,
@@ -132,7 +134,7 @@ export default function ContratacaoTab() {
   }, [pedidos]);
   const termo = busca.trim().toLowerCase();
   const filtrados = useMemo(() => pedidos.filter(pedido => (!filtroSituacao || pedido.status === filtroSituacao)
-    && (!termo || [pedido.request_number, pedido.form.candidato, pedido.form.posicao, pedido.form.area, pedido.requester_name, pedido.form.requisitante]
+    && (!termo || [pedido.request_number, resumoDoPedido(pedido.form).nomeDoTipo, pedido.form.candidato, resumoDoPedido(pedido.form).cargo, pedido.form.area, pedido.requester_name, pedido.form.requisitante]
       .some(valor => String(valor || '').toLowerCase().includes(termo)))), [pedidos, filtroSituacao, termo]);
 
   const trocar = (proxima: Subtela) => { setAbertoId(null); setBaixarAoAbrir(false); setSubtela(proxima); };
@@ -162,9 +164,10 @@ export default function ContratacaoTab() {
 
   const colunas: ColunaTabela<PedidoContratacao>[] = [
     { chave: 'numero', titulo: 'N°', render: p => <strong className="tabular-nums">{p.request_number}</strong>, valorOrdenacao: p => p.request_number, larguraMinima: 150 },
-    { chave: 'candidato', titulo: 'Candidato', render: p => p.form.candidato || '—', valorOrdenacao: p => p.form.candidato || '', larguraMinima: 180 },
-    { chave: 'posicao', titulo: 'Cargo', render: p => p.form.posicao, valorOrdenacao: p => p.form.posicao, larguraMinima: 150 },
-    { chave: 'area', titulo: 'Frente/Setor', render: p => p.form.area, valorOrdenacao: p => p.form.area, larguraMinima: 140 },
+    { chave: 'tipo', titulo: 'Tipo', render: p => resumoDoPedido(p.form).nomeDoTipo, valorOrdenacao: p => resumoDoPedido(p.form).nomeDoTipo, larguraMinima: 120 },
+    { chave: 'candidato', titulo: 'Pessoa', render: p => p.form.candidato || '—', valorOrdenacao: p => p.form.candidato || '', larguraMinima: 180 },
+    { chave: 'posicao', titulo: 'Cargo', render: p => resumoDoPedido(p.form).cargo, valorOrdenacao: p => resumoDoPedido(p.form).cargo, larguraMinima: 150 },
+    { chave: 'area', titulo: 'Frente/Setor', render: p => p.form.area || '—', valorOrdenacao: p => p.form.area || '', larguraMinima: 140 },
     { chave: 'situacao', titulo: 'Assinaturas', render: p => (p.status === 'concluido' || p.status === 'recusada' ? <SeloSituacaoContratacao situacao={p.status} /> : <SelosDasEtapas pedido={p} titulares={titulares} />), valorOrdenacao: p => p.status, valorExportacao: p => SITUACOES[p.status] ?? p.status, larguraMinima: 300 },
     { chave: 'acoes', titulo: 'Ações', valorExportacao: () => '', larguraMinima: 280, render: p => (
       // Copiar Link só com o pedido correndo; Baixar só depois da 3ª assinatura.
@@ -213,9 +216,9 @@ export default function ContratacaoTab() {
       )}
       {ver('indicadores') && (
         <div data-ct-reveal className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <CartaoIndicador rotulo={`Com ${nomeDaEtapa('gerente_1', titulares)}`} valor={contagem.etapa_1} detalhe="1ª assinatura" icone={Clock} tom={contagem.etapa_1 ? 'laranja' : 'neutro'} onClick={() => verSituacao('etapa_1')} />
-          <CartaoIndicador rotulo={`Com ${nomeDaEtapa('gerente_2', titulares)}`} valor={contagem.etapa_2} detalhe="2ª assinatura" icone={PenLine} tom={contagem.etapa_2 ? 'laranja' : 'neutro'} onClick={() => verSituacao('etapa_2')} />
-          <CartaoIndicador rotulo="Com o RH" valor={contagem.etapa_3} detalhe="3ª assinatura" icone={UserCheck} tom={contagem.etapa_3 ? 'laranja' : 'neutro'} onClick={() => verSituacao('etapa_3')} />
+          <CartaoIndicador rotulo="Com o RH" valor={contagem.etapa_1} detalhe="1ª assinatura" icone={UserCheck} tom={contagem.etapa_1 ? 'laranja' : 'neutro'} onClick={() => verSituacao('etapa_1')} />
+          <CartaoIndicador rotulo={`Com ${nomeDaEtapa('gerente_1', titulares)}`} valor={contagem.etapa_2} detalhe="2ª assinatura" icone={Clock} tom={contagem.etapa_2 ? 'laranja' : 'neutro'} onClick={() => verSituacao('etapa_2')} />
+          <CartaoIndicador rotulo={`Com ${nomeDaEtapa('gerente_2', titulares)}`} valor={contagem.etapa_3} detalhe="3ª assinatura" icone={PenLine} tom={contagem.etapa_3 ? 'laranja' : 'neutro'} onClick={() => verSituacao('etapa_3')} />
           <CartaoIndicador rotulo="Concluídas" valor={contagem.concluido} detalhe={`com as 3 assinaturas${contagem.recusada ? ` · ${contagem.recusada} recusada${contagem.recusada > 1 ? 's' : ''}` : ''}`} icone={CheckCircle2} tom="verde" onClick={() => verSituacao('concluido')} />
         </div>
       )}
@@ -233,7 +236,7 @@ export default function ContratacaoTab() {
                   return (
                     <li key={pedido.id}>
                       <button type="button" onClick={() => setAbertoId(pedido.id)} className="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 p-3 text-left text-sm transition hover:border-emerald-400">
-                        <span className="min-w-0"><strong className="tabular-nums text-slate-900">{pedido.request_number}</strong> · {pedido.form.candidato || pedido.form.posicao} · <span className="text-[#5b6870]">{pedido.form.posicao}</span></span>
+                        <span className="min-w-0"><strong className="tabular-nums text-slate-900">{pedido.request_number}</strong> · {resumoDoPedido(pedido.form).nomeDoTipo} · {pedido.form.candidato || '—'} · <span className="text-[#5b6870]">{resumoDoPedido(pedido.form).cargo}</span></span>
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${dias >= 3 ? 'bg-rose-50 text-rose-800' : 'bg-amber-50 text-amber-800'}`}>
                           Falta {nomeDaEtapa(etapa, titulares)} · {dias === 0 ? 'hoje' : `há ${dias} dia${dias > 1 ? 's' : ''}`}
                         </span>
@@ -311,8 +314,8 @@ export default function ContratacaoTab() {
           <strong className="tabular-nums text-slate-900">{pedido.request_number}</strong>
           <SeloSituacaoContratacao situacao={pedido.status} />
         </span>
-        <span className="mt-1 block text-base font-bold text-slate-900">{pedido.form.candidato || '—'} · {pedido.form.posicao}</span>
-        <span className="block text-sm text-[#5b6870]">{pedido.form.area} · pedido por {pedido.requester_name} em {dataBr(pedido.form.data)} · prioridade {pedido.form.prioridade}</span>
+        <span className="mt-1 block text-base font-bold text-slate-900">{resumoDoPedido(pedido.form).nomeDoTipo} · {pedido.form.candidato || '—'}</span>
+        <span className="block text-sm text-[#5b6870]">{resumoDoPedido(pedido.form).cargo}{pedido.form.area ? ` · ${pedido.form.area}` : ''} · pedido por {pedido.requester_name} em {dataBr(pedido.form.data)}{pedido.form.prioridade ? ` · prioridade ${pedido.form.prioridade}` : ''}</span>
         <span className="mt-3 block"><LinhaDeEtapas pedido={pedido} titulares={titulares} compacta /></span>
       </button>
     </li>
@@ -344,7 +347,7 @@ export default function ContratacaoTab() {
       );
     }
     if (subtela === 'nova') {
-      return <FolhaContratacao leitor={me} titulares={titulares} onVoltar={() => trocar('pedidos')} onCriado={pedido => { void carregar(true).then(() => setAbertoId(pedido.id)); setAviso(`Pedido ${pedido.request_number} salvo e link gerado. Use "Copiar Link" e mande para a 1ª assinatura.`); window.setTimeout(() => setAviso(''), 8000); }} />;
+      return <FolhaContratacao leitor={me} titulares={titulares} onVoltar={() => trocar('pedidos')} onCriado={pedido => { void carregar(true).then(() => setAbertoId(pedido.id)); setAviso(`Pedido ${pedido.request_number} salvo e link gerado. Use "Copiar Link" e mande para o RH, que faz a 1ª assinatura.`); window.setTimeout(() => setAviso(''), 8000); }} />;
     }
     if (subtela === 'fila') {
       return fila.length === 0
@@ -354,14 +357,14 @@ export default function ContratacaoTab() {
     if (subtela === 'pedidos') {
       return (
         <TabelaPadrao
-          titulo="Solicitações de contratação"
+          titulo="Solicitações de RH"
           linhas={filtrados}
           colunas={colunas}
           idDaLinha={p => p.id}
           nomeDoItem={{ um: 'pedido', varios: 'pedidos' }}
           ordenacaoInicial={{ chave: 'numero', direcao: 'desc' }}
           onAbrirLinha={p => setAbertoId(p.id)}
-          vazio={pedidos.length === 0 ? 'Nenhuma solicitação ainda. Use "+ Nova Solicitação" para pedir uma contratação.' : 'Nenhum pedido com esses filtros.'}
+          vazio={pedidos.length === 0 ? `Nenhuma solicitação ainda. Use "+ Nova Solicitação" para pedir ${Object.values(SOLICITACOES).join(', ').toLowerCase()}.` : 'Nenhum pedido com esses filtros.'}
         />
       );
     }
@@ -376,7 +379,7 @@ export default function ContratacaoTab() {
       <label className="relative min-w-0 flex-1 sm:max-w-sm">
         <span className="sr-only">Buscar pedido</span>
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#5b6870]" aria-hidden="true" />
-        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por número, candidato, cargo ou frente" className={`${CAMPO} pl-9`} />
+        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por número, tipo, pessoa, cargo ou frente" className={`${CAMPO} pl-9`} />
       </label>
       <label className="w-full sm:w-56">
         <span className="sr-only">Situação</span>
@@ -464,7 +467,7 @@ function PapeisContratacao({ pessoas, onMudou }: { pessoas: PessoaContratacao[];
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       <p data-ct-reveal className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
-        Qualquer pessoa com login pode pedir. Aqui você marca quem faz a <strong>1ª assinatura</strong> (gerente, ex.: Bruno), a <strong>2ª assinatura</strong> (gerente, ex.: Marcelo Suegama) e a <strong>3ª assinatura</strong> (RH), e quem é <strong>auxiliar</strong> (vê tudo, não assina). 1ª e 2ª têm uma pessoa só cada. A mesma pessoa nunca assina duas etapas do mesmo pedido.
+        Qualquer pessoa com login pode pedir. Aqui você marca quem faz a <strong>1ª assinatura</strong> (RH), a <strong>2ª assinatura</strong> (gerente, ex.: Bruno) e a <strong>3ª assinatura</strong> (gerente, ex.: Marcelo Suegama), e quem é <strong>auxiliar</strong> (vê tudo, não assina). 2ª e 3ª têm uma pessoa só cada. Vale para contratação, promoção e desligamento. A mesma pessoa nunca assina duas etapas do mesmo pedido.
       </p>
       {falha && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{falha}</p>}
       <TabelaPadrao titulo="Quem assina a contratação" linhas={pessoas} colunas={colunas} idDaLinha={p => p.user_id} nomeDoItem={{ um: 'pessoa', varios: 'pessoas' }} ordenacaoInicial={{ chave: 'nome', direcao: 'asc' }} />

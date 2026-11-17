@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
-import { Eraser, PenLine, Type } from 'lucide-react';
+import { BookmarkCheck, Eraser, PenLine, Trash2, Type } from 'lucide-react';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, FOCO } from '../cadastros/estilos';
 import type { AssinaturaEnviada } from '../../services/contratacaoApi';
 
@@ -8,17 +8,25 @@ interface QuadroAssinaturaProps {
   nome: string;
   rotuloConfirmar: string;
   ocupado?: boolean;
+  /** Desenho guardado desta pessoa: vira a primeira opção, já pronta. */
+  assinaturaSalva?: string | null;
+  onApagarSalva?: () => void;
   onConfirmar: (assinatura: AssinaturaEnviada) => void;
   onCancelar?: () => void;
 }
 
+type Modo = 'salva' | 'desenho' | 'digitado';
+
 /**
- * Desenhar com o dedo, o mouse ou a caneta, ou usar o nome digitado. O nome
- * não é editável: vem do login, para ninguém assinar com o nome de outro.
+ * Usar a assinatura salva, desenhar com o dedo, o mouse ou a caneta, ou usar
+ * o nome digitado. O nome não é editável: vem do login, para ninguém assinar
+ * com o nome de outro. O desenho pode ficar guardado para as próximas vezes.
  */
-export function QuadroAssinatura({ nome, rotuloConfirmar, ocupado = false, onConfirmar, onCancelar }: QuadroAssinaturaProps) {
-  const [modo, setModo] = useState<'desenho' | 'digitado'>('desenho');
+export function QuadroAssinatura({ nome, rotuloConfirmar, ocupado = false, assinaturaSalva = null, onApagarSalva, onConfirmar, onCancelar }: QuadroAssinaturaProps) {
+  const [modo, setModo] = useState<Modo>(assinaturaSalva ? 'salva' : 'desenho');
+  const [guardar, setGuardar] = useState(!assinaturaSalva);
   const [temTraco, setTemTraco] = useState(false);
+  useEffect(() => { if (!assinaturaSalva && modo === 'salva') setModo('desenho'); }, [assinaturaSalva, modo]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const desenhando = useRef(false);
 
@@ -76,6 +84,7 @@ export function QuadroAssinatura({ nome, rotuloConfirmar, ocupado = false, onCon
   };
 
   const confirmar = () => {
+    if (modo === 'salva') { onConfirmar({ method: 'salva' }); return; }
     if (modo === 'digitado') { onConfirmar({ method: 'digitado' }); return; }
     const canvas = canvasRef.current;
     if (!canvas || !temTraco) return;
@@ -85,7 +94,7 @@ export function QuadroAssinatura({ nome, rotuloConfirmar, ocupado = false, onCon
     copia.width = Math.round(canvas.width * escala);
     copia.height = Math.round(canvas.height * escala);
     copia.getContext('2d')?.drawImage(canvas, 0, 0, copia.width, copia.height);
-    onConfirmar({ method: 'desenho', image_data: copia.toDataURL('image/png') });
+    onConfirmar({ method: 'desenho', image_data: copia.toDataURL('image/png'), guardar });
   };
 
   const abaModo = (ativo: boolean) => `${FOCO} inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg px-3 text-sm font-bold transition ${ativo ? 'bg-[#176b4d] text-white' : 'text-slate-700 hover:text-[#176b4d]'}`;
@@ -93,14 +102,33 @@ export function QuadroAssinatura({ nome, rotuloConfirmar, ocupado = false, onCon
   return (
     <div className="space-y-3" data-testid="quadro-assinatura">
       <div role="radiogroup" aria-label="Como assinar" className="flex gap-1 rounded-2xl border border-slate-200 bg-white p-1">
+        {assinaturaSalva && (
+          <button type="button" role="radio" aria-checked={modo === 'salva'} onClick={() => setModo('salva')} className={abaModo(modo === 'salva')}>
+            <BookmarkCheck className="size-4" aria-hidden="true" /> <span className="sm:hidden">Salva</span><span className="hidden sm:inline">Minha assinatura salva</span>
+          </button>
+        )}
         <button type="button" role="radio" aria-checked={modo === 'desenho'} onClick={() => setModo('desenho')} className={abaModo(modo === 'desenho')}>
           <PenLine className="size-4" aria-hidden="true" /> Desenhar
         </button>
         <button type="button" role="radio" aria-checked={modo === 'digitado'} onClick={() => setModo('digitado')} className={abaModo(modo === 'digitado')}>
-          <Type className="size-4" aria-hidden="true" /> Usar meu nome
+          <Type className="size-4" aria-hidden="true" /> <span className="sm:hidden">Nome</span><span className="hidden sm:inline">Usar meu nome</span>
         </button>
       </div>
-      {modo === 'desenho' ? (
+      {modo === 'salva' && assinaturaSalva ? (
+        <div>
+          <div className="grid h-40 place-items-center rounded-2xl border-2 border-solid border-emerald-300 bg-white p-2">
+            <img src={assinaturaSalva} alt="Sua assinatura salva" className="max-h-full max-w-full" />
+          </div>
+          <p className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-[#5b6870]">
+            É a assinatura que você guardou. Basta confirmar.
+            {onApagarSalva && (
+              <button type="button" onClick={onApagarSalva} disabled={ocupado} className="inline-flex min-h-9 items-center gap-1.5 font-semibold text-rose-700 underline underline-offset-4">
+                <Trash2 className="size-3.5" aria-hidden="true" /> Apagar assinatura salva
+              </button>
+            )}
+          </p>
+        </div>
+      ) : modo === 'desenho' ? (
         <div>
           <canvas
             ref={canvasRef}
@@ -113,6 +141,10 @@ export function QuadroAssinatura({ nome, rotuloConfirmar, ocupado = false, onCon
             onPointerLeave={parar}
           />
           <p className="mt-1.5 text-xs text-[#5b6870]">Assine com o dedo, o mouse ou a caneta dentro do quadro.</p>
+          <label className="mt-2 flex min-h-11 items-center gap-2.5 text-sm font-semibold text-slate-800">
+            <input type="checkbox" checked={guardar} onChange={evento => setGuardar(evento.target.checked)} className="size-5 accent-[#176b4d]" data-testid="guardar-assinatura" />
+            {assinaturaSalva ? 'Trocar minha assinatura salva por esta' : 'Guardar esta assinatura para usar nas próximas vezes'}
+          </label>
         </div>
       ) : (
         <div className="grid h-40 place-items-center rounded-xl border-2 border-dashed border-slate-300 bg-white px-4">

@@ -16,8 +16,8 @@ export function SeloSituacaoContratacao({ situacao }: { situacao: SituacaoContra
 }
 
 /**
- * Os 3 selos em ordem: 1. Bruno (Gerente) → 2. Marcelo Suegama (Gerente) →
- * 3. RH. Verde = já assinou; âmbar = é a vez; cinza = ainda não chegou.
+ * Os 3 selos em ordem: 1. RH → 2. Bruno (Gerente) →
+ * 3. Marcelo Suegama (Gerente). Verde = já assinou; âmbar = é a vez; cinza = ainda não chegou.
  */
 export function SelosDasEtapas({ pedido, titulares }: { pedido: PedidoContratacao; titulares: Titulares }) {
   const vez = etapaPendente(pedido);
@@ -46,7 +46,7 @@ export function SelosDasEtapas({ pedido, titulares }: { pedido: PedidoContrataca
   );
 }
 
-/** Linha de etapas, como rastreio: 1ª → 2ª → RH → Concluído. */
+/** Linha de etapas, como rastreio: RH → 2ª → 3ª → Concluído. */
 export function LinhaDeEtapas({ pedido, titulares, compacta = false }: { pedido: PedidoContratacao; titulares: Titulares; compacta?: boolean }) {
   const passos = [...(ETAPAS as Etapa[]).map(etapa => ({
     chave: etapa,

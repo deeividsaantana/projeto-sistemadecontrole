@@ -49,8 +49,8 @@ export function ContratacaoPeloLink({ token }: { token: string }) {
   if (!dados) return <p className="p-6 text-sm text-[#5b6870]" role="status">Abrindo a solicitação…</p>;
   if (!('request' in dados)) {
     return dados.expirado === 'recusada'
-      ? <Aviso titulo="Link encerrado" texto="Este link foi encerrado. A solicitação de contratação foi recusada." tom="erro" />
-      : <Aviso titulo="Link expirado" texto="Este link expirou. A solicitação de contratação já foi concluída e assinada por todas as partes." />;
+      ? <Aviso titulo="Link encerrado" texto="Este link foi encerrado. A solicitação foi recusada." tom="erro" />
+      : <Aviso titulo="Link expirado" texto="Este link expirou. A solicitação já foi concluída e assinada por todas as partes." />;
   }
   return (
     <FolhaContratacao

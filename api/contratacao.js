@@ -1,7 +1,7 @@
-// Solicitação de Contratação assinável (fluxo de 16/11/2026): lista, abertura
-// (só dados; o banco gera o link individual), leitura pelo link
-// /contratacao-link/<token>, assinatura em ordem rígida (1ª gerente -> 2ª
-// gerente -> RH) e papéis. Quem é quem vem da sessão (token do Supabase),
+// Solicitações de RH assináveis (contratação, promoção e desligamento): lista,
+// abertura (só dados; o banco gera o link individual), leitura pelo link
+// /contratacao-link/<token>, assinatura em ordem rígida (desde 17/11/2026:
+// 1ª RH -> 2ª gerente -> 3ª gerente), assinatura salva e papéis. Quem é quem vem da sessão (token do Supabase),
 // nunca do corpo do pedido; quem pode assinar a etapa atual o banco confere.
 import crypto from 'node:crypto';
 import {
@@ -31,22 +31,57 @@ const erroDoBanco = error => {
   return httpError(String(error.message || 'Operação recusada.'), status);
 };
 
-const assinaturaDoCorpo = valor => {
+const desenhoValido = imagem => imagem.startsWith('data:image/png;base64,') && imagem.length <= 200_000;
+
+/**
+ * Assinatura que vai para o banco. "salva" usa o desenho guardado desta
+ * pessoa (lido aqui, nunca vindo da tela); no banco ela entra como desenho.
+ */
+const assinaturaDoCorpo = async (client, staff, valor) => {
+  if (valor?.method === 'salva') {
+    const salva = await lerAssinaturaSalva(client, staff);
+    if (!salva) throw httpError('Você ainda não tem assinatura salva. Desenhe a assinatura.', 422);
+    return { method: 'desenho', image_data: salva };
+  }
   const metodo = valor?.method === 'desenho' ? 'desenho' : valor?.method === 'digitado' ? 'digitado' : '';
   if (!metodo) throw httpError('Escolha desenhar ou digitar a assinatura.', 422);
   if (metodo === 'desenho') {
     const imagem = String(valor.image_data || '');
-    if (!imagem.startsWith('data:image/png;base64,') || imagem.length > 200_000) throw httpError('Desenhe a assinatura de novo: o desenho não chegou.', 422);
+    if (!desenhoValido(imagem)) throw httpError('Desenhe a assinatura de novo: o desenho não chegou.', 422);
     return { method: metodo, image_data: imagem };
   }
   return { method: metodo };
+};
+
+/** Tabela ainda não criada no banco: a tela segue funcionando sem assinatura salva. */
+const semTabela = error => ['42P01', 'PGRST205'].includes(String(error?.code || ''));
+
+const lerAssinaturaSalva = async (client, staff) => {
+  const { data, error } = await client.from('erp_hiring_saved_signatures').select('image_data')
+    .eq('organization_id', staff.organizationId).eq('user_id', staff.uid).maybeSingle();
+  if (error) { if (semTabela(error)) return null; throw error; }
+  return data?.image_data || null;
+};
+
+const guardarAssinatura = async (client, staff, imagem) => {
+  const { error } = await client.from('erp_hiring_saved_signatures').upsert(
+    { organization_id: staff.organizationId, user_id: staff.uid, image_data: imagem, updated_at: new Date().toISOString() },
+    { onConflict: 'organization_id,user_id' },
+  );
+  if (error) throw error;
 };
 
 export const leitorDaSessao = async (client, staff) => {
   const { data, error } = await client.from('erp_hiring_roles').select('role')
     .eq('organization_id', staff.organizationId).eq('user_id', staff.uid);
   if (error) throw error;
-  return { userId: staff.uid, nome: staff.name, admin: staff.role === 'admin', papeis: (data || []).map(linha => linha.role) };
+  return {
+    userId: staff.uid,
+    nome: staff.name,
+    admin: staff.role === 'admin',
+    papeis: (data || []).map(linha => linha.role),
+    assinaturaSalva: await lerAssinaturaSalva(client, staff),
+  };
 };
 
 const COLUNAS_ASSINATURA = 'id, request_id, stage, signer_user_id, signer_name, signer_cargo, method, image_data, form_hash, signed_at, hash_validacao';
@@ -167,6 +202,8 @@ const decidir = async (client, staff, corpo) => {
   if (!UUID.test(id) || !Number.isInteger(versao) || versao < 1) throw httpError('Pedido inválido.', 422);
   const decisao = corpo.decision === 'aprovar' ? 'aprovar' : corpo.decision === 'recusar' ? 'recusar' : '';
   if (!decisao) throw httpError('Decisão inválida.', 422);
+  // Recusa: motivo obrigatório. Assinatura: comentário opcional (ex.: a
+  // avaliação do RH na promoção), que fica no histórico e no documento.
   const motivo = cleanString(corpo.reason, 1000);
   if (decisao === 'recusar' && motivo.length < 3) throw httpError('Escreva o motivo da recusa.', 422);
   // Pelo link, o token tem que ser o deste pedido e o pedido tem que estar
@@ -179,17 +216,31 @@ const decidir = async (client, staff, corpo) => {
     if (!doLink || doLink.id !== id) throw httpError('Link inválido.', 404);
     if (!emAberto(doLink.status)) throw httpError('Este link expirou. A solicitação já foi encerrada.', 410);
   }
+  const assinatura = decisao === 'aprovar' ? await assinaturaDoCorpo(client, staff, corpo.signature) : {};
   const { data, error } = await client.rpc('sign_erp_hiring_request', {
     p_organization_id: staff.organizationId,
     p_request_id: id,
     p_expected_version: versao,
     p_actor: { user_id: staff.uid, name: staff.name },
     p_decision: decisao,
-    p_signature: decisao === 'aprovar' ? assinaturaDoCorpo(corpo.signature) : {},
-    p_reason: decisao === 'recusar' ? motivo : null,
+    p_signature: assinatura,
+    p_reason: motivo || null,
   });
   if (error) throw erroDoBanco(error);
-  return jsonResponse(200, { success: true, data });
+  // "Guardar para as próximas": só depois da assinatura valer. Se falhar,
+  // a assinatura já feita continua valendo; a tela só não oferece a salva.
+  let guardada = false;
+  if (corpo.signature?.guardar === true && corpo.signature?.method === 'desenho' && assinatura.image_data) {
+    guardada = await guardarAssinatura(client, staff, assinatura.image_data).then(() => true, () => false);
+  }
+  return jsonResponse(200, { success: true, data, assinatura_guardada: guardada });
+};
+
+const apagarAssinaturaSalva = async (client, staff) => {
+  const { error } = await client.from('erp_hiring_saved_signatures').delete()
+    .eq('organization_id', staff.organizationId).eq('user_id', staff.uid);
+  if (error && !semTabela(error)) throw error;
+  return jsonResponse(200, { success: true });
 };
 
 const definirPapel = async (client, staff, corpo) => {
@@ -221,6 +272,7 @@ export const handler = async event => {
     const corpo = parseJsonBody(event, 400_000);
     if (corpo.action === 'criar') return await criar(client, staff, corpo);
     if (corpo.action === 'decidir') return await decidir(client, staff, corpo);
+    if (corpo.action === 'apagar_assinatura') return await apagarAssinaturaSalva(client, staff);
     if (corpo.action === 'papel') return await definirPapel(client, staff, corpo);
     throw httpError('Ação inválida.', 422);
   } catch (error) {
