@@ -15,7 +15,7 @@ test('importador lê Solicitações, Prioridade e Substituição', async () => {
   assert.deepEqual(result.sheets, ['Solicitações', 'Prioridade', 'Substituição']);
   assert.deepEqual(result.requests[0], {
     source: 'Solicitações', request_date: '2026-08-13', source_request_number: '101', requester_name: 'Lucas',
-    item_description: 'Tubos', unit: 'Und.', quantity_requested: 12, source_purchase_order: '92995523', delivery_deadline: '2026-09-01',
+    item_description: 'Tubos', unit: 'Und.', quantity_requested: 12, source_purchase_order: '92995523', delivery_deadline: '2026-09-01', site_code: '',
   });
 });
 
@@ -87,7 +87,7 @@ test('cabeçalho de Solicitações aceita variação de acento, espaço e maiús
   const result = await parseProcurementWorkbook(await workbook.xlsx.writeBuffer());
   assert.deepEqual(result.requests[0], {
     source: 'Solicitações', request_date: '2026-11-15', source_request_number: '7', requester_name: 'Ana',
-    item_description: 'Cimento', unit: 'saco', quantity_requested: 3, source_purchase_order: '555', delivery_deadline: '2026-11-20',
+    item_description: 'Cimento', unit: 'saco', quantity_requested: 3, source_purchase_order: '555', delivery_deadline: '2026-11-20', site_code: '',
   });
 });
 

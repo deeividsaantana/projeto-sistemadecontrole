@@ -176,6 +176,8 @@ export interface Solicitacao {
   prioridade?: number;
   /** De onde veio: aberta no sistema ou trazida da planilha de controle. */
   origem?: 'sistema' | 'planilha-controle';
+  /** O que site e planilha de compras combinaram na última sincronização (base para saber quem mudou). */
+  planilha?: { sc: string; previsao: string };
   atualizadoEm: string;
 }
 

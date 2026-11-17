@@ -18,13 +18,14 @@ export function PlanilhaCompras() {
   const [rows, setRows] = useState<ProcurementSheetRow[]>([]);
   const [sheet, setSheet] = useState('Solicitações');
   const [run, setRun] = useState<ProcurementSyncRun | null>(null);
+  const [escrita, setEscrita] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   useEffect(() => {
     let ativo = true;
     setLoading(true);
     setError('');
-    loadProcurementSheet(sheet).then(data => { if (ativo) { setRows(data.rows); setRun(data.lastRun); } }).catch(e => { if (ativo) setError(e instanceof Error ? e.message : 'Falha ao carregar.'); }).finally(() => { if (ativo) setLoading(false); });
+    loadProcurementSheet(sheet).then(data => { if (ativo) { setRows(data.rows); setRun(data.lastRun); setEscrita(data.escrita); } }).catch(e => { if (ativo) setError(e instanceof Error ? e.message : 'Falha ao carregar.'); }).finally(() => { if (ativo) setLoading(false); });
     return () => { ativo = false; };
   }, [sheet]);
   const colunas = useMemo<readonly ColunaTabela<ProcurementSheetRow>[]>(() => [
@@ -39,7 +40,7 @@ export function PlanilhaCompras() {
   ], []);
   return <section aria-label="Visualização da planilha de compras" className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white">
     <header className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-slate-200 px-3 py-2">
-      <div className="flex min-w-0 flex-wrap items-center gap-x-2 font-black text-slate-800"><FileSpreadsheet className="size-4 shrink-0 text-[#176b4d]" aria-hidden="true" /><h2>Planilha sincronizada</h2><span title={run?.error_message || undefined} className={`truncate text-xs font-bold ${run && run.status !== 'SUCESSO' ? 'text-rose-700' : 'text-slate-500'}`}>{leitura(run)}</span></div>
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 font-black text-slate-800"><FileSpreadsheet className="size-4 shrink-0 text-[#176b4d]" aria-hidden="true" /><h2>Planilha sincronizada</h2><span title={run?.error_message || undefined} className={`truncate text-xs font-bold ${run && run.status !== 'SUCESSO' ? 'text-rose-700' : 'text-slate-500'}`}>{leitura(run)}</span>{escrita !== null && <span className={`text-xs font-bold ${escrita ? 'text-[#176b4d]' : 'text-[#c2410c]'}`}>{escrita ? 'O site também grava nela' : 'O site ainda não grava nela'}</span>}</div>
       <Campo rotulo="Aba da planilha" para="planilha-aba" className="flex min-w-44 items-center gap-2 [&>label]:mb-0"><select id="planilha-aba" value={sheet} onChange={event => setSheet(event.target.value)} className={`${CAMPO} min-h-9 py-1`}><option value="Solicitações">Solicitações</option><option value="Prioridade">Prioridade</option><option value="Substituição">Substituição</option></select></Campo>
     </header>
     {error ? <p role="alert" className="p-4 text-sm font-bold text-rose-700">{error}</p> : <TabelaPadrao titulo="Linhas da planilha de compras" linhas={rows} colunas={colunas} idDaLinha={row => row.id} carregando={loading} vazio="Nenhuma linha sincronizada" nomeDoItem={{ um: 'linha', varios: 'linhas' }} densa exportar className="min-h-0 flex-1 rounded-none border-0" />}

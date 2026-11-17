@@ -1,6 +1,6 @@
 // Planilha de compras no preview: o espelho que o servidor grava a cada 3h,
 // com um pedido novo (140) e uma mudança no 101 (nova previsão de entrega).
-import type { ProcurementSheet, ProcurementSheetRow } from '../src/services/procurementSheetApi';
+import type { ProcurementSheet, ProcurementSheetRow, ProcurementSheetWrite } from '../src/services/procurementSheetApi';
 export type * from '../src/services/procurementSheetApi';
 
 const LIDA = new Date(Date.now() - 40 * 60_000).toISOString();
@@ -21,4 +21,30 @@ const ROWS: ProcurementSheetRow[] = [
 export const loadProcurementSheet = async (sheet = 'Solicitações'): Promise<ProcurementSheet> => ({
   rows: ROWS.filter(row => !sheet || row.sheet_name === sheet),
   lastRun: { status: 'SUCESSO', error_message: null, finished_at: LIDA },
+  escrita: true,
 });
+
+// Imita o script da planilha: linha nova entra com o próximo N° do pedido; a que existe troca SC e previsão.
+interface Linha { codigo?: string; pedido?: string; item: string; sc?: string; previsao?: string; nova?: { data: string; solicitante: string; unidade: string; quantidade: number } }
+export const sendToProcurementSheet = async (linhas: readonly Linha[]): Promise<ProcurementSheetWrite> => {
+  const pedidos: Record<string, number> = {};
+  for (const pedida of linhas) {
+    const achadas = ROWS.filter(row => row.sheet_name === 'Solicitações' && (pedida.codigo
+      ? row.raw_data?.site_code === pedida.codigo
+      : row.source_request_number === pedida.pedido && row.item_description === pedida.item));
+    for (const row of achadas) {
+      const raw = row.raw_data!;
+      if (pedida.sc !== undefined) { raw.source_purchase_order = pedida.sc; row.source_purchase_order = pedida.sc || null; }
+      if (pedida.previsao !== undefined) { raw.delivery_deadline = pedida.previsao; row.delivery_deadline = /^\d{4}/.test(pedida.previsao) ? pedida.previsao : null; }
+    }
+    if (achadas.length || !pedida.codigo || !pedida.nova) continue;
+    const numero = pedida.codigo.split('/')[0];
+    const doMesmo = ROWS.find(row => String(row.raw_data?.site_code ?? '').startsWith(`${numero}/`));
+    const pedido = doMesmo?.source_request_number ?? String(Math.max(...ROWS.map(row => Number(row.source_request_number) || 0)) + 1);
+    pedidos[numero] = Number(pedido);
+    const nova = linha(`r${ROWS.length + 1}`, pedido, pedida.nova.solicitante, pedida.item, pedida.sc ?? '', pedida.previsao ?? '');
+    nova.raw_data!.site_code = pedida.codigo;
+    ROWS.push(nova);
+  }
+  return { ...(await loadProcurementSheet('')), pedidos };
+};

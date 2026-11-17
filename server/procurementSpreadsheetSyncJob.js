@@ -64,3 +64,11 @@ export const syncProcurementSpreadsheet = async ({ client = getSupabaseAdmin(), 
     throw error;
   }
 };
+
+// Uma leitura por vez: duas ao mesmo tempo podiam apagar o que a outra acabou de gravar
+// (a limpeza tira tudo que é mais velho que o início da própria leitura).
+let leituraEmAndamento = null;
+export const sincronizarUmaVez = (opcoes = {}) => {
+  leituraEmAndamento ||= syncProcurementSpreadsheet(opcoes).finally(() => { leituraEmAndamento = null; });
+  return leituraEmAndamento;
+};

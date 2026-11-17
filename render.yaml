@@ -28,3 +28,9 @@ services:
       # Sem ele a sincronização de 3 em 3 horas não liga.
       - key: PROCUREMENT_SPREADSHEET_URL
         sync: false
+      # Site → planilha: endereço do App da Web do script da planilha
+      # (scripts/google-planilha-compras.gs) e a senha combinada com ele.
+      - key: PROCUREMENT_SHEET_WRITE_URL
+        sync: false
+      - key: PROCUREMENT_SHEET_WRITE_TOKEN
+        sync: false

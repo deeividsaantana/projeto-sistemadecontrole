@@ -59,6 +59,8 @@ export const parseProcurementWorkbook = async buffer => {
     quantity_requested: number(campo(row, 'Quantidade')),
     source_purchase_order: text(campo(row, 'Solicitação de compra SC (N°)', 'SC')),
     delivery_deadline: isoDate(campo(row, 'previsão de entrega')),
+    // Pedido aberto no site: "SOL-2026-0005/1" (cartão/item). Vazio nos que nasceram na planilha.
+    site_code: text(campo(row, 'Código do site')),
   }));
   return {
     sheets: Object.keys(sheets),
