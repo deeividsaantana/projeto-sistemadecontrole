@@ -14,7 +14,7 @@ const PESSOAS: Record<string, Leitor> = {
   auxiliar: { userId: 'u-paulo', nome: 'Paulo de Tarso', admin: false, papeis: ['auxiliar'] },
   admin: { userId: 'u-deivid', nome: 'Deivid Brandão', admin: true, papeis: [] },
 };
-const eu = PESSOAS[papel] ?? PESSOAS.admin;
+const eu: Leitor = { ...(PESSOAS[papel] ?? PESSOAS.admin) };
 const titulares: Titulares = { gerente_1: ['Bruno Luscher'], gerente_2: ['Marcelo Suegama'], rh: ['Lucas Oliveira'] };
 const QUEM: Record<Etapa, Leitor> = { gerente_1: PESSOAS.gerente_1, gerente_2: PESSOAS.gerente_2, rh: PESSOAS.rh };
 
@@ -26,9 +26,11 @@ const traco = (texto: string) => {
   return canvas.toDataURL('image/png');
 };
 const hashFalso = (semente: string) => Array.from({ length: 64 }, (_, i) => '0123456789abcdef'[(semente.charCodeAt(i % semente.length) * (i + 7)) % 16]).join('');
+// ?salva=1: quem está logado já tem assinatura guardada.
+if (new URLSearchParams(location.search).get('salva')) eu.assinaturaSalva = traco(eu.nome.split(' ')[0]);
 const assinatura = (stage: Etapa, quem: Leitor, quando: string, metodo: AssinaturaEnviada = { method: 'desenho', image_data: traco(quem.nome.split(' ')[0]) }): AssinaturaContratacao => ({
   id: `${stage}-${quando}`, stage, signer_user_id: quem.userId, signer_name: quem.nome, signer_cargo: CARGO_DA_ETAPA[stage],
-  method: metodo.method, image_data: metodo.image_data ?? null, form_hash: 'a1b2c3d4e5f6a7b8', signed_at: quando, hash_validacao: hashFalso(`${stage}${quando}`),
+  method: metodo.method === 'digitado' ? 'digitado' : 'desenho', image_data: metodo.method === 'salva' ? eu.assinaturaSalva ?? null : metodo.image_data ?? null, form_hash: 'a1b2c3d4e5f6a7b8', signed_at: quando, hash_validacao: hashFalso(`${stage}${quando}`),
 });
 const situacao = (feitas: number): PedidoContratacao['status'] => (feitas >= 3 ? 'concluido' : (`etapa_${feitas + 1}` as PedidoContratacao['status']));
 const base = (n: number, candidato: string, posicao: string, area: string, feitas: number, dias: number, recusada = false): PedidoContratacao => {
@@ -46,7 +48,21 @@ const base = (n: number, candidato: string, posicao: string, area: string, feita
       ...signatures.map(item => ({ actor_name: item.signer_name, action: `assinou_${item.stage}`, from_status: null, to_status: null, details: {}, created_at: item.signed_at }))],
   };
 };
+const promocao = (p: PedidoContratacao): PedidoContratacao => ({ ...p, form: {
+  ...p.form, solicitacao: 'promocao', alteracao: 'promocao', registro: '00417', admissao: '2023-03-06', ultimaAlteracao: '2024-08-01',
+  area: 'Complexo Viário Alto Tietê', cargoAtual: 'Operador de escavadeira', cargoProposto: 'Encarregado de terraplenagem',
+  salarioAtual: 'R$ 3.200,00', salarioProposto: 'R$ 4.100,00', nivelAtual: 'II', nivelProposto: 'III',
+  justificativa: 'Assumiu a frente de terraplenagem há 4 meses, coordena 6 pessoas e cumpriu a programação sem atraso.',
+} });
+const desligamento = (p: PedidoContratacao): PedidoContratacao => ({ ...p, form: {
+  ...p.form, solicitacao: 'desligamento', registro: '00388', admissao: '2022-05-10', posicao: 'Motorista de caminhão / Obra 3 - Mogi',
+  desligamento: '2026-11-28', motivoDeslig: 'termino', solicitadoPor: 'Bruno Luscher', pagamentoRescisao: '2026-12-08',
+  convenios: ['medico', 'totalpass'], obs: 'Devolver cartão do convênio.', procedimentos: ['aviso_citrix', 'escanear', 'email_clinica'],
+  acessos: ['sem_acesso'], devolucao: ['cracha', 'uniforme'], devolucaoOutros: '2 camisas e 1 bota',
+} });
 let pedidos: PedidoContratacao[] = [
+  promocao(base(8, 'Carlos Henrique Souza', 'Encarregado de terraplenagem', 'Complexo Viário Alto Tietê', 1, 1)),
+  desligamento(base(7, 'Marcos Antônio Rocha', 'Motorista de caminhão', 'Obra 3 - Mogi', 0, 0)),
   base(6, 'João Pereira da Silva', 'Operador de escavadeira', 'Complexo Viário Alto Tietê', 0, 0),
   base(5, 'Carlos Henrique Souza', 'Encarregado de terraplenagem', 'Complexo Viário Alto Tietê', 1, 2),
   base(4, 'Ana Beatriz Lima', 'Auxiliar administrativo', 'Escritório central', 2, 3),
@@ -68,7 +84,7 @@ export const carregarPeloLink = async (token: string): Promise<DadosDoLink> => {
 export const criarContratacao = async (form: FormularioContratacao) => {
   const { formulario, erros } = validarFormulario(form);
   if (Object.keys(erros).length) throw new Error(Object.values(erros)[0]);
-  const novo: PedidoContratacao = { ...base(pedidos.length + 2, formulario.candidato, formulario.posicao, formulario.area, 0, 0), form: formulario as FormularioContratacao, requester_user_id: eu.userId, requester_name: eu.nome };
+  const novo: PedidoContratacao = { ...base(pedidos.length + 2, formulario.candidato, '', '', 0, 0), form: formulario as FormularioContratacao, requester_user_id: eu.userId, requester_name: eu.nome };
   pedidos = [novo, ...pedidos];
   return novo;
 };
@@ -79,12 +95,15 @@ export const decidirContratacao = async (pedido: Pick<PedidoContratacao, 'id'>, 
     const etapa = ETAPAS[(p.etapa_atual ?? 1) - 1] as Etapa;
     if (decisao === 'recusar') return { ...p, status: 'recusada', etapa_atual: null, link_token: null, rejected_stage: etapa, rejection_reason: reason ?? '' };
     const signatures = [...p.signatures, assinatura(etapa, eu, new Date().toISOString(), signature)];
+    if (signature?.guardar && signature.image_data) eu.assinaturaSalva = signature.image_data;
+    const history = [...p.history, { actor_name: eu.nome, action: `assinou_${etapa}`, from_status: p.status, to_status: null, details: reason ? { reason } : {}, created_at: new Date().toISOString() }];
     const status = situacao(signatures.length);
-    return { ...p, status, etapa_atual: emAberto(status) ? (signatures.length + 1) as 1 | 2 | 3 : null, link_token: emAberto(status) ? p.link_token : null, version: p.version + 1, signatures };
+    return { ...p, status, etapa_atual: emAberto(status) ? (signatures.length + 1) as 1 | 2 | 3 : null, link_token: emAberto(status) ? p.link_token : null, version: p.version + 1, signatures, history };
   });
   return pedidos.find(p => p.id === pedido.id)!;
 };
 export const definirPapelContratacao = async (userId: string, role: PapelContratacao, active: boolean) => {
   pessoas = pessoas.map(p => (p.user_id === userId ? { ...p, roles: active ? [...p.roles, role] : p.roles.filter(r => r !== role) } : p));
 };
+export const apagarAssinaturaSalva = async () => { eu.assinaturaSalva = null; };
 export const linkDoPedido = (token: string) => `${window.location.origin}/contratacao-link/${token}`;

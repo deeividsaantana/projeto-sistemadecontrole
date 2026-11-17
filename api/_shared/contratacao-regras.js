@@ -3,11 +3,88 @@
  * Módulo puro, sem banco e sem node:*, usado pela API (autoridade) e pela tela
  * (só para mostrar o mesmo erro antes de enviar).
  *
- * Fluxo (16/11/2026): quem abre só preenche; o pedido ganha um link próprio
- * e passa por 3 assinaturas em ordem rígida: 1ª gerente (Bruno) -> 2ª gerente
- * (Marcelo Suegama) -> 3ª RH -> concluído (o link expira). O banco confere de
- * novo (sign_erp_hiring_request).
+ * Fluxo: quem abre só preenche; o pedido ganha um link próprio e passa por 3
+ * assinaturas em ordem rígida. Desde 17/11/2026 a ordem é 1ª RH -> 2ª gerente
+ * (Bruno) -> 3ª gerente (Marcelo Suegama) -> concluído (o link expira). O
+ * banco confere de novo (sign_erp_hiring_request).
  */
+
+/** Os 3 tipos de solicitação (17/11/2026). Pedido antigo sem tipo é contratação. */
+export const SOLICITACOES = { contratacao: 'Contratação', promocao: 'Promoção', desligamento: 'Desligamento' };
+export const tipoDoPedido = form => (Object.hasOwn(SOLICITACOES, form?.solicitacao) ? form.solicitacao : 'contratacao');
+
+/** Promoção: modelo "Solicitação de cargo e salário" (SGR-FRH-21-373-01-000-000-0011). */
+export const ALTERACOES = { alteracao_funcional: 'Alteração funcional', promocao: 'Promoção', enquadramento: 'Enquadramento' };
+
+/** Desligamento: modelo "Check list de desligamento" (SGR-FRH-21-373-01-000-000-0027). */
+export const MOTIVOS_DESLIGAMENTO = {
+  gestor: 'Desligamento solicitado pelo gestor',
+  justa_causa: 'Justa Causa',
+  pedido: 'Pedido de demissão pelo colaborador',
+  termino_antecipado: 'Término antecipado de contrato',
+  termino: 'Término de contrato',
+};
+export const CONVENIOS = {
+  medico: 'Termo de convênio médico preenchido',
+  odonto: 'Termo de convênio odontológico preenchido',
+  nao_possui: 'Não possuía convênio / Não se aplica',
+  totalpass: 'TotalPass',
+  farmacia: 'Possui descontos de convênio – Farmácia Univers',
+};
+export const PROCEDIMENTOS = {
+  aviso_citrix: 'Emitir aviso Citrix',
+  escanear: 'Escanear a carta/documento de desligamento assinado',
+  pasta: 'Colocar o documento escaneado na pasta do colaborador',
+  ponto_vr: 'Remover cadastro de ponto - (Ferramenta VR) 1 dia após o desligamento',
+  email_clinica: 'Enviar e-mail para clínica para agendamento do exame demissional',
+  mensagem_exame: 'Enviar mensagem ao ex-colaborador com a data e horário do exame',
+  denver: 'Solicitação de Desligamento (Denver)',
+  aprovacao: 'Aprovação da solicitação de desligamento',
+  cadastro: 'Cadastro do desligamento',
+  ponto: 'Fechamento ponto eletrônico',
+  envio_email: 'Envio do desligamento por e-mail',
+  dez_dias: 'Acompanhamento dos 10 dias',
+  calculos: 'Conferência dos cálculos rescisórios',
+  impressao: 'Impressão dos documentos',
+  agendamento: 'Agendamento com o colaborador',
+  termos_operadora: 'Envio dos termos de convênio médico/odontológico para a operadora',
+};
+export const ACESSOS = { bloqueados: 'E-mail, sistemas e acessos bloqueados', sem_acesso: 'Não possuiu acesso à sistemas' };
+export const DEVOLUCAO = { cracha: 'Crachá', notebook: 'Notebook / computador', celular: 'Celular corporativo', chaves: 'Chaves / cartões de acesso', uniforme: 'Uniforme / outros' };
+
+/** Código e título de cada documento, como no papel. */
+export const DOCUMENTOS = {
+  contratacao: { codigo: 'SGR-FRH-21-373-01-000-000-0008 · Ver. 7', titulo: 'Solicitação de Contratação' },
+  promocao: { codigo: 'SGR-FRH-21-373-01-000-000-0011 · Solicitação de cargo e salário · Rev. 0', titulo: 'Solicitação de cargo e salário' },
+  desligamento: { codigo: 'SGR-FRH-21-373-01-000-000-0027 · Check list de desligamento · Ver. 02', titulo: 'Check list de desligamento' },
+};
+
+/** "R$ 2.500,00" -> 2500. Vazio ou sem número: NaN. */
+export const valorEmReais = valor => {
+  const limpo = String(valor ?? '').replace(/[^\d,.-]/g, '');
+  if (!limpo) return Number.NaN;
+  const normal = limpo.includes(',') ? limpo.replace(/\./g, '').replace(',', '.') : limpo;
+  return Number(normal);
+};
+/** Reajuste do salário atual para o proposto: "12,5%", ou "—" sem os dois valores. */
+export const reajuste = (atual, proposto) => {
+  const a = valorEmReais(atual);
+  const p = valorEmReais(proposto);
+  if (!(a > 0) || !Number.isFinite(p)) return '—';
+  return `${(((p - a) / a) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
+};
+
+/** Para listas e cartões: quem, que cargo, onde, seja qual for o tipo. */
+export const resumoDoPedido = form => {
+  const tipo = tipoDoPedido(form);
+  return {
+    tipo,
+    nomeDoTipo: SOLICITACOES[tipo],
+    pessoa: form?.candidato || '—',
+    cargo: (tipo === 'promocao' ? form?.cargoProposto || form?.cargoAtual : form?.posicao) || '—',
+    area: form?.area || '',
+  };
+};
 
 export const PRIORIDADES = ['Alta', 'Média', 'Baixa'];
 export const MOTIVOS = { aumento: 'Aumento de quadro', transferencia: 'Transferência/Promoção', substituicao: 'Substituição', outro: 'Outro' };
@@ -15,22 +92,22 @@ export const TIPOS = { efetivo: 'Efetivo', temp_efetivacao: 'Temporário p/ efet
 export const ITENS = { alojamento: 'Alojamento', passagem: 'Passagem', hospedagem: 'Hospedagem', computador: 'Computador', email: 'E-mail/Sistema', celular: 'Celular', nenhum: 'A função não requer nenhum destes itens' };
 
 /** As 3 assinaturas, na ordem. O índice + 1 é a `etapa_atual` do banco. */
-export const ETAPAS = ['gerente_1', 'gerente_2', 'rh'];
+export const ETAPAS = ['rh', 'gerente_1', 'gerente_2'];
 export const CARGO_DA_ETAPA = { gerente_1: 'Gerente', gerente_2: 'Gerente', rh: 'RH' };
 /** Nome de quem assina quando o administrador ainda não marcou ninguém. */
 export const TITULARES_PADRAO = { gerente_1: 'Bruno', gerente_2: 'Marcelo Suegama', rh: 'RH' };
 export const SITUACOES = {
-  etapa_1: 'Aguardando 1ª assinatura',
+  etapa_1: 'Aguardando RH',
   etapa_2: 'Aguardando 2ª assinatura',
-  etapa_3: 'Aguardando RH',
+  etapa_3: 'Aguardando 3ª assinatura',
   concluido: 'Concluído',
   recusada: 'Recusada',
 };
 /** Papéis que o administrador dá. Quem não tem papel só pede e vê os próprios pedidos. */
 export const PAPEIS = {
-  gerente_1: '1ª assinatura (Gerente)',
-  gerente_2: '2ª assinatura (Gerente)',
-  rh: '3ª assinatura (RH)',
+  rh: '1ª assinatura (RH)',
+  gerente_1: '2ª assinatura (Gerente)',
+  gerente_2: '3ª assinatura (Gerente)',
   auxiliar: 'Auxiliar (acompanha)',
 };
 
@@ -65,16 +142,16 @@ export const cpfFormatado = valor => {
   return cpf.length === 11 ? `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)}` : cpf;
 };
 
-/**
- * Confere e limpa o formulário. Devolve { formulario, erros }, com erros por
- * campo, em português simples, para a tela marcar o campo certo.
- */
-export const validarFormulario = (entrada = {}) => {
+const lista = (valor, opcoes) => (Array.isArray(valor) ? [...new Set(valor.filter(item => Object.hasOwn(opcoes, item)))] : []);
+const dataOuVazio = valor => (dataValida(valor) ? String(valor) : '');
+
+const validarContratacao = entrada => {
   /** @type {Record<string, string>} */
   const erros = {};
-  const itens = Array.isArray(entrada.itens) ? [...new Set(entrada.itens.filter(item => Object.hasOwn(ITENS, item)))] : [];
+  const itens = lista(entrada.itens, ITENS);
   const quantidade = Number(String(entrada.quantidade ?? '').replace(',', '.'));
   const formulario = {
+    solicitacao: 'contratacao',
     data: String(entrada.data || ''),
     candidato: texto(entrada.candidato, 120),
     cpf: soDigitos(entrada.cpf).slice(0, 11),
@@ -109,6 +186,76 @@ export const validarFormulario = (entrada = {}) => {
   return { formulario, erros };
 };
 
+const validarPromocao = entrada => {
+  /** @type {Record<string, string>} */
+  const erros = {};
+  const formulario = {
+    solicitacao: 'promocao',
+    alteracao: Object.hasOwn(ALTERACOES, entrada.alteracao) ? entrada.alteracao : '',
+    data: String(entrada.data || ''),
+    candidato: texto(entrada.candidato, 120),
+    registro: texto(entrada.registro, 40),
+    admissao: dataOuVazio(entrada.admissao),
+    ultimaAlteracao: dataOuVazio(entrada.ultimaAlteracao),
+    area: texto(entrada.area, 160),
+    cargoAtual: texto(entrada.cargoAtual, 120),
+    cargoProposto: texto(entrada.cargoProposto, 120),
+    salarioAtual: texto(entrada.salarioAtual, 40),
+    salarioProposto: texto(entrada.salarioProposto, 40),
+    nivelAtual: texto(entrada.nivelAtual, 40),
+    nivelProposto: texto(entrada.nivelProposto, 40),
+    justificativa: textoLongo(entrada.justificativa, 3000),
+  };
+  if (!formulario.alteracao) erros.alteracao = 'Marque: alteração funcional, promoção ou enquadramento.';
+  if (!dataValida(formulario.data)) erros.data = 'Informe a data da solicitação.';
+  if (formulario.candidato.length < 3) erros.candidato = 'Informe o nome completo do colaborador.';
+  if (formulario.area.length < 2) erros.area = 'Informe o setor ou a obra.';
+  if (formulario.cargoProposto.length < 2 && !formulario.salarioProposto) erros.cargoProposto = 'Informe o cargo ou o salário proposto.';
+  if (formulario.justificativa.length < 3) erros.justificativa = 'Escreva o motivo da alteração.';
+  return { formulario, erros };
+};
+
+const validarDesligamento = entrada => {
+  /** @type {Record<string, string>} */
+  const erros = {};
+  const devolucao = lista(entrada.devolucao, DEVOLUCAO);
+  const formulario = {
+    solicitacao: 'desligamento',
+    data: String(entrada.data || ''),
+    candidato: texto(entrada.candidato, 120),
+    registro: texto(entrada.registro, 40),
+    admissao: dataOuVazio(entrada.admissao),
+    posicao: texto(entrada.posicao, 160),
+    desligamento: String(entrada.desligamento || ''),
+    motivoDeslig: Object.hasOwn(MOTIVOS_DESLIGAMENTO, entrada.motivoDeslig) ? entrada.motivoDeslig : '',
+    solicitadoPor: texto(entrada.solicitadoPor, 120),
+    pagamentoRescisao: dataOuVazio(entrada.pagamentoRescisao),
+    convenios: lista(entrada.convenios, CONVENIOS),
+    obs: textoLongo(entrada.obs, 1500),
+    procedimentos: lista(entrada.procedimentos, PROCEDIMENTOS),
+    acessos: lista(entrada.acessos, ACESSOS),
+    devolucao,
+    devolucaoOutros: devolucao.includes('uniforme') ? texto(entrada.devolucaoOutros, 120) : '',
+  };
+  if (!dataValida(formulario.data)) erros.data = 'Informe a data da solicitação.';
+  if (formulario.candidato.length < 3) erros.candidato = 'Informe o nome completo do colaborador.';
+  if (formulario.posicao.length < 2) erros.posicao = 'Informe o cargo e o setor.';
+  if (!dataValida(formulario.desligamento)) erros.desligamento = 'Informe a data do desligamento.';
+  if (!formulario.motivoDeslig) erros.motivoDeslig = 'Marque o motivo do desligamento.';
+  return { formulario, erros };
+};
+
+/**
+ * Confere e limpa o formulário do tipo pedido. Devolve { formulario, erros },
+ * com erros por campo, em português simples, para a tela marcar o campo certo.
+ */
+export const validarFormulario = (entrada = {}) => {
+  const tipo = tipoDoPedido(entrada);
+  if (tipo === 'promocao') return validarPromocao(entrada);
+  if (tipo === 'desligamento') return validarDesligamento(entrada);
+  return validarContratacao(entrada);
+};
+
 /** JSON com as chaves sempre na mesma ordem: a base do código de conferência. */
 export const formularioCanonico = formulario => JSON.stringify(Object.keys(formulario).sort().reduce((acc, chave) => {
   acc[chave] = formulario[chave];
@@ -124,7 +271,7 @@ export const pedidoVisivel = (pedido, leitor) => pedido.requester_user_id === le
 /** O pedido ainda está correndo (link vale)? */
 export const emAberto = status => status === 'etapa_1' || status === 'etapa_2' || status === 'etapa_3';
 
-/** A etapa que falta (gerente_1, gerente_2 ou rh), ou null quando terminou. */
+/** A etapa que falta (rh, gerente_1 ou gerente_2), ou null quando terminou. */
 export const etapaPendente = pedido => (emAberto(pedido.status) ? ETAPAS[Number(pedido.etapa_atual) - 1] ?? null : null);
 
 /**

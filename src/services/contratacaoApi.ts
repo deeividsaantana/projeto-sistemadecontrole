@@ -1,7 +1,15 @@
 import { supabaseAuth as auth } from '../auth/supabaseAuth';
 
-/** Formulário do documento SGR-FRH-21-373-01-000-000-0008 (regras em api/_shared/contratacao-regras.js). */
+export type TipoSolicitacao = 'contratacao' | 'promocao' | 'desligamento';
+
+/**
+ * Formulário das 3 solicitações (regras em api/_shared/contratacao-regras.js).
+ * Contratação: SGR-FRH-21-373-01-000-000-0008. Promoção: "Solicitação de
+ * cargo e salário" (…0011). Desligamento: "Check list de desligamento" (…0027).
+ * Cada tipo usa só os seus campos; pedido antigo sem `solicitacao` é contratação.
+ */
 export interface FormularioContratacao {
+  solicitacao?: TipoSolicitacao;
   data: string;
   /** Candidato (16/11/2026). Pedidos antigos não têm: a tela mostra "—". */
   candidato?: string;
@@ -20,9 +28,31 @@ export interface FormularioContratacao {
   obs: string;
   aprovados: string;
   comentarios: string;
+  // Promoção (cargo e salário)
+  alteracao?: string;
+  registro?: string;
+  admissao?: string;
+  ultimaAlteracao?: string;
+  cargoAtual?: string;
+  cargoProposto?: string;
+  salarioAtual?: string;
+  salarioProposto?: string;
+  nivelAtual?: string;
+  nivelProposto?: string;
+  justificativa?: string;
+  // Desligamento (check list)
+  desligamento?: string;
+  motivoDeslig?: string;
+  solicitadoPor?: string;
+  pagamentoRescisao?: string;
+  convenios?: string[];
+  procedimentos?: string[];
+  acessos?: string[];
+  devolucao?: string[];
+  devolucaoOutros?: string;
 }
 
-export type Etapa = 'gerente_1' | 'gerente_2' | 'rh';
+export type Etapa = 'rh' | 'gerente_1' | 'gerente_2';
 export type SituacaoContratacao = 'etapa_1' | 'etapa_2' | 'etapa_3' | 'concluido' | 'recusada';
 export type PapelContratacao = Etapa | 'auxiliar';
 /** Nomes marcados em "Quem assina" para cada etapa. */
@@ -77,6 +107,8 @@ export interface Leitor {
   nome: string;
   admin: boolean;
   papeis: PapelContratacao[];
+  /** Desenho guardado por esta pessoa para as próximas assinaturas. */
+  assinaturaSalva?: string | null;
 }
 
 export interface PessoaContratacao {
@@ -99,8 +131,11 @@ export type DadosDoLink =
   | { me: Leitor; titulares: Titulares; request: PedidoContratacao; expirado?: undefined };
 
 export interface AssinaturaEnviada {
-  method: 'desenho' | 'digitado';
+  /** 'salva': o servidor usa o desenho guardado desta pessoa. */
+  method: 'desenho' | 'digitado' | 'salva';
   image_data?: string;
+  /** Guardar este desenho para as próximas vezes. */
+  guardar?: boolean;
 }
 
 interface Envelope<T> { success: boolean; data?: T; message?: string }
@@ -125,9 +160,11 @@ export const carregarPeloLink = (token: string) => chamar<DadosDoLink>({ method:
 export const criarContratacao = (form: FormularioContratacao, clientKey: string) =>
   chamar<PedidoContratacao>({ method: 'POST', body: JSON.stringify({ action: 'criar', form, client_key: clientKey }) });
 
-/** Pelo link, o token vai junto e o servidor confere que é deste pedido. */
+/** Pelo link, o token vai junto e o servidor confere que é deste pedido. Assinando, `reason` é o comentário opcional. */
 export const decidirContratacao = (pedido: Pick<PedidoContratacao, 'id' | 'version'>, decisao: 'aprovar' | 'recusar', signature?: AssinaturaEnviada, reason?: string, token?: string) =>
   chamar<PedidoContratacao>({ method: 'POST', body: JSON.stringify({ action: 'decidir', request_id: pedido.id, version: pedido.version, decision: decisao, signature, reason, token }) });
+
+export const apagarAssinaturaSalva = () => chamar<void>({ method: 'POST', body: JSON.stringify({ action: 'apagar_assinatura' }) });
 
 /** Endereço do link individual de um pedido. */
 export const linkDoPedido = (token: string) => `${window.location.origin}/contratacao-link/${token}`;

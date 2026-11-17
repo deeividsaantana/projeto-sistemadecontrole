@@ -1,10 +1,28 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ArrowLeft, Download, Link2, Lock, PenLine } from 'lucide-react';
+import { ArrowLeft, BriefcaseBusiness, Link2, Lock, Printer, TrendingUp, UserMinus, UserPlus } from 'lucide-react';
 import logoCliente from '../../assets/images/logo-renea-dark.svg';
 import { CLIENTE, PRODUTO } from '../../config/marca';
-import { BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, FOCO } from '../cadastros/estilos';
-import { CARGO_DA_ETAPA, ETAPAS, ITENS, MOTIVOS, PRIORIDADES, SITUACOES, TIPOS, cpfFormatado, etapaPendente, nomeDaEtapa, podeDecidir, validarFormulario } from '../../../api/_shared/contratacao-regras.js';
+import { BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO } from '../cadastros/estilos';
 import {
+  CARGO_DA_ETAPA,
+  DOCUMENTOS,
+  ETAPAS,
+  ITENS,
+  MOTIVOS,
+  PRIORIDADES,
+  SITUACOES,
+  SOLICITACOES,
+  TIPOS,
+  cpfFormatado,
+  etapaPendente,
+  nomeDaEtapa,
+  podeDecidir,
+  resumoDoPedido,
+  tipoDoPedido,
+  validarFormulario,
+} from '../../../api/_shared/contratacao-regras.js';
+import {
+  apagarAssinaturaSalva,
   criarContratacao,
   decidirContratacao,
   type AssinaturaContratacao,
@@ -13,22 +31,25 @@ import {
   type FormularioContratacao,
   type Leitor,
   type PedidoContratacao,
+  type TipoSolicitacao,
   type Titulares,
 } from '../../services/contratacaoApi';
 import { QuadroAssinatura } from './QuadroAssinatura';
-import { dataHoraBr } from './formatos';
-
-export const CODIGO_DOCUMENTO = 'SGR-FRH-21-373-01-000-000-0008 · Ver. 7';
+import { CorpoPromocao } from './CorpoPromocao';
+import { CorpoDesligamento } from './CorpoDesligamento';
+import { CabecalhoPapel } from './papel';
+import { LinhaDeEtapas, SeloSituacaoContratacao } from './SeloSituacaoContratacao';
+import { dataBr, dataHoraBr } from './formatos';
 
 const ACOES: Record<string, string> = {
   abriu: 'abriu o pedido e gerou o link',
   criou_e_assinou: 'abriu o pedido e assinou como solicitante',
-  assinou_gerente_1: 'assinou como 1º gerente',
-  assinou_gerente_2: 'assinou como 2º gerente',
-  assinou_rh: 'assinou como RH e concluiu',
+  assinou_rh: 'assinou como RH',
+  assinou_gerente_1: 'assinou como gerente',
+  assinou_gerente_2: 'assinou como gerente',
   assinou_gerente: 'assinou como gerente de contrato',
-  recusou_gerente_1: 'recusou na 1ª assinatura',
-  recusou_gerente_2: 'recusou na 2ª assinatura',
+  recusou_gerente_1: 'recusou na assinatura do gerente',
+  recusou_gerente_2: 'recusou na assinatura do gerente',
   recusou_rh: 'recusou na etapa do RH',
   recusou_gerente: 'recusou na etapa do gerente',
 };
@@ -40,21 +61,24 @@ const hojeLocal = () => {
 const novaChave = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`).replace(/[^a-zA-Z0-9_-]/g, '');
 
 /**
- * Imprime ou salva em PDF só a folha, numa janela própria em A4 de pé, com
- * os mesmos estilos do sistema: menu, botões e rolagem não entram no papel.
+ * Imprime ou salva em PDF a própria folha da tela, sem abrir outra janela:
+ * o CSS de impressão (index.css, "ct-imprimindo") esconde menu, botões e o
+ * quadro de assinar. Assim o PDF sai com o mesmo desenho do link.
  */
 const imprimir = (titulo: string) => {
-  const folha = document.querySelector('.ct-imprimir');
-  const janela = window.open('', '_blank');
-  if (!folha || !janela) { window.print(); return; }
-  const estilos = [...document.querySelectorAll('link[rel="stylesheet"], style')].map(no => no.outerHTML).join('');
-  janela.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><base href="${window.location.origin}/"><title>${titulo}</title>${estilos}<style>@page{size:A4 portrait;margin:10mm}html,body{background:#fff!important;margin:0}.ct-imprimir{border:0!important}.ct-sem-papel{display:none!important}.ct-imprimir .min-h-11{min-height:26px!important}.ct-imprimir .min-h-9{min-height:22px!important}.ct-imprimir .py-4{padding-top:7px!important;padding-bottom:7px!important}.ct-imprimir .h-24{height:72px!important}</style></head><body>${folha.outerHTML}</body></html>`);
-  janela.document.close();
-  janela.focus();
-  window.setTimeout(() => { janela.print(); }, 400);
+  const tituloAntes = document.title;
+  document.title = titulo;
+  document.body.classList.add('ct-imprimindo');
+  const limpar = () => {
+    document.body.classList.remove('ct-imprimindo');
+    document.title = tituloAntes;
+    window.removeEventListener('afterprint', limpar);
+  };
+  window.addEventListener('afterprint', limpar);
+  window.print();
 };
 
-/** Bloco da folha: faixa com borda em cima, título pequeno em maiúsculas. */
+/** Bloco da folha de contratação: faixa com borda em cima, título pequeno em maiúsculas. */
 function Bloco({ titulo, children, className = '' }: { titulo?: string; children: ReactNode; className?: string }) {
   return (
     <div className={`border-t border-slate-200 px-4 py-4 first:border-t-0 sm:px-5 ${className}`}>
@@ -63,6 +87,12 @@ function Bloco({ titulo, children, className = '' }: { titulo?: string; children
     </div>
   );
 }
+
+const ESCOLHAS: Array<{ tipo: TipoSolicitacao; titulo: string; texto: string; Icone: typeof UserPlus }> = [
+  { tipo: 'contratacao', titulo: 'Contratação', texto: 'Pedir uma pessoa nova para a equipe.', Icone: UserPlus },
+  { tipo: 'promocao', titulo: 'Promoção', texto: 'Mudar o cargo ou o salário de um colaborador.', Icone: TrendingUp },
+  { tipo: 'desligamento', titulo: 'Desligamento', texto: 'Desligar um colaborador e seguir o check list.', Icone: UserMinus },
+];
 
 interface Props {
   leitor: Leitor;
@@ -82,45 +112,68 @@ interface Props {
 }
 
 /**
- * A Solicitação de Contratação no mesmo desenho do documento em HTML que a
- * RENEA já usava (SGR-FRH-21-373-01-000-000-0008), com a logo no topo.
- * Em branco: quem pede só preenche e salva; o sistema gera o link. Salvo, os
- * dados ficam travados e passam por 3 assinaturas, nesta ordem: 1º gerente,
- * 2º gerente e RH. Quem não é da vez vê tudo, mas o botão fica bloqueado.
- * O servidor e o banco conferem tudo de novo.
+ * As 3 solicitações de RH, cada uma no desenho do seu modelo de papel:
+ * contratação (SGR-FRH-21-373-01-000-000-0008), promoção ("Solicitação de
+ * cargo e salário", …0011) e desligamento ("Check list de desligamento",
+ * …0027). Em branco: primeiro escolhe o tipo, depois só preenche e salva; o
+ * sistema gera o link. Salvo, os dados ficam travados e passam por 3
+ * assinaturas, nesta ordem: 1ª RH, 2ª gerente (Bruno), 3ª gerente (Marcelo).
+ * O quadro de assinar fica logo abaixo das assinaturas. O servidor e o banco
+ * conferem tudo de novo.
  */
 export function FolhaContratacao({ leitor, titulares, token, baixarAoAbrir = false, onCopiarLink, pedido, onVoltar, onCriado, onAtualizado }: Props) {
   const novo = !pedido;
+  const [tipoNovo, setTipoNovo] = useState<TipoSolicitacao | null>(null);
+  const tipo: TipoSolicitacao | null = pedido ? tipoDoPedido(pedido.form) as TipoSolicitacao : tipoNovo;
   const [form, setForm] = useState<FormularioContratacao>(() => pedido?.form ?? {
     data: hojeLocal(), candidato: '', cpf: '', inicio: '', prioridade: '', motivo: '', motivoOutro: '', tipo: '', posicao: '', quantidade: '1',
     salario: '', requisitante: leitor.nome, area: '', itens: [], obs: '', aprovados: '', comentarios: '',
   });
   const [erros, setErros] = useState<Record<string, string>>({});
-  const [painel, setPainel] = useState<'' | 'assinar' | 'recusar'>('');
+  const [recusando, setRecusando] = useState(false);
   const [errosNoEnvio, setErrosNoEnvio] = useState(false);
   const [motivoRecusa, setMotivoRecusa] = useState('');
+  const [comentario, setComentario] = useState('');
   const [ocupado, setOcupado] = useState(false);
   const [falha, setFalha] = useState('');
+  const [assinaturaSalva, setAssinaturaSalva] = useState(leitor.assinaturaSalva ?? null);
   const chave = useRef(novaChave());
   const folhaRef = useRef<HTMLElement>(null);
+  const quadroRef = useRef<HTMLElement>(null);
 
   const assinaturas = pedido?.signatures ?? [];
   const pendente = (pedido ? etapaPendente(pedido) : null) as Etapa | null;
   const minhaVez = Boolean(pedido && podeDecidir(pedido, assinaturas, leitor));
   const totalAssinado = assinaturas.filter(item => (ETAPAS as string[]).includes(item.stage)).length;
   const concluido = pedido?.status === 'concluido';
-  const tituloDoArquivo = pedido ? `${pedido.request_number} - Solicitação de Contratação assinada` : '';
+  const documento = DOCUMENTOS[tipo ?? 'contratacao'];
+  const resumo = pedido ? resumoDoPedido(pedido.form) : null;
+  const tituloDoArquivo = pedido ? `${pedido.request_number} - ${documento.titulo}${concluido ? ' assinada' : ''}` : '';
+  // Comentário que cada pessoa deixou ao assinar (ex.: a avaliação do RH).
+  const comentariosAoAssinar = (pedido?.history ?? []).filter(evento => evento.action.startsWith('assinou_') && evento.details?.reason);
+  const avaliacaoDoRh = comentariosAoAssinar.find(evento => evento.action === 'assinou_rh')?.details.reason;
 
   useEffect(() => {
     if (baixarAoAbrir && concluido) imprimir(tituloDoArquivo);
   }, [baixarAoAbrir, concluido, tituloDoArquivo]);
   const totalErros = useMemo(() => Object.keys(erros).length, [erros]);
 
+  const escolherTipo = (escolhido: TipoSolicitacao) => {
+    setTipoNovo(escolhido);
+    setForm(atual => ({ ...atual, solicitacao: escolhido }));
+    setErros({});
+    setErrosNoEnvio(false);
+  };
+
   const mudar = <K extends keyof FormularioContratacao>(campo: K, valor: FormularioContratacao[K]) => {
     // Folha assinada fica travada: nada muda, nem na tela.
     if (!novo) return;
     setForm(atual => ({ ...atual, [campo]: valor }));
     setErros(atual => { const { [campo]: _sai, ...resto } = atual; return resto; });
+  };
+  const alternarNaLista = (campo: keyof FormularioContratacao, item: string) => {
+    const atual = (form[campo] as string[] | undefined) ?? [];
+    mudar(campo, (atual.includes(item) ? atual.filter(valor => valor !== item) : [...atual, item]) as never);
   };
   const alternarItem = (item: string) => {
     const marcado = form.itens.includes(item);
@@ -156,7 +209,7 @@ export function FolhaContratacao({ leitor, titulares, token, baixarAoAbrir = fal
     const teclar = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
         event.preventDefault();
-        if (!ocupado) void salvar();
+        if (!ocupado && tipo) void salvar();
       } else if (event.key === 'Escape' && !event.defaultPrevented && !document.querySelector('[role="dialog"], [role="alertdialog"]')) {
         onVoltar?.();
       }
@@ -170,8 +223,7 @@ export function FolhaContratacao({ leitor, titulares, token, baixarAoAbrir = fal
     setOcupado(true);
     setFalha('');
     try {
-      await decidirContratacao(pedido, 'aprovar', assinatura, undefined, token);
-      setPainel('');
+      await decidirContratacao(pedido, 'aprovar', assinatura, comentario.trim() || undefined, token);
       onAtualizado?.();
     } catch (erro) {
       setFalha(erro instanceof Error ? erro.message : 'Não foi possível concluir.');
@@ -186,12 +238,22 @@ export function FolhaContratacao({ leitor, titulares, token, baixarAoAbrir = fal
     setFalha('');
     try {
       await decidirContratacao(pedido, 'recusar', undefined, motivoRecusa, token);
-      setPainel('');
+      setRecusando(false);
       onAtualizado?.();
     } catch (erro) {
       setFalha(erro instanceof Error ? erro.message : 'Não foi possível concluir.');
     } finally {
       setOcupado(false);
+    }
+  };
+
+  const apagarSalva = async () => {
+    setFalha('');
+    try {
+      await apagarAssinaturaSalva();
+      setAssinaturaSalva(null);
+    } catch (erro) {
+      setFalha(erro instanceof Error ? erro.message : 'Não foi possível apagar.');
     }
   };
 
@@ -204,74 +266,178 @@ export function FolhaContratacao({ leitor, titulares, token, baixarAoAbrir = fal
   const rotulo = 'text-xs font-semibold text-[#5b6870]';
   const opcao = 'flex min-h-9 items-center gap-2.5 text-base text-slate-900 sm:text-[15px]';
   const marca = `size-[18px] shrink-0 accent-[#176b4d] ${FOCO}`;
+  const corpo = { form, novo, mudar: (campoMudado: keyof FormularioContratacao, valor: string) => mudar(campoMudado, valor as never), alternar: alternarNaLista, erroDe, mensagem };
 
-  const caixa = (etapa: Etapa, indice: number) => {
+  /** O desenho (ou o nome) de cada assinatura, igual nos 3 documentos. */
+  const imagemDaAssinatura = (etapa: Etapa, alturaImagem = 'h-20') => {
     const assinatura: AssinaturaContratacao | undefined = assinaturas.find(item => item.stage === etapa);
     const daVez = !assinatura && pendente === etapa;
     return (
-      <div key={etapa} className={`flex min-w-0 flex-col gap-2.5 rounded-2xl border bg-white p-3.5 break-inside-avoid ${daVez ? 'border-amber-300' : 'border-slate-200'}`} data-testid={`assinatura-${etapa}`}>
-        <div className="flex items-start justify-between gap-2">
-          <h4 className="text-xs font-semibold uppercase text-slate-900">{indice + 1}. {nomeDaEtapa(etapa, titulares)}</h4>
-          <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${assinatura ? 'bg-emerald-50 text-emerald-800' : daVez ? 'bg-amber-50 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
-            {assinatura ? 'Assinado' : daVez ? 'Na vez' : 'Pendente'}
-          </span>
-        </div>
-        <div className="grid h-24 place-items-center overflow-hidden rounded-lg border border-dashed border-slate-400 bg-white">
-          {assinatura?.image_data
-            ? <img src={assinatura.image_data} alt={`Assinatura de ${assinatura.signer_name}`} className="max-h-full max-w-full" />
-            : assinatura
-              ? <span className="truncate px-2 font-serif text-2xl italic text-slate-900">{assinatura.signer_name}</span>
-              : <span className="px-2 text-center text-xs text-[#5b6870]">{daVez ? 'Aguardando esta assinatura' : 'Aguardando a etapa anterior'}</span>}
-        </div>
-        {assinatura && (
-          <dl className="space-y-0.5 text-xs text-[#5b6870]">
-            <dd className="text-sm font-semibold text-slate-900 [overflow-wrap:anywhere]">{assinatura.signer_name}</dd>
-            <dd>{assinatura.signer_cargo || CARGO_DA_ETAPA[etapa]} · {dataHoraBr(assinatura.signed_at, true)}</dd>
-            {assinatura.hash_validacao && <dd className="font-mono [overflow-wrap:anywhere]" >Hash de autenticidade: {assinatura.hash_validacao}</dd>}
-          </dl>
-        )}
+      <div className={`grid ${alturaImagem} place-items-center overflow-hidden`} data-testid={`assinatura-${etapa}`}>
+        {assinatura?.image_data
+          ? <img src={assinatura.image_data} alt={`Assinatura de ${assinatura.signer_name}`} className="max-h-full max-w-full" />
+          : assinatura
+            ? <span className="truncate px-2 font-serif text-2xl italic text-slate-900">{assinatura.signer_name}</span>
+            : <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${daVez ? 'bg-amber-50 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>{daVez ? 'É a vez desta assinatura' : 'Aguardando a etapa anterior'}</span>}
       </div>
     );
   };
+  /** Quem assinou, cargo, data e hora exatas e o hash de autenticidade. */
+  const detalhesDaAssinatura = (etapa: Etapa) => {
+    const assinatura = assinaturas.find(item => item.stage === etapa);
+    if (!assinatura) return null;
+    return (
+      <dl className="space-y-0.5 text-center text-xs text-[#5b6870]">
+        <dd className="text-sm font-semibold text-slate-900 [overflow-wrap:anywhere]">{assinatura.signer_name}</dd>
+        <dd>{assinatura.signer_cargo || CARGO_DA_ETAPA[etapa]} · {dataHoraBr(assinatura.signed_at, true)}</dd>
+        {assinatura.hash_validacao && <dd className="font-mono text-xs [overflow-wrap:anywhere]">Hash: {assinatura.hash_validacao}</dd>}
+      </dl>
+    );
+  };
+  const ordem = (etapa: Etapa) => `${ETAPAS.indexOf(etapa) + 1}ª assinatura · ${nomeDaEtapa(etapa, titulares)}`;
 
-  // Barra de assinatura: na vez, o botão; fora da vez, o mesmo botão
-  // bloqueado e quem falta. O servidor recusa de novo se alguém forçar.
-  const barraDeAssinatura = pedido && pendente && painel === '' && (
-    <div className="ct-sem-papel flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 print:hidden" data-testid="barra-assinatura">
-      {minhaVez ? (
-        <>
-          <button type="button" onClick={() => { setFalha(''); setPainel('assinar'); }} className={BOTAO_PRIMARIO} data-testid="assinar-etapa">
-            <PenLine className="size-4" aria-hidden="true" /> Assinar e Aprovar
-          </button>
-          <button type="button" onClick={() => { setFalha(''); setPainel('recusar'); }} className="min-h-11 px-1 text-sm font-semibold text-rose-700 underline underline-offset-4">Recusar</button>
-          <span className="text-sm text-[#5b6870]">É a sua vez: {ETAPAS.indexOf(pendente) + 1}ª assinatura.</span>
-        </>
-      ) : (
-        <>
-          <button type="button" disabled className={BOTAO_PRIMARIO} aria-describedby="ct-aguardando" data-testid="assinar-bloqueado">
-            <Lock className="size-4" aria-hidden="true" /> Assinar e Aprovar
-          </button>
-          <p id="ct-aguardando" role="status" className="text-sm font-semibold text-amber-800">
-            Aguardando assinatura prioritária de: {nomeDaEtapa(pendente, titulares)}
-          </p>
-        </>
-      )}
+  // Contratação: 3 cartões lado a lado, como já era.
+  const assinaturasContratacao = (
+    <div className="grid gap-3.5 sm:grid-cols-3">
+      {(ETAPAS as Etapa[]).map(etapa => (
+        <div key={etapa} className={`break-inside-avoid rounded-2xl border bg-white p-3.5 ${pendente === etapa ? 'border-amber-300' : 'border-slate-200'}`}>
+          <h4 className="mb-2 text-xs font-semibold uppercase text-slate-900">{ordem(etapa)}</h4>
+          <div className="rounded-lg border border-dashed border-slate-400 p-1">{imagemDaAssinatura(etapa)}</div>
+          <div className="mt-2">{detalhesDaAssinatura(etapa)}</div>
+        </div>
+      ))}
     </div>
   );
+
+  // Promoção: "APROVAÇÕES" com linhas de assinatura, como na planilha.
+  const linhaDeAssinatura = (etapa: Etapa, cargo: string) => (
+    <div className="break-inside-avoid">
+      {imagemDaAssinatura(etapa)}
+      <div className="mt-1 border-t border-[#26302b] pt-1 text-center text-sm uppercase text-slate-900">{cargo}</div>
+      <p className="text-center text-xs text-[#5b6870]">{ordem(etapa)}</p>
+      <div className="mt-1">{detalhesDaAssinatura(etapa)}</div>
+    </div>
+  );
+  const assinaturasPromocao = (
+    <div className="break-inside-avoid px-4 pb-2 pt-4 sm:px-6">
+      <h3 className="mb-3 text-center text-sm font-bold uppercase text-slate-900">Aprovações</h3>
+      <div className="grid gap-6 sm:grid-cols-2 sm:gap-x-12">
+        {linhaDeAssinatura('gerente_1', 'Gerente da área')}
+        {linhaDeAssinatura('rh', 'Recursos Humanos')}
+        <div className="sm:col-span-2 sm:mx-auto sm:w-1/2">{linhaDeAssinatura('gerente_2', 'Gerente')}</div>
+      </div>
+      <p className="mt-3 text-right text-xs text-[#5b6870]">F.122/03</p>
+    </div>
+  );
+
+  // Desligamento: a tabela do fim do check list.
+  const caixaDaTabela = (etapa: Etapa, titulo: string, extra = '') => (
+    <div className={`break-inside-avoid border border-[#26302b] ${extra}`}>
+      <h4 className="border-b border-[#26302b] px-2 py-0.5 text-center text-sm font-bold uppercase text-slate-900">{titulo}</h4>
+      <div className="p-2">{imagemDaAssinatura(etapa)}{detalhesDaAssinatura(etapa)}</div>
+      <p className="pb-1 text-center text-xs text-[#5b6870]">{ordem(etapa)}</p>
+    </div>
+  );
+  const assinaturasDesligamento = (
+    <div className="px-4 pt-4 sm:px-6">
+      <div className="grid sm:grid-cols-2 [&>*]:-mt-px sm:[&>*+*]:-ml-px">
+        {caixaDaTabela('gerente_1', 'Assinatura do gestor')}
+        {caixaDaTabela('gerente_2', 'Gerente de contrato')}
+        {caixaDaTabela('rh', 'Assinatura Recursos Humanos', 'sm:col-span-2 sm:ml-0!')}
+      </div>
+    </div>
+  );
+
+  const listaDeComentarios = comentariosAoAssinar.length > 0 && (
+    <ul className="space-y-1 text-sm text-slate-900">
+      {comentariosAoAssinar.map((evento, indice) => <li key={indice}><strong>{evento.actor_name}:</strong> {evento.details.reason}</li>)}
+    </ul>
+  );
+
+  // Quadro de assinar: logo ABAIXO das assinaturas (17/11/2026). Na vez, já
+  // aberto; fora da vez, o aviso de quem falta. Nunca vai para o papel.
+  const quadroDeAssinar = pedido && pendente && (
+    <section ref={quadroRef} id="ct-quadro-assinar" className="ct-sem-papel mx-4 my-4 space-y-3 rounded-2xl border-2 border-[#176b4d]/40 bg-emerald-50/40 p-4 sm:mx-6 print:hidden" aria-labelledby="ct-quadro-titulo" data-testid="barra-assinatura">
+      {minhaVez ? (
+        recusando ? (
+          <>
+            <h3 id="ct-quadro-titulo" className="text-base font-black text-slate-900">Recusar esta solicitação</h3>
+            {falha && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{falha}</p>}
+            <label htmlFor="ct-motivo-recusa" className="text-sm font-bold text-slate-900">Por que está recusando?</label>
+            <textarea id="ct-motivo-recusa" rows={3} value={motivoRecusa} onChange={e => setMotivoRecusa(e.target.value)} className={`${CAMPO} py-2`} />
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={ocupado || motivoRecusa.trim().length < 3} onClick={() => void recusar()} className={BOTAO_PERIGO_LEVE}>{ocupado ? 'Enviando…' : 'Confirmar recusa'}</button>
+              <button type="button" disabled={ocupado} onClick={() => setRecusando(false)} className={BOTAO_SECUNDARIO}>Voltar para assinar</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 id="ct-quadro-titulo" className="text-base font-black text-slate-900">Sua assinatura · {ordem(pendente)}</h3>
+              <button type="button" onClick={() => { setFalha(''); setRecusando(true); }} className="min-h-11 px-1 text-sm font-semibold text-rose-700 underline underline-offset-4">Recusar</button>
+            </div>
+            {falha && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{falha}</p>}
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-semibold text-slate-800">
+                {tipo === 'promocao' && pendente === 'rh' ? 'Avaliação e comentários de Recursos Humanos (opcional)' : 'Comentário (opcional)'}
+              </span>
+              <textarea rows={2} value={comentario} onChange={e => setComentario(e.target.value)} maxLength={1000} className={`${CAMPO} py-2`} />
+            </label>
+            <QuadroAssinatura
+              nome={leitor.nome}
+              assinaturaSalva={assinaturaSalva}
+              onApagarSalva={() => void apagarSalva()}
+              rotuloConfirmar={ETAPAS.indexOf(pendente) === ETAPAS.length - 1 ? 'Assinar e concluir' : 'Assinar e enviar para a próxima'}
+              ocupado={ocupado}
+              onConfirmar={assinatura => void assinar(assinatura)}
+            />
+          </>
+        )
+      ) : (
+        <div className="flex flex-wrap items-center gap-3">
+          <Lock className="size-5 shrink-0 text-amber-700" aria-hidden="true" />
+          <p id="ct-quadro-titulo" role="status" className="text-sm font-semibold text-amber-900" data-testid="assinar-bloqueado">
+            Aguardando a {ordem(pendente)}. Quando for a sua vez, o quadro para assinar aparece aqui.
+          </p>
+        </div>
+      )}
+    </section>
+  );
+
+  // Folha nova: primeiro escolhe o tipo, com 3 botões grandes.
+  if (novo && !tipo) {
+    return (
+      <div className="mx-auto w-full max-w-[860px] space-y-4" data-testid="folha-contratacao" data-lancamento="">
+        {onVoltar && <button type="button" onClick={onVoltar} className={BOTAO_SECUNDARIO}><ArrowLeft className="size-4" aria-hidden="true" /> Fechar</button>}
+        <section className={`${CARTAO} p-5 sm:p-6`} aria-labelledby="ct-escolha">
+          <h2 id="ct-escolha" className="text-xl font-black text-slate-900">O que você quer pedir?</h2>
+          <p className="mt-1 text-sm text-[#5b6870]">Escolha uma opção. Depois é só preencher a folha e salvar.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {ESCOLHAS.map(({ tipo: escolha, titulo, texto, Icone }) => (
+              <button key={escolha} type="button" onClick={() => escolherTipo(escolha)} className={`${FOCO} flex min-h-28 flex-col items-start gap-2 rounded-2xl border-2 border-slate-200 bg-white p-4 text-left transition hover:border-[#176b4d] hover:bg-emerald-50/40`} data-testid={`escolher-${escolha}`}>
+                <Icone className="size-6 text-[#176b4d]" aria-hidden="true" />
+                <span className="text-base font-black text-slate-900">{titulo}</span>
+                <span className="text-sm text-[#5b6870]">{texto}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-[860px] space-y-4" data-testid="folha-contratacao" data-lancamento={novo ? '' : undefined}>
       <div className="ct-sem-papel flex flex-wrap items-center gap-2.5 print:hidden">
         {onVoltar && <button type="button" onClick={onVoltar} className={BOTAO_SECUNDARIO}><ArrowLeft className="size-4" aria-hidden="true" /> {novo ? 'Fechar' : 'Voltar'}</button>}
-        {!novo && <span className={`inline-flex min-h-11 items-center gap-2.5 rounded-xl border px-3 text-sm font-semibold ${totalAssinado === 3 ? 'border-[#176b4d] text-[#176b4d]' : 'border-slate-200 bg-white text-slate-700'}`}>
-          <span className="inline-flex gap-1" aria-hidden="true">
-            {[0, 1, 2].map(indice => <i key={indice} className={`h-1.5 w-5 rounded-sm ${indice < totalAssinado ? 'bg-[#176b4d]' : 'bg-slate-200'}`} />)}
-          </span>
-          {totalAssinado} de 3 assinaturas
-        </span>}
-        {concluido && (
+        {novo && (
+          <button type="button" onClick={() => setTipoNovo(null)} className={BOTAO_SECUNDARIO}>
+            <BriefcaseBusiness className="size-4" aria-hidden="true" /> Trocar o tipo ({SOLICITACOES[tipo ?? 'contratacao']})
+          </button>
+        )}
+        {!novo && (
           <button type="button" onClick={() => imprimir(tituloDoArquivo)} className={BOTAO_SECUNDARIO} data-testid="baixar-contratacao">
-            <Download className="size-4" aria-hidden="true" /> Baixar documento assinado
+            <Printer className="size-4" aria-hidden="true" /> {concluido ? 'Baixar documento assinado (PDF)' : 'Imprimir ou salvar PDF'}
           </button>
         )}
         {onCopiarLink && pedido?.link_token && (
@@ -281,7 +447,26 @@ export function FolhaContratacao({ leitor, titulares, token, baixarAoAbrir = fal
         )}
       </div>
 
-      {barraDeAssinatura}
+      {/* Resumo no jeito do link de presença: que pedido é, de quem, e o que falta. */}
+      {pedido && resumo && (
+        <section className={`ct-sem-papel ${CARTAO} space-y-3 p-4 sm:p-5 print:hidden`} aria-labelledby="ct-resumo" data-testid="resumo-solicitacao">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase text-[#5b6870]">Solicitação nº <span className="tabular-nums">{pedido.request_number}</span></p>
+              <h1 id="ct-resumo" className="text-xl font-black text-slate-950 sm:text-2xl">{resumo.nomeDoTipo} · {resumo.pessoa}</h1>
+              <p className="text-sm text-[#5b6870]">{resumo.cargo}{resumo.area ? ` · ${resumo.area}` : ''} · pedido por {pedido.requester_name} em {dataBr(pedido.form.data)}</p>
+            </div>
+            <SeloSituacaoContratacao situacao={pedido.status} />
+          </div>
+          <LinhaDeEtapas pedido={pedido} titulares={titulares} />
+          {minhaVez && (
+            <a href="#ct-quadro-assinar" onClick={evento => { evento.preventDefault(); quadroRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} className={`${BOTAO_PRIMARIO} w-full sm:w-auto`}>
+              É a sua vez: ir para a assinatura ↓
+            </a>
+          )}
+          <p className="text-xs text-[#5b6870]">{totalAssinado} de 3 assinaturas. Os dados estão travados: as assinaturas valem para eles. Para mudar algo, recuse e abra um pedido novo.</p>
+        </section>
+      )}
 
       {!novo && pedido.status === 'recusada' && (
         <p role="status" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
@@ -294,22 +479,26 @@ export function FolhaContratacao({ leitor, titulares, token, baixarAoAbrir = fal
           Falta preencher {totalErros === 1 ? '1 campo' : `${totalErros} campos`}. Eles estão marcados em vermelho.
         </p>
       )}
-      {!novo && !concluido && (
-        <p className="ct-sem-papel rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 print:hidden">
-          Os dados estão travados: as assinaturas valem para eles. Para mudar algo, recuse e abra um pedido novo.
-        </p>
-      )}
 
-      <article ref={folhaRef} className="ct-imprimir overflow-hidden rounded-2xl border border-slate-200 bg-white" data-testid="documento-contratacao">
-        <header className="flex flex-wrap items-center justify-between gap-4 px-4 pb-3 pt-4 sm:px-5">
-          <div className="min-w-0">
-            <p className="text-xs uppercase text-[#5b6870]">{CODIGO_DOCUMENTO}</p>
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900">Solicitação de Contratação</h2>
-          </div>
-          <img src={logoCliente} alt={CLIENTE.nome} className="h-9 w-auto" />
-        </header>
+      <article ref={folhaRef} className="ct-imprimir overflow-hidden rounded-2xl border border-slate-200 bg-white" data-testid="documento-contratacao" data-tipo={tipo}>
+        {tipo === 'contratacao' ? (
+          <header className="flex flex-wrap items-center justify-between gap-4 px-4 pb-3 pt-4 sm:px-5">
+            <div className="min-w-0">
+              <p className="text-xs uppercase text-[#5b6870]">{documento.codigo}</p>
+              <h2 className="text-2xl font-bold tracking-tight text-slate-900">{documento.titulo}</h2>
+            </div>
+            <img src={logoCliente} alt={CLIENTE.nome} className="h-9 w-auto" />
+          </header>
+        ) : <CabecalhoPapel codigo={documento.codigo} titulo={documento.titulo} />}
+        {pedido && tipo !== 'contratacao' && (
+          <p className="px-4 pt-2 text-right text-xs font-semibold text-slate-700 sm:px-6">Nº <span className="tabular-nums">{pedido.request_number}</span></p>
+        )}
 
         <fieldset disabled={novo && ocupado} className="contents">
+          {tipo === 'promocao' && <CorpoPromocao {...corpo} avaliacaoRh={avaliacaoDoRh ? <p className="whitespace-pre-line text-sm text-slate-900">{avaliacaoDoRh}</p> : <p className="text-sm text-[#5b6870]">{novo ? 'O RH escreve aqui quando assinar.' : '—'}</p>} />}
+          {tipo === 'desligamento' && <CorpoDesligamento {...corpo} />}
+          {tipo === 'contratacao' && (
+            <>
           <Bloco titulo="Candidato">
             <div className="grid gap-4 sm:grid-cols-3">
               <label className="flex min-w-0 flex-col gap-1 sm:col-span-3">
@@ -426,44 +615,31 @@ export function FolhaContratacao({ leitor, titulares, token, baixarAoAbrir = fal
               ))}
             </div>
           </Bloco>
+            </>
+          )}
         </fieldset>
 
-        <Bloco titulo="Assinaturas">
-          <div className="grid gap-3.5 sm:grid-cols-3">{(ETAPAS as Etapa[]).map(caixa)}</div>
-          {pendente && painel === '' && falha && <p role="alert" className="ct-sem-papel mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{falha}</p>}
-          {painel !== '' && (
-            <section className="ct-sem-papel mt-4 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4" aria-label={painel === 'assinar' ? 'Assinar' : 'Recusar'}>
-              {falha && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{falha}</p>}
-              {painel === 'assinar' ? (
-                <>
-                  <h3 className="text-sm font-bold text-slate-900">Assinar · {ETAPAS.indexOf(pendente as Etapa) + 1}. {nomeDaEtapa(pendente as Etapa, titulares)}</h3>
-                  <QuadroAssinatura
-                    nome={leitor.nome}
-                    rotuloConfirmar={pendente === 'rh' ? 'Confirmar e concluir' : 'Confirmar e enviar à próxima assinatura'}
-                    ocupado={ocupado}
-                    onConfirmar={assinatura => void assinar(assinatura)}
-                    onCancelar={() => setPainel('')}
-                  />
-                </>
-              ) : (
-                <>
-                  <label htmlFor="ct-motivo-recusa" className="text-sm font-bold text-slate-900">Por que está recusando?</label>
-                  <textarea id="ct-motivo-recusa" rows={3} value={motivoRecusa} onChange={e => setMotivoRecusa(e.target.value)} className={`${CAMPO} py-2`} />
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" disabled={ocupado || motivoRecusa.trim().length < 3} onClick={() => void recusar()} className={BOTAO_PERIGO_LEVE}>{ocupado ? 'Enviando…' : 'Confirmar recusa'}</button>
-                    <button type="button" disabled={ocupado} onClick={() => setPainel('')} className={BOTAO_SECUNDARIO}>Voltar</button>
-                  </div>
-                </>
-              )}
-            </section>
-          )}
-        </Bloco>
+        {tipo === 'contratacao' && <Bloco titulo="Assinaturas">{assinaturasContratacao}</Bloco>}
+        {tipo === 'promocao' && assinaturasPromocao}
+        {tipo === 'desligamento' && assinaturasDesligamento}
 
-        <Bloco titulo="Comentários">
-          {novo
-            ? <textarea name="comentarios" aria-label="Comentários" rows={3} value={form.comentarios} disabled={ocupado} onChange={e => mudar('comentarios', e.target.value)} className={`${campo('comentarios')} py-2`} />
-            : <p className="min-h-11 whitespace-pre-line text-sm text-slate-900">{form.comentarios || '—'}</p>}
-        </Bloco>
+        {quadroDeAssinar}
+
+        {tipo === 'desligamento' && (
+          <div className="px-4 pb-4 sm:px-6">
+            <section className="break-inside-avoid border border-[#26302b]" aria-labelledby="ct-comentarios-deslig">
+              <h4 id="ct-comentarios-deslig" className="border-b border-[#26302b] text-center text-sm font-bold uppercase text-slate-900">Comentários</h4>
+              <div className="min-h-24 p-2">{listaDeComentarios || <p className="text-sm text-[#5b6870]">{novo ? 'Quem assinar pode deixar um comentário aqui.' : '—'}</p>}</div>
+            </section>
+          </div>
+        )}
+        {tipo === 'contratacao' && (
+          <Bloco titulo="Comentários">
+            {novo
+              ? <textarea name="comentarios" aria-label="Comentários" rows={3} value={form.comentarios} disabled={ocupado} onChange={e => mudar('comentarios', e.target.value)} className={`${campo('comentarios')} py-2`} />
+              : <div className="space-y-2"><p className="whitespace-pre-line text-sm text-slate-900">{form.comentarios || '—'}</p>{listaDeComentarios}</div>}
+          </Bloco>
+        )}
 
         {!novo && (
           <Bloco titulo="Histórico">

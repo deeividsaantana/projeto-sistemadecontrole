@@ -2,8 +2,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import {
+  SOLICITACOES,
   cpfValido,
   etapaPendente,
+  reajuste,
+  tipoDoPedido,
   nomeDaEtapa,
   pedidoVisivel,
   podeDecidir,
@@ -45,17 +48,43 @@ test('formulário: candidato, CPF e início obrigatórios; "nenhum item" exclusi
 const pedido = (status: string, etapa: number | null, extra = {}) => ({ id: 'p1', requester_user_id: SOL, status, etapa_atual: etapa, rejected_stage: null, ...extra });
 const deBruno = { stage: 'gerente_1', signer_user_id: BRUNO };
 
-test('ordem rígida: 1º gerente, 2º gerente, RH; ninguém pula etapa', () => {
-  assert.equal(etapaPendente(pedido('etapa_1', 1)), 'gerente_1');
-  assert.equal(etapaPendente(pedido('etapa_3', 3)), 'rh');
+const doRh = { stage: 'rh', signer_user_id: RH };
+
+test('ordem rígida (17/11/2026): 1º RH, 2º Bruno, 3º Marcelo; ninguém pula etapa', () => {
+  assert.equal(etapaPendente(pedido('etapa_1', 1)), 'rh');
+  assert.equal(etapaPendente(pedido('etapa_2', 2)), 'gerente_1');
+  assert.equal(etapaPendente(pedido('etapa_3', 3)), 'gerente_2');
   assert.equal(etapaPendente(pedido('concluido', null)), null);
-  assert.equal(podeDecidir(pedido('etapa_1', 1), [], leitor(BRUNO, ['gerente_1'])), true);
+  assert.equal(podeDecidir(pedido('etapa_1', 1), [], leitor(RH, ['rh'])), true);
+  assert.equal(podeDecidir(pedido('etapa_1', 1), [], leitor(BRUNO, ['gerente_1'])), false);
   assert.equal(podeDecidir(pedido('etapa_1', 1), [], leitor(MARCELO, ['gerente_2'])), false);
-  assert.equal(podeDecidir(pedido('etapa_1', 1), [], leitor(RH, ['rh'])), false);
-  assert.equal(podeDecidir(pedido('etapa_2', 2), [deBruno], leitor(MARCELO, ['gerente_2'])), true);
-  assert.equal(podeDecidir(pedido('etapa_2', 2), [deBruno], leitor(BRUNO, ['gerente_1', 'gerente_2'])), false, 'quem já assinou não assina outra etapa');
+  assert.equal(podeDecidir(pedido('etapa_2', 2), [doRh], leitor(BRUNO, ['gerente_1'])), true);
+  assert.equal(podeDecidir(pedido('etapa_3', 3), [doRh, deBruno], leitor(MARCELO, ['gerente_2'])), true);
+  assert.equal(podeDecidir(pedido('etapa_3', 3), [doRh, deBruno], leitor(BRUNO, ['gerente_1', 'gerente_2'])), false, 'quem já assinou não assina outra etapa');
   assert.equal(podeDecidir(pedido('concluido', null), [], leitor(RH, ['rh'])), false);
   assert.equal(podeDecidir(pedido('etapa_1', 1), [], leitor(AUX, ['auxiliar'])), false);
+});
+
+test('3 tipos: contratação, promoção e desligamento, cada um com os seus campos', () => {
+  assert.deepEqual(Object.keys(SOLICITACOES), ['contratacao', 'promocao', 'desligamento']);
+  assert.equal(tipoDoPedido({}), 'contratacao', 'pedido antigo sem tipo é contratação');
+  assert.equal(validarFormulario(formOk).formulario.solicitacao, 'contratacao');
+
+  const promoVazia = validarFormulario({ solicitacao: 'promocao' });
+  for (const campo of ['alteracao', 'data', 'candidato', 'area', 'cargoProposto', 'justificativa']) assert.ok(promoVazia.erros[campo], `promoção: falta o erro de ${campo}`);
+  assert.equal(promoVazia.erros.cpf, undefined, 'promoção não pede CPF');
+  const promo = validarFormulario({ solicitacao: 'promocao', alteracao: 'promocao', data: '2026-11-17', candidato: 'Carlos Souza', area: 'Obra 3', salarioAtual: 'R$ 2.000,00', salarioProposto: 'R$ 2.500,00', justificativa: 'Assumiu a frente.', itens: ['celular'] });
+  assert.deepEqual(promo.erros, {});
+  assert.equal('itens' in promo.formulario, false, 'campo de outro tipo não entra');
+  assert.equal(reajuste('R$ 2.000,00', 'R$ 2.500,00'), '25%');
+  assert.equal(reajuste('', 'R$ 2.500,00'), '—');
+
+  const deslVazio = validarFormulario({ solicitacao: 'desligamento' });
+  for (const campo of ['data', 'candidato', 'posicao', 'desligamento', 'motivoDeslig']) assert.ok(deslVazio.erros[campo], `desligamento: falta o erro de ${campo}`);
+  const desl = validarFormulario({ solicitacao: 'desligamento', data: '2026-11-17', candidato: 'Marcos Rocha', posicao: 'Motorista / Obra 3', desligamento: '2026-11-28', motivoDeslig: 'termino', convenios: ['medico', 'inventado'], devolucao: ['cracha'], devolucaoOutros: 'bota' });
+  assert.deepEqual(desl.erros, {});
+  assert.deepEqual(desl.formulario.convenios, ['medico']);
+  assert.equal(desl.formulario.devolucaoOutros, '', '"outros" só vale com Uniforme / outros marcado');
 });
 
 test('selos mostram quem assina: "Bruno Luscher (Gerente)" e "RH"', () => {
@@ -87,7 +116,8 @@ const clienteFalso = (tabelas: Record<string, unknown[]>, usuario = { id: SOL, e
   const consulta = (linhas: unknown[]) => {
     const resultado = { data: linhas, error: null };
     const builder: Record<string, unknown> = {};
-    for (const metodo of ['select', 'eq', 'order', 'limit', 'in']) builder[metodo] = () => builder;
+    for (const metodo of ['select', 'eq', 'order', 'limit', 'in', 'delete']) builder[metodo] = () => builder;
+    builder.upsert = (linha: unknown) => { chamadas.push({ nome: 'upsert', args: linha as Record<string, unknown> }); return Promise.resolve({ error: null }); };
     builder.eq = (coluna: string, valor: unknown) => (coluna === 'link_token' ? consulta(linhas.filter(linha => (linha as Record<string, unknown>).link_token === valor)) : builder);
     builder.maybeSingle = () => Promise.resolve({ data: linhas[0] ?? null, error: null });
     builder.then = (ok: (valor: unknown) => unknown) => Promise.resolve(resultado).then(ok);
@@ -187,11 +217,9 @@ test('API: a lista não entrega o link de pedido encerrado', async () => {
 
 test('banco: ordem das 3 assinaturas, hash por assinatura, link e travas de acesso', () => {
   const sql = fs.readFileSync('supabase/migrations/202611160001_contratacao_link_tres_assinaturas.sql', 'utf8');
-  assert.match(sql, /case v_request\.etapa_atual when 1 then 'gerente_1' when 2 then 'gerente_2' when 3 then 'rh' end/);
   assert.match(sql, /Aguardando assinatura prioritária de: %/);
   assert.match(sql, /Quem já assinou uma etapa deste pedido não assina outra/);
   assert.match(sql, /v_request\.version <> p_expected_version/);
-  assert.match(sql, /status = 'concluido', etapa_atual = null, concluded_at = v_now/);
   assert.match(sql, /hash_validacao/);
   assert.match(sql, /erp_hiring_requests_link_token_idx/);
   assert.match(sql, /m\.role = 'admin'/);
@@ -201,4 +229,43 @@ test('banco: ordem das 3 assinaturas, hash por assinatura, link e travas de aces
   assert.match(sql, /revoke all on public\.erp_hiring_roles, public\.erp_hiring_requests, public\.erp_hiring_signatures, public\.erp_hiring_audit from public, anon, authenticated/);
   const antigo = fs.readFileSync('supabase/migrations/202611140001_solicitacao_contratacao.sql', 'utf8');
   assert.match(antigo, /before update or delete on public\.erp_hiring_signatures/, 'assinatura continua imutável');
+});
+
+test('banco (17/11/2026): ordem RH -> Bruno -> Marcelo, pula etapa já assinada e assinatura salva trancada', () => {
+  const sql = fs.readFileSync('supabase/migrations/202611170001_solicitacoes_rh_ordem_e_assinatura_salva.sql', 'utf8');
+  assert.match(sql, /case v_request\.etapa_atual when 1 then 'rh' when 2 then 'gerente_1' when 3 then 'gerente_2' end/);
+  assert.match(sql, /not exists \(select 1 from public\.erp_hiring_signatures s where s\.request_id = v_request\.id and s\.stage = e\.st\)/);
+  assert.match(sql, /status = 'concluido', etapa_atual = null, concluded_at = v_now/);
+  assert.match(sql, /Quem já assinou uma etapa deste pedido não assina outra/);
+  assert.match(sql, /alter table public\.erp_hiring_saved_signatures enable row level security/);
+  assert.match(sql, /revoke all on public\.erp_hiring_saved_signatures from public, anon, authenticated/);
+  assert.match(sql, /length\(image_data\) <= 200000/);
+});
+
+test('API: assinatura salva vem do banco (nunca da tela) e "guardar" grava depois de assinar', async () => {
+  const salva = `data:image/png;base64,${'A'.repeat(40)}`;
+  const cliente = clienteFalso({ erp_hiring_saved_signatures: [{ image_data: salva }] });
+  substituirClienteSupabase(cliente);
+  try {
+    const comSalva = await handler(evento('POST', { action: 'decidir', request_id: '11111111-1111-4111-8111-111111111111', version: 1, decision: 'aprovar', signature: { method: 'salva', image_data: 'data:image/png;base64,FALSA' }, reason: 'Ok do RH' }));
+    assert.equal(comSalva.statusCode, 200);
+    const assinatura = cliente.chamadas.find(chamada => chamada.nome === 'sign_erp_hiring_request');
+    assert.deepEqual(assinatura?.args.p_signature, { method: 'desenho', image_data: salva });
+    assert.equal(assinatura?.args.p_reason, 'Ok do RH', 'comentário ao assinar vai para o histórico');
+
+    const desenho = `data:image/png;base64,${'B'.repeat(40)}`;
+    await handler(evento('POST', { action: 'decidir', request_id: '11111111-1111-4111-8111-111111111111', version: 1, decision: 'aprovar', signature: { method: 'desenho', image_data: desenho, guardar: true } }));
+    const guardou = cliente.chamadas.find(chamada => chamada.nome === 'upsert');
+    assert.equal(guardou?.args.image_data, desenho);
+    assert.equal(guardou?.args.user_id, SOL, 'guarda para quem está logado');
+  } finally {
+    substituirClienteSupabase(null);
+  }
+  substituirClienteSupabase(clienteFalso({}));
+  try {
+    const semSalva = await handler(evento('POST', { action: 'decidir', request_id: '11111111-1111-4111-8111-111111111111', version: 1, decision: 'aprovar', signature: { method: 'salva' } }));
+    assert.equal(semSalva.statusCode, 422);
+  } finally {
+    substituirClienteSupabase(null);
+  }
 });
