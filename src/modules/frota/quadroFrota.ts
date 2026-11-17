@@ -287,14 +287,11 @@ export interface FiltrosQuadro {
   frente: string;
   grupo: GrupoStatus | '';
   tipo: string;
-  marca: string;
   operador: '' | 'com' | 'sem';
-  foto: '' | 'com' | 'sem';
-  horimetro: '' | 'com' | 'sem';
   busca: string;
 }
 
-export const FILTROS_VAZIOS: FiltrosQuadro = { canteiro: '', frente: '', grupo: '', tipo: '', marca: '', operador: '', foto: '', horimetro: '', busca: '' };
+export const FILTROS_VAZIOS: FiltrosQuadro = { canteiro: '', frente: '', grupo: '', tipo: '', operador: '', busca: '' };
 
 const ORDEM_GRUPO: Record<GrupoStatus, number> = { manutencao: 0, parado: 1, 'sem-lancamento': 2, operando: 3 };
 
@@ -307,10 +304,7 @@ export const filtrarCartoes = (cartoes: readonly CartaoFrota[], filtros: Filtros
     if (filtros.frente && cartao.frente !== filtros.frente) return false;
     if (filtros.grupo && cartao.grupo !== filtros.grupo) return false;
     if (filtros.tipo && cartao.tipo !== filtros.tipo) return false;
-    if (filtros.marca && cartao.marca !== filtros.marca) return false;
     if (!comOuSem(filtros.operador, Boolean(cartao.operador))) return false;
-    if (!comOuSem(filtros.foto, Boolean(cartao.foto))) return false;
-    if (!comOuSem(filtros.horimetro, Boolean(cartao.horimetro))) return false;
     if (termos.length === 0) return true;
     const texto = semAcento([cartao.prefixo, cartao.modelo, cartao.tipo, cartao.operador, cartao.frente, cartao.canteiro].filter(Boolean).join(' '));
     return termos.every(termo => texto.includes(termo));
@@ -335,10 +329,7 @@ export const etiquetasDosFiltros = (filtros: FiltrosQuadro): Array<{ chave: keyo
   if (filtros.frente) saida.push({ chave: 'frente', texto: `Frente: ${filtros.frente}` });
   if (filtros.grupo) saida.push({ chave: 'grupo', texto: ROTULO_GRUPO[filtros.grupo] });
   if (filtros.tipo) saida.push({ chave: 'tipo', texto: `Tipo: ${filtros.tipo}` });
-  if (filtros.marca) saida.push({ chave: 'marca', texto: `Marca: ${filtros.marca}` });
   if (filtros.operador) saida.push({ chave: 'operador', texto: filtros.operador === 'com' ? 'Com operador' : 'Sem operador' });
-  if (filtros.foto) saida.push({ chave: 'foto', texto: filtros.foto === 'com' ? 'Com foto' : 'Sem foto' });
-  if (filtros.horimetro) saida.push({ chave: 'horimetro', texto: filtros.horimetro === 'com' ? 'Com horímetro' : 'Sem horímetro' });
   return saida;
 };
 

@@ -18,10 +18,12 @@ interface Props {
   onClear: () => void;
   /** Pontos para conferir nos lançamentos do dia (horário fora de ordem, motorista repetido...). */
   avisos?: readonly string[];
+  /** Quantos equipamentos e operadores já foram informados no dia. */
+  resumo?: string;
 }
 
 /**
- * Busca, situação e tipo sempre à vista; empresa e grupo em "Mais filtros".
+ * Só busca e situação à vista; tipo, empresa e grupo ficam no botão "Filtros".
  * O dia fica no topo da tela, junto do botão de lançar. Cada filtro ligado
  * vira uma etiqueta que sai com um toque. Os pontos para conferir moram no
  * fim da mesma linha, num botão âmbar que abre a lista logo abaixo.
@@ -35,8 +37,11 @@ export default function FleetFilterBar({
   onChange,
   onClear,
   avisos = [],
+  resumo,
 }: Props) {
   const [mais, setMais] = useState(false);
+  // Tipo, empresa e grupo ficam guardados no botão Filtros; o número mostra quantos estão ligados.
+  const escondidos = [filters.equipmentType, filters.group, filters.companyId].filter(valor => valor && valor !== 'Todos').length;
   // Poucos avisos já abrem à vista; muitos ficam no botão para não empurrar a tabela.
   const [verAvisos, setVerAvisos] = useState(avisos.length > 0 && avisos.length <= 3);
   const empresas = companies
@@ -60,7 +65,7 @@ export default function FleetFilterBar({
           <input
             value={filters.search}
             onChange={event => onChange('search', event.target.value)}
-            placeholder="Buscar prefixo, motorista, matrícula ou local"
+            placeholder="Buscar prefixo ou motorista"
             className={`${CAMPO} pl-9`}
             data-testid="frota-busca"
           />
@@ -69,25 +74,16 @@ export default function FleetFilterBar({
           value={filters.status}
           onChange={event => onChange('status', event.target.value as FleetReportFilters['status'])}
           aria-label="Situação"
-          className={`${CAMPO} min-w-0 flex-[1_1_10rem] sm:w-auto`}
+          className={`${CAMPO} min-w-0 flex-[1_1_10rem] sm:max-w-56`}
         >
           <option value="Todos">Todas as situações</option>
           {FLEET_STATUS_DEFINITIONS.map(definition => (
             <option key={definition.value} value={definition.value}>{definition.value}</option>
           ))}
         </select>
-        <select
-          value={filters.equipmentType ?? 'Todos'}
-          onChange={event => onChange('equipmentType', event.target.value)}
-          aria-label="Tipo"
-          className={`${CAMPO} min-w-0 flex-[1_1_10rem] sm:w-auto`}
-        >
-          <option value="Todos">Todos os tipos</option>
-          {equipmentTypes.map(type => <option key={type} value={type}>{type}</option>)}
-        </select>
-        <button type="button" onClick={() => setMais(atual => !atual)} aria-expanded={mais} className={`${BOTAO_SECUNDARIO} flex-none`} data-testid="frota-mais-filtros">
+        <button type="button" onClick={() => setMais(atual => !atual)} aria-expanded={mais} className={`${BOTAO_SECUNDARIO} flex-none max-sm:flex-1 ${escondidos > 0 ? 'border-[#f26a2e]/60' : ''}`} data-testid="frota-mais-filtros">
           <SlidersHorizontal className="size-4" aria-hidden="true" />
-          Mais filtros
+          {escondidos > 0 ? `Filtros · ${escondidos}` : 'Filtros'}
         </button>
         {avisos.length > 0 && (
           <button
@@ -103,6 +99,7 @@ export default function FleetFilterBar({
             <ChevronDown className={`size-4 shrink-0 transition duration-300 ${verAvisos ? 'rotate-180' : ''}`} aria-hidden="true" />
           </button>
         )}
+        {resumo && <p className="ml-auto text-sm font-semibold text-slate-600 max-sm:w-full">{resumo}</p>}
       </div>
       {avisos.length > 0 && verAvisos && (
         <ul id="frota-lista-avisos" className="max-h-32 space-y-1 overflow-y-auto rounded-xl border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm text-amber-900">
@@ -115,7 +112,11 @@ export default function FleetFilterBar({
         </ul>
       )}
       {mais && (
-        <div className="grid gap-2 sm:grid-cols-2" data-testid="frota-painel-filtros">
+        <div className="grid gap-2 sm:grid-cols-3" data-testid="frota-painel-filtros">
+          <select value={filters.equipmentType ?? 'Todos'} onChange={event => onChange('equipmentType', event.target.value)} aria-label="Tipo" className={CAMPO}>
+            <option value="Todos">Todos os tipos</option>
+            {equipmentTypes.map(type => <option key={type} value={type}>{type}</option>)}
+          </select>
           <select value={filters.companyId} onChange={event => onChange('companyId', event.target.value)} aria-label="Empresa" className={CAMPO}>
             <option value="Todos">Todas as empresas</option>
             {empresas.map(company => <option key={company.id} value={company.id}>{company.nome}</option>)}

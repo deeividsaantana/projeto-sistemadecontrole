@@ -86,7 +86,7 @@ test('desenho do cartão reconhece o tipo da máquina', () => {
   assert.equal(tipo('Coisa estranha'), 'outro');
 });
 
-test('filtros detalhados, ordem e etiquetas', () => {
+test('filtros, ordem e etiquetas', () => {
   const cartoes = montarQuadro({
     dia,
     equipamentos: [
@@ -102,13 +102,11 @@ test('filtros detalhados, ordem e etiquetas', () => {
     gruposEquipe: [],
     abastecimentos: [abastecimento('B1', dia, 900), abastecimento('B3', dia, 3000)],
   });
-  assert.deepEqual(filtrarCartoes(cartoes, { ...FILTROS_VAZIOS, marca: 'CAT' }).map(item => item.prefixo), ['B2', 'B3']);
-  assert.deepEqual(filtrarCartoes(cartoes, { ...FILTROS_VAZIOS, foto: 'com' }).map(item => item.prefixo), ['B1']);
-  assert.deepEqual(filtrarCartoes(cartoes, { ...FILTROS_VAZIOS, horimetro: 'sem' }).map(item => item.prefixo), ['B2']);
+  assert.deepEqual(filtrarCartoes(cartoes, { ...FILTROS_VAZIOS, operador: 'sem' }).map(item => item.prefixo), ['B2']);
   assert.deepEqual(filtrarCartoes(cartoes, FILTROS_VAZIOS, 'horimetro-maior').map(item => item.prefixo), ['B3', 'B1', 'B2'], 'sem horímetro vai para o fim');
   assert.deepEqual(filtrarCartoes(cartoes, FILTROS_VAZIOS, 'situacao').map(item => item.prefixo), ['B2', 'B1', 'B3'], 'manutenção primeiro');
   assert.deepEqual(filtrarCartoes(cartoes, FILTROS_VAZIOS, 'operador').map(item => item.prefixo), ['B3', 'B1', 'B2']);
-  assert.deepEqual(etiquetasDosFiltros({ ...FILTROS_VAZIOS, canteiro: 'IBAR', foto: 'sem' }).map(item => item.texto), ['Canteiro: IBAR', 'Sem foto']);
+  assert.deepEqual(etiquetasDosFiltros({ ...FILTROS_VAZIOS, canteiro: 'IBAR', operador: 'sem' }).map(item => item.texto), ['Canteiro: IBAR', 'Sem operador']);
 });
 
 test('canteiro escolhido num dia continua nos dias seguintes', () => {
