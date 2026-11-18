@@ -18,7 +18,7 @@ import { Avatar } from '../shared/ui/Avatar';
 import { COR_AVATAR_PADRAO, corPeloNome } from '../utils/avatar';
 import { EscolherAvatar } from './perfil/EscolherAvatar';
 import { PERFIS_DE_ACESSO } from './perfil/perfisDeAcesso';
-import { LinkDePrimeiroAcesso } from './perfil/LinkDePrimeiroAcesso';
+import { AvisoDePrimeiroAcesso } from './perfil/AvisoDePrimeiroAcesso';
 
 const roles = PERFIS_DE_ACESSO;
 
@@ -104,8 +104,8 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
   const [form, setForm] = useState<UserForm>(vazioFormulario);
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<ManagedUser | null>(null);
-  // Link de primeiro acesso do login recém-criado: vive só aqui e some ao fechar.
-  const [linkCriado, setLinkCriado] = useState<{ nome: string; email: string; token: string } | null>(null);
+  // Aviso do login recém-criado: a pessoa cria a senha na tela de entrada.
+  const [avisoCriado, setAvisoCriado] = useState<{ nome: string; email: string } | null>(null);
 
   const refresh = async () => {
     setLoading(true);
@@ -130,8 +130,8 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
     setMessage('');
     try {
       const criado = await createManagedUser(form);
-      if (criado.primeiroAcesso) {
-        setLinkCriado({ nome: form.fullName.trim(), email: form.email.trim().toLowerCase(), token: criado.primeiroAcesso });
+      if (criado.senhaPendente) {
+        setAvisoCriado({ nome: form.fullName.trim(), email: form.email.trim().toLowerCase() });
       } else {
         setMessage('Esse e-mail já tinha login: ele continua com a senha que já usa.');
       }
@@ -365,14 +365,14 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
         </div>
       </Modal>
       <Modal
-        open={Boolean(linkCriado)}
+        open={Boolean(avisoCriado)}
         role="alertdialog"
         title="Login criado"
-        description="Você só criou o login. A pessoa abre o link e cria a própria senha."
-        onClose={() => setLinkCriado(null)}
-        footer={<Button variant="subtle" onClick={() => setLinkCriado(null)}>Já mandei, fechar</Button>}
+        description="Não tem link nem senha para passar."
+        onClose={() => setAvisoCriado(null)}
+        footer={<Button variant="subtle" onClick={() => setAvisoCriado(null)}>Fechar</Button>}
       >
-        {linkCriado && <LinkDePrimeiroAcesso {...linkCriado} />}
+        {avisoCriado && <AvisoDePrimeiroAcesso {...avisoCriado} />}
       </Modal>
       <ConfirmDialog
         open={Boolean(deletingUser)}

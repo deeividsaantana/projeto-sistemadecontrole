@@ -71,18 +71,17 @@ const contratacao = (userId: string, role: PapelContratacaoDev, active: boolean,
 
 export const carregarPainelDev = async () => { await espera(); return copia(); };
 export const mudarAbaDaPessoa = async (u: string, t: string, l: Capacidade[] | null) => { await espera(); return aba(u, t, l); };
-const codigoDeExemplo = () => Array.from({ length: 43 }, () => 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ0123456789'[Math.floor(Math.random() * 58)]).join('');
 export const criarLoginDev = async (fullName: string, email: string, role: UserRole) => {
   await espera();
   const user_id = `u-${Date.now()}`;
   dados.people.push({ user_id, name: fullName, email, membership: role === 'admin' ? 'admin' : role === 'leitura' ? 'viewer' : 'editor', claimed_role: role, active: true, last_sign_in_at: null, dev: false });
   dados.people.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-  return { ...anotar({ target_user_id: user_id, kind: 'criacao', item: 'login', before: null, after: role, undoes_id: null }), user_id, token: codigoDeExemplo() };
+  return { ...anotar({ target_user_id: user_id, kind: 'criacao', item: 'login', before: null, after: role, undoes_id: null }), user_id };
 };
-export const gerarLinkDeSenha = async (u: string) => {
+export const liberarSenhaNova = async (u: string) => {
   await espera();
   trava(u, 'A sua própria senha você troca pelo "Recuperar senha" da tela de entrada.');
-  return { ...anotar({ target_user_id: u, kind: 'senha', item: 'link', before: null, after: 'link para criar senha', undoes_id: null }), token: codigoDeExemplo() };
+  return anotar({ target_user_id: u, kind: 'senha', item: 'liberada', before: null, after: 'pode criar senha nova', undoes_id: null });
 };
 export const mudarPerfilDaPessoa = async (u: string, v: string) => { await espera(); return perfil(u, v); };
 export const mudarSituacaoDaPessoa = async (u: string, a: boolean) => { await espera(); return situacao(u, a); };

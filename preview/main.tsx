@@ -41,6 +41,19 @@ import { descreverSalvamento } from '../src/cloud/estadoSalvamento';
 import { apagarDeVez, criarExclusao, restaurarExclusao, type ExclusaoRegistro } from '../src/cloud/exclusoes';
 
 const noop = () => {};
+
+/** Tela de entrada com estado, para conferir o primeiro acesso (Crie sua senha). */
+function EntradaDeExemplo() {
+  const [email, setEmail] = React.useState('');
+  const [senha, setSenha] = React.useState('');
+  const [mostrar, setMostrar] = React.useState(false);
+  return (
+    <LoginScreen
+      username={email} password={senha} showPassword={mostrar} isAuthenticating={false} loginError="" loginNotice=""
+      onUsernameChange={setEmail} onPasswordChange={setSenha} onTogglePasswordVisibility={() => setMostrar(atual => !atual)} onSubmit={event => event.preventDefault()} onPasswordRecovery={noop}
+    />
+  );
+}
 const noopImportAbastecimentos = (items: unknown[] = []) => ({
   requested: items.length,
   accepted: 0,
@@ -657,12 +670,7 @@ const screens: Record<string, React.ReactNode> = {
     />
   ),
   'presenca-fluxo': <PresencaFluxoCompleto />,
-  login: (
-    <LoginScreen
-      username="" password="" showPassword={false} isAuthenticating={false} loginError="" loginNotice=""
-      onUsernameChange={noop} onPasswordChange={noop} onTogglePasswordVisibility={noop} onSubmit={event => event.preventDefault()} onPasswordRecovery={noop}
-    />
-  ),
+  login: <EntradaDeExemplo />,
   'presenca-enviada': (
     <PresencaTempoRealPublica
       token="presenca-exemplo"

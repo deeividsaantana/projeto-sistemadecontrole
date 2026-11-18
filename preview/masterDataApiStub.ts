@@ -10,7 +10,7 @@ export const loadManagedUsers = async (): Promise<ManagedUser[]> => ([
   { id: '3', userId: 'u3', email: 'jose.costa@renea.com.br', fullName: 'José da Silva Costa', role: 'operador', active: true },
   { id: '4', userId: 'u4', email: 'marcos.souza@renea.com.br', fullName: 'Marcos de Souza', role: 'leitura', active: false },
 ]);
-export const createManagedUser = async (_input: unknown) => ({ uid: 'novo', email: '', fullName: '', role: 'operador' as ManagedUserRole, primeiroAcesso: 'Xk3pQ9vT2mLw8RbN4cYh7JdF6sGa1ZeUq5WnPo0iEr' as string | null });
+export const createManagedUser = async (_input: unknown) => ({ uid: 'novo', email: '', fullName: '', role: 'operador' as ManagedUserRole, senhaPendente: true });
 // Igual ao servidor (M12): a única conta de admin ativa não perde o perfil.
 export const updateManagedUser = async (input: { uid: string; role: ManagedUserRole; active: boolean }) => {
   if (input.uid === 'u1' && (input.role !== 'admin' || !input.active)) {

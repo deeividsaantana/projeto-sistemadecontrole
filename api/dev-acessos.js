@@ -2,9 +2,8 @@
 // passa por funções do banco que conferem erp_dev_owners antes de ler ou
 // gravar (supabase/migrations/202611160001_painel_dev_acessos.sql). Quem é
 // quem vem da sessão (token do Supabase), nunca do corpo do pedido.
-// Senha o dev não vê nem escolhe (18/11/2026): login novo e "esqueci a senha"
-// geram um link de primeiro acesso (api/primeiro-acesso.js) e a pessoa cria
-// a própria senha.
+// Senha o dev não vê nem escolhe (18/11/2026): no login novo e no "esqueci a
+// senha" a pessoa cria a própria na tela de entrada (api/primeiro-acesso.js).
 import {
   functionErrorResponse,
   getAdminAuth,
@@ -15,7 +14,7 @@ import {
 } from './_shared/supabase-admin.js';
 import { assertHttpMethod, httpError } from './_shared/api-security.js';
 import { createUser, getRequestContext, updateUser } from './master-data.js';
-import { criarLinkDePrimeiroAcesso } from './primeiro-acesso.js';
+import { liberarCriarSenha } from './primeiro-acesso.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ABA = /^[a-z][a-z-]{1,40}$/;
@@ -85,25 +84,24 @@ const criarLogin = async (event, client, staff, corpo) => {
     if (error?.code === 'auth/user-not-found') return null;
     throw error;
   });
-  if (existe) throw httpError('Esse e-mail já tem login. Para a pessoa criar uma senha nova, use "Link para criar senha" nela.', 409);
+  if (existe) throw httpError('Esse e-mail já tem login. Para a pessoa criar uma senha nova, use "Deixar criar senha nova" nela.', 409);
   const resposta = await createUser({ email, fullName: nome, role: perfil }, await getRequestContext(event));
-  const { uid, primeiroAcesso } = JSON.parse(resposta.body).data;
-  if (!primeiroAcesso) throw httpError('O login foi criado, mas o link não. Use "Link para criar senha" na pessoa.', 409);
+  const { uid } = JSON.parse(resposta.body).data;
   const id = await registrar(client, staff, uid, 'criacao', 'login', null, perfil);
-  return { id, user_id: uid, token: primeiroAcesso };
+  return { id, user_id: uid };
 };
 
-/** "Esqueci a senha": link para a pessoa criar outra. A atual vale até ela criar. */
-const linkDeSenha = async (client, staff, userId) => {
+/** "Esqueci a senha": na entrada, a pessoa cria outra. A atual vale até ela criar. */
+const liberarSenhaNova = async (client, staff, userId) => {
   if (userId === staff.uid) throw httpError('A sua própria senha você troca pelo "Recuperar senha" da tela de entrada.', 409);
   // Só troca a senha de quem é desta empresa.
   const { data: membro, error: erroMembro } = await client.from('organization_members').select('user_id')
     .eq('organization_id', staff.organizationId).eq('user_id', userId).maybeSingle();
   if (erroMembro) throw erroDoBanco(erroMembro);
   if (!membro) throw httpError('Pessoa não encontrada nesta empresa.', 404);
-  const token = await criarLinkDePrimeiroAcesso({ organizationId: staff.organizationId, userId, createdBy: staff.uid });
-  const id = await registrar(client, staff, userId, 'senha', 'link', null, 'link para criar senha');
-  return { id, token };
+  await liberarCriarSenha({ organizationId: staff.organizationId, userId, createdBy: staff.uid });
+  const id = await registrar(client, staff, userId, 'senha', 'liberada', null, 'pode criar senha nova');
+  return { id };
 };
 
 const registrar = (client, staff, userId, tipo, item, antes, depois, desfaz = null) => chamar(client, 'record_erp_access_change', {
@@ -175,7 +173,7 @@ export const handler = async event => {
     }
     const corpo = parseJsonBody(event, 20_000);
     if (corpo.action === 'criar') return jsonResponse(201, { success: true, data: await criarLogin(event, client, staff, corpo) });
-    if (corpo.action === 'senha') return jsonResponse(200, { success: true, data: await linkDeSenha(client, staff, pessoaValida(corpo.user_id)) });
+    if (corpo.action === 'senha') return jsonResponse(200, { success: true, data: await liberarSenhaNova(client, staff, pessoaValida(corpo.user_id)) });
     let id;
     if (corpo.action === 'aba') {
       id = await mudarAba(client, staff, pessoaValida(corpo.user_id), String(corpo.tab || ''), acoesDoCorpo(corpo.actions));

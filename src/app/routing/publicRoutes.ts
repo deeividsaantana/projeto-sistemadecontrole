@@ -36,15 +36,3 @@ export const isContratacaoLinkUrl = (location?: PublicLocation) => {
   const resolvedLocation = getLocation(location);
   return Boolean(resolvedLocation && (/^\/contratacao\/?$/.test(resolvedLocation.pathname) || getContratacaoTokenFromUrl(resolvedLocation)));
 };
-
-/** Código do link de primeiro acesso: /primeiro-acesso/<código>, onde a pessoa cria a própria senha. */
-export const getPrimeiroAcessoTokenFromUrl = (location?: PublicLocation) => {
-  const resolvedLocation = getLocation(location);
-  const match = resolvedLocation?.pathname.match(/^\/primeiro-acesso\/([A-Za-z0-9_-]{43})\/?$/);
-  return match ? match[1] : '';
-};
-
-export const isPrimeiroAcessoUrl = (location?: PublicLocation) => {
-  const resolvedLocation = getLocation(location);
-  return Boolean(resolvedLocation && /^\/primeiro-acesso(\/|$)/.test(resolvedLocation.pathname));
-};
