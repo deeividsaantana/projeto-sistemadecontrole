@@ -509,7 +509,7 @@ export default function ControleEquipamentosDiarioTab({
     try {
       const result = await generateFleetPdf(viewModel, montarConferenciaDoDia(registros, filters.date));
       setMessageTone('success');
-      setMessage(`${result.fileName} gerado com ${result.rows} CB(s) em ${result.pages} página(s).`);
+      setMessage(`${result.fileName} gerado com ${result.rows} CB(s) em uma folha.`);
     } catch (error) {
       setMessageTone('error');
       setMessage(error instanceof Error ? error.message : 'Não foi possível gerar o PDF.');

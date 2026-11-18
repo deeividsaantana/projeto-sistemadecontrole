@@ -2,7 +2,8 @@ import type ExcelJS from 'exceljs';
 import { createCorporateWorkbook } from '../utils/excelCorporate';
 import { classifyOperationalFleet } from './reconciliation';
 import type { jsPDF } from 'jspdf';
-import { loadJsPdf, loadAutoTable } from '../utils/pdfLoader';
+import { loadAutoTable } from '../utils/pdfLoader';
+import { gerarEmUmaFolha } from '../utils/pdfUmaFolha';
 
 import type { ControleEquipamentoDiario } from '../types';
 import { OBRA } from '../config/obra';
@@ -33,7 +34,6 @@ export interface WeeklyFleetReport {
 export interface WeeklyExportResult {
   fileName: string;
   rows: number;
-  pages?: number;
   sheets?: string[];
 }
 
@@ -135,83 +135,82 @@ const loadImageData = async (url: string): Promise<string | undefined> => {
 export const exportWeeklyFleetPdf = async (
   report: WeeklyFleetReport,
 ): Promise<WeeklyExportResult> => {
-  const pdf = new (await loadJsPdf())({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const autoTable = await loadAutoTable();
   const [reneaLogo, spmarLogo] = await Promise.all([
     loadImageData(reneaLogoUrl),
     loadImageData(spmarLogoUrl),
   ]);
-  if (reneaLogo) pdf.addImage(reneaLogo, 'PNG', -5, -9, 76, 42, undefined, 'FAST');
-  if (spmarLogo) pdf.addImage(spmarLogo, 'PNG', 235, 5, 53, 11.5, undefined, 'FAST');
-  pdf.setTextColor('#10223A');
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(15);
-  pdf.text('RELATÓRIO SEMANAL DE SITUAÇÃO OPERACIONAL DAS FROTAS', 148.5, 12, { align: 'center' });
-  pdf.setFontSize(9);
-  pdf.setTextColor('#086B3D');
-  pdf.text(`${OBRA.nome} · ${formatDate(report.startDate)} a ${formatDate(report.endDate)}`, 148.5, 18, { align: 'center' });
-  pdf.setDrawColor('#10223A');
-  pdf.line(9, 23, 288, 23);
+  const pdf = await gerarEmUmaFolha({ orientacao: 'landscape', compress: false, alargar: true }, pdf => {
+    const largura = pdf.internal.pageSize.getWidth();
+    if (reneaLogo) pdf.addImage(reneaLogo, 'PNG', -5, -9, 76, 42, undefined, 'FAST');
+    if (spmarLogo) pdf.addImage(spmarLogo, 'PNG', largura - 62, 5, 53, 11.5, undefined, 'FAST');
+    pdf.setTextColor('#10223A');
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(15);
+    pdf.text('RELATÓRIO SEMANAL DE SITUAÇÃO OPERACIONAL DAS FROTAS', largura / 2, 12, { align: 'center' });
+    pdf.setFontSize(9);
+    pdf.setTextColor('#086B3D');
+    pdf.text(`${OBRA.nome} · ${formatDate(report.startDate)} a ${formatDate(report.endDate)}`, largura / 2, 18, { align: 'center' });
+    pdf.setDrawColor('#10223A');
+    pdf.line(9, 23, largura - 9, 23);
 
-  autoTable(pdf, {
-    startY: 28,
-    margin: { left: 9, right: 9 },
-    head: [['Data', 'Total de frotas', 'Em operação', 'Em manutenção', 'À disposição', 'A confirmar', 'Disponibilidade']],
-    body: report.days.map(day => [
-      formatDate(day.date),
-      day.total,
-      day.operating,
-      day.maintenance,
-      day.available,
-      day.pending,
-      day.availabilityRate === null ? '—' : `${day.availabilityRate.toFixed(1).replace('.', ',')}%`,
-    ]),
-    theme: 'grid',
-    styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 2.4, halign: 'center', textColor: '#10223A' },
-    headStyles: { fillColor: '#10223A', textColor: '#FFFFFF', fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: '#F4F7F5' },
-  });
+    autoTable(pdf, {
+      startY: 28,
+      margin: { left: 9, right: 9 },
+      head: [['Data', 'Total de frotas', 'Em operação', 'Em manutenção', 'À disposição', 'A confirmar', 'Disponibilidade']],
+      body: report.days.map(day => [
+        formatDate(day.date),
+        day.total,
+        day.operating,
+        day.maintenance,
+        day.available,
+        day.pending,
+        day.availabilityRate === null ? '—' : `${day.availabilityRate.toFixed(1).replace('.', ',')}%`,
+      ]),
+      theme: 'grid',
+      styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 2.4, halign: 'center', textColor: '#10223A' },
+      headStyles: { fillColor: '#10223A', textColor: '#FFFFFF', fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: '#F4F7F5' },
+    });
 
-  const summaryY = ((pdf as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY || 75) + 7;
-  pdf.setFontSize(9);
-  pdf.setTextColor('#252A2F');
-  pdf.text(`Acumulado: ${report.totals.total} lançamentos · ${report.totals.operating} em operação · ${report.totals.maintenance} em manutenção · ${report.totals.available} à disposição · ${report.totals.pending} a confirmar`, 9, summaryY);
-  pdf.text(`Média diária: ${report.averages.total.toFixed(1).replace('.', ',')} frotas · ${report.averages.operating.toFixed(1).replace('.', ',')} em operação · disponibilidade média ${report.averages.availabilityRate === null ? 'sem dados' : `${report.averages.availabilityRate.toFixed(1).replace('.', ',')}%`}`, 9, summaryY + 4.5);
+    const summaryY = ((pdf as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY || 75) + 7;
+    pdf.setFontSize(9);
+    pdf.setTextColor('#252A2F');
+    pdf.text(`Acumulado: ${report.totals.total} lançamentos · ${report.totals.operating} em operação · ${report.totals.maintenance} em manutenção · ${report.totals.available} à disposição · ${report.totals.pending} a confirmar`, 9, summaryY);
+    pdf.text(`Média diária: ${report.averages.total.toFixed(1).replace('.', ',')} frotas · ${report.averages.operating.toFixed(1).replace('.', ',')} em operação · disponibilidade média ${report.averages.availabilityRate === null ? 'sem dados' : `${report.averages.availabilityRate.toFixed(1).replace('.', ',')}%`}`, 9, summaryY + 4.5);
 
-  autoTable(pdf, {
-    startY: summaryY + 10,
-    margin: { left: 9, right: 9 },
-    head: [['Data', 'Grupo', 'Tipo', 'Prefixo', 'Situação', 'Hora de saída', 'Matrícula', 'Motorista / operador', 'Observação']],
-    body: report.records.map(record => {
-      const classification = classifyOperationalFleet({
-        prefixo: record.prefixo,
-        familia: record.familia,
-        tipo: record.tipoEquipamento || '',
-        nome: record.tipoEquipamento || '',
-      });
-      return [
-      formatDate(record.data), classification.group, classification.equipmentType, record.prefixo || '—',
-      record.status || '—', record.horaSaida || '—', record.codigoFuncionario || '—',
-      record.nomeMotorista || '—', record.observacao || '—',
-      ];
-    }),
-    theme: 'grid',
-    styles: { font: 'helvetica', fontSize: 6.5, cellPadding: 1.5, textColor: '#10223A' },
-    headStyles: { fillColor: '#15824B', textColor: '#FFFFFF', fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: '#F7F7F7' },
-    columnStyles: { 8: { cellWidth: 46 } },
-  });
-
-  const pages = pdf.getNumberOfPages();
-  for (let page = 1; page <= pages; page += 1) {
-    pdf.setPage(page);
+    autoTable(pdf, {
+      startY: summaryY + 10,
+      margin: { left: 9, right: 9 },
+      head: [['Data', 'Grupo', 'Tipo', 'Prefixo', 'Situação', 'Hora de saída', 'Matrícula', 'Motorista / operador', 'Observação']],
+      body: report.records.map(record => {
+        const classification = classifyOperationalFleet({
+          prefixo: record.prefixo,
+          familia: record.familia,
+          tipo: record.tipoEquipamento || '',
+          nome: record.tipoEquipamento || '',
+        });
+        return [
+        formatDate(record.data), classification.group, classification.equipmentType, record.prefixo || '—',
+        record.status || '—', record.horaSaida || '—', record.codigoFuncionario || '—',
+        record.nomeMotorista || '—', record.observacao || '—',
+        ];
+      }),
+      theme: 'grid',
+      styles: { font: 'helvetica', fontSize: 6.5, cellPadding: 1.5, textColor: '#10223A' },
+      headStyles: { fillColor: '#15824B', textColor: '#FFFFFF', fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: '#F7F7F7' },
+      columnStyles: { 8: { cellWidth: 46 } },
+    });
+    return (pdf as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 12;
+  }, (pdf, altura) => {
     pdf.setFontSize(7);
     pdf.setTextColor('#687078');
-    pdf.text(`Cintravyse · Página ${page} de ${pages}`, 288, 204, { align: 'right' });
-  }
+    pdf.text('Cintravyse', pdf.internal.pageSize.getWidth() - 9, altura - 6, { align: 'right' });
+  });
   const fileName = `RELATORIO_SEMANAL_FROTAS_${report.startDate}_A_${report.endDate}.pdf`;
   pdf.save(fileName);
-  return { fileName, rows: report.records.length, pages };
+  return { fileName, rows: report.records.length };
 };
 
 export const buildWeeklyFleetWorkbook = async (report: WeeklyFleetReport): Promise<ExcelJS.Workbook> => {

@@ -1,4 +1,5 @@
-import { loadJsPdf } from '../utils/pdfLoader';
+import type { jsPDF } from '../utils/pdfLoader';
+import { gerarEmUmaFolha } from '../utils/pdfUmaFolha';
 import type { ConferenciaDoDia } from './conferenciaDoDia';
 
 export interface FaltanteEquipamento { prefixo: string; tipo: string; grupo: string }
@@ -35,18 +36,17 @@ const COR = { texto: [15, 23, 42] as [number, number, number], cinza: [91, 104, 
 
 /** PDF com resumo, grade de equipamentos faltantes e grade de operadores faltantes. */
 export async function gerarPdfFaltantes(lista: ListaFaltantes): Promise<string> {
-  const JsPdf = await loadJsPdf();
-  const doc = new JsPdf({ unit: 'mm', format: 'a4' });
+  const doc = await gerarEmUmaFolha({ orientacao: 'portrait', alargar: true }, folha => desenharFaltantes(folha, lista));
+  const nome = `FALTANTES_FROTA_${lista.data}.pdf`;
+  doc.save(nome);
+  return nome;
+}
+
+/** Resumo e as duas grades; devolve onde o desenho termina (mm). */
+const desenharFaltantes = (doc: jsPDF, lista: ListaFaltantes) => {
   const largura = doc.internal.pageSize.getWidth();
   const margem = 12;
   let y = margem;
-
-  const novaPaginaSe = (altura: number) => {
-    if (y + altura > doc.internal.pageSize.getHeight() - margem) {
-      doc.addPage();
-      y = margem;
-    }
-  };
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
@@ -87,7 +87,6 @@ export async function gerarPdfFaltantes(lista: ListaFaltantes): Promise<string> 
   y += 42;
 
   const secao = (titulo: string, quantidade: number) => {
-    novaPaginaSe(14);
     doc.setFillColor(...COR.faixa);
     doc.rect(margem, y, largura - margem * 2, 8, 'F');
     doc.setFont('helvetica', 'bold');
@@ -99,7 +98,6 @@ export async function gerarPdfFaltantes(lista: ListaFaltantes): Promise<string> 
 
   const grade = <T,>(itens: readonly T[], cartao: (item: T) => [string, string, string], vazio: string) => {
     if (!itens.length) {
-      novaPaginaSe(8);
       doc.setFontSize(10);
       doc.setTextColor(...COR.cinza);
       doc.text(vazio, margem + 2, y + 4);
@@ -109,7 +107,6 @@ export async function gerarPdfFaltantes(lista: ListaFaltantes): Promise<string> 
     const colunas = 3;
     const larguraCartao = (largura - margem * 2 - 4 * (colunas - 1)) / colunas;
     itens.forEach((item, indice) => {
-      if (indice % colunas === 0) novaPaginaSe(16);
       const x = margem + (indice % colunas) * (larguraCartao + 4);
       const [primeira, segunda, terceira] = cartao(item);
       doc.setDrawColor(252, 211, 77);
@@ -135,7 +132,5 @@ export async function gerarPdfFaltantes(lista: ListaFaltantes): Promise<string> 
   secao('Operadores faltantes', lista.operadores.length);
   grade(lista.operadores, item => [item.nome, `Matrícula ${item.matricula}`, ''], 'Nenhum operador faltando.');
 
-  const nome = `FALTANTES_FROTA_${lista.data}.pdf`;
-  doc.save(nome);
-  return nome;
-}
+  return y + margem;
+};

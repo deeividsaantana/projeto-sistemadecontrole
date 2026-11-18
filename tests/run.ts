@@ -225,3 +225,4 @@ import './padraoLancamento.test';
 import './painelDev.test';
 import './primeiroAcesso.test';
 import './apagarSolicitacoes.test';
+import './pdfUmaFolha.test';

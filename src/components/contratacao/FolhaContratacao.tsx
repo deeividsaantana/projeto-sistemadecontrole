@@ -39,6 +39,7 @@ import { CorpoDesligamento } from './CorpoDesligamento';
 import { CabecalhoPapel } from './papel';
 import { LinhaDeEtapas, SeloSituacaoContratacao } from './SeloSituacaoContratacao';
 import { dataBr, dataHoraBr } from './formatos';
+import { imprimirEmUmaFolha } from '../../utils/imprimirEmUmaFolha';
 
 const ACOES: Record<string, string> = {
   abriu: 'abriu o pedido e gerou o link',
@@ -58,24 +59,6 @@ const hojeLocal = () => {
   return new Date(agora.getTime() - agora.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
 };
 const novaChave = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`).replace(/[^a-zA-Z0-9_-]/g, '');
-
-/**
- * Imprime ou salva em PDF a própria folha da tela, sem abrir outra janela:
- * o CSS de impressão (index.css, "ct-imprimindo") esconde menu, botões e o
- * quadro de assinar. Assim o PDF sai com o mesmo desenho do link.
- */
-const imprimir = (titulo: string) => {
-  const tituloAntes = document.title;
-  document.title = titulo;
-  document.body.classList.add('ct-imprimindo');
-  const limpar = () => {
-    document.body.classList.remove('ct-imprimindo');
-    document.title = tituloAntes;
-    window.removeEventListener('afterprint', limpar);
-  };
-  window.addEventListener('afterprint', limpar);
-  window.print();
-};
 
 /** Bloco da folha de contratação: faixa com borda em cima, título pequeno em maiúsculas. */
 function Bloco({ titulo, children, className = '' }: { titulo?: string; children: ReactNode; className?: string }) {
@@ -136,6 +119,9 @@ export function FolhaContratacao({ leitor, token, baixarAoAbrir = false, onCopia
   const [assinaturaSalva, setAssinaturaSalva] = useState(leitor.assinaturaSalva ?? null);
   const chave = useRef(novaChave());
   const folhaRef = useRef<HTMLElement>(null);
+  // Imprime ou salva em PDF a própria folha da tela, numa folha A4 só e sem
+  // o endereço do site: menu, botões e o quadro de assinar não vão para o papel.
+  const imprimir = (titulo: string) => { if (folhaRef.current) imprimirEmUmaFolha(folhaRef.current, { titulo }); };
   const quadroRef = useRef<HTMLElement>(null);
 
   const assinaturas = pedido?.signatures ?? [];
@@ -272,7 +258,7 @@ export function FolhaContratacao({ leitor, token, baixarAoAbrir = false, onCopia
     return (
       <div className={`grid ${alturaImagem} place-items-center overflow-hidden`} data-testid={`assinatura-${etapa}`}>
         {assinatura?.image_data
-          ? <img src={assinatura.image_data} alt={`Assinatura de ${assinatura.signer_name}`} className="max-h-full max-w-full" />
+          ? <img src={assinatura.image_data} alt={`Assinatura de ${assinatura.signer_name}`} className="h-full max-w-full object-contain" />
           : assinatura
             ? <span className="truncate px-2 font-serif text-2xl italic text-slate-900">{assinatura.signer_name}</span>
             : <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${daVez ? 'bg-amber-50 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>{daVez ? 'É a vez desta assinatura' : 'Aguardando a etapa anterior'}</span>}

@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { FleetCurrentState, FleetReportViewModel } from '../../fleet/domain';
 import reneaLogo from '../../assets/images/renea_logo_new.png';
 import spmarLogo from '../../assets/images/spmar_logo.png';
 import { OBRA } from '../../config/obra';
+import { encaixarNumaFolha } from '../../utils/imprimirEmUmaFolha';
 
 interface Props {
   viewModel: FleetReportViewModel;
@@ -55,42 +56,59 @@ function PendingTable({ rows }: { rows: FleetCurrentState[] }) {
   return <section className="mt-3"><h3 className="border border-amber-300 bg-amber-50 px-2 py-1 text-[10px] font-black uppercase text-amber-900">CBs a confirmar</h3><table className="w-full table-fixed border-collapse text-[9px]"><colgroup><col className="w-[10%]"/><col className="w-[20%]"/><col className="w-[9%]"/><col className="w-[13%]"/><col className="w-[10%]"/><col className="w-[11%]"/><col className="w-[27%]"/></colgroup><thead><tr className="bg-amber-50">{['Matrícula','Nome / Motorista','Prefixo','Status Atual','Horário','Tempo Parado','Observação'].map(label=><th key={label} scope="col" className="border border-slate-300 px-1 py-1 font-black">{label}</th>)}</tr></thead><tbody>{rows.map(state=><tr key={state.recordId} className="bg-amber-50/50"><td className="border border-slate-300 px-1 py-1 text-center">{state.driver?.employeeCode||'—'}</td><td className="border border-slate-300 px-1 py-1">{state.driver?.employeeName||'Sem motorista'}</td><td className="border border-slate-300 px-1 py-1 text-center font-black">{state.equipment.prefix}</td><td className="border border-slate-300 px-1 py-1 text-center font-bold text-amber-700">{state.operationalStatus}</td><td className="border border-slate-300 px-1 py-1 text-center">{state.departureTime||'—'}</td><td className="border border-slate-300 px-1 py-1 text-center">{state.stoppedDurationLabel}</td><td className="break-words border border-slate-300 px-1 py-1 leading-4">{state.note||'Aguardando confirmação'}</td></tr>)}{!rows.length&&<EmptyReportRow columns={7} text="Nenhum CB aguardando confirmação."/>}</tbody></table></section>;
 }
 
-function ReportFooter({ page, viewModel }: { page: number; viewModel: FleetReportViewModel }) {
-  return <footer className="mt-auto flex justify-between border-t border-slate-300 pt-1 text-[8px] text-slate-500"><span>{viewModel.companyLabel} · Gerado pelo Cintravyse</span><span>Página {page} de 2</span></footer>;
+function ReportFooter({ viewModel }: { viewModel: FleetReportViewModel }) {
+  return <footer className="mt-3 border-t border-slate-300 pt-1 text-[8px] text-slate-500">{viewModel.companyLabel} · Gerado pelo Cintravyse</footer>;
 }
 
 /**
  * Liga só enquanto o navegador imprime (Ctrl+P). Na tela o relatório não
  * existe no DOM: antes ele ficava escondido e somava dois h1 ao título da
  * aba (auditoria de front 21/10/2026, M3). O `beforeprint` monta na hora,
- * antes de o navegador montar as páginas.
+ * antes de o navegador montar as páginas, e encaixa tudo numa folha A4 deitada.
+ * Se outra tela já está imprimindo a própria folha (botão Imprimir), não entra.
  */
 const useImprimindo = () => {
   const [imprimindo, setImprimindo] = useState(false);
+  const folha = useRef<HTMLElement>(null);
   useEffect(() => {
-    const ligar = () => flushSync(() => setImprimindo(true));
-    const desligar = () => setImprimindo(false);
-    const midia = window.matchMedia?.('print');
-    const mudouMidia = (evento: MediaQueryListEvent) => (evento.matches ? ligar() : desligar());
+    let desfazer: (() => void) | undefined;
+    const ligar = () => {
+      if (desfazer || document.body.classList.contains('folha-imprimindo')) return;
+      flushSync(() => setImprimindo(true));
+      if (!folha.current) return;
+      document.body.classList.add('folha-imprimindo');
+      document.body.dataset.folha = 'paisagem';
+      folha.current.classList.add('folha-impressa');
+      const voltarZoom = encaixarNumaFolha(folha.current, 'paisagem');
+      desfazer = () => {
+        voltarZoom();
+        document.body.classList.remove('folha-imprimindo');
+        delete document.body.dataset.folha;
+      };
+    };
+    const desligar = () => {
+      if (!desfazer) return;
+      desfazer();
+      desfazer = undefined;
+      setImprimindo(false);
+    };
     window.addEventListener('beforeprint', ligar);
     window.addEventListener('afterprint', desligar);
-    midia?.addEventListener?.('change', mudouMidia);
     return () => {
       window.removeEventListener('beforeprint', ligar);
       window.removeEventListener('afterprint', desligar);
-      midia?.removeEventListener?.('change', mudouMidia);
+      desligar();
     };
   }, []);
-  return imprimindo;
+  return { imprimindo, folha };
 };
 
 export default function FleetReportLayout({ viewModel }: Props) {
-  const imprimindo = useImprimindo();
+  const { imprimindo, folha } = useImprimindo();
   if (!imprimindo) return null;
   return (
-    <section id="fleet-print-report" className="hidden print:block">
-      <article className="fleet-report-page"><ReportHeader viewModel={viewModel}/><OperationTable rows={viewModel.operating}/><ReportFooter page={1} viewModel={viewModel}/></article>
-      <article className="fleet-report-page break-before-page"><ReportHeader viewModel={viewModel}/><MaintenanceTable rows={viewModel.maintenance}/><AvailableTable rows={viewModel.available}/><PendingTable rows={viewModel.pending}/><ReportFooter page={2} viewModel={viewModel}/></article>
+    <section ref={folha} id="fleet-print-report" className="bg-white text-slate-900">
+      <ReportHeader viewModel={viewModel}/><OperationTable rows={viewModel.operating}/><MaintenanceTable rows={viewModel.maintenance}/><AvailableTable rows={viewModel.available}/><PendingTable rows={viewModel.pending}/><ReportFooter viewModel={viewModel}/>
     </section>
   );
 }

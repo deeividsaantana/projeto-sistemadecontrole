@@ -1,5 +1,6 @@
 import type { jsPDF } from 'jspdf';
-import { loadJsPdf, loadAutoTable } from '../utils/pdfLoader';
+import { loadAutoTable } from '../utils/pdfLoader';
+import { gerarEmUmaFolha } from '../utils/pdfUmaFolha';
 import type { CellHookData, RowInput } from 'jspdf-autotable';
 
 // Carregado uma vez por geracao de PDF e guardado aqui: as funcoes auxiliares
@@ -15,7 +16,6 @@ import { OBRA } from '../config/obra';
 import { avisosDaConferencia, linhasDaConferencia, type ConferenciaDoDia } from './conferenciaDoDia';
 
 const PAGE_WIDTH = 297;
-const PAGE_HEIGHT = 210;
 const MARGIN_X = 9;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_X * 2;
 const GREEN = '#15824B';
@@ -28,7 +28,6 @@ type PdfRow = Record<string, string>;
 
 export interface FleetPdfResult {
   fileName: string;
-  pages: number;
   rows: number;
 }
 
@@ -356,9 +355,6 @@ const drawOperationTable = (
   document: jsPDF,
   rows: FleetCurrentState[],
   startY: number,
-  viewModel?: FleetReportViewModel,
-  reneaLogo?: string,
-  spmarLogo?: string,
 ): number => {
   const body: RowInput[] = rows.length
     ? operationRows(rows)
@@ -402,9 +398,6 @@ const drawOperationTable = (
     },
     didParseCell: data => prepareStatusPill(data, 3),
     didDrawCell: data => drawStatusPill(document, data, 3),
-    didDrawPage: data => {
-      if (data.pageNumber > 1 && viewModel) drawHeader(document, viewModel, reneaLogo, spmarLogo);
-    },
   });
   return (document as JsPdfWithAutoTable).lastAutoTable.finalY;
 };
@@ -413,7 +406,6 @@ const drawMaintenanceTable = (
   document: jsPDF,
   rows: FleetCurrentState[],
   startY: number,
-  redrawHeader: () => void,
 ): number => {
   const titleEnd = drawTableTitle(document, 'Frotas em manutenção', startY);
   const body: RowInput[] = rows.length
@@ -440,9 +432,6 @@ const drawMaintenanceTable = (
       4: { cellWidth: 151 },
     },
     didParseCell: data => applyStatusCell(data, 3),
-    didDrawPage: data => {
-      if (data.pageNumber > 1) redrawHeader();
-    },
   });
   return (document as JsPdfWithAutoTable).lastAutoTable.finalY;
 };
@@ -456,7 +445,6 @@ const drawConferenceTable = (
   document: jsPDF,
   conferencia: ConferenciaDoDia,
   startY: number,
-  redrawHeader: () => void,
 ): number => {
   const titleEnd = drawTableTitle(document, 'Conferência da relação do dia', startY);
   const avisos = avisosDaConferencia(conferencia);
@@ -478,35 +466,26 @@ const drawConferenceTable = (
       3: { cellWidth: 24, halign: 'center', textColor: '#B45309', fontStyle: 'bold' },
       4: { cellWidth: CONTENT_WIDTH - 96 },
     },
-    didDrawPage: data => {
-      if (data.pageNumber > 1) redrawHeader();
-    },
   });
   return (document as JsPdfWithAutoTable).lastAutoTable.finalY;
 };
 
-const addPageFooters = (
+const drawFooter = (
   document: jsPDF,
   viewModel: FleetReportViewModel,
+  pageHeight: number,
 ): void => {
-  const pages = document.getNumberOfPages();
-  for (let page = 1; page <= pages; page += 1) {
-    document.setPage(page);
-    document.setDrawColor(GREEN);
-    document.setLineWidth(0.55);
-    document.line(MARGIN_X, PAGE_HEIGHT - 12, PAGE_WIDTH - MARGIN_X, PAGE_HEIGHT - 12);
-    document.setFont('helvetica', 'normal');
-    document.setFontSize(5.5);
-    document.setTextColor('#717980');
-    document.text(
-      `Gerado em ${formatBrazilianDateTime(viewModel.generatedAt)} · ${viewModel.companyLabel}`,
-      MARGIN_X,
-      PAGE_HEIGHT - 6,
-    );
-    document.text(`Página ${page} de ${pages}`, PAGE_WIDTH - MARGIN_X, PAGE_HEIGHT - 6, {
-      align: 'right',
-    });
-  }
+  document.setDrawColor(GREEN);
+  document.setLineWidth(0.55);
+  document.line(MARGIN_X, pageHeight - 12, PAGE_WIDTH - MARGIN_X, pageHeight - 12);
+  document.setFont('helvetica', 'normal');
+  document.setFontSize(5.5);
+  document.setTextColor('#717980');
+  document.text(
+    `Gerado em ${formatBrazilianDateTime(viewModel.generatedAt)} · ${viewModel.companyLabel}`,
+    MARGIN_X,
+    pageHeight - 6,
+  );
 };
 
 const drawPendingBanner = (
@@ -540,20 +519,6 @@ const drawPendingBanner = (
   return startY + 13;
 };
 
-const ensureSectionRoom = (
-  document: jsPDF,
-  viewModel: FleetReportViewModel,
-  currentY: number,
-  estimatedHeight: number,
-  reneaLogo?: string,
-  spmarLogo?: string,
-): number => {
-  const contentBottom = PAGE_HEIGHT - 13;
-  if (currentY + estimatedHeight <= contentBottom) return currentY;
-  document.addPage('a4', 'landscape');
-  return drawHeader(document, viewModel, reneaLogo, spmarLogo);
-};
-
 const buildFleetPdfDocument = async (
   viewModel: FleetReportViewModel,
   reneaLogo?: string,
@@ -561,34 +526,18 @@ const buildFleetPdfDocument = async (
   compress = false,
   conferencia?: ConferenciaDoDia,
 ): Promise<jsPDF> => {
-  const [JsPdf, autoTableModule] = await Promise.all([loadJsPdf(), loadAutoTable()]);
-  autoTable = autoTableModule;
-  const document = new JsPdf({
-    orientation: 'landscape',
-    unit: 'mm',
-    format: 'a4',
-    compress,
-  });
-  let y = drawHeader(document, viewModel, reneaLogo, spmarLogo);
-  y = drawMetricStrip(document, viewModel, y);
-  y = drawCategorySummary(document, viewModel, y);
-  y = drawOperationTable(document, viewModel.allRows, y, viewModel, reneaLogo, spmarLogo);
-  const redrawHeader = () => { drawHeader(document, viewModel, reneaLogo, spmarLogo); };
-  if (viewModel.maintenance.length) {
-    y = ensureSectionRoom(document, viewModel, y + 4, 20, reneaLogo, spmarLogo);
-    y = drawMaintenanceTable(document, viewModel.maintenance, y, redrawHeader);
-  }
-  // Com a conferência, o quadro da relação já diz quem falta; a faixa de
-  // pendências fica só para o relatório sem relação (Quadro da Frota).
-  if (conferencia) {
-    y = ensureSectionRoom(document, viewModel, y + 4, 26, reneaLogo, spmarLogo);
-    drawConferenceTable(document, conferencia, y, redrawHeader);
-  } else {
-    y = ensureSectionRoom(document, viewModel, y + 4, 17, reneaLogo, spmarLogo);
-    drawPendingBanner(document, viewModel, y);
-  }
-  addPageFooters(document, viewModel);
-  return document;
+  autoTable = await loadAutoTable();
+  return gerarEmUmaFolha({ orientacao: 'landscape', compress }, document => {
+    let y = drawHeader(document, viewModel, reneaLogo, spmarLogo);
+    y = drawMetricStrip(document, viewModel, y);
+    y = drawCategorySummary(document, viewModel, y);
+    y = drawOperationTable(document, viewModel.allRows, y);
+    if (viewModel.maintenance.length) y = drawMaintenanceTable(document, viewModel.maintenance, y + 4);
+    // Com a conferência, o quadro da relação já diz quem falta; a faixa de
+    // pendências fica só para o relatório sem relação (Quadro da Frota).
+    y = conferencia ? drawConferenceTable(document, conferencia, y + 4) : drawPendingBanner(document, viewModel, y + 4);
+    return y + 16;
+  }, (document, altura) => drawFooter(document, viewModel, altura));
 };
 
 export const generateFleetPdf = async (
@@ -604,7 +553,6 @@ export const generateFleetPdf = async (
   document.save(fileName);
   return {
     fileName,
-    pages: document.getNumberOfPages(),
     rows: viewModel.allRows.length,
   };
 };
