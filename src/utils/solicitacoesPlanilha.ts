@@ -319,6 +319,8 @@ export const importarPlanilhaDeControle = (
   existentes: readonly Solicitacao[],
   quem: string,
   agora: string,
+  /** Ids e números de pedidos apagados de vez: não voltam. */
+  apagadas: ReadonlySet<string> = new Set(),
 ): ResultadoControle => {
   const principal = abas.find(aba => {
     const cabecalhos = Object.keys(aba.linhas[0]?.valores ?? {}).map(normalizar);
@@ -358,6 +360,7 @@ export const importarPlanilhaDeControle = (
     // Linha com "Código do site" é de um pedido aberto no site: o card já existe.
     const doSite = numeroDoCodigo(linhas.map(linha => textoDe(valorDe(linha.valores, /^codigo do site/))).find(Boolean));
     if (existentes.some(sol => sol.id === id || (doSite && sol.numero === doSite))) { jaImportados.push(pedido); continue; }
+    if (apagadas.has(id) || (doSite && apagadas.has(doSite))) continue;
     const primeira = linhas[0].valores;
     const abertaEm = paraData(valorDe(primeira, /^data/)) || agora.slice(0, 10);
     const ano = Number(abertaEm.slice(0, 4));
@@ -610,10 +613,11 @@ export const sincronizarComPlanilha = (
   linhas: readonly LinhaDoEspelho[],
   existentes: readonly Solicitacao[],
   agora: string,
+  apagadas?: ReadonlySet<string>,
 ): ResultadoSincronizacao => {
   const abas = abasDoEspelho(linhas);
   if (!abas[0].linhas.length) return { novas: [], atualizadas: [], envios: [] };
-  const { novas } = importarPlanilhaDeControle(abas, existentes, QUEM_SINCRONIZA, agora);
+  const { novas } = importarPlanilhaDeControle(abas, existentes, QUEM_SINCRONIZA, agora, apagadas);
   const grupos = linhasPorCartao(linhasDaAba(linhas), existentes);
   // Sem a aba Prioridade na leitura, não dá para dizer que alguém saiu dela.
   const leuPrioridade = abas[1].linhas.length > 0;

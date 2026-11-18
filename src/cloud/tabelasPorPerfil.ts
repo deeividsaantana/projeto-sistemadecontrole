@@ -84,6 +84,6 @@ export const comMarcasLocaisDaNuvem = <T extends Record<string, unknown>>(local:
 );
 
 /** Mensagem da recusa por perfil (ROLE_WRITE_DENIED), para o app reconhecer e se curar. */
-export const NUVEM_RECUSOU_PERFIL = 'A nuvem recusou o envio: o seu perfil não pode alterar orçamento, custos, medições, planejamento, documentos ou frentes, nem excluir cadastros. Nada foi perdido; peça a um gestor para fazer essa mudança.';
+export const NUVEM_RECUSOU_PERFIL = 'A nuvem recusou o envio: o seu perfil não pode alterar orçamento, custos, medições, planejamento, documentos ou frentes, nem excluir cadastros; e só o dono do sistema apaga solicitações ou lançamentos de produção. Nada foi perdido; peça a quem pode para fazer essa mudança.';
 
 export const recusadoPorPerfil = (erro: unknown) => String((erro as { message?: unknown })?.message ?? erro ?? '') === NUVEM_RECUSOU_PERFIL;

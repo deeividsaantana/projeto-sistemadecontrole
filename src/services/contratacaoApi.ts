@@ -106,6 +106,8 @@ export interface Leitor {
   userId: string;
   nome: string;
   admin: boolean;
+  /** Dono do sistema: só ele apaga pedidos de vez (o servidor confere de novo). */
+  dev?: boolean;
   papeis: PapelContratacao[];
   /** Desenho guardado por esta pessoa para as próximas assinaturas. */
   assinaturaSalva?: string | null;
@@ -163,6 +165,10 @@ export const criarContratacao = (form: FormularioContratacao, clientKey: string)
 /** Pelo link, o token vai junto e o servidor confere que é deste pedido. Assinando, `reason` é o comentário opcional. */
 export const decidirContratacao = (pedido: Pick<PedidoContratacao, 'id' | 'version'>, decisao: 'aprovar' | 'recusar', signature?: AssinaturaEnviada, reason?: string, token?: string) =>
   chamar<PedidoContratacao>({ method: 'POST', body: JSON.stringify({ action: 'decidir', request_id: pedido.id, version: pedido.version, decision: decisao, signature, reason, token }) });
+
+/** Apaga o pedido de vez (só o dono do sistema). */
+export const apagarContratacao = (requestId: string) =>
+  chamar<{ request_number: string }>({ method: 'POST', body: JSON.stringify({ action: 'apagar', request_id: requestId }) });
 
 export const apagarAssinaturaSalva = () => chamar<void>({ method: 'POST', body: JSON.stringify({ action: 'apagar_assinatura' }) });
 

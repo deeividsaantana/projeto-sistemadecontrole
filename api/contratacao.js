@@ -71,6 +71,12 @@ const guardarAssinatura = async (client, staff, imagem) => {
   if (error) throw error;
 };
 
+/** Dono do sistema (erp_dev_owners): só ele apaga pedidos de vez. Sem a função no banco, ninguém apaga. */
+const ehDono = async (client, staff) => {
+  const { data, error } = await client.rpc('erp_is_dev', { p_organization_id: staff.organizationId, p_user_id: staff.uid });
+  return !error && data === true;
+};
+
 export const leitorDaSessao = async (client, staff) => {
   const { data, error } = await client.from('erp_hiring_roles').select('role')
     .eq('organization_id', staff.organizationId).eq('user_id', staff.uid);
@@ -79,6 +85,7 @@ export const leitorDaSessao = async (client, staff) => {
     userId: staff.uid,
     nome: staff.name,
     admin: staff.role === 'admin',
+    dev: await ehDono(client, staff),
     papeis: (data || []).map(linha => linha.role),
     assinaturaSalva: await lerAssinaturaSalva(client, staff),
   };
@@ -243,6 +250,29 @@ const apagarAssinaturaSalva = async (client, staff) => {
   return jsonResponse(200, { success: true });
 };
 
+/**
+ * Apagar de vez (18/11/2026): pedido, assinaturas e histórico do pedido somem;
+ * fica uma linha no histórico geral dizendo quem apagou. Só o dono do sistema:
+ * conferido aqui e de novo no banco (erp_hiring_delete_request).
+ */
+const apagarPedido = async (client, staff, corpo) => {
+  const id = String(corpo.request_id || '');
+  if (!UUID.test(id)) throw httpError('Pedido inválido.', 422);
+  if (!(await ehDono(client, staff))) throw httpError('Só o dono do sistema apaga solicitações.', 403);
+  const { data, error } = await client.rpc('erp_hiring_delete_request', {
+    p_organization_id: staff.organizationId,
+    p_actor: { user_id: staff.uid, name: staff.name },
+    p_request_id: id,
+  });
+  if (error) {
+    if (['PGRST202', '42883'].includes(String(error.code || ''))) {
+      throw httpError('O apagar ainda não foi ligado no banco. Rode o arquivo banco/apagar-de-vez-so-dev-18-11.sql no Supabase.', 409);
+    }
+    throw erroDoBanco(error);
+  }
+  return jsonResponse(200, { success: true, data });
+};
+
 const definirPapel = async (client, staff, corpo) => {
   const id = String(corpo.user_id || '');
   if (!UUID.test(id)) throw httpError('Pessoa inválida.', 422);
@@ -274,6 +304,7 @@ export const handler = async event => {
     if (corpo.action === 'decidir') return await decidir(client, staff, corpo);
     if (corpo.action === 'apagar_assinatura') return await apagarAssinaturaSalva(client, staff);
     if (corpo.action === 'papel') return await definirPapel(client, staff, corpo);
+    if (corpo.action === 'apagar') return await apagarPedido(client, staff, corpo);
     throw httpError('Ação inválida.', 422);
   } catch (error) {
     return functionErrorResponse(error);

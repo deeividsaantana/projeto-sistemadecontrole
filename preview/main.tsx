@@ -454,6 +454,8 @@ function ProgramacaoPreview() {
       podeEditar
       onSavePlanejamento={(item, novo) => setItens(atual => (novo ? [item, ...atual] : atual.map(linha => (linha.id === item.id ? item : linha))))}
       onSaveProducao={(item, novo) => setProducao(atual => (novo ? [item, ...atual] : atual.map(linha => (linha.id === item.id ? item : linha))))}
+      podeApagar
+      onApagarProducao={id => setProducao(atual => atual.filter(linha => linha.id !== id))}
     />
   );
 }

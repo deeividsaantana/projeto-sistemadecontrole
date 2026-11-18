@@ -20,13 +20,15 @@ interface Opcoes {
   solicitacoes: Solicitacao[];
   /** Quem pode trazer pedidos da planilha (e, por isso, sincronizar ao abrir). */
   ligado: boolean;
+  /** Pedidos apagados de vez (ids e números): não voltam pela planilha. */
+  apagadas?: ReadonlySet<string>;
   onSalvar: (registros: Solicitacao[], descricao: string) => void;
   avisar: (tom: 'ok' | 'erro', texto: string) => void;
 }
 
 const servico = () => import('../../services/procurementSheetApi');
 
-export function useSincroniaPlanilha({ solicitacoes, ligado, onSalvar, avisar }: Opcoes) {
+export function useSincroniaPlanilha({ solicitacoes, ligado, apagadas, onSalvar, avisar }: Opcoes) {
   const espelho = useRef<ProcurementSheetRow[] | null>(null);
   const escrita = useRef(false);
   const enviando = useRef(false);
@@ -78,7 +80,7 @@ export function useSincroniaPlanilha({ solicitacoes, ligado, onSalvar, avisar }:
         if (!rows.length) return;
         const lida = rows.reduce((maior, row) => ((row.source_updated_at ?? '') > maior ? row.source_updated_at ?? '' : maior), '');
         const atual = atuais.current;
-        const { novas, atualizadas, envios } = sincronizarComPlanilha(rows, atual, lida || new Date().toISOString());
+        const { novas, atualizadas, envios } = sincronizarComPlanilha(rows, atual, lida || new Date().toISOString(), apagadas);
         if (novas.length || atualizadas.length) {
           const partes = [novas.length ? `${novas.length} novo(s)` : '', atualizadas.length ? `${atualizadas.length} atualizado(s)` : ''].filter(Boolean).join(', ');
           onSalvar([...novas, ...atualizadas], `Planilha de compras: ${partes}.`);

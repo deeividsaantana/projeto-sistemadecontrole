@@ -223,3 +223,4 @@ import './programacao.test';
 import './avancoObra.test';
 import './padraoLancamento.test';
 import './painelDev.test';
+import './apagarSolicitacoes.test';
