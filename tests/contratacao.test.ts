@@ -97,7 +97,8 @@ test('nomes sérios nas assinaturas (18/11/2026): Recursos Humanos e Gerência, 
   const link = fs.readFileSync('src/ContratacaoLinkApp.tsx', 'utf8');
   assert.match(link, /document\.title = 'Documentações'/, 'título da aba do navegador');
   const peloLink = fs.readFileSync('src/components/contratacao/ContratacaoPeloLink.tsx', 'utf8');
-  assert.match(peloLink, /<OutrosPedidos /, 'pelo link a pessoa vê também os outros pedidos');
+  assert.match(peloLink, /<SolicitacoesDoLink pedidos=\{todos\} leitor=\{dados\.me\} atual=\{dados\.request\.id\} \/>/, 'pelo link a pessoa vê a lista de solicitações, mesmo com um pedido só');
+  assert.doesNotMatch(peloLink, /p\.id !== atual/, 'a lista não esconde o pedido aberto (com um pedido só ela sumia)');
 });
 
 test('quem vê: quem abriu, admin e quem tem papel; o resto não', () => {
