@@ -140,7 +140,6 @@ export const loadManagedUsers = async (limit = 100): Promise<ManagedUser[]> => {
 export const createManagedUser = async (input: {
   fullName: string;
   email: string;
-  password: string;
   role: ManagedUserRole;
   profileName?: string;
   avatarColor?: string;
@@ -151,7 +150,8 @@ export const createManagedUser = async (input: {
   registration?: string;
   permissions?: ManagedUserPermission[];
 }) => {
-  const response = await request<ManagedUser>(endpoint, {
+  // primeiroAcesso: código do link em que a pessoa cria a própria senha (só para login novo).
+  const response = await request<ManagedUser & { primeiroAcesso: string | null }>(endpoint, {
     method: 'POST',
     body: JSON.stringify({ action: 'create-user', ...input }),
   });

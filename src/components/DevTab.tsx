@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { ArrowLeft, Copy, History, KeyRound, Lock, RefreshCw, RotateCcw, Search, ShieldCheck, UserPlus } from 'lucide-react';
+import { ArrowLeft, History, KeyRound, Lock, RefreshCw, RotateCcw, Search, ShieldCheck, UserPlus } from 'lucide-react';
 import { ConfirmDialog, Modal, PageHeader, TabelaPadrao, type ColunaTabela } from '../shared/ui';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { AbasDaTela, idDaAba, type AbaDaTela } from '../shared/ui/AbasDaTela';
@@ -9,6 +9,7 @@ import { Avatar } from '../shared/ui/Avatar';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CAMPO_SELECT, CARTAO, FOCO, ROTULO, TOM_SITUACAO } from './cadastros/estilos';
 import type { Capacidade } from '../utils/permissoes';
 import { PERFIS_DE_ACESSO } from './perfil/perfisDeAcesso';
+import { LinkDePrimeiroAcesso } from './perfil/LinkDePrimeiroAcesso';
 import type { UserRole } from '../app/navigation/navigation';
 import {
   ABAS_AJUSTAVEIS,
@@ -26,7 +27,7 @@ import {
   carregarPainelDev,
   criarLoginDev,
   desfazerMudanca,
-  gerarNovaSenha,
+  gerarLinkDeSenha,
   mudarAbaDaPessoa,
   mudarContratacaoDaPessoa,
   mudarPerfilDaPessoa,
@@ -41,8 +42,8 @@ import {
  * Aba Dev (16/11/2026): o painel do dono do sistema para ver e mudar o que
  * cada pessoa vê e faz. Só aparece para quem o banco marca como dev, e cada
  * mudança é conferida de novo no servidor e no banco, fica no Histórico com
- * quem mudou e quando, e pode ser desfeita. Aqui também se cria login e se
- * gera senha temporária (mostrada uma vez só, nunca guardada).
+ * quem mudou e quando, e pode ser desfeita. Aqui também se cria login; a
+ * senha a pessoa cria sozinha pelo link de primeiro acesso (18/11/2026).
  */
 type Subtela = 'pessoas' | 'quadro' | 'historico';
 
@@ -75,7 +76,7 @@ export const descreverMudanca = (mudanca: Pick<MudancaDeAcesso, 'kind' | 'item' 
     return texto === 'sim' ? 'Tem' : 'Não tem';
   };
   if (mudanca.kind === 'criacao') return `Login criado como ${NOME_DO_PERFIL[mudanca.after as UserRole] ?? mudanca.after}`;
-  if (mudanca.kind === 'senha') return 'Senha temporária nova gerada';
+  if (mudanca.kind === 'senha') return mudanca.item === 'link' ? 'Link para criar senha gerado' : 'Senha temporária nova gerada';
   const oQue = mudanca.kind === 'aba' ? `Aba ${NOME_DA_ABA[mudanca.item] ?? mudanca.item}`
     : mudanca.kind === 'perfil' ? 'Perfil'
       : mudanca.kind === 'situacao' ? 'Situação'
@@ -96,9 +97,8 @@ export default function DevTab() {
   const [busca, setBusca] = useState('');
   const [selecionadaId, setSelecionadaId] = useState<string | null>(null);
   const [pendente, setPendente] = useState<Pendente | null>(null);
-  // A senha temporária vive só neste estado: some ao fechar e nunca é guardada.
-  const [senhaMostrada, setSenhaMostrada] = useState<{ nome: string; email: string; senha: string } | null>(null);
-  const [copiada, setCopiada] = useState(false);
+  // O link de primeiro acesso vive só neste estado: some ao fechar.
+  const [linkMostrado, setLinkMostrado] = useState<{ nome: string; email: string; token: string } | null>(null);
   const [novoLogin, setNovoLogin] = useState<{ nome: string; email: string; perfil: UserRole } | null>(null);
   const [erroNovo, setErroNovo] = useState('');
 
@@ -178,7 +178,7 @@ export default function DevTab() {
     setErroNovo('');
     try {
       const criado = await criarLoginDev(novoLogin.nome.trim(), novoLogin.email.trim(), novoLogin.perfil);
-      setSenhaMostrada({ nome: novoLogin.nome.trim(), email: novoLogin.email.trim().toLowerCase(), senha: criado.senha });
+      setLinkMostrado({ nome: novoLogin.nome.trim(), email: novoLogin.email.trim().toLowerCase(), token: criado.token });
       setNovoLogin(null);
       await carregar();
       setSelecionadaId(criado.user_id);
@@ -270,17 +270,17 @@ export default function DevTab() {
       const trava = motivoDaTrava({ tipo: 'senha' }, ehVoce);
       if (trava) { setErro(trava); return; }
       setPendente({
-        titulo: `Gerar senha nova para ${pessoa.name}?`,
-        descricao: 'A senha atual deixa de valer agora. A nova aparece uma vez só, para você passar à pessoa.',
-        botao: 'Gerar senha',
+        titulo: `Mandar link para ${pessoa.name} criar senha nova?`,
+        descricao: 'A pessoa abre o link e cria a senha dela; você não vê. A senha atual continua valendo até ela criar a nova. Link anterior dela para de funcionar.',
+        botao: 'Gerar link',
         executar: async () => {
           setOcupado(true);
           try {
-            const { senha } = await gerarNovaSenha(pessoa.user_id);
-            setSenhaMostrada({ nome: pessoa.name, email: pessoa.email, senha });
+            const { token } = await gerarLinkDeSenha(pessoa.user_id);
+            setLinkMostrado({ nome: pessoa.name, email: pessoa.email, token });
             await carregar();
           } catch (falha) {
-            setErro(falha instanceof Error ? falha.message : 'Não foi possível gerar a senha.');
+            setErro(falha instanceof Error ? falha.message : 'Não foi possível gerar o link.');
           } finally {
             setOcupado(false);
             setPendente(null);
@@ -326,9 +326,9 @@ export default function DevTab() {
             <span className="text-sm font-semibold text-slate-700">Senha</span>
             <div className="flex flex-wrap items-center gap-2">
               <button type="button" onClick={pedirSenha} disabled={ocupado || ehVoce} className={BOTAO_SECUNDARIO} data-testid="dev-nova-senha">
-                {ehVoce ? <Lock className="size-4" aria-hidden="true" /> : <KeyRound className="size-4" aria-hidden="true" />} Gerar senha temporária
+                {ehVoce ? <Lock className="size-4" aria-hidden="true" /> : <KeyRound className="size-4" aria-hidden="true" />} Link para criar senha
               </button>
-              <span className="text-xs text-slate-600">{ehVoce ? 'A sua você troca pelo "Recuperar senha" da tela de entrada.' : 'Ninguém vê a senha atual; a nova aparece uma vez só.'}</span>
+              <span className="text-xs text-slate-600">{ehVoce ? 'A sua você troca pelo "Recuperar senha" da tela de entrada.' : 'Esqueceu a senha? Mande o link: ela mesma cria outra.'}</span>
             </div>
           </div>
         </section>
@@ -527,7 +527,7 @@ export default function DevTab() {
       <Modal
         open={Boolean(novoLogin)}
         title="Novo login"
-        description="A pessoa entra com este e-mail e uma senha temporária, que aparece para você na próxima tela."
+        description="Você só cria o login. Na próxima tela sai um link: a pessoa abre e cria a própria senha."
         busy={ocupado}
         onClose={() => setNovoLogin(null)}
         onSubmit={() => void criarLogin()}
@@ -557,26 +557,14 @@ export default function DevTab() {
         )}
       </Modal>
       <Modal
-        open={Boolean(senhaMostrada)}
+        open={Boolean(linkMostrado)}
         role="alertdialog"
-        title="Senha temporária"
-        description="Ela aparece só agora. Passe para a pessoa e feche: o sistema não guarda esta senha em lugar nenhum."
-        onClose={() => { setSenhaMostrada(null); setCopiada(false); }}
-        footer={<button type="button" onClick={() => { setSenhaMostrada(null); setCopiada(false); }} className={BOTAO_PRIMARIO}>Já passei, fechar</button>}
+        title="Link para criar senha"
+        description="A pessoa abre o link e cria a própria senha. Ninguém mais fica sabendo dela."
+        onClose={() => setLinkMostrado(null)}
+        footer={<button type="button" onClick={() => setLinkMostrado(null)} className={BOTAO_SECUNDARIO}>Já mandei, fechar</button>}
       >
-        {senhaMostrada && (
-          <div className="grid gap-3" data-testid="dev-senha">
-            <p className="text-sm text-slate-700"><strong>{senhaMostrada.nome}</strong> entra com <strong>{senhaMostrada.email}</strong> e a senha:</p>
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-[#f7f8f6] p-3">
-              <code className="flex-1 select-all text-xl font-black tracking-wider text-slate-900">{senhaMostrada.senha}</code>
-              <button type="button" className={BOTAO_SECUNDARIO} onClick={() => {
-                void navigator.clipboard?.writeText(senhaMostrada.senha).then(() => setCopiada(true), () => setCopiada(false));
-              }}>
-                <Copy className="size-4" aria-hidden="true" /> {copiada ? 'Copiada' : 'Copiar'}
-              </button>
-            </div>
-          </div>
-        )}
+        {linkMostrado && <LinkDePrimeiroAcesso {...linkMostrado} />}
       </Modal>
     </TelaCheia>
   );

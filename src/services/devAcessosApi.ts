@@ -58,11 +58,12 @@ const enviar = (corpo: Record<string, unknown>) => chamar<{ id: number }>({ meth
 export const carregarPainelDev = () => chamar<DadosPainelDev>({ method: 'GET' });
 /** actions null volta ao padrão do perfil; lista vazia tira a aba. */
 export const mudarAbaDaPessoa = (userId: string, tab: string, actions: Capacidade[] | null) => enviar({ action: 'aba', user_id: userId, tab, actions });
-/** A senha temporária volta só nesta resposta: mostre uma vez e não guarde. */
+/** Volta o código do link de primeiro acesso: a pessoa cria a própria senha. Não guarde. */
 export const criarLoginDev = (fullName: string, email: string, role: UserRole) =>
-  chamar<{ id: number; user_id: string; senha: string }>({ method: 'POST', body: JSON.stringify({ action: 'criar', fullName, email, role }) });
-export const gerarNovaSenha = (userId: string) =>
-  chamar<{ id: number; senha: string }>({ method: 'POST', body: JSON.stringify({ action: 'senha', user_id: userId }) });
+  chamar<{ id: number; user_id: string; token: string }>({ method: 'POST', body: JSON.stringify({ action: 'criar', fullName, email, role }) });
+/** "Esqueci a senha": link novo para a pessoa criar outra senha. */
+export const gerarLinkDeSenha = (userId: string) =>
+  chamar<{ id: number; token: string }>({ method: 'POST', body: JSON.stringify({ action: 'senha', user_id: userId }) });
 export const mudarPerfilDaPessoa = (userId: string, value: UserRole) => enviar({ action: 'perfil', user_id: userId, value });
 export const mudarSituacaoDaPessoa = (userId: string, ativo: boolean) => enviar({ action: 'situacao', user_id: userId, value: ativo ? 'ativo' : 'inativo' });
 export const mudarContratacaoDaPessoa = (userId: string, role: PapelContratacaoDev, active: boolean) => enviar({ action: 'contratacao', user_id: userId, role, active });

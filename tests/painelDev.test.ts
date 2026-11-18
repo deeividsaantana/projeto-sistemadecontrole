@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import fs from 'node:fs';
 import { substituirClienteSupabase } from '../api/_shared/supabase-admin.js';
-import { acoesDoCorpo, handler, senhaTemporaria, travaDoProprioAcesso } from '../api/dev-acessos.js';
+import { acoesDoCorpo, handler, travaDoProprioAcesso } from '../api/dev-acessos.js';
 import { ROLE_ACCESS } from '../src/app/navigation/navigation';
 import {
   abasLiberadas,
@@ -69,10 +69,7 @@ test('trava do próprio acesso: não tira aba de si, não sai de admin, não se 
   assert.doesNotThrow(() => travaDoProprioAcesso({ alvo: OUTRO, ator: DEV, tipo: 'situacao', valor: 'inativo' }));
 });
 
-test('senha temporária: 12 letras e números sem os que se confundem; ações do corpo são conferidas', () => {
-  const senhas = new Set(Array.from({ length: 50 }, () => senhaTemporaria()));
-  assert.equal(senhas.size, 50);
-  for (const senha of senhas) assert.match(senha, /^(?=.*[a-z])(?=.*[A-Z])(?=.*[2-9])[a-km-np-zA-HJ-NP-Z2-9]{12}$/);
+test('ações do corpo são conferidas', () => {
   assert.deepEqual(acoesDoCorpo(['excluir']), ['ver', 'excluir']);
   assert.deepEqual(acoesDoCorpo([]), []);
   assert.equal(acoesDoCorpo(null), null);
