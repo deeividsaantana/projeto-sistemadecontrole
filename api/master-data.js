@@ -35,6 +35,7 @@ import {
 } from './_shared/observability.js';
 import { buildAuditRecord } from './_shared/audit-log.js';
 import { withIdempotency } from './_shared/idempotency.js';
+import { criarLinkDePrimeiroAcesso, senhaQueNinguemSabe } from './primeiro-acesso.js';
 
 const ROOT_COLLECTION = 'sistemarenea_master_data';
 const ORGANIZATIONS_COLLECTION = 'sistemarenea_organizations';
@@ -244,7 +245,6 @@ export const createUser = async (body, context) => {
   assertAdministrator(context);
   const email = cleanString(body.email, 320).toLowerCase();
   const fullName = cleanString(body.fullName, 240);
-  const password = String(body.password || '');
   const role = sanitizeUserRole(body.role);
   const profile = sanitizeUserProfile(body);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -257,18 +257,17 @@ export const createUser = async (body, context) => {
     error.statusCode = 400;
     throw error;
   }
-  if (password.length < 8) {
-    const error = new Error('A senha temporária deve ter pelo menos 8 caracteres.');
-    error.statusCode = 400;
-    throw error;
-  }
   const adminAuth = getAdminAuth();
   let user;
+  let novo = false;
   try {
     user = await adminAuth.getUserByEmail(email);
   } catch (error) {
     if (error?.code !== 'auth/user-not-found') throw error;
-    user = await adminAuth.createUser({ email, password, displayName: fullName, emailVerified: false });
+    // Quem cria o login não escolhe a senha: ela nasce secreta e a pessoa
+    // cria a própria pelo link de primeiro acesso.
+    user = await adminAuth.createUser({ email, password: senhaQueNinguemSabe(), displayName: fullName, emailVerified: false });
+    novo = true;
   }
   await adminAuth.setCustomUserClaims(user.uid, {
     ...(user.customClaims || {}),
@@ -289,7 +288,11 @@ export const createUser = async (body, context) => {
     updatedAt: serverTimestamp(),
   }, { merge: true });
   await writeAudit(context, 'USER_CREATE', 'users', user.uid, null, { email, fullName, role, ...profile });
-  return jsonResponse(201, { success: true, data: { uid: user.uid, email, fullName, role, ...profile } });
+  // Link só para login novo: um e-mail que já existe não ganha troca de senha por aqui.
+  const primeiroAcesso = novo
+    ? await criarLinkDePrimeiroAcesso({ organizationId: context.organizationId, userId: user.uid, createdBy: context.userId })
+    : null;
+  return jsonResponse(201, { success: true, data: { uid: user.uid, email, fullName, role, ...profile, primeiroAcesso } });
 };
 
 export const updateUser = async (body, context) => {
@@ -643,8 +646,11 @@ export const handler = async event => withApiTelemetry(event, 'master-data', asy
     }
     const idempotencyKey = assertIdempotencyKey(event);
     const body = parseJsonBody(event, 4_000_000);
-    return await withIdempotency(event, context, idempotencyKey, async () => {
+    // Fora da idempotência: a resposta traz o código do link de primeiro
+    // acesso, que não pode ficar guardado. Repetir o pedido não duplica o
+    // login (o e-mail já existe) nem gera link novo.
     if (method === 'POST' && body.action === 'create-user') return await createUser(body, context);
+    return await withIdempotency(event, context, idempotencyKey, async () => {
     if (method === 'PATCH' && body.action === 'update-user') return await updateUser(body, context);
     if (method === 'PATCH' && body.action === 'update-me') return await updateMyProfile(body, context);
     if (method === 'DELETE' && body.action === 'delete-user') return await deleteUser(body, context);

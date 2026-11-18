@@ -15,6 +15,7 @@ import { handler as procurement } from '../api/procurement.js';
 import { handler as procurementSheet } from '../api/procurement-sheet.js';
 import { handler as contratacao } from '../api/contratacao.js';
 import { handler as devAcessos } from '../api/dev-acessos.js';
+import { handler as primeiroAcesso } from '../api/primeiro-acesso.js';
 import { sincronizarUmaVez } from './procurementSpreadsheetSyncJob.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -52,6 +53,7 @@ for (const prefix of ['/api', '/.netlify/functions']) {
   app.all(`${prefix}/procurement-sheet`, toExpressHandler(procurementSheet));
   app.all(`${prefix}/contratacao`, toExpressHandler(contratacao));
   app.all(`${prefix}/dev-acessos`, toExpressHandler(devAcessos));
+  app.all(`${prefix}/primeiro-acesso`, toExpressHandler(primeiroAcesso));
 }
 
 // Não existe cron nativo no plano gratuito: um pinger externo gratuito (cron-job.org,

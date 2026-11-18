@@ -18,6 +18,7 @@ import { Avatar } from '../shared/ui/Avatar';
 import { COR_AVATAR_PADRAO, corPeloNome } from '../utils/avatar';
 import { EscolherAvatar } from './perfil/EscolherAvatar';
 import { PERFIS_DE_ACESSO } from './perfil/perfisDeAcesso';
+import { LinkDePrimeiroAcesso } from './perfil/LinkDePrimeiroAcesso';
 
 const roles = PERFIS_DE_ACESSO;
 
@@ -25,7 +26,6 @@ type Mudanca = { user: ManagedUser; changes: Partial<Pick<ManagedUser, 'role' | 
 type UserForm = {
   fullName: string;
   email: string;
-  password: string;
   role: ManagedUserRole;
   avatarColor: string;
   avatarPhoto: string | null;
@@ -48,7 +48,7 @@ const permissionOptions: Array<{ value: ManagedUserPermission; label: string }> 
 ];
 
 const vazioFormulario: UserForm = {
-  fullName: '', email: '', password: '', role: 'operador',
+  fullName: '', email: '', role: 'operador',
   avatarColor: COR_AVATAR_PADRAO, avatarPhoto: null, jobTitle: '', phone: '', area: '', registration: '',
   permissions: ['dashboard', 'lancamentos'],
 };
@@ -104,6 +104,8 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
   const [form, setForm] = useState<UserForm>(vazioFormulario);
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<ManagedUser | null>(null);
+  // Link de primeiro acesso do login recém-criado: vive só aqui e some ao fechar.
+  const [linkCriado, setLinkCriado] = useState<{ nome: string; email: string; token: string } | null>(null);
 
   const refresh = async () => {
     setLoading(true);
@@ -127,9 +129,13 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
     setError('');
     setMessage('');
     try {
-      await createManagedUser(form);
+      const criado = await createManagedUser(form);
+      if (criado.primeiroAcesso) {
+        setLinkCriado({ nome: form.fullName.trim(), email: form.email.trim().toLowerCase(), token: criado.primeiroAcesso });
+      } else {
+        setMessage('Esse e-mail já tinha login: ele continua com a senha que já usa.');
+      }
       setForm(vazioFormulario);
-      setMessage('Usuário criado. Oriente-o a trocar a senha temporária no primeiro acesso.');
       await refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Não foi possível criar usuário.');
@@ -138,7 +144,7 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
     }
   };
 
-  const updateUser = async (user: ManagedUser, changes: Partial<Pick<ManagedUser, 'role' | 'active'>> & Partial<Omit<UserForm, 'email' | 'password' | 'avatarPhoto'>> & { avatarPhoto?: string }) => {
+  const updateUser = async (user: ManagedUser, changes: Partial<Pick<ManagedUser, 'role' | 'active'>> & Partial<Omit<UserForm, 'email' | 'avatarPhoto'>> & { avatarPhoto?: string }) => {
     setSaving(true);
     setErroLista('');
     try {
@@ -265,10 +271,6 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
             <TextInput required type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} />
           </label>
           <label className="space-y-1.5">
-            <span className={labelClass}>Senha temporária</span>
-            <TextInput required minLength={8} type="password" value={form.password} onChange={event => setForm({ ...form, password: event.target.value })} />
-          </label>
-          <label className="space-y-1.5">
             <span className={labelClass}>Perfil</span>
             <select
               value={form.role}
@@ -361,6 +363,16 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
           <label className="space-y-1.5 sm:col-span-2"><span className={labelClass}>Perfil de acesso</span><select value={form.role} onChange={event => setForm({ ...form, role: event.target.value as ManagedUserRole })} className={selectClass}>{roles.map(role => <option key={role.value} value={role.value}>{role.label}</option>)}</select></label>
           <fieldset className="sm:col-span-2"><legend className={labelClass}>Módulos liberados</legend><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">{permissionOptions.map(permission => <label key={permission.value} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700"><input type="checkbox" checked={form.permissions.includes(permission.value)} onChange={event => setForm({ ...form, permissions: event.target.checked ? [...form.permissions, permission.value] : form.permissions.filter(item => item !== permission.value) })} />{permission.label}</label>)}</div></fieldset>
         </div>
+      </Modal>
+      <Modal
+        open={Boolean(linkCriado)}
+        role="alertdialog"
+        title="Login criado"
+        description="Você só criou o login. A pessoa abre o link e cria a própria senha."
+        onClose={() => setLinkCriado(null)}
+        footer={<Button variant="subtle" onClick={() => setLinkCriado(null)}>Já mandei, fechar</Button>}
+      >
+        {linkCriado && <LinkDePrimeiroAcesso {...linkCriado} />}
       </Modal>
       <ConfirmDialog
         open={Boolean(deletingUser)}
