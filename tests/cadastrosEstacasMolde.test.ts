@@ -45,7 +45,7 @@ test('as tabelas de Estacas usam a TabelaPadrao (50 por página), sem <table> à
   assert.doesNotMatch(ler('src/components/estacas/RecebimentosEstacas.tsx'), /<table/);
   // Relatórios: só a versão de papel (relatório inteiro) é tabela à mão, com caption e th scope.
   const relatorios = ler('src/components/estacas/RelatoriosEstacas.tsx');
-  assert.match(relatorios, /print:table/);
+  assert.match(relatorios, /imprimirEmUmaFolha\(papel.current/);
   assert.match(relatorios, /<caption/);
   assert.match(relatorios, /scope="col"/);
 });

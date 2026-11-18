@@ -87,7 +87,3 @@
     flex: 1 1 100%;
   }
 }
-
-@media print {
-  .estacas-nao-imprime { display: none !important; }
-}

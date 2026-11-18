@@ -308,48 +308,43 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; text-wrap: bal
   }
 }
 
+/* Impressão e "Salvar como PDF" pelo navegador: sempre uma folha A4 só e sem
+   margem, para o navegador não escrever endereço do site, data e título nas
+   bordas. A margem de 10 mm fica dentro da folha (imprimirEmUmaFolha.ts), que
+   também reduz o zoom até tudo caber numa folha. */
+@page { size: A4 portrait; margin: 0; }
+@page folha-retrato { size: A4 portrait; margin: 0; }
+@page folha-paisagem { size: A4 landscape; margin: 0; }
 @media print {
-  @page { size: A4 landscape; margin: 8mm; }
-  body * { visibility: hidden !important; }
-  #fleet-print-report, #fleet-print-report * { visibility: visible !important; }
-  #fleet-print-report { display: block !important; position: absolute; inset: 0; width: 100%; background: #fff; color: #222; }
-  .fleet-report-page { display: flex; min-height: 190mm; flex-direction: column; break-after: page; page-break-after: always; }
-  .fleet-report-page:last-child { break-after: auto; page-break-after: auto; }
-  .fleet-report-page table { break-inside: auto; page-break-inside: auto; }
-  .fleet-report-page thead { display: table-header-group; }
-  .fleet-report-page tr { break-inside: avoid; page-break-inside: avoid; }
-  .fleet-report-page img { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  html, body { margin: 0 !important; padding: 0 !important; }
+  body.folha-imprimindo { background: #fff !important; }
+  body.folha-imprimindo *:not(.folha-impressa):not(.folha-impressa *):not(:has(.folha-impressa)) { display: none !important; }
+  body.folha-imprimindo :has(.folha-impressa) {
+    position: static !important; inset: auto !important; height: auto !important; min-height: 0 !important; max-height: none !important;
+    max-width: none !important; width: auto !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; border: 0 !important;
+    background: #fff !important; box-shadow: none !important; transform: none !important; zoom: 1 !important;
+  }
+  body.folha-imprimindo .folha-impressa { page: folha-retrato; margin: 0 !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; overflow: visible !important; break-inside: avoid; }
+  body.folha-imprimindo[data-folha="paisagem"] .folha-impressa { page: folha-paisagem; }
+  .folha-impressa, .folha-impressa * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
 
 /* Solicitações de RH (contratação, promoção, desligamento): o PDF é a
-   própria folha da tela (FolhaContratacao, imprimir). Com "ct-imprimindo" no
-   body, sai só a folha, em A4 de pé; menu, botões e o quadro de assinar não
-   vão para o papel. */
+   própria folha da tela (FolhaContratacao, imprimir). Menu, botões e o quadro
+   de assinar não vão para o papel. As regras valem já na tela enquanto
+   imprime, porque a folha é medida ali para caber numa página. */
 /* Campo do papel: só o traço embaixo, escuro como no modelo impresso. */
 #app-root .ct-imprimir :is(input, textarea).ct-campo-papel:not([type="checkbox"]):not([type="radio"]),
 .ct-imprimir :is(input, textarea).ct-campo-papel { border-color: #6b7280; background-color: transparent; }
 #app-root .ct-imprimir :is(input, textarea).ct-campo-papel:not([type="checkbox"]):not([type="radio"]):focus { border-color: var(--renea-green); }
-@page ct-retrato { size: A4 portrait; margin: 10mm; }
-@media print {
-  .ct-imprimir, .ct-imprimir * { visibility: visible !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-  body.ct-imprimindo { background: #fff !important; }
-  body.ct-imprimindo *:not(.ct-imprimir):not(.ct-imprimir *):not(:has(.ct-imprimir)) { display: none !important; }
-  body.ct-imprimindo :has(.ct-imprimir) {
-    position: static !important; inset: auto !important; height: auto !important; min-height: 0 !important; max-height: none !important;
-    max-width: none !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; border: 0 !important;
-    background: #fff !important; box-shadow: none !important; transform: none !important;
-  }
-  body.ct-imprimindo .ct-imprimir { page: ct-retrato; width: 100% !important; border: 0 !important; border-radius: 0 !important; overflow: visible !important; }
-  .ct-imprimir .ct-sem-papel { display: none !important; }
-  /* Mesmo desenho, só mais compacto: cabe numa folha como o modelo. */
-  body.ct-imprimindo .ct-imprimir { zoom: .76; }
-  .ct-imprimir .h-20 { height: 56px !important; }
-  .ct-imprimir .min-h-28 { min-height: 80px !important; }
-  .ct-imprimir .min-h-11, .ct-imprimir .min-h-10 { min-height: 26px !important; }
-  .ct-imprimir .min-h-9, .ct-imprimir .min-h-8 { min-height: 20px !important; }
-  .ct-imprimir .py-4 { padding-top: 7px !important; padding-bottom: 7px !important; }
-  .ct-imprimir .space-y-4 > * + * { margin-top: 10px !important; }
-}
+body.folha-imprimindo .ct-imprimir .ct-sem-papel { display: none !important; }
+/* Mesmo desenho, só mais compacto: cabe numa folha como o modelo. */
+body.folha-imprimindo .ct-imprimir .h-20 { height: 56px !important; }
+body.folha-imprimindo .ct-imprimir .min-h-28 { min-height: 80px !important; }
+body.folha-imprimindo .ct-imprimir .min-h-11, body.folha-imprimindo .ct-imprimir .min-h-10 { min-height: 26px !important; }
+body.folha-imprimindo .ct-imprimir .min-h-9, body.folha-imprimindo .ct-imprimir .min-h-8 { min-height: 20px !important; }
+body.folha-imprimindo .ct-imprimir .py-4 { padding-top: 7px !important; padding-bottom: 7px !important; }
+body.folha-imprimindo .ct-imprimir .space-y-4 > * + * { margin-top: 10px !important; }
 
 /* Microinterações de entrada em CSS puro. Substituem a biblioteca de animação
    que custava 126 kB baixados na abertura do sistema para fazer exatamente

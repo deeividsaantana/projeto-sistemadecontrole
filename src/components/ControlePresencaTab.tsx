@@ -60,6 +60,7 @@ import reneaLogo from '../assets/images/logo-renea-dark.svg';
 import { addCorporateSummarySheet, configureCorporateWorkbook, createCorporateWorkbook, downloadCorporateWorkbook, styleCorporateWorksheet } from '../utils/excelCorporate';
 import { baixarPlanilhaEquipes } from '../utils/exportarEquipesExcel';
 import { generateUniversalPdfReport } from '../utils/universalPdfReport';
+import { imprimirEmUmaFolha } from '../utils/imprimirEmUmaFolha';
 import { useAtalhoNovo } from '../shared/hooks/useAtalhoNovo';
 import type {
   Empresa,
@@ -225,6 +226,27 @@ const saveBlob = (blob: Blob, name: string) => {
   URL.revokeObjectURL(url);
 };
 
+/** Lista de uma equipe no papel: folha A4 só, montada na hora e apagada depois. */
+const imprimirEquipe = (nome: string, detalhe: string, pessoas: readonly Funcionario[]) => {
+  const folha = document.createElement('section');
+  folha.style.cssText = 'font-family:Arial,sans-serif;color:black;background:white';
+  const linha = (celulas: string[], cabecalho = false) => {
+    const div = document.createElement('div');
+    div.style.cssText = `display:grid;grid-template-columns:1fr 120px 120px;gap:8px;border-bottom:1px solid lightgray;padding:10px 0${cabecalho ? ';background:whitesmoke;font-weight:bold' : ''}`;
+    for (const texto of celulas) div.appendChild(document.createElement('span')).textContent = texto;
+    return div;
+  };
+  const titulo = folha.appendChild(document.createElement('h1'));
+  titulo.style.cssText = 'font-size:22px;margin:0 0 8px';
+  titulo.textContent = nome;
+  const sub = folha.appendChild(document.createElement('p'));
+  sub.style.cssText = 'color:gray;margin:0 0 12px';
+  sub.textContent = detalhe;
+  folha.appendChild(linha(['Colaborador', 'Matrícula', 'Situação'], true));
+  for (const pessoa of pessoas) folha.appendChild(linha([pessoa.nome || 'Sem nome', pessoa.matricula || '—', pessoa.status || 'Ativo']));
+  document.body.appendChild(folha);
+  imprimirEmUmaFolha(folha, { titulo: nome, aoTerminar: () => folha.remove() });
+};
 const dataBr = (iso: string) => (iso ? iso.split('-').reverse().join('/') : '');
 
 /** "2026-09-03T14:05:00.000Z" vira "03/09/2026 11:05"; texto que não é data fica como veio. */
@@ -1614,7 +1636,7 @@ export default function ControlePresencaTab({
                   <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2">
                     {onDeleteGrupoEquipe && <button type="button" onClick={event => { event.stopPropagation(); setEquipeExcluindo(group); }} className={`inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-rose-700 hover:text-rose-900 ${FOCO}`}><Trash2 className="h-4 w-4" aria-hidden="true" /> Excluir</button>}
                     <button type="button" onClick={event => { event.stopPropagation(); openGroup(group); }} className={`ml-auto inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-slate-700 hover:text-slate-950 ${FOCO}`}><Edit3 className="h-4 w-4" aria-hidden="true" /> Editar equipe</button>
-                    <button type="button" onClick={event => { event.stopPropagation(); const janela = window.open('', '_blank', 'noopener,noreferrer'); if (!janela) return; const nome = group.nome || 'Equipe sem nome'; janela.document.write(`<html><head><title>${nome}</title><style>body{font-family:Arial,sans-serif;color:black;padding:32px}h1{font-size:22px;margin:0 0 8px}p{color:gray}.pessoa{display:grid;grid-template-columns:1fr 120px 120px;gap:8px;border-bottom:1px solid lightgray;padding:10px 0}.cabecalho{background:whitesmoke;font-weight:bold}</style></head><body><h1>${nome}</h1><p>${group.responsavel || 'Sem responsável'} · ${group.frenteServico || 'Sem frente'}</p><div class="pessoa cabecalho"><span>Colaborador</span><span>Matrícula</span><span>Situação</span></div>${members.map(member => `<div class="pessoa"><span>${member.nome || 'Sem nome'}</span><span>${member.matricula || '—'}</span><span>${member.status || 'Ativo'}</span></div>`).join('')}</body></html>`); janela.document.close(); janela.focus(); janela.print(); }} className={`inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-slate-700 hover:text-slate-950 ${FOCO}`}><Printer className="h-4 w-4" aria-hidden="true" /> Imprimir</button>
+                    <button type="button" onClick={event => { event.stopPropagation(); imprimirEquipe(group.nome || 'Equipe sem nome', `${group.responsavel || 'Sem responsável'} · ${group.frenteServico || 'Sem frente'}`, members); }} className={`inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-slate-700 hover:text-slate-950 ${FOCO}`}><Printer className="h-4 w-4" aria-hidden="true" /> Imprimir</button>
                   </div>
                 </article>
               );

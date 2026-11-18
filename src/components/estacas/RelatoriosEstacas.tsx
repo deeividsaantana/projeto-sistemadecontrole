@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { CalendarDays, FileSpreadsheet, ListOrdered, MapPinned, Printer, type LucideIcon } from 'lucide-react';
 import type { CravacaoEstaca } from '../../types';
@@ -14,6 +14,7 @@ import {
 import { formatarData, numero } from '../../utils/formato';
 import { CountUp, TabelaPadrao, type ColunaTabela } from '../../shared/ui';
 import { useEntradaDeLista } from '../../shared/hooks/useEntradaDeLista';
+import { imprimirEmUmaFolha } from '../../utils/imprimirEmUmaFolha';
 import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO, FOCO, ROTULO } from '../cadastros/estilos';
 
 type Relatorio = 'frente' | 'dia' | 'estacas';
@@ -92,20 +93,13 @@ export default function RelatoriosEstacas({ hoje, estacas }: Props) {
     };
   }), [tabela]);
 
-  // A tela mostra 50 linhas por página; no papel sai o relatório inteiro.
-  // A tabela de impressão só existe enquanto imprime (menos peso na tela).
+  // A tela mostra 50 linhas por página; no papel sai o relatório inteiro, numa
+  // folha A4 só. A tabela de impressão só existe enquanto imprime (menos peso na tela).
   const [imprimindo, setImprimindo] = useState(false);
-  useEffect(() => {
-    const antes = () => flushSync(() => setImprimindo(true));
-    const depois = () => setImprimindo(false);
-    window.addEventListener('beforeprint', antes);
-    window.addEventListener('afterprint', depois);
-    return () => { window.removeEventListener('beforeprint', antes); window.removeEventListener('afterprint', depois); };
-  }, []);
+  const papel = useRef<HTMLDivElement>(null);
   const imprimir = () => {
     flushSync(() => setImprimindo(true));
-    window.print();
-    setImprimindo(false);
+    if (papel.current) imprimirEmUmaFolha(papel.current, { aoTerminar: () => setImprimindo(false) });
   };
 
   const baixar = () => {
@@ -128,7 +122,7 @@ export default function RelatoriosEstacas({ hoje, estacas }: Props) {
 
   return (
     <div className="space-y-4">
-      <section data-estacas-reveal className={`${CARTAO} estacas-nao-imprime p-4`} aria-label="Período">
+      <section data-estacas-reveal className={`${CARTAO} p-4`} aria-label="Período">
         <div className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap">
           <label className="min-w-0 space-y-1.5">
             <span className={ROTULO}>De</span>
@@ -154,14 +148,14 @@ export default function RelatoriosEstacas({ hoje, estacas }: Props) {
 
       <section data-estacas-reveal className={`${CARTAO} p-4`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div role="group" aria-label="Tipo de relatório" className="estacas-nao-imprime flex gap-2 overflow-x-auto pb-1">
+          <div role="group" aria-label="Tipo de relatório" className="flex gap-2 overflow-x-auto pb-1">
             {RELATORIOS.map(({ id, nome, Icone }) => (
               <button key={id} type="button" aria-pressed={relatorio === id} onClick={() => setRelatorio(id)} className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition duration-200 ${FOCO} ${relatorio === id ? 'border-[#176b4d] bg-[#176b4d] text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-500'}`}>
                 <Icone className="size-4" aria-hidden="true" /> {nome}
               </button>
             ))}
           </div>
-          <div className="estacas-nao-imprime flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             <button type="button" onClick={imprimir} disabled={vazio} className={BOTAO_SECUNDARIO}><Printer className="size-5" aria-hidden="true" /> Imprimir</button>
             <button type="button" onClick={baixar} disabled={vazio} className={BOTAO_PRIMARIO}><FileSpreadsheet className="size-5" aria-hidden="true" /> Baixar planilha</button>
           </div>
@@ -176,7 +170,7 @@ export default function RelatoriosEstacas({ hoje, estacas }: Props) {
           <p className="mt-4 rounded-xl bg-[#f7f8f6] p-6 text-center text-sm font-semibold text-slate-500">Nenhuma estaca cravada neste período.</p>
         ) : (
           <div ref={lista} className="mt-3">
-            <div className="estacas-nao-imprime">
+            <div>
               <TabelaPadrao
                 key={relatorio}
                 titulo={`Relatório ${RELATORIOS.find(item => item.id === relatorio)?.nome.toLocaleLowerCase('pt-BR')}`}
@@ -188,8 +182,8 @@ export default function RelatoriosEstacas({ hoje, estacas }: Props) {
               />
             </div>
             {imprimindo && (
-              <table className="hidden w-full text-left text-sm print:table">
-                <caption className="mb-2 text-left font-bold">Estacas: {RELATORIOS.find(item => item.id === relatorio)?.nome}</caption>
+              <div ref={papel} className="bg-white"><table className="w-full text-left text-sm">
+                <caption className="mb-2 text-left font-bold">Estacas: {RELATORIOS.find(item => item.id === relatorio)?.nome} · {de || ate ? `de ${de ? formatarData(de) : 'o começo'} até ${ate ? formatarData(ate) : 'hoje'}` : 'desde o começo'}</caption>
                 <thead>
                   <tr>{tabela[0].map((titulo, indice) => <th key={String(titulo)} scope="col" className={`border-b px-2 py-1 ${indice > 0 && typeof tabela[1]?.[indice] === 'number' ? 'text-right' : ''}`}>{titulo}</th>)}</tr>
                 </thead>
@@ -202,7 +196,7 @@ export default function RelatoriosEstacas({ hoje, estacas }: Props) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </div>
         )}
