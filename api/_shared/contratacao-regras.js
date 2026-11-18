@@ -5,7 +5,8 @@
  *
  * Fluxo: quem abre só preenche; o pedido ganha um link próprio e passa por 3
  * assinaturas em ordem rígida. Desde 17/11/2026 a ordem é 1ª RH -> 2ª gerente
- * (Bruno) -> 3ª gerente (Marcelo Suegama) -> concluído (o link expira). O
+ * (Bruno) -> 3ª gerente (Marcelo Suegama) -> concluído. Na tela os nomes são
+ * "Recursos Humanos" e "Gerência" (18/11/2026) (o link expira). O
  * banco confere de novo (sign_erp_hiring_request).
  */
 
@@ -93,21 +94,20 @@ export const ITENS = { alojamento: 'Alojamento', passagem: 'Passagem', hospedage
 
 /** As 3 assinaturas, na ordem. O índice + 1 é a `etapa_atual` do banco. */
 export const ETAPAS = ['rh', 'gerente_1', 'gerente_2'];
-export const CARGO_DA_ETAPA = { gerente_1: 'Gerente', gerente_2: 'Gerente', rh: 'RH' };
-/** Nome de quem assina quando o administrador ainda não marcou ninguém. */
-export const TITULARES_PADRAO = { gerente_1: 'Bruno', gerente_2: 'Marcelo Suegama', rh: 'RH' };
+/** Nome sério de cada assinatura, igual em todo lugar (18/11/2026). */
+export const CARGO_DA_ETAPA = { rh: 'Recursos Humanos', gerente_1: 'Gerência', gerente_2: 'Gerência' };
 export const SITUACOES = {
-  etapa_1: 'Aguardando RH',
-  etapa_2: 'Aguardando 2ª assinatura',
-  etapa_3: 'Aguardando 3ª assinatura',
+  etapa_1: 'Aguardando Recursos Humanos',
+  etapa_2: 'Aguardando Gerência (2ª assinatura)',
+  etapa_3: 'Aguardando Gerência (3ª assinatura)',
   concluido: 'Concluído',
   recusada: 'Recusada',
 };
 /** Papéis que o administrador dá. Quem não tem papel só pede e vê os próprios pedidos. */
 export const PAPEIS = {
-  rh: '1ª assinatura (RH)',
-  gerente_1: '2ª assinatura (Gerente)',
-  gerente_2: '3ª assinatura (Gerente)',
+  rh: '1ª assinatura (Recursos Humanos)',
+  gerente_1: '2ª assinatura (Gerência)',
+  gerente_2: '3ª assinatura (Gerência)',
   auxiliar: 'Auxiliar (acompanha)',
 };
 
@@ -274,15 +274,8 @@ export const emAberto = status => status === 'etapa_1' || status === 'etapa_2' |
 /** A etapa que falta (rh, gerente_1 ou gerente_2), ou null quando terminou. */
 export const etapaPendente = pedido => (emAberto(pedido.status) ? ETAPAS[Number(pedido.etapa_atual) - 1] ?? null : null);
 
-/**
- * "Bruno Luscher (Gerente)". `titulares` vem do servidor: nomes marcados em
- * "Quem assina". O RH pode ter mais de uma pessoa, então aparece só "RH".
- */
-export const nomeDaEtapa = (etapa, titulares = {}) => {
-  if (etapa === 'rh') return 'RH';
-  const nome = (titulares[etapa] || [])[0] || TITULARES_PADRAO[etapa] || etapa;
-  return `${nome} (${CARGO_DA_ETAPA[etapa] || ''})`;
-};
+/** "Gerência (2ª assinatura)": o nome da assinatura com a ordem, sem nome de pessoa. */
+export const nomeDaEtapa = etapa => `${CARGO_DA_ETAPA[etapa] || etapa} (${ETAPAS.indexOf(etapa) + 1}ª assinatura)`;
 
 /** A pessoa pode assinar/recusar este pedido agora? (a tela usa; o banco decide). */
 export const podeDecidir = (pedido, assinaturas, leitor) => {

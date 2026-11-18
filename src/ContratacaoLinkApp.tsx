@@ -33,7 +33,7 @@ export default function ContratacaoLinkApp() {
   const [aviso, setAviso] = useState('');
 
   useEffect(() => {
-    document.title = 'Solicitação de RH';
+    document.title = 'Documentações';
     return supabaseAuth.onAuthStateChanged(setUsuario);
   }, []);
 
@@ -64,7 +64,7 @@ export default function ContratacaoLinkApp() {
         showPassword={mostrarSenha}
         isAuthenticating={entrando}
         loginError={erro}
-        loginNotice={aviso || (token ? 'Entre com seu login para ver e assinar esta solicitação.' : 'Entre para pedir ou assinar uma solicitação de RH.')}
+        loginNotice={aviso || (token ? 'Entre com seu login para ver e assinar esta solicitação.' : 'Entre para pedir ou assinar uma solicitação de Recursos Humanos.')}
         onUsernameChange={setEmail}
         onPasswordChange={setSenha}
         onTogglePasswordVisibility={() => setMostrarSenha(atual => !atual)}

@@ -14,7 +14,6 @@ import {
 } from './_shared/supabase-admin.js';
 import { assertHttpMethod, httpError } from './_shared/api-security.js';
 import {
-  ETAPAS,
   emAberto,
   formularioCanonico,
   pedidoVisivel,
@@ -105,14 +104,6 @@ const montarPedido = (pedido, assinaturas, auditoria) => {
   };
 };
 
-/** Nomes de quem assina cada etapa, para os selos "1. Bruno (Gerente)". */
-const titularesDaEmpresa = async (client, staff) => {
-  const { data, error } = await client.from('erp_hiring_roles').select('role, user_name')
-    .eq('organization_id', staff.organizationId).in('role', ETAPAS);
-  if (error) throw error;
-  return Object.fromEntries(ETAPAS.map(etapa => [etapa, (data || []).filter(linha => linha.role === etapa).map(linha => linha.user_name)]));
-};
-
 /**
  * Link individual. Login obrigatório (a sessão já foi conferida). Encerrado:
  * responde só "expirado", sem nenhum dado do candidato. Em aberto: só quem
@@ -130,16 +121,14 @@ const abrirPeloLink = async (client, staff, leitor, token) => {
   if (!pedidoVisivel(pedido, leitor)) {
     throw httpError('Seu login não participa desta solicitação. Peça ao administrador para marcar você em "Quem assina".', 403);
   }
-  const [respAssinaturas, respAuditoria, titulares] = await Promise.all([
+  const [respAssinaturas, respAuditoria] = await Promise.all([
     client.from('erp_hiring_signatures').select(COLUNAS_ASSINATURA).eq('request_id', pedido.id),
     client.from('erp_hiring_audit').select(COLUNAS_AUDITORIA).eq('request_id', pedido.id).order('created_at', { ascending: true }),
-    titularesDaEmpresa(client, staff),
   ]);
   if (respAssinaturas.error) throw respAssinaturas.error;
   if (respAuditoria.error) throw respAuditoria.error;
   return jsonResponse(200, { success: true, data: {
     me: leitor,
-    titulares,
     request: montarPedido(pedido, respAssinaturas.data || [], respAuditoria.data || []),
   } });
 };
@@ -163,7 +152,6 @@ const listar = async (client, staff, leitor) => {
     auditoria = respAuditoria.data || [];
   }
   const resultado = visiveis.map(pedido => montarPedido(pedido, assinaturas, auditoria));
-  const titulares = await titularesDaEmpresa(client, staff);
   let pessoas;
   if (leitor.admin) {
     const [membros, papeis] = await Promise.all([
@@ -185,7 +173,7 @@ const listar = async (client, staff, leitor) => {
       };
     }).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
   }
-  return jsonResponse(200, { success: true, data: { me: leitor, requests: resultado, people: pessoas, titulares } });
+  return jsonResponse(200, { success: true, data: { me: leitor, requests: resultado, people: pessoas } });
 };
 
 const criar = async (client, staff, corpo) => {

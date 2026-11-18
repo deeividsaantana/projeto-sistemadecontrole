@@ -56,7 +56,6 @@ export type Etapa = 'rh' | 'gerente_1' | 'gerente_2';
 export type SituacaoContratacao = 'etapa_1' | 'etapa_2' | 'etapa_3' | 'concluido' | 'recusada';
 export type PapelContratacao = Etapa | 'auxiliar';
 /** Nomes marcados em "Quem assina" para cada etapa. */
-export type Titulares = Partial<Record<Etapa, string[]>>;
 
 export interface AssinaturaContratacao {
   id: string;
@@ -124,13 +123,12 @@ export interface DadosContratacao {
   me: Leitor;
   requests: PedidoContratacao[];
   people?: PessoaContratacao[];
-  titulares: Titulares;
 }
 
 /** Resposta do link individual: o pedido, ou só o aviso de expirado. */
 export type DadosDoLink =
   | { me: Leitor; expirado: 'concluido' | 'recusada' }
-  | { me: Leitor; titulares: Titulares; request: PedidoContratacao; expirado?: undefined };
+  | { me: Leitor; request: PedidoContratacao; expirado?: undefined };
 
 export interface AssinaturaEnviada {
   /** 'salva': o servidor usa o desenho guardado desta pessoa. */

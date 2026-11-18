@@ -2,7 +2,7 @@
 // (api/_shared/contratacao-regras.js) sobre dados de exemplo em memória.
 // ?papel=gerente_1|gerente_2|rh|auxiliar|admin|solicitante escolhe quem está "logado".
 import { ETAPAS, CARGO_DA_ETAPA, emAberto, pedidoVisivel, podeDecidir, validarFormulario } from '../api/_shared/contratacao-regras.js';
-import type { AssinaturaContratacao, AssinaturaEnviada, DadosContratacao, DadosDoLink, Etapa, FormularioContratacao, Leitor, PapelContratacao, PedidoContratacao, PessoaContratacao, Titulares } from '../src/services/contratacaoApi';
+import type { AssinaturaContratacao, AssinaturaEnviada, DadosContratacao, DadosDoLink, Etapa, FormularioContratacao, Leitor, PapelContratacao, PedidoContratacao, PessoaContratacao } from '../src/services/contratacaoApi';
 export type * from '../src/services/contratacaoApi';
 
 const papel = new URLSearchParams(location.search).get('papel') || 'admin';
@@ -15,7 +15,6 @@ const PESSOAS: Record<string, Leitor> = {
   admin: { userId: 'u-deivid', nome: 'Deivid Brandão', admin: true, dev: true, papeis: [] },
 };
 const eu: Leitor = { ...(PESSOAS[papel] ?? PESSOAS.admin) };
-const titulares: Titulares = { gerente_1: ['Bruno Luscher'], gerente_2: ['Marcelo Suegama'], rh: ['Lucas Oliveira'] };
 const QUEM: Record<Etapa, Leitor> = { gerente_1: PESSOAS.gerente_1, gerente_2: PESSOAS.gerente_2, rh: PESSOAS.rh };
 
 const traco = (texto: string) => {
@@ -72,14 +71,14 @@ let pedidos: PedidoContratacao[] = [
 let pessoas: PessoaContratacao[] = Object.values(PESSOAS).map(p => ({ user_id: p.userId, name: p.nome, email: `${p.nome.split(' ')[0].toLowerCase()}@renea.com.br`, roles: p.papeis }));
 
 export const carregarContratacoes = async (): Promise<DadosContratacao> => ({
-  me: eu, titulares, requests: pedidos.filter(p => pedidoVisivel(p, eu)), people: eu.admin ? pessoas : undefined,
+  me: eu, requests: pedidos.filter(p => pedidoVisivel(p, eu)), people: eu.admin ? pessoas : undefined,
 });
 /** No preview, ?link=<n> abre o pedido pN como se fosse pelo link individual. */
 export const carregarPeloLink = async (token: string): Promise<DadosDoLink> => {
   const pedido = pedidos.find(p => p.id === `p${token}`);
   if (!pedido) throw new Error('Link inválido. Confira se copiou o link inteiro.');
   if (!emAberto(pedido.status)) return { me: eu, expirado: pedido.status === 'recusada' ? 'recusada' : 'concluido' };
-  return { me: eu, titulares, request: pedido };
+  return { me: eu, request: pedido };
 };
 export const criarContratacao = async (form: FormularioContratacao) => {
   const { formulario, erros } = validarFormulario(form);
