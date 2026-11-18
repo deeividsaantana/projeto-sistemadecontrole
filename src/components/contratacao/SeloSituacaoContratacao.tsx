@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react';
-import { ETAPAS, SITUACOES, etapaPendente, nomeDaEtapa } from '../../../api/_shared/contratacao-regras.js';
-import type { Etapa, PedidoContratacao, SituacaoContratacao, Titulares } from '../../services/contratacaoApi';
+import { CARGO_DA_ETAPA, ETAPAS, SITUACOES, etapaPendente, nomeDaEtapa } from '../../../api/_shared/contratacao-regras.js';
+import type { Etapa, PedidoContratacao, SituacaoContratacao } from '../../services/contratacaoApi';
 import { dataHoraBr } from './formatos';
 
 const TOM: Record<SituacaoContratacao, string> = {
@@ -16,10 +16,10 @@ export function SeloSituacaoContratacao({ situacao }: { situacao: SituacaoContra
 }
 
 /**
- * Os 3 selos em ordem: 1. RH → 2. Bruno (Gerente) →
- * 3. Marcelo Suegama (Gerente). Verde = já assinou; âmbar = é a vez; cinza = ainda não chegou.
+ * Os 3 selos em ordem: Recursos Humanos (1ª) → Gerência (2ª) →
+ * Gerência (3ª). Verde = já assinou; âmbar = é a vez; cinza = ainda não chegou.
  */
-export function SelosDasEtapas({ pedido, titulares }: { pedido: PedidoContratacao; titulares: Titulares }) {
+export function SelosDasEtapas({ pedido }: { pedido: PedidoContratacao }) {
   const vez = etapaPendente(pedido);
   return (
     <ol className="flex flex-wrap items-center gap-1" aria-label="Assinaturas do pedido">
@@ -36,7 +36,7 @@ export function SelosDasEtapas({ pedido, titulares }: { pedido: PedidoContrataca
             {indice > 0 && <span aria-hidden="true" className="text-[#5b6870]">›</span>}
             <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold ring-1 ring-inset ${tom}`}>
               {feito && <Check className="size-3" aria-hidden="true" />}
-              {indice + 1}. {nomeDaEtapa(etapa, titulares)}
+              {nomeDaEtapa(etapa)}
               <span className="sr-only">{recusou ? ' (recusou)' : feito ? ' (assinou)' : daVez ? ' (é a vez)' : ' (aguardando)'}</span>
             </span>
           </li>
@@ -46,13 +46,14 @@ export function SelosDasEtapas({ pedido, titulares }: { pedido: PedidoContrataca
   );
 }
 
-/** Linha de etapas, como rastreio: RH → 2ª → 3ª → Concluído. */
-export function LinhaDeEtapas({ pedido, titulares, compacta = false }: { pedido: PedidoContratacao; titulares: Titulares; compacta?: boolean }) {
+/** Linha de etapas, como rastreio: Recursos Humanos → Gerência → Gerência → Concluído. */
+export function LinhaDeEtapas({ pedido, compacta = false }: { pedido: PedidoContratacao; compacta?: boolean }) {
   const passos = [...(ETAPAS as Etapa[]).map(etapa => ({
     chave: etapa,
-    rotulo: nomeDaEtapa(etapa, titulares),
+    rotulo: CARGO_DA_ETAPA[etapa],
+    ordem: `${ETAPAS.indexOf(etapa) + 1}ª`,
     feito: pedido.signatures.find(item => item.stage === etapa),
-  })), { chave: 'fim', rotulo: pedido.status === 'recusada' ? 'Recusada' : 'Concluído', feito: undefined }];
+  })), { chave: 'fim', rotulo: pedido.status === 'recusada' ? 'Recusada' : 'Concluído', ordem: '', feito: undefined }];
   const fim = pedido.status === 'concluido' || pedido.status === 'recusada';
   return (
     <ol className="flex items-start" aria-label="Etapas do pedido">
@@ -66,6 +67,7 @@ export function LinhaDeEtapas({ pedido, titulares, compacta = false }: { pedido:
               {concluido && !recusa ? <Check className="size-3.5" aria-hidden="true" /> : indice + 1}
             </span>
             <span className={`mt-1 text-xs font-bold ${concluido ? 'text-slate-900' : 'text-[#5b6870]'}`}>{passo.rotulo}</span>
+            {passo.ordem && <span className="text-xs text-[#5b6870]">{passo.ordem}<span className="hidden sm:inline"> assinatura</span></span>}
             {!compacta && passo.feito && <span className="hidden text-xs text-[#5b6870] sm:block">{dataHoraBr(passo.feito.signed_at)}</span>}
           </li>
         );

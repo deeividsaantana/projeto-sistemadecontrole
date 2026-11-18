@@ -32,7 +32,6 @@ import {
   type Leitor,
   type PedidoContratacao,
   type TipoSolicitacao,
-  type Titulares,
 } from '../../services/contratacaoApi';
 import { QuadroAssinatura } from './QuadroAssinatura';
 import { CorpoPromocao } from './CorpoPromocao';
@@ -44,13 +43,13 @@ import { dataBr, dataHoraBr } from './formatos';
 const ACOES: Record<string, string> = {
   abriu: 'abriu o pedido e gerou o link',
   criou_e_assinou: 'abriu o pedido e assinou como solicitante',
-  assinou_rh: 'assinou como RH',
+  assinou_rh: 'assinou por Recursos Humanos',
   assinou_gerente_1: 'assinou como gerente',
   assinou_gerente_2: 'assinou como gerente',
   assinou_gerente: 'assinou como gerente de contrato',
   recusou_gerente_1: 'recusou na assinatura do gerente',
   recusou_gerente_2: 'recusou na assinatura do gerente',
-  recusou_rh: 'recusou na etapa do RH',
+  recusou_rh: 'recusou na etapa de Recursos Humanos',
   recusou_gerente: 'recusou na etapa do gerente',
 };
 
@@ -96,8 +95,6 @@ const ESCOLHAS: Array<{ tipo: TipoSolicitacao; titulo: string; texto: string; Ic
 
 interface Props {
   leitor: Leitor;
-  /** Quem está marcado em cada etapa, para "Aguardando assinatura de: Bruno (Gerente)". */
-  titulares: Titulares;
   /** Aberto pelo link individual: o token vai junto na assinatura. */
   token?: string;
   /** Veio do botão "Baixar documento assinado" da lista: abre já imprimindo. */
@@ -117,11 +114,11 @@ interface Props {
  * cargo e salário", …0011) e desligamento ("Check list de desligamento",
  * …0027). Em branco: primeiro escolhe o tipo, depois só preenche e salva; o
  * sistema gera o link. Salvo, os dados ficam travados e passam por 3
- * assinaturas, nesta ordem: 1ª RH, 2ª gerente (Bruno), 3ª gerente (Marcelo).
+ * assinaturas, nesta ordem: 1ª Recursos Humanos, 2ª Gerência, 3ª Gerência.
  * O quadro de assinar fica logo abaixo das assinaturas. O servidor e o banco
  * conferem tudo de novo.
  */
-export function FolhaContratacao({ leitor, titulares, token, baixarAoAbrir = false, onCopiarLink, pedido, onVoltar, onCriado, onAtualizado }: Props) {
+export function FolhaContratacao({ leitor, token, baixarAoAbrir = false, onCopiarLink, pedido, onVoltar, onCriado, onAtualizado }: Props) {
   const novo = !pedido;
   const [tipoNovo, setTipoNovo] = useState<TipoSolicitacao | null>(null);
   const tipo: TipoSolicitacao | null = pedido ? tipoDoPedido(pedido.form) as TipoSolicitacao : tipoNovo;
@@ -289,12 +286,12 @@ export function FolhaContratacao({ leitor, titulares, token, baixarAoAbrir = fal
     return (
       <dl className="space-y-0.5 text-center text-xs text-[#5b6870]">
         <dd className="text-sm font-semibold text-slate-900 [overflow-wrap:anywhere]">{assinatura.signer_name}</dd>
-        <dd>{assinatura.signer_cargo || CARGO_DA_ETAPA[etapa]} · {dataHoraBr(assinatura.signed_at, true)}</dd>
+        <dd>{CARGO_DA_ETAPA[etapa]} · {dataHoraBr(assinatura.signed_at, true)}</dd>
         {assinatura.hash_validacao && <dd className="font-mono text-xs [overflow-wrap:anywhere]">Hash: {assinatura.hash_validacao}</dd>}
       </dl>
     );
   };
-  const ordem = (etapa: Etapa) => `${ETAPAS.indexOf(etapa) + 1}ª assinatura · ${nomeDaEtapa(etapa, titulares)}`;
+  const ordem = (etapa: Etapa) => `${ETAPAS.indexOf(etapa) + 1}ª assinatura · ${CARGO_DA_ETAPA[etapa]}`;
 
   // Contratação: 3 cartões lado a lado, como já era.
   const assinaturasContratacao = (
@@ -458,7 +455,7 @@ export function FolhaContratacao({ leitor, titulares, token, baixarAoAbrir = fal
             </div>
             <SeloSituacaoContratacao situacao={pedido.status} />
           </div>
-          <LinhaDeEtapas pedido={pedido} titulares={titulares} />
+          <LinhaDeEtapas pedido={pedido} />
           {minhaVez && (
             <a href="#ct-quadro-assinar" onClick={evento => { evento.preventDefault(); quadroRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} className={`${BOTAO_PRIMARIO} w-full sm:w-auto`}>
               É a sua vez: ir para a assinatura ↓
@@ -470,7 +467,7 @@ export function FolhaContratacao({ leitor, titulares, token, baixarAoAbrir = fal
 
       {!novo && pedido.status === 'recusada' && (
         <p role="status" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
-          <strong>Recusada por {pedido.rejected_stage && (ETAPAS as string[]).includes(pedido.rejected_stage) ? nomeDaEtapa(pedido.rejected_stage, titulares) : 'gerente de contrato'}:</strong> {pedido.rejection_reason}
+          <strong>Recusada por {pedido.rejected_stage && (ETAPAS as string[]).includes(pedido.rejected_stage) ? nomeDaEtapa(pedido.rejected_stage) : 'Gerência'}:</strong> {pedido.rejection_reason}
         </p>
       )}
       {novo && falha && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{falha}</p>}
@@ -664,7 +661,7 @@ export function FolhaContratacao({ leitor, titulares, token, baixarAoAbrir = fal
             {ocupado ? 'Salvando…' : 'Salvar e gerar link'}
           </button>
           <p className="text-sm text-[#5b6870]">
-            Ao salvar, o sistema gera um link só deste pedido. Mande o link para as 3 assinaturas, nesta ordem: {ETAPAS.map((etapa, i) => `${i + 1}. ${nomeDaEtapa(etapa, titulares)}`).join(', ')}.
+            Ao salvar, o sistema gera um link só deste pedido. Mande o link para as 3 assinaturas, nesta ordem: {ETAPAS.map((etapa, i) => `${i + 1}. ${CARGO_DA_ETAPA[etapa]}`).join(', ')}.
           </p>
         </div>
       )}

@@ -48,9 +48,9 @@ type Subtela = 'pessoas' | 'quadro' | 'historico';
 
 const NOME_DO_PERFIL: Record<UserRole, string> = Object.fromEntries(PERFIS_DE_ACESSO.map(perfil => [perfil.value, perfil.label])) as Record<UserRole, string>;
 const PAPEIS_CONTRATACAO: Array<{ id: PapelContratacaoDev; nome: string; faz: string }> = [
-  { id: 'rh', nome: 'RH', faz: 'Faz a 1ª assinatura.' },
-  { id: 'gerente_1', nome: 'Gerente (ex.: Bruno)', faz: 'Faz a 2ª assinatura. Uma pessoa só.' },
-  { id: 'gerente_2', nome: 'Gerente (ex.: Marcelo)', faz: 'Faz a 3ª assinatura e conclui. Uma pessoa só.' },
+  { id: 'rh', nome: 'Recursos Humanos', faz: 'Faz a 1ª assinatura.' },
+  { id: 'gerente_1', nome: 'Gerência (ex.: Bruno)', faz: 'Faz a 2ª assinatura. Uma pessoa só.' },
+  { id: 'gerente_2', nome: 'Gerência (ex.: Marcelo)', faz: 'Faz a 3ª assinatura e conclui. Uma pessoa só.' },
   { id: 'auxiliar', nome: 'Auxiliar', faz: 'Só acompanha os pedidos.' },
 ];
 const ACOES: Capacidade[] = ['ver', 'editar', 'aprovar', 'excluir'];

@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import {
+  PAPEIS,
+  SITUACOES,
   SOLICITACOES,
   cpfValido,
   etapaPendente,
@@ -87,10 +89,15 @@ test('3 tipos: contratação, promoção e desligamento, cada um com os seus cam
   assert.equal(desl.formulario.devolucaoOutros, '', '"outros" só vale com Uniforme / outros marcado');
 });
 
-test('selos mostram quem assina: "Bruno Luscher (Gerente)" e "RH"', () => {
-  assert.equal(nomeDaEtapa('gerente_1', { gerente_1: ['Bruno Luscher'] }), 'Bruno Luscher (Gerente)');
-  assert.equal(nomeDaEtapa('gerente_2', {}), 'Marcelo Suegama (Gerente)');
-  assert.equal(nomeDaEtapa('rh', { rh: ['Lucas'] }), 'RH');
+test('nomes sérios nas assinaturas (18/11/2026): Recursos Humanos e Gerência, com a ordem', () => {
+  assert.equal(nomeDaEtapa('rh'), 'Recursos Humanos (1ª assinatura)');
+  assert.equal(nomeDaEtapa('gerente_1'), 'Gerência (2ª assinatura)');
+  assert.equal(nomeDaEtapa('gerente_2'), 'Gerência (3ª assinatura)');
+  for (const texto of [...Object.values(SITUACOES), ...Object.values(PAPEIS)]) assert.doesNotMatch(String(texto), /\bRH\b|Gerente\b/, texto);
+  const link = fs.readFileSync('src/ContratacaoLinkApp.tsx', 'utf8');
+  assert.match(link, /document\.title = 'Documentações'/, 'título da aba do navegador');
+  const peloLink = fs.readFileSync('src/components/contratacao/ContratacaoPeloLink.tsx', 'utf8');
+  assert.match(peloLink, /<OutrosPedidos /, 'pelo link a pessoa vê também os outros pedidos');
 });
 
 test('quem vê: quem abriu, admin e quem tem papel; o resto não', () => {
