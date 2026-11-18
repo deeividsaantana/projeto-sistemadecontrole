@@ -96,11 +96,12 @@ test('nomes sérios nas assinaturas (18/11/2026): Recursos Humanos e Gerência, 
   const link = fs.readFileSync('src/ContratacaoLinkApp.tsx', 'utf8');
   assert.match(link, /document\.title = 'Documentações'/, 'título da aba do navegador');
   const peloLink = fs.readFileSync('src/components/contratacao/ContratacaoPeloLink.tsx', 'utf8');
-  assert.match(peloLink, /<SolicitacoesDoLink pedidos=\{todos\} leitor=\{dados\.me\} atual=\{dados\.request\.id\} \/>/, 'pelo link a pessoa vê a lista de solicitações, mesmo com um pedido só');
+  for (const subaba of ["'falta'", "'assinar'", "'todas'"]) assert.ok(peloLink.includes(`id: ${subaba} as const`), `subaba ${subaba} no link`);
+  assert.match(peloLink, /<FiltroDeTipo /, 'filtro por tipo (contratação, promoção, desligamento)');
+  assert.match(peloLink, /podeDecidir\(p, p\.signatures, leitor\)/, '"Falta assinar" usa a mesma regra de quem pode assinar');
   const folha = fs.readFileSync('src/components/contratacao/FolhaContratacao.tsx', 'utf8');
   assert.doesNotMatch(folha, /titulo="Histórico"/, 'o documento não mostra mais o bloco Histórico (pedido de 18/11)');
   assert.match(folha, /código de conferência dos dados/, 'o código de conferência continua');
-  assert.doesNotMatch(peloLink, /p\.id !== atual/, 'a lista não esconde o pedido aberto (com um pedido só ela sumia)');
 });
 
 test('quem vê: quem abriu, admin e quem tem papel; o resto não', () => {
