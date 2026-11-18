@@ -21,47 +21,66 @@ function Aviso({ titulo, texto, tom = 'neutro', children }: { titulo: string; te
   );
 }
 
-const MOSTRAR = 4;
+const MOSTRAR = 5;
 
 /**
- * Os outros pedidos que a pessoa pode ver, numa lista curta para bater o olho
- * (18/11/2026): só os que ainda correm, primeiro os que esperam a assinatura
- * dela. Cada um abre pelo seu próprio link; os encerrados ficam em "Ver todos".
+ * Todas as solicitações que a pessoa pode ver, numa lista para bater o olho
+ * (18/11/2026): sempre aparece, mesmo com um pedido só, para ficar claro o que
+ * existe. Ordem: as que esperam a assinatura dela, as em andamento e as
+ * encerradas. A aberta agora fica marcada; as outras abrem pelo próprio link
+ * (as encerradas, na lista completa, onde se baixa o PDF assinado).
  */
-export function OutrosPedidos({ pedidos, leitor, atual }: { pedidos: PedidoContratacao[]; leitor: Leitor; atual: string }) {
+export function SolicitacoesDoLink({ pedidos, leitor, atual }: { pedidos: PedidoContratacao[]; leitor: Leitor; atual: string }) {
+  const [todas, setTodas] = useState(false);
   const minhaVez = (p: PedidoContratacao) => podeDecidir(p, p.signatures, leitor);
-  const outros = pedidos.filter(p => p.id !== atual && emAberto(p.status)).sort((a, b) => Number(minhaVez(b)) - Number(minhaVez(a)));
-  if (outros.length === 0) return null;
-  const naVez = outros.filter(minhaVez).length;
+  const peso = (p: PedidoContratacao) => (minhaVez(p) ? 0 : emAberto(p.status) ? 1 : 2);
+  const lista = [...pedidos].sort((a, b) => peso(a) - peso(b));
+  if (lista.length === 0) return null;
+  const naVez = lista.filter(minhaVez).length;
+  const andamento = lista.filter(p => emAberto(p.status)).length;
+  const visiveis = todas ? lista : lista.slice(0, MOSTRAR);
   return (
-    <section className={`${CARTAO} mx-auto mb-4 w-full max-w-[860px] p-4 sm:p-5 print:hidden`} aria-labelledby="ct-outros-titulo" data-testid="outros-pedidos">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="ct-outros-titulo" className="text-base font-black text-slate-900">Outros pedidos em andamento ({outros.length})</h2>
-        {naVez > 0
-          ? <p className="rounded-full bg-amber-50 px-2.5 py-0.5 text-sm font-bold text-amber-900">{naVez === 1 ? '1 esperando a sua assinatura' : `${naVez} esperando a sua assinatura`}</p>
-          : <p className="text-sm text-[#5b6870]">Nenhum outro esperando a sua assinatura.</p>}
+    <section className={`${CARTAO} mx-auto mb-4 w-full max-w-[860px] p-4 sm:p-5 print:hidden`} aria-labelledby="ct-lista-titulo" data-testid="solicitacoes-do-link">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 id="ct-lista-titulo" className="text-base font-black text-slate-900">Solicitações ({lista.length})</h2>
+        <p className="flex flex-wrap gap-2 text-sm">
+          <span className={`rounded-full px-2.5 py-0.5 font-bold ${naVez ? 'bg-amber-100 text-amber-900' : 'bg-slate-100 text-[#5b6870]'}`}>{naVez} esperando a sua assinatura</span>
+          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 font-bold text-[#5b6870]">{andamento} em andamento</span>
+        </p>
       </div>
       <ul className="space-y-2">
-        {outros.slice(0, MOSTRAR).map(p => {
+        {visiveis.map(p => {
           const resumo = resumoDoPedido(p.form);
           const vez = minhaVez(p);
+          const aqui = p.id === atual;
+          const texto = <span className="min-w-0"><strong className="tabular-nums text-slate-900">{p.request_number}</strong> · {resumo.nomeDoTipo} · {resumo.pessoa}</span>;
+          const selo = vez ? <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-900">É a sua vez</span> : <SeloSituacaoContratacao situacao={p.status} />;
+          const linha = 'flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-xl border p-3 text-sm';
           return (
             <li key={p.id}>
-              <a
-                href={p.link_token ? `/contratacao-link/${p.link_token}` : '/contratacao'}
-                className={`flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-xl border p-3 text-sm transition hover:border-emerald-400 ${vez ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200'} ${FOCO}`}
-              >
-                <span className="min-w-0"><strong className="tabular-nums text-slate-900">{p.request_number}</strong> · {resumo.nomeDoTipo} · {resumo.pessoa}</span>
-                <span className="flex items-center gap-2">
-                  {vez ? <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-900">É a sua vez</span> : <SeloSituacaoContratacao situacao={p.status} />}
-                  <ChevronRight className="size-4 text-[#5b6870]" aria-hidden="true" />
-                </span>
-              </a>
+              {aqui ? (
+                <div aria-current="page" className={`${linha} border-[#176b4d] bg-emerald-50/50`}>
+                  {texto}
+                  <span className="flex items-center gap-2">{selo}<span className="rounded-full bg-[#176b4d] px-2.5 py-0.5 text-xs font-bold text-white">Aberta abaixo</span></span>
+                </div>
+              ) : (
+                <a href={p.link_token ? `/contratacao-link/${p.link_token}` : '/contratacao'} className={`${linha} transition hover:border-emerald-400 ${vez ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200'} ${FOCO}`}>
+                  {texto}
+                  <span className="flex items-center gap-2">{selo}<ChevronRight className="size-4 text-[#5b6870]" aria-hidden="true" /></span>
+                </a>
+              )}
             </li>
           );
         })}
       </ul>
-      <a href="/contratacao" className={`mt-3 inline-flex min-h-11 items-center text-sm font-bold text-[#176b4d] underline underline-offset-4 ${FOCO}`}>Ver todos os pedidos, inclusive os concluídos</a>
+      <div className="mt-2 flex flex-wrap gap-x-5">
+        {lista.length > MOSTRAR && (
+          <button type="button" onClick={() => setTodas(aberta => !aberta)} className={`inline-flex min-h-11 items-center text-sm font-bold text-[#176b4d] underline underline-offset-4 ${FOCO}`}>
+            {todas ? 'Mostrar menos' : `Mostrar todas (${lista.length})`}
+          </button>
+        )}
+        <a href="/contratacao" className={`inline-flex min-h-11 items-center text-sm font-bold text-[#176b4d] underline underline-offset-4 ${FOCO}`}>Abrir a lista completa</a>
+      </div>
     </section>
   );
 }
@@ -105,13 +124,13 @@ export function ContratacaoPeloLink({ token }: { token: string }) {
         {dados.expirado === 'recusada'
           ? <Aviso titulo="Link encerrado" texto="Este link foi encerrado. A solicitação foi recusada." tom="erro" />
           : <Aviso titulo="Link expirado" texto="Este link expirou. A solicitação já foi concluída e assinada por todas as partes." />}
-        <OutrosPedidos pedidos={todos} leitor={dados.me} atual="" />
+        <SolicitacoesDoLink pedidos={todos} leitor={dados.me} atual="" />
       </>
     );
   }
   return (
     <>
-      <OutrosPedidos pedidos={todos} leitor={dados.me} atual={dados.request.id} />
+      <SolicitacoesDoLink pedidos={todos} leitor={dados.me} atual={dados.request.id} />
       <FolhaContratacao
         key={`${dados.request.id}-${dados.request.version}`}
         pedido={dados.request}
