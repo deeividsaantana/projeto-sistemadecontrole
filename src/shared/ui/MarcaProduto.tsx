@@ -55,20 +55,18 @@ export function AmbienteCliente({ claro = false, className = '' }: { claro?: boo
 }
 
 /**
- * Identidade do ambiente ativo. O bloco usa o verde apenas como superfície
- * suave: a marca fica em evidência sem criar uma borda pesada na sidebar.
+ * Identidade do ambiente ativo: só "Ambiente ativo" e a logo da RENEA, num
+ * cartão branco de borda cinza, igual aos cartões do Painel. Sem fundo verde
+ * nem a palavra RENEA repetida ao lado (pedido de 18/11/2026).
  */
 export function CartaoAmbiente({ className = '' }: { className?: string }) {
   return (
-    <div className={`rounded-xl bg-[#f1f8f4] px-3 py-2.5 ${className}`} aria-label="Ambiente RENEA ativo">
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 text-[0.65rem] font-bold text-[#176b4d]">
-          <span className="size-1.5 rounded-full bg-[#1f9d6a]" aria-hidden="true" />
-          Ambiente ativo
-        </span>
-        <span className="text-[0.6rem] font-bold text-[#5b806f]">RENEA</span>
-      </div>
-      <img src={logoClienteEscuro} alt={CLIENTE.nome} className="mt-1.5 h-7 w-auto max-w-full" />
+    <div className={`rounded-lg border border-slate-200 bg-white px-3 py-2.5 ${className}`} aria-label={`Ambiente ${CLIENTE.nome} ativo`}>
+      <span className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+        <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+        Ambiente ativo
+      </span>
+      <img src={logoClienteEscuro} alt={CLIENTE.nome} className="mt-2 h-6 w-auto max-w-full" />
     </div>
   );
 }
