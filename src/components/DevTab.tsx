@@ -48,8 +48,9 @@ type Subtela = 'pessoas' | 'quadro' | 'historico';
 
 const NOME_DO_PERFIL: Record<UserRole, string> = Object.fromEntries(PERFIS_DE_ACESSO.map(perfil => [perfil.value, perfil.label])) as Record<UserRole, string>;
 const PAPEIS_CONTRATACAO: Array<{ id: PapelContratacaoDev; nome: string; faz: string }> = [
-  { id: 'rh', nome: 'RH', faz: 'Assina a segunda etapa do pedido.' },
-  { id: 'gerente', nome: 'Gerente de contrato', faz: 'Assina a última etapa e aprova.' },
+  { id: 'rh', nome: 'RH', faz: 'Faz a 1ª assinatura.' },
+  { id: 'gerente_1', nome: 'Gerente (ex.: Bruno)', faz: 'Faz a 2ª assinatura. Uma pessoa só.' },
+  { id: 'gerente_2', nome: 'Gerente (ex.: Marcelo)', faz: 'Faz a 3ª assinatura e conclui. Uma pessoa só.' },
   { id: 'auxiliar', nome: 'Auxiliar', faz: 'Só acompanha os pedidos.' },
 ];
 const ACOES: Capacidade[] = ['ver', 'editar', 'aprovar', 'excluir'];
@@ -373,8 +374,8 @@ export default function DevTab() {
         </section>
 
         <section className={`${CARTAO} grid gap-2 p-4`} aria-labelledby="dev-contratacao-titulo" data-dev-reveal>
-          <h3 id="dev-contratacao-titulo" className="text-base font-black text-slate-900">Quem assina na Contratação</h3>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <h3 id="dev-contratacao-titulo" className="text-base font-black text-slate-900">Quem assina na Contratação (contratação, promoção e desligamento)</h3>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {PAPEIS_CONTRATACAO.map(papel => {
               const tem = papeis.has(papel.id);
               return (

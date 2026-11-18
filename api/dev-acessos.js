@@ -20,7 +20,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ABA = /^[a-z][a-z-]{1,40}$/;
 const ACOES = ['ver', 'editar', 'aprovar', 'excluir'];
 const PERFIS = new Set(['admin', 'gestor', 'operador', 'leitura']);
-const PAPEIS_CONTRATACAO = new Set(['rh', 'gerente', 'auxiliar']);
+// Os mesmos papéis da aba Contratação (17/11/2026): 1ª RH, 2ª e 3ª gerente, auxiliar.
+const PAPEIS_CONTRATACAO = new Set(['rh', 'gerente_1', 'gerente_2', 'auxiliar']);
 
 export const erroDoBanco = error => {
   const code = String(error?.code || '');

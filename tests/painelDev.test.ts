@@ -132,6 +132,21 @@ test('API: o dev muda a aba com o login da sessão como autor, nunca o do corpo'
   }
 });
 
+test('API: "Quem assina" do Dev usa os papéis da Contratação (RH, 2º e 3º gerente, auxiliar)', async () => {
+  const cliente = clienteFalso(true);
+  substituirClienteSupabase(cliente);
+  try {
+    for (const role of ['rh', 'gerente_1', 'gerente_2', 'auxiliar']) {
+      assert.equal((await handler(evento('POST', { action: 'contratacao', user_id: OUTRO, role, active: true }))).statusCode, 200, role);
+    }
+    assert.equal((await handler(evento('POST', { action: 'contratacao', user_id: OUTRO, role: 'gerente', active: true }))).statusCode, 422, 'papel antigo saiu');
+    const papeis = cliente.chamadas.filter(c => c.nome === 'set_erp_hiring_role').map(c => c.args.p_role);
+    assert.deepEqual(papeis, ['rh', 'gerente_1', 'gerente_2', 'auxiliar']);
+  } finally {
+    substituirClienteSupabase(null);
+  }
+});
+
 test('banco: dev conferido nas funções, histórico só cresce e desfaz uma vez só', () => {
   const sql = fs.readFileSync('supabase/migrations/202611160001_painel_dev_acessos.sql', 'utf8');
   assert.match(sql, /before update or delete on public\.erp_access_audit/);

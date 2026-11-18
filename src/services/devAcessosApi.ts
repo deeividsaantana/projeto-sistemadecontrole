@@ -3,7 +3,7 @@ import type { Capacidade } from '../utils/permissoes';
 import type { UserRole } from '../app/navigation/navigation';
 
 /** Painel Dev de acessos: tudo passa por /api/dev-acessos, que confere no banco se é o dev. */
-export type PapelContratacaoDev = 'rh' | 'gerente' | 'auxiliar';
+export type PapelContratacaoDev = 'rh' | 'gerente_1' | 'gerente_2' | 'auxiliar';
 
 export interface PessoaDev {
   user_id: string;

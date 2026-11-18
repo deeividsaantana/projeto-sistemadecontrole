@@ -23,7 +23,7 @@ const dados: DadosPainelDev = {
     { user_id: 'u-cassia', tab: 'cadastros', actions: ['ver', 'editar'], updated_at: iso(26) },
     { user_id: 'u-sergio', tab: 'estacas', actions: [], updated_at: iso(2) },
   ],
-  hiring: [{ user_id: 'u-bruno', role: 'gerente' }, { user_id: 'u-giulia', role: 'auxiliar' }],
+  hiring: [{ user_id: 'u-bruno', role: 'gerente_1' }, { user_id: 'u-giulia', role: 'auxiliar' }],
   audit: [],
 };
 let proximo = 1;
