@@ -150,6 +150,8 @@ test('ninguém digita senha ao criar login e não existe mais link de senha', ()
   assert.doesNotMatch(masterData, /body\.password/);
   assert.match(masterData, /password: senhaQueNinguemSabe\(\)/);
   assert.match(entrada, /usePrecisaCriarSenha\(username\)/);
+  const aviso = fs.readFileSync('src/components/perfil/AvisoDePrimeiroAcesso.tsx', 'utf8');
+  assert.doesNotMatch(aviso, /href=|wa\.me|location\.origin/, 'nenhum link: a pessoa só entra como sempre');
   assert.match(entrada, /Digite novamente/);
   assert.equal(fs.existsSync('src/PrimeiroAcessoApp.tsx'), false);
   assert.match(servidor, /\$\{prefix\}\/primeiro-acesso`, toExpressHandler\(primeiroAcesso\)/);

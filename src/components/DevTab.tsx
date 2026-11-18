@@ -559,10 +559,10 @@ export default function DevTab() {
       <Modal
         open={Boolean(aviso1oAcesso)}
         role="alertdialog"
-        title="Pronto, falta a pessoa criar a senha"
-        description="Ninguém mais fica sabendo da senha dela."
+        title="Pronto"
+        description="Não tem link nem senha para passar."
         onClose={() => setAviso1oAcesso(null)}
-        footer={<button type="button" onClick={() => setAviso1oAcesso(null)} className={BOTAO_SECUNDARIO}>Já avisei, fechar</button>}
+        footer={<button type="button" onClick={() => setAviso1oAcesso(null)} className={BOTAO_SECUNDARIO}>Fechar</button>}
       >
         {aviso1oAcesso && <AvisoDePrimeiroAcesso {...aviso1oAcesso} />}
       </Modal>

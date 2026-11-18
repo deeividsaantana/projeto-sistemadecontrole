@@ -368,9 +368,9 @@ export default function UsuariosTab({ embutido = false }: UsuariosTabProps = {})
         open={Boolean(avisoCriado)}
         role="alertdialog"
         title="Login criado"
-        description="Você só criou o login. A pessoa digita o e-mail na tela de entrada e cria a própria senha."
+        description="Não tem link nem senha para passar."
         onClose={() => setAvisoCriado(null)}
-        footer={<Button variant="subtle" onClick={() => setAvisoCriado(null)}>Já avisei, fechar</Button>}
+        footer={<Button variant="subtle" onClick={() => setAvisoCriado(null)}>Fechar</Button>}
       >
         {avisoCriado && <AvisoDePrimeiroAcesso {...avisoCriado} />}
       </Modal>
