@@ -5,7 +5,6 @@ import {
   PAPEIS,
   SITUACOES,
   SOLICITACOES,
-  cpfValido,
   etapaPendente,
   reajuste,
   tipoDoPedido,
@@ -41,10 +40,10 @@ test('formulário: candidato, CPF e início obrigatórios; "nenhum item" exclusi
   assert.deepEqual(ok.erros, {});
   assert.equal(ok.formulario.cpf, '52998224725');
   assert.deepEqual(ok.formulario.itens, ['nenhum']);
-  assert.ok(validarFormulario({ ...formOk, cpf: '529.982.247-24' }).erros.cpf);
+  assert.equal(validarFormulario({ ...formOk, cpf: '111.111.111-11' }).erros.cpf, undefined, 'qualquer CPF digitado passa');
+  assert.equal(validarFormulario({ ...formOk, cpf: '123.4' }).erros.cpf, undefined, 'CPF incompleto também passa');
   assert.ok(validarFormulario({ ...formOk, motivo: 'outro' }).erros.motivoOutro);
   assert.ok(validarFormulario({ ...formOk, inicio: '2026-02-30' }).erros.inicio);
-  assert.equal(cpfValido('111.111.111-11'), false);
 });
 
 const pedido = (status: string, etapa: number | null, extra = {}) => ({ id: 'p1', requester_user_id: SOL, status, etapa_atual: etapa, rejected_stage: null, ...extra });

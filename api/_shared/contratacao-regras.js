@@ -123,19 +123,6 @@ const dataValida = valor => {
 
 const soDigitos = valor => String(valor ?? '').replace(/\D/g, '');
 
-/** CPF com os dois dígitos verificadores certos (e sem ser 111.111.111-11). */
-export const cpfValido = valor => {
-  const cpf = soDigitos(valor);
-  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
-  const digito = tamanho => {
-    let soma = 0;
-    for (let i = 0; i < tamanho; i += 1) soma += Number(cpf[i]) * (tamanho + 1 - i);
-    const resto = (soma * 10) % 11;
-    return resto === 10 ? 0 : resto;
-  };
-  return digito(9) === Number(cpf[9]) && digito(10) === Number(cpf[10]);
-};
-
 /** 12345678909 -> 123.456.789-09 */
 export const cpfFormatado = valor => {
   const cpf = soDigitos(valor);
@@ -172,7 +159,7 @@ const validarContratacao = entrada => {
   };
   if (!dataValida(formulario.data)) erros.data = 'Informe a data da solicitação.';
   if (formulario.candidato.length < 3) erros.candidato = 'Informe o nome completo do candidato.';
-  if (!cpfValido(formulario.cpf)) erros.cpf = 'CPF inválido. Confira os 11 números.';
+  if (!formulario.cpf) erros.cpf = 'Informe o CPF do candidato.';
   if (!dataValida(formulario.inicio)) erros.inicio = 'Informe a data prevista de início.';
   if (!formulario.prioridade) erros.prioridade = 'Escolha a prioridade.';
   if (!formulario.motivo) erros.motivo = 'Escolha o motivo.';
