@@ -41,19 +41,6 @@ import { LinhaDeEtapas, SeloSituacaoContratacao } from './SeloSituacaoContrataca
 import { dataBr, dataHoraBr } from './formatos';
 import { imprimirEmUmaFolha } from '../../utils/imprimirEmUmaFolha';
 
-const ACOES: Record<string, string> = {
-  abriu: 'abriu o pedido e gerou o link',
-  criou_e_assinou: 'abriu o pedido e assinou como solicitante',
-  assinou_rh: 'assinou por Recursos Humanos',
-  assinou_gerente_1: 'assinou como gerente',
-  assinou_gerente_2: 'assinou como gerente',
-  assinou_gerente: 'assinou como gerente de contrato',
-  recusou_gerente_1: 'recusou na assinatura do gerente',
-  recusou_gerente_2: 'recusou na assinatura do gerente',
-  recusou_rh: 'recusou na etapa de Recursos Humanos',
-  recusou_gerente: 'recusou na etapa do gerente',
-};
-
 const hojeLocal = () => {
   const agora = new Date();
   return new Date(agora.getTime() - agora.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
@@ -625,16 +612,10 @@ export function FolhaContratacao({ leitor, token, baixarAoAbrir = false, onCopia
         )}
 
         {!novo && (
-          <Bloco titulo="Histórico">
-            <ol className="space-y-1">
-              {pedido.history.map((evento, indice) => (
-                <li key={indice} className="flex flex-wrap gap-x-2 text-sm text-slate-700">
-                  <span className="tabular-nums text-[#5b6870]">{dataHoraBr(evento.created_at)}</span>
-                  <span><strong className="text-slate-900">{evento.actor_name}</strong> {ACOES[evento.action] ?? evento.action}{evento.details?.reason ? `: "${evento.details.reason}"` : ''}</span>
-                </li>
-              ))}
-            </ol>
-            <p className="mt-3 text-xs text-[#5b6870]">
+          // Sem "Histórico" (18/11/2026, pedido do Deivid): quem assinou e
+          // quando já aparece em cada assinatura. Fica só o código de conferência.
+          <Bloco>
+            <p className="text-xs text-[#5b6870]">
               {SITUACOES[pedido.status] ?? pedido.status} · código de conferência dos dados <strong className="font-mono text-slate-700">{pedido.form_hash.slice(0, 12).toUpperCase()}</strong>. As assinaturas valem para estes dados. Emitido no {PRODUTO.nome} para {CLIENTE.nome}.
             </p>
           </Bloco>
