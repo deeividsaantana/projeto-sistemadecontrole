@@ -150,8 +150,8 @@ export const createManagedUser = async (input: {
   registration?: string;
   permissions?: ManagedUserPermission[];
 }) => {
-  // primeiroAcesso: código do link em que a pessoa cria a própria senha (só para login novo).
-  const response = await request<ManagedUser & { primeiroAcesso: string | null }>(endpoint, {
+  // senhaPendente: login novo, a pessoa cria a própria senha na tela de entrada.
+  const response = await request<ManagedUser & { senhaPendente: boolean }>(endpoint, {
     method: 'POST',
     body: JSON.stringify({ action: 'create-user', ...input }),
   });
