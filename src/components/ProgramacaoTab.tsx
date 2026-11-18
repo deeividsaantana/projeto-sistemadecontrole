@@ -1,13 +1,14 @@
 import { useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { CalendarDays, ClipboardList, Download, FileSpreadsheet, FileText, GanttChartSquare, List, MessageCircle, PieChart, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
+import { CalendarDays, ClipboardList, Download, FileSpreadsheet, FileText, GanttChartSquare, List, MessageCircle, PieChart, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import type { PlanejamentoItem, RegistroProducao, ServicoObra } from '../types';
 import { PageHeader } from '../shared/ui/PageHeader';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { AbasDaTela, idDaAba } from '../shared/ui/AbasDaTela';
 import { TabelaPadrao, type ColunaTabela } from '../shared/ui/TabelaPadrao';
 import { Modal } from '../shared/ui/Modal';
+import { ConfirmDialog } from '../shared/ui/ConfirmDialog';
 import { Campo } from '../shared/ui/Lancamento';
 import { BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO } from './cadastros/estilos';
 import { formatarData } from '../utils/formato';
@@ -38,6 +39,9 @@ interface Props {
   podeEditar: boolean;
   onSavePlanejamento: (item: PlanejamentoItem, isNew: boolean) => void;
   onSaveProducao: (item: RegistroProducao, isNew: boolean) => void;
+  /** Dono do sistema (erp_dev_owners): o único que apaga lançamento de vez. */
+  podeApagar?: boolean;
+  onApagarProducao?: (id: string) => void;
 }
 
 type Aba = 'hoje' | 'quadro' | 'lista' | 'avanco' | 'producao';
@@ -45,7 +49,7 @@ const DIAS_NO_QUADRO = 14;
 const ordenarTexto = (lista: Iterable<string>) => [...new Set(lista)].filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
 const abaInicial = (): Aba => (typeof window !== 'undefined' && window.innerWidth < 768 ? 'hoje' : 'quadro');
 
-export default function ProgramacaoTab({ planejamento: planejamentoSalvo, producao, servicos, responsavel, podeEditar, onSavePlanejamento, onSaveProducao }: Props) {
+export default function ProgramacaoTab({ planejamento: planejamentoSalvo, producao, servicos, responsavel, podeEditar, onSavePlanejamento, onSaveProducao, podeApagar = false, onApagarProducao }: Props) {
   const escopo = useRef<HTMLElement>(null);
   const planejamento = useMemo(() => planejamentoSalvo.map(completarEstacasDaCarga), [planejamentoSalvo]);
   const hoje = diaLocal();
@@ -425,18 +429,24 @@ export default function ProgramacaoTab({ planejamento: planejamentoSalvo, produc
         hoje={hoje}
         onFechar={() => setLancamentoAberto(null)}
         onSalvar={(registro, texto) => { onSaveProducao(registro, false); setLancamentoAberto(null); mostrarAviso(texto); }}
+        onApagar={podeApagar && onApagarProducao ? registro => { onApagarProducao(registro.id); setLancamentoAberto(null); mostrarAviso('Lançamento apagado de vez.'); } : undefined}
       />
     </TelaCheia>
   );
 }
 
-/** Corrigir ou tirar um lançamento de produção (sai da conta, mas fica no histórico). */
-function EditarLancamento({ registro, hoje, onFechar, onSalvar }: {
+/**
+ * Corrigir ou tirar um lançamento de produção (sai da conta, mas fica no
+ * histórico). O dono do sistema, no lugar de retirar, apaga de vez (18/11/2026).
+ */
+function EditarLancamento({ registro, hoje, onFechar, onSalvar, onApagar }: {
   registro: RegistroProducao | null;
   hoje: string;
   onFechar: () => void;
   onSalvar: (registro: RegistroProducao, aviso: string) => void;
+  onApagar?: (registro: RegistroProducao) => void;
 }) {
+  const [confirmarApagar, setConfirmarApagar] = useState(false);
   const [quantidade, setQuantidade] = useState('');
   const [data, setData] = useState('');
   const [observacao, setObservacao] = useState('');
@@ -462,13 +472,19 @@ function EditarLancamento({ registro, hoje, onFechar, onSalvar }: {
       onSubmit={salvar}
       footer={(
         <div className="flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            className={`${BOTAO_PERIGO_LEVE} sm:mr-auto`}
-            onClick={() => registro && onSalvar({ ...registro, ativo: false, atualizadoEm: new Date().toISOString() }, 'Lançamento retirado da conta.')}
-          >
-            Retirar lançamento
-          </button>
+          {onApagar ? (
+            <button type="button" className={`${BOTAO_PERIGO_LEVE} sm:mr-auto`} onClick={() => setConfirmarApagar(true)} data-testid="apagar-lancamento">
+              <Trash2 className="size-4" aria-hidden="true" /> Apagar de vez
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={`${BOTAO_PERIGO_LEVE} sm:mr-auto`}
+              onClick={() => registro && onSalvar({ ...registro, ativo: false, atualizadoEm: new Date().toISOString() }, 'Lançamento retirado da conta.')}
+            >
+              Retirar lançamento
+            </button>
+          )}
           <button type="button" onClick={() => { setAberto(null); onFechar(); }} className={BOTAO_SECUNDARIO}>Fechar</button>
           <button type="button" onClick={salvar} disabled={!(valor > 0) || !data} className={BOTAO_PRIMARIO}>Salvar</button>
         </div>
@@ -485,6 +501,17 @@ function EditarLancamento({ registro, hoje, onFechar, onSalvar }: {
           <input id="prod-editar-obs" value={observacao} onChange={event => setObservacao(event.target.value)} className={CAMPO} />
         </Campo>
       </div>
+      {onApagar && (
+        <ConfirmDialog
+          open={confirmarApagar && Boolean(registro)}
+          title="Apagar de vez este lançamento?"
+          description={registro ? `${String(registro.quantidade).replace('.', ',')} ${registro.unidade} de ${registro.servicoDescricao} em ${registro.data.split('-').reverse().join('/')}. Sai da conta e do histórico, para todo mundo. Não tem como desfazer. Se só a quantidade está errada, corrija e toque em Salvar.` : ''}
+          confirmLabel="Apagar de vez"
+          cancelLabel="Voltar"
+          onConfirm={() => { setConfirmarApagar(false); setAberto(null); if (registro) onApagar(registro); }}
+          onCancel={() => setConfirmarApagar(false)}
+        />
+      )}
     </Modal>
   );
 }

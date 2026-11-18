@@ -7,6 +7,7 @@ import { useState, type ReactNode } from 'react';
 import { CalendarClock, CheckCircle2, FileDown, LoaderCircle, PackageCheck, PackageX, Send, ShieldCheck, ShieldX, Trash2, Truck, XCircle } from 'lucide-react';
 import { BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CARTAO } from '../cadastros/estilos';
 import { Campo } from '../../shared/ui/Lancamento';
+import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import {
   DESTINOS_SUGERIDOS,
   MENSAGEM_PRAZO_NEGADO,
@@ -454,17 +455,20 @@ export function DetalheSolicitacao({ solicitacao: sol, todas, ator, hoje, onSalv
       )}
 
       {podeExcluir && onExcluir && (
-        confirmarExclusao ? (
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
-            <span className="mr-auto">Excluir esta solicitação permanentemente?</span>
-            <button type="button" onClick={onExcluir} className={BOTAO_PERIGO_LEVE}>Confirmar exclusão</button>
-            <button type="button" onClick={() => setConfirmarExclusao(false)} className={BOTAO_SECUNDARIO}>Voltar</button>
-          </div>
-        ) : (
-          <button type="button" onClick={() => setConfirmarExclusao(true)} className={BOTAO_PERIGO_LEVE}>
-            <Trash2 className="size-4" aria-hidden="true" /> Excluir solicitação
+        <>
+          <button type="button" onClick={() => setConfirmarExclusao(true)} className={BOTAO_PERIGO_LEVE} data-testid="apagar-solicitacao">
+            <Trash2 className="size-4" aria-hidden="true" /> Apagar de vez
           </button>
-        )
+          <ConfirmDialog
+            open={confirmarExclusao}
+            title={`Apagar de vez a solicitação ${sol.numero}?`}
+            description="Some do site para todo mundo, com a linha do tempo inteira, e a planilha não traz de volta. Não tem como desfazer. Se é só para parar o pedido, use Cancelar solicitação."
+            confirmLabel="Apagar de vez"
+            cancelLabel="Voltar"
+            onConfirm={() => { setConfirmarExclusao(false); onExcluir(); }}
+            onCancel={() => setConfirmarExclusao(false)}
+          />
+        </>
       )}
 
       {erro && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700">{erro}</p>}

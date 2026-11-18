@@ -24,16 +24,18 @@ import {
   Search,
   Settings2,
   ShieldCheck,
+  Trash2,
   UserCheck,
 } from 'lucide-react';
-import { CartaoIndicador, PageHeader } from '../shared/ui';
+import { CartaoIndicador, ConfirmDialog, PageHeader } from '../shared/ui';
 import { useAtalhoNovo } from '../shared/hooks/useAtalhoNovo';
 import { TelaCheia } from '../shared/ui/TelaCheia';
 import { AbasDaTela, idDaAba, type ItemDasAbas } from '../shared/ui/AbasDaTela';
 import { TabelaPadrao, type ColunaTabela } from '../shared/ui/TabelaPadrao';
-import { BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CAMPO_SELECT, CARTAO } from './cadastros/estilos';
+import { BOTAO_PERIGO_LEVE, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, CAMPO, CAMPO_SELECT, CARTAO } from './cadastros/estilos';
 import { ETAPAS, PAPEIS, SITUACOES, SOLICITACOES, emAberto, etapaPendente, nomeDaEtapa, podeDecidir, resumoDoPedido } from '../../api/_shared/contratacao-regras.js';
 import {
+  apagarContratacao,
   carregarContratacoes,
   definirPapelContratacao,
   linkDoPedido,
@@ -83,6 +85,8 @@ export default function ContratacaoTab() {
   const [blocos, setBlocos] = useState<Bloco[]>(lerBlocos);
   const [moldando, setMoldando] = useState(false);
   const [aviso, setAviso] = useState('');
+  const [apagando, setApagando] = useState<PedidoContratacao | null>(null);
+  const [ocupadoApagar, setOcupadoApagar] = useState(false);
   const primeiraCarga = useRef(true);
 
   const carregar = useCallback(async (silencioso = false) => {
@@ -149,6 +153,24 @@ export default function ContratacaoTab() {
     catch { setAviso(`Copie o link: ${link}`); }
     window.setTimeout(() => setAviso(''), 6000);
   };
+  // Apagar de vez: só o dono do sistema vê o botão; servidor e banco conferem de novo.
+  const confirmarApagar = async () => {
+    if (!apagando) return;
+    setOcupadoApagar(true);
+    try {
+      const { request_number: numero } = await apagarContratacao(apagando.id);
+      setApagando(null);
+      setAbertoId(null);
+      setAviso(`Pedido ${numero} apagado de vez.`);
+      window.setTimeout(() => setAviso(''), 6000);
+      await carregar(true);
+    } catch (falha) {
+      setApagando(null);
+      setErro(falha instanceof Error ? falha.message : 'Não foi possível apagar.');
+    } finally {
+      setOcupadoApagar(false);
+    }
+  };
   const baixar = (pedido: PedidoContratacao) => { setBaixarAoAbrir(true); setAbertoId(pedido.id); };
 
   const subtelas: ReadonlyArray<ItemDasAbas<Subtela>> = [
@@ -171,7 +193,7 @@ export default function ContratacaoTab() {
     { chave: 'situacao', titulo: 'Assinaturas', render: p => (p.status === 'concluido' || p.status === 'recusada' ? <SeloSituacaoContratacao situacao={p.status} /> : <SelosDasEtapas pedido={p} titulares={titulares} />), valorOrdenacao: p => p.status, valorExportacao: p => SITUACOES[p.status] ?? p.status, larguraMinima: 300 },
     { chave: 'acoes', titulo: 'Ações', valorExportacao: () => '', larguraMinima: 280, render: p => (
       // Copiar Link só com o pedido correndo; Baixar só depois da 3ª assinatura.
-      <span className="flex flex-wrap gap-2" onClick={evento => evento.stopPropagation()} onKeyDown={evento => evento.stopPropagation()}>
+      <span className="flex flex-nowrap gap-2" onClick={evento => evento.stopPropagation()} onKeyDown={evento => evento.stopPropagation()}>
         {emAberto(p.status) && p.link_token && (
           <button type="button" onClick={() => void copiarLink(p)} className={BOTAO_SECUNDARIO} data-testid="copiar-link-pedido">
             <Link2 className="size-4" aria-hidden="true" /> Copiar Link
@@ -180,6 +202,12 @@ export default function ContratacaoTab() {
         {p.status === 'concluido' && (
           <button type="button" onClick={() => baixar(p)} className={BOTAO_SECUNDARIO} data-testid="baixar-pedido">
             <Download className="size-4" aria-hidden="true" /> Baixar documento assinado
+          </button>
+        )}
+        {me?.dev && (
+          // Só o ícone, para caber ao lado de Copiar Link; o nome vem no aviso de confirmação.
+          <button type="button" onClick={() => setApagando(p)} className={`${BOTAO_PERIGO_LEVE} min-w-11 px-3`} data-testid="apagar-pedido" aria-label={`Apagar de vez o pedido ${p.request_number}`} title="Apagar de vez">
+            <Trash2 className="size-4" aria-hidden="true" />
           </button>
         )}
       </span>
@@ -429,6 +457,16 @@ export default function ContratacaoTab() {
       ) : undefined}
     >
       {conteudo()}
+      <ConfirmDialog
+        open={Boolean(apagando)}
+        title={apagando ? `Apagar de vez o pedido ${apagando.request_number}?` : ''}
+        description={apagando ? `${resumoDoPedido(apagando.form).nomeDoTipo} de ${apagando.form.candidato || 'sem nome'}. Some o pedido, as assinaturas e o link, para todo mundo. Não tem como desfazer.` : ''}
+        confirmLabel="Apagar de vez"
+        cancelLabel="Voltar"
+        busy={ocupadoApagar}
+        onConfirm={() => void confirmarApagar()}
+        onCancel={() => setApagando(null)}
+      />
     </TelaCheia>
   );
 }

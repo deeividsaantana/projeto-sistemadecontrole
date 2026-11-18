@@ -12,7 +12,7 @@ const PESSOAS: Record<string, Leitor> = {
   gerente_2: { userId: 'u-marcelo', nome: 'Marcelo Suegama', admin: false, papeis: ['gerente_2'] },
   rh: { userId: 'u-lucas', nome: 'Lucas Oliveira', admin: false, papeis: ['rh'] },
   auxiliar: { userId: 'u-paulo', nome: 'Paulo de Tarso', admin: false, papeis: ['auxiliar'] },
-  admin: { userId: 'u-deivid', nome: 'Deivid Brandão', admin: true, papeis: [] },
+  admin: { userId: 'u-deivid', nome: 'Deivid Brandão', admin: true, dev: true, papeis: [] },
 };
 const eu: Leitor = { ...(PESSOAS[papel] ?? PESSOAS.admin) };
 const titulares: Titulares = { gerente_1: ['Bruno Luscher'], gerente_2: ['Marcelo Suegama'], rh: ['Lucas Oliveira'] };
@@ -104,6 +104,13 @@ export const decidirContratacao = async (pedido: Pick<PedidoContratacao, 'id'>, 
 };
 export const definirPapelContratacao = async (userId: string, role: PapelContratacao, active: boolean) => {
   pessoas = pessoas.map(p => (p.user_id === userId ? { ...p, roles: active ? [...p.roles, role] : p.roles.filter(r => r !== role) } : p));
+};
+export const apagarContratacao = async (requestId: string) => {
+  if (!eu.dev) throw new Error('Só o dono do sistema apaga solicitações.');
+  const pedido = pedidos.find(p => p.id === requestId);
+  if (!pedido) throw new Error('Este pedido já não existe.');
+  pedidos = pedidos.filter(p => p.id !== requestId);
+  return { request_number: pedido.request_number };
 };
 export const apagarAssinaturaSalva = async () => { eu.assinaturaSalva = null; };
 export const linkDoPedido = (token: string) => `${window.location.origin}/contratacao-link/${token}`;

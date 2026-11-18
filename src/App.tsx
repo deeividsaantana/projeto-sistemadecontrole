@@ -3634,6 +3634,31 @@ export default function App() {
     });
   };
 
+  /** Apagar lançamento de produção de vez (18/11/2026): só o dono do sistema; mesma marca das solicitações. */
+  const handleApagarProducao = (id: string) => {
+    const alvo = producaoRegistros.find(item => item.id === id);
+    if (!alvo || !meuAcesso.ehDev) return;
+    const agora = new Date().toISOString();
+    const rotulo = `${alvo.quantidade} ${alvo.unidade} de ${alvo.servicoDescricao} em ${alvo.data}`;
+    const marca = apagarDeVez(criarExclusao({
+      tabela: 'producaoRegistros',
+      registro: alvo as unknown as { id: string } & Record<string, unknown>,
+      rotulo,
+      usuario: activeUserName,
+      agora,
+    }), activeUserName, agora);
+    const updated = producaoRegistros.filter(item => item.id !== id);
+    const nextExclusoes = [marca, ...exclusoes];
+    saveAndLog('Produção', 'Excluiu', `Apagou de vez o lançamento de ${rotulo}.`, historyLogs, () => {
+      commitStorageBatch(localStorage, [
+        { key: STORAGE_KEYS.producaoRegistros, value: JSON.stringify(updated) },
+        { key: STORAGE_KEYS.exclusoes, value: JSON.stringify(nextExclusoes) },
+      ]);
+      setProducaoRegistros(updated);
+      setExclusoes(nextExclusoes);
+    }, { registroId: alvo.id, tipoOperacao: 'DELETE' });
+  };
+
   const handleSavePlanejamento = (item: PlanejamentoItem, isNew: boolean) => {
     const updated = isNew ? [item, ...planejamentoItens] : planejamentoItens.map(atual => atual.id === item.id ? item : atual);
     saveAndLog('Planejamento', isNew ? 'Criou' : 'Editou', `${isNew ? 'Criou' : 'Editou'} a programação de ${item.servicoDescricao}.`, historyLogs, () => {
@@ -3653,15 +3678,39 @@ export default function App() {
     });
   };
 
+  /**
+   * Apagar solicitação de vez (18/11/2026): só o dono do sistema. Vira marca de
+   * exclusão já "apagada de vez" (sem cópia guardada), para nenhum aparelho
+   * nem a planilha trazer o pedido de volta. O banco recusa o envio de quem
+   * não é dono (erp_recusar_apagar_solicitacao).
+   */
   const handleExcluirSolicitacao = (id: string) => {
     const alvo = solicitacoes.find(item => item.id === id);
-    if (!alvo || currentUserRole !== 'admin') return;
+    if (!alvo || !meuAcesso.ehDev) return;
+    const agora = new Date().toISOString();
+    const marca = apagarDeVez(criarExclusao({
+      tabela: 'solicitacoes',
+      registro: alvo as unknown as { id: string } & Record<string, unknown>,
+      rotulo: alvo.numero,
+      usuario: activeUserName,
+      agora,
+    }), activeUserName, agora);
     const updated = solicitacoes.filter(item => item.id !== id);
-    saveAndLog('Solicitações', 'Excluiu', `Excluiu a solicitação ${alvo.numero}.`, historyLogs, () => {
+    const nextExclusoes = [marca, ...exclusoes];
+    saveAndLog('Solicitações', 'Excluiu', `Apagou de vez a solicitação ${alvo.numero}.`, historyLogs, () => {
+      commitStorageBatch(localStorage, [
+        { key: STORAGE_KEYS.solicitacoes, value: JSON.stringify(updated) },
+        { key: STORAGE_KEYS.exclusoes, value: JSON.stringify(nextExclusoes) },
+      ]);
       setSolicitacoes(updated);
-      writeStorageValue(localStorage, STORAGE_KEYS.solicitacoes, JSON.stringify(updated));
-    });
+      setExclusoes(nextExclusoes);
+    }, { registroId: alvo.id, tipoOperacao: 'DELETE' });
   };
+
+  /** Pedidos apagados de vez: a planilha de compras não os traz de volta. */
+  const solicitacoesApagadas = useMemo(() => new Set(exclusoes
+    .filter(item => item.tabela === 'solicitacoes' && item.apagadoEm)
+    .flatMap(item => [item.registroId, item.rotulo])), [exclusoes]);
 
   const handleSavePessoasSuprimentos = (pessoas: PessoaSuprimentos[]) => {
     saveAndLog('Solicitações', 'Editou', 'Atualizou as pessoas e papéis de Solicitações.', historyLogs, () => {
@@ -4510,6 +4559,8 @@ export default function App() {
                 ehGestor={currentUserRole === 'gestor'}
                 podeEditar={pode(currentUserRole, 'solicitacoes', 'editar')}
                 onSalvar={handleSaveSolicitacoes}
+                podeApagar={meuAcesso.ehDev}
+                apagadas={solicitacoesApagadas}
                 onExcluir={handleExcluirSolicitacao}
               />
             )}
@@ -4536,6 +4587,8 @@ export default function App() {
                 podeEditar={pode(currentUserRole, 'diario-obra', 'editar') || pode(currentUserRole, 'pluviometro', 'editar')}
                 onSavePlanejamento={handleSavePlanejamento}
                 onSaveProducao={handleSaveProducao}
+                podeApagar={meuAcesso.ehDev}
+                onApagarProducao={handleApagarProducao}
               />
             )}
 

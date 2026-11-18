@@ -89,6 +89,10 @@ interface SolicitacoesTabProps {
   /** Perfil do app que grava (leitura só consulta). */
   podeEditar: boolean;
   onSalvar: (registros: Solicitacao[], descricao: string) => void;
+  /** Dono do sistema (erp_dev_owners): o único que apaga pedido de vez. */
+  podeApagar?: boolean;
+  /** Ids e números dos pedidos apagados de vez: a planilha não os traz de volta. */
+  apagadas?: ReadonlySet<string>;
   onExcluir?: (id: string) => void;
 }
 
@@ -184,6 +188,8 @@ export default function SolicitacoesTab({
   ehGestor = false,
   podeEditar,
   onSalvar,
+  podeApagar = false,
+  apagadas,
   onExcluir,
 }: SolicitacoesTabProps) {
   const escopo = useRef<HTMLElement>(null);
@@ -573,6 +579,7 @@ export default function SolicitacoesTab({
   const { depoisDeSalvar } = useSincroniaPlanilha({
     solicitacoes,
     ligado: podeEditar && podeImportar,
+    apagadas,
     onSalvar,
     avisar: (tom, texto) => setAviso({ tom, texto }),
   });
@@ -1141,7 +1148,7 @@ export default function SolicitacoesTab({
             ator={ator}
             hoje={hoje}
             onSalvar={salvarUma}
-            podeExcluir={ehAdmin}
+            podeExcluir={podeApagar}
             onExcluir={() => {
               onExcluir?.(aberta.id);
               setAbertaId(null);
