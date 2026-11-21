@@ -303,6 +303,23 @@ export default function DevTab() {
           {pessoa.dev && <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${TOM_SITUACAO.ok}`}>Dev</span>}
         </div>
 
+        <section className={`${CARTAO} grid gap-2 p-4`} aria-labelledby="dev-contratacao-titulo" data-dev-reveal>
+          <h3 id="dev-contratacao-titulo" className="text-base font-black text-slate-900">Quem assina na Contratação (contratação, promoção e desligamento)</h3>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            {PAPEIS_CONTRATACAO.map(papel => {
+              const tem = papeis.has(papel.id);
+              return (
+                <label key={papel.id} className={`flex min-h-11 cursor-pointer items-start gap-2 rounded-xl border p-3 ${tem ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200'}`}>
+                  <input type="checkbox" checked={tem} disabled={ocupado} className="mt-0.5 size-5 accent-[#176b4d]"
+                    onChange={() => void aplicar(() => mudarContratacaoDaPessoa(pessoa.user_id, papel.id, !tem), `${pessoa.name} ${tem ? 'deixou de ser' : 'agora é'} ${papel.nome} na Contratação.`)} />
+                  <span><span className="block text-sm font-bold text-slate-900">{papel.nome}</span><span className="block text-xs text-slate-600">{papel.faz}</span></span>
+                </label>
+              );
+            })}
+          </div>
+          <p className="text-xs text-slate-600">Compras e Solicitações seguem com quem faz o quê definido na própria aba.</p>
+        </section>
+
         <section className={`${CARTAO} grid gap-3 p-4 sm:grid-cols-2`} aria-labelledby="dev-perfil-titulo" data-dev-reveal>
           <h3 id="dev-perfil-titulo" className="text-base font-black text-slate-900 sm:col-span-2">Perfil e situação</h3>
           <label className="grid gap-1">
@@ -371,23 +388,6 @@ export default function DevTab() {
               );
             })}
           </ul>
-        </section>
-
-        <section className={`${CARTAO} grid gap-2 p-4`} aria-labelledby="dev-contratacao-titulo" data-dev-reveal>
-          <h3 id="dev-contratacao-titulo" className="text-base font-black text-slate-900">Quem assina na Contratação (contratação, promoção e desligamento)</h3>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            {PAPEIS_CONTRATACAO.map(papel => {
-              const tem = papeis.has(papel.id);
-              return (
-                <label key={papel.id} className={`flex min-h-11 cursor-pointer items-start gap-2 rounded-xl border p-3 ${tem ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200'}`}>
-                  <input type="checkbox" checked={tem} disabled={ocupado} className="mt-0.5 size-5 accent-[#176b4d]"
-                    onChange={() => void aplicar(() => mudarContratacaoDaPessoa(pessoa.user_id, papel.id, !tem), `${pessoa.name} ${tem ? 'deixou de ser' : 'agora é'} ${papel.nome} na Contratação.`)} />
-                  <span><span className="block text-sm font-bold text-slate-900">{papel.nome}</span><span className="block text-xs text-slate-600">{papel.faz}</span></span>
-                </label>
-              );
-            })}
-          </div>
-          <p className="text-xs text-slate-600">Compras e Solicitações seguem com quem faz o quê definido na própria aba.</p>
         </section>
 
         <section className={`${CARTAO} p-4`} aria-labelledby="dev-ultimas-titulo" data-dev-reveal>
